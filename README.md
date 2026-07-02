@@ -1,0 +1,15 @@
+# Radar_point_cloud_gen
+
+毫米波雷达点云生成方向的文献调研与研究想法整理。
+
+## 文档索引
+
+- [docs/proposal.md](docs/proposal.md)：**一页正式立项书**，把「单帧物理一致性约束」与「时序 Doppler 驱动生成」两条主线整合为统一课题（含方法、数据、评估、里程碑、风险）。
+- [docs/related_work_doppler.md](docs/related_work_doppler.md)：自动驾驶毫米波雷达点云生成中的 Doppler 文献调研，梳理哪些工作已经生成/回归 Doppler，以及真正剩下的研究空白。
+- [docs/prior_art_deep_dive.md](docs/prior_art_deep_dive.md)：对最接近的 4D-RaDiff 与 RadarGen 做精读对比，重点分析它们如何处理 Doppler、缺少什么物理约束。
+- [docs/survey_temporal_doppler.md](docs/survey_temporal_doppler.md)：多帧雷达点云生成与 Doppler 时序一致性的专项调研，论证 `v_r * dt ≈ drange` 这类约束用于生成/增强任务的可行性。
+- [docs/papers/README.md](docs/papers/README.md)：本项目收集的论文 PDF 索引，按“生成 Doppler”“几何增强”“时序-Doppler 耦合”等主题归类。
+
+## 当前方向
+
+基于现有调研，较有潜力的方向是：**学习式多帧雷达点云增强/生成，同时联合生成 Doppler，并利用 Doppler 与帧间径向位移之间的物理关系建立时序一致性约束**。

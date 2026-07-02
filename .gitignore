@@ -1,0 +1,8 @@
+# 第三方 arXiv 论文 PDF —— 版权所致不入公开库，索引见 docs/papers/README.md（含 arXiv URL）
+docs/papers/*.pdf
+
+# 大文件 / 打包
+*.zip
+
+# 系统文件
+.DS_Store
