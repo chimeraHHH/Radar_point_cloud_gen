@@ -5,6 +5,8 @@
 ## 文档索引
 
 - [docs/proposal.md](docs/proposal.md)：**一页正式立项书**，把「单帧物理一致性约束」与「时序 Doppler 驱动生成」两条主线整合为统一课题（含方法、数据、评估、里程碑、风险）。
+- [docs/work_plan.md](docs/work_plan.md)：**工作计划**（CVPR 2027 锚定，~19 周），含分阶段任务、团队分工、决策门 Go/No-Go、风险应急。
+- [docs/competitor_rescan_2026-07.md](docs/competitor_rescan_2026-07.md)：**竞品重扫备忘**（P0），确认两条主线空白仍成立、核心基线无开源代码。
 - [docs/related_work_doppler.md](docs/related_work_doppler.md)：自动驾驶毫米波雷达点云生成中的 Doppler 文献调研，梳理哪些工作已经生成/回归 Doppler，以及真正剩下的研究空白。
 - [docs/prior_art_deep_dive.md](docs/prior_art_deep_dive.md)：对最接近的 4D-RaDiff 与 RadarGen 做精读对比，重点分析它们如何处理 Doppler、缺少什么物理约束。
 - [docs/survey_temporal_doppler.md](docs/survey_temporal_doppler.md)：多帧雷达点云生成与 Doppler 时序一致性的专项调研，论证 `v_r * dt ≈ drange` 这类约束用于生成/增强任务的可行性。
