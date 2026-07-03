@@ -21,11 +21,11 @@
   - 点云/扩散：`open3d`、`chamferdist` 或 `pytorch3d`、`diffusers`、`spconv`(匹配CUDA)
   - 下游检测：**OpenPCDet** 或 **mmdetection3d**（VoD CenterPoint / VoxelNeXt 基线，对标 4D-RaDiff / RadarGen）
   - 评估/日志：`scipy`（MMD/JSD）、`wandb` 或 `tensorboard`
-- ☐ 🤖 环境冒烟测试：跑通一次极小扩散 step + Chamfer/MMD 单测，确认无 CUDA/算子缺失。
+- ☑ 🤖 环境冒烟测试**通过**(2026-07-03, L40S GPU7)：`torch 2.12.1+cu130`(pip 捆绑运行时，无需系统 nvcc) + diffusers DDPM 加噪/去噪/反传 + Chamfer/MMD-RBF/JSD 单测全绿，bf16 可用；依赖已冻结 `~/Workspace/radar_gen/requirements.txt`(84 项)。脚本 `scripts/smoke_test.py`。待装：open3d、spconv、OpenPCDet(P1 前)。
 
 ### A3. 存储与工程
 - ☑ 目录：数据置 `~/data/radar_gen/{vod,truckscenes}`（`~/data` 本身即 NVMe `/storage/ssd/metaiot_guest`，无需另设 `data_cache`），软链 `~/Workspace/radar_gen/data/{vod,truckscenes}` 已建。⚠️ 共享 `public_dataset` 只读、个人 NVMe 仅 ~236G——**>200G 数据需管理员开 `/storage/data` 空间**。
-- ☐ GitHub 代理：`setproxy`（用完 `unsetproxy`），clone 本项目 repo 到 `~/Workspace`。
+- ☐ GitHub 代理：⚠️ 实测 `setproxy` 在 huayiming 账号未定义，直连 GitHub 被系统代理拦(**407 需认证**)——找管理员要代理凭证，或改走「本地 → 服务器 SSH bare-repo push」绕开(P1 起代码时落实)。
 - ☐ 大文件传输用 `croc send/收`（数据/权重）。
 - ☐ 🧑 ACL 共享给协作者（勿 `chmod 777`）：
   `setfacl -R -m u:<协作者>:rwx ~/Workspace/radar_gen && setfacl -R -d -m u:<协作者>:rwx ~/Workspace/radar_gen`
