@@ -1,7 +1,8 @@
 # P0 就绪清单：服务器环境 & 数据集字段核对
 
 > 日期：2026-07-02 · 对应 [work_plan.md](work_plan.md) P0（W1–2）与决策门 **G0** · 服务器细节见 `../metaiot_server_guide.md`
-> 图例：☐ 待办 · 🧑 需人工/管理员 · 🤖 可脚本化 · ⚠️ 风险点
+> 图例：☐ 待办 · ☑ 已完成 · 🧑 需人工/管理员 · 🤖 可脚本化 · ⚠️ 风险点
+> **📌 2026-07-03 进展**：环境/目录/TruckScenes-mini/字段核对/自洽性校验已完成，**G0 数据侧判据(TruckScenes)通过**——详见 [p0_progress_2026-07-03.md](p0_progress_2026-07-03.md)。VoD 申请与 trainval 存储仍开放。
 
 ---
 
@@ -13,7 +14,7 @@
 - ☐ 验证登录 + `atop` 查资源（退出 `Ctrl+B` 再 `D`）；确认可用 GPU 型号/显存/是否共享排队。
 
 ### A2. 计算环境
-- ☐ Conda（`~/anaconda3`）建环境，命名规范 **`<缩写>_radar`**（如 `mg_radar`），Python 3.10。
+- ☑ Conda 建环境：**`hym_radar`**（Python 3.10）。⚠️ 实际基座为共享 `/home/metaiot_guest/miniconda3`（`~/anaconda3` 不存在）；非交互 shell 激活需 `source .../etc/profile.d/conda.sh`。
 - ☐ CUDA 对齐：`which nvcc` → `source ~/commonscript/switch_cuda.sh <版本>`（仅当前终端生效），与 PyTorch 版本匹配。
 - ☐ 依赖分组安装并冻结 `environment.yml` / `requirements.txt`：
   - 核心：`torch`(+匹配CUDA)、`numpy`、`einops`、`pyyaml`、`tqdm`
@@ -23,8 +24,7 @@
 - ☐ 🤖 环境冒烟测试：跑通一次极小扩散 step + Chamfer/MMD 单测，确认无 CUDA/算子缺失。
 
 ### A3. 存储与工程
-- ☐ 目录：数据集 `~/data/public_dataset/{vod,truckscenes}`；高频缓存走 NVMe `~/data_cache`，软链回工作区
-  `ln -s ~/data_cache/radar/vod ~/Workspace/radar_gen/data/vod`
+- ☑ 目录：数据置 `~/data/radar_gen/{vod,truckscenes}`（`~/data` 本身即 NVMe `/storage/ssd/metaiot_guest`，无需另设 `data_cache`），软链 `~/Workspace/radar_gen/data/{vod,truckscenes}` 已建。⚠️ 共享 `public_dataset` 只读、个人 NVMe 仅 ~236G——**>200G 数据需管理员开 `/storage/data` 空间**。
 - ☐ GitHub 代理：`setproxy`（用完 `unsetproxy`），clone 本项目 repo 到 `~/Workspace`。
 - ☐ 大文件传输用 `croc send/收`（数据/权重）。
 - ☐ 🧑 ACL 共享给协作者（勿 `chmod 777`）：
@@ -40,7 +40,7 @@
 
 ### B1. 获取与许可
 - ☐ 🧑 **View-of-Delft (VoD)**：intelligent-vehicles.org 申请学术下载许可 → 放 `~/data/public_dataset/vod`，装 VoD devkit。
-- ☐ 🧑 **MAN TruckScenes**：官方申请/下载（NeurIPS 2024）→ `~/data/public_dataset/truckscenes`，装 truckscenes-devkit。
+- ☑(部分) **MAN TruckScenes**：实为**开放数据无需申请**（AWS S3 `man-truckscenes`，`--no-sign-request`）。mini(9.2G) 已下载解压至 `~/data/radar_gen/truckscenes/man-truckscenes/`，devkit 已装；**trainval(≈522G) 待管理员开存储**。⚠️ 传感器捆绑打包，无法只取雷达+LiDAR。
 - ☐ 校验完整性（帧数、序列数、md5/大小），记录版本。
 
 ### B2. 逐点字段核对（**关键**，跑通再进 P1）
@@ -74,7 +74,7 @@
 ## C. G0 通过判据（W2 末）
 - ☐ 服务器可登录、环境冒烟测试通过、协作权限就绪。
 - ☐ VoD & TruckScenes 下载完成、devkit 可读一帧、字段口径已确认。
-- ☐ **自洽性校验**：静态点 `v_r ≈ −v_ego·r̂` 残差在合理量级（验证解析硬约束可行）。
+- ☑(TruckScenes) **自洽性校验通过**：N=80 万点，res med −0.007 / MAD 0.24 m/s，六通道斜率 0.90–0.94；口径判定 **RAW**、`vrel` 为纯径向向量（详见 [p0_progress_2026-07-03.md](p0_progress_2026-07-03.md)）。VoD 侧待数据到位后复验。
 - ☐ 竞品重扫结论：空白仍成立（见 [competitor_rescan_2026-07.md](competitor_rescan_2026-07.md)）。
 - → 全绿则进入 **P1**；任一红灯则修复或按风险预案调整（如基线自建、时序改 TruckScenes）。
 

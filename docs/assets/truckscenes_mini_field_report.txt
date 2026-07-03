@@ -1,0 +1,53 @@
+/home/huayiming/.conda/envs/hym_radar/lib/python3.10/site-packages/truckscenes/truckscenes.py:100: UserWarning: The visualization dependencies are not installed on your system! Run 'pip install "truckscenes-devkit[all]"'.
+  warnings.warn('''The visualization dependencies are not installed on your system! '''
+== 场景数: 10
+   scene-0044384af3d8494e913fb8b14915239e-3: weather.clear;area.terminal;daytime.noon;season.autumn;lighting.illumi
+   scene-13f4b71b1bd04a9e88747ad8f58a3f67-4: weather.clear;area.highway;daytime.evening;season.autumn;lighting.dark
+   scene-23160c4bff134cdd86b96ee822b4aca9-14: weather.overcast;area.city;daytime.noon;season.winter;lighting.illumin
+   scene-3195e3bfd1de4f9ba82f874790c7856c-15: weather.overcast;area.highway;daytime.noon;season.summer;lighting.illu
+   scene-3f542f89ec5241b6a4e30ca743adcf34-29: weather.overcast;area.highway;daytime.morning;season.summer;lighting.i
+   scene-6be74229febb4aad9e7ae1a37217b231-4: weather.rain;area.terminal;daytime.morning;season.summer;lighting.illu
+   scene-a6a87db5125846bda72ccfc9931ee153-11: weather.clear;area.city;daytime.noon;season.winter;lighting.twilight;s
+   scene-b13542304b244af585a646082c57a079-1: weather.snow;area.city;daytime.noon;season.autumn;lighting.illuminated
+   scene-b201f6e737e34c2d87830fc1e2911516-6: weather.rain;area.highway;daytime.noon;season.autumn;lighting.illumina
+   scene-fb64d203d417452f830ca73efed80c41-11: weather.clear;area.city;daytime.noon;season.winter;lighting.other_ligh
+
+== ego_motion_chassis: 20089 条, 字段: ['ax', 'ay', 'az', 'next', 'pitch', 'pitch_rate', 'prev', 'roll', 'roll_rate', 'timestamp', 'token', 'vx', 'vy', 'vz', 'yaw', 'yaw_rate']
+
+== 通道: 6 radar / 6 lidar
+
+== 单帧字段核对 [RADAR_LEFT_BACK] RADAR_LEFT_BACK_1695473372704612.pcd
+   FIELDS = ['x', 'y', 'z', 'vrel_x', 'vrel_y', 'vrel_z', 'rcs']
+   dtype  = [('x', '<f4'), ('y', '<f4'), ('z', '<f4'), ('vrel_x', '<f4'), ('vrel_y', '<f4'), ('vrel_z', '<f4'), ('rcs', '<f4')]
+   点数   = 752
+                    x: min=    5.122 med=   76.973 max=  189.254
+                    y: min= -160.614 med=   -1.249 max=  125.676
+                    z: min=  -22.883 med=    0.679 max=   22.763
+               vrel_x: min=   -0.112 med=    1.707 max=    6.245
+               vrel_y: min=   -1.877 med=   -0.030 max=    4.538
+               vrel_z: min=   -0.436 med=    0.010 max=    0.529
+                  rcs: min=  -20.000 med=   -8.000 max=   39.000
+
+== 候选速度字段: ['vrel_x', 'vrel_y', 'vrel_z']
+== sweeps/RADAR_LEFT_BACK: 3476 帧 (B 线 20Hz 时序可用性)
+
+== 自洽性校验: 假设H_raw: v_meas ≈ -v_ego·r̂ | 假设H_comp: v_meas ≈ 0 (静态多数前提)
+   sample 帧数=400, |v_ego| 中位=4.18 m/s, ego时间对齐间隙 中位=0.9 ms
+   每帧每雷达点数: 中位=535, P10=326, P90=753
+   vrel 径向纯度 |cos(vrel,r̂)|: med=1.0000, P05=1.0000 (≈1 则 vrel 为纯径向向量)
+
+                   通道       N点 |res_raw|<0.5 |res_comp|<0.5   slope  pearson
+      RADAR_LEFT_BACK   146654         68.7%           5.1%   0.928    0.727
+     RADAR_LEFT_FRONT   146815         73.5%           0.7%   0.909    0.719
+      RADAR_LEFT_SIDE   133221         67.2%           9.1%   0.914    0.769
+     RADAR_RIGHT_BACK   129558         66.9%           4.4%   0.937    0.842
+    RADAR_RIGHT_FRONT   144000         69.6%           0.8%   0.899    0.676
+     RADAR_RIGHT_SIDE   104575         71.8%           8.3%   0.917    0.856
+
+   [总计 N=804823]  H_raw 内点率=69.6%  H_comp 内点率=4.5%  (阈值0.5 m/s)
+   res_raw:  med=-0.007  MAD=0.242
+   res_comp: med=-2.164  MAD=6.229
+   >>> 判定: Doppler 口径 = RAW(含自车分量) -> 解析硬约束 v_r=-v_ego·r̂ 直接可用
+
+== 图已存: /home/huayiming/Workspace/radar_gen/results/truckscenes_mini_doppler_consistency.png
+== DONE
