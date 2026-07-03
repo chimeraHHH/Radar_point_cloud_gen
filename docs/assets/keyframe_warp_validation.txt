@@ -1,0 +1,18 @@
+/home/huayiming/.conda/envs/hym_radar/lib/python3.10/site-packages/truckscenes/truckscenes.py:100: UserWarning: The visualization dependencies are not installed on your system! Run 'pip install "truckscenes-devkit[all]"'.
+  warnings.warn('''The visualization dependencies are not installed on your system! '''
+== 关键帧对(×通道)数: 2340, Δt≈0.5s
+== 动态点真实位移 |v_obj|·Δt: med=3.58 m, P90=11.98 m
+
+   -- 动态点(GT框, 真运动) --
+             identity: N=  43544  NN med=2.250 m  mean=2.949  <1m: 21.1%  <2m: 45.1%
+             ego-warp: N=  43544  NN med=1.979 m  mean=2.891  <1m: 24.6%  <2m: 50.4%
+   dopp-warp (radial): N=  43544  NN med=1.799 m  mean=2.482  <1m: 26.0%  <2m: 55.0%
+   oracle (full v_obj): N=  43544  NN med=0.890 m  mean=1.794  <1m: 54.5%  <2m: 78.2%
+
+   -- 背景静态点(对照) --
+             identity: N= 210817  NN med=2.665 m  mean=3.768  <1m: 17.2%  <2m: 38.2%
+             ego-warp: N= 210817  NN med=2.008 m  mean=3.304  <1m: 27.3%  <2m: 49.9%
+   dopp-warp (radial): N= 210817  NN med=2.120 m  mean=3.375  <1m: 23.6%  <2m: 47.8%
+
+== 图已存: /home/huayiming/Workspace/radar_gen/results/keyframe_warp_validation.png
+== DONE

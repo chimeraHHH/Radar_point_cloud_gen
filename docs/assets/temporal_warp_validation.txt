@@ -1,0 +1,27 @@
+/home/huayiming/.conda/envs/hym_radar/lib/python3.10/site-packages/truckscenes/truckscenes.py:100: UserWarning: The visualization dependencies are not installed on your system! Run 'pip install "truckscenes-devkit[all]"'.
+  warnings.warn('''The visualization dependencies are not installed on your system! '''
+== 链数: 60, sweep 总帧数: 22767
+== 帧对数: 15102
+
+== K=1 (Δt med=51 ms) ===============================================
+   -- 全部点 --
+     identity: N= 3600438  NN med=1.252 m  mean=2.203  <1m: 41.4%  <2m: 66.5%
+     ego-warp: N= 3600438  NN med=1.138 m  mean=2.108  <1m: 46.0%  <2m: 67.6%
+    dopp-warp: N= 3600438  NN med=1.128 m  mean=2.109  <1m: 46.3%  <2m: 67.5%
+   -- 动态点(|res_dopp|>1) --
+     identity: N= 1161893  NN med=1.315 m  mean=2.446  <1m: 40.4%  <2m: 63.7%
+     ego-warp: N= 1161893  NN med=1.281 m  mean=2.418  <1m: 41.1%  <2m: 64.4%
+    dopp-warp: N= 1161893  NN med=1.266 m  mean=2.420  <1m: 42.2%  <2m: 63.9%
+
+== K=5 (Δt med=249 ms) ===============================================
+   -- 全部点 --
+     identity: N= 3558996  NN med=2.060 m  mean=2.974  <1m: 23.2%  <2m: 48.7%
+     ego-warp: N= 3558996  NN med=1.596 m  mean=2.612  <1m: 34.4%  <2m: 57.8%
+    dopp-warp: N= 3558996  NN med=1.644 m  mean=2.633  <1m: 32.2%  <2m: 57.6%
+   -- 动态点(|res_dopp|>1) --
+     identity: N= 1149117  NN med=2.002 m  mean=3.064  <1m: 22.4%  <2m: 50.0%
+     ego-warp: N= 1149117  NN med=1.843 m  mean=2.965  <1m: 29.0%  <2m: 52.8%
+    dopp-warp: N= 1149117  NN med=1.906 m  mean=3.028  <1m: 22.2%  <2m: 52.1%
+
+== 图已存: /home/huayiming/Workspace/radar_gen/results/temporal_warp_validation.png
+== DONE

@@ -63,15 +63,15 @@ class TruckScenesRadar:
         j = i if abs(int(self.ego_ts[i]) - timestamp) <= abs(int(self.ego_ts[i - 1]) - timestamp) else i - 1
         return self.ego[j], abs(int(self.ego_ts[j]) - timestamp) / 1e6
 
-    def load_frame(self, sd_token, min_range=1.0, yaw_rate_correction=True):
-        """加载一个雷达 sample_data.
+    def load_frame(self, sd_token, min_range=1.0, yaw_rate_correction=True, load_boxes=True):
+        """加载一个雷达 sample_data(sweeps 亦可, 此时建议 load_boxes=False 提速).
 
         返回 dict:
           xyz (N,3) 传感器系 | v_r (N,) 标量 raw Doppler | rcs (N,)
           rhat (N,3) | pred_static_vr (N,) 静态点解析预测 | v_plat_s (N,3) 平台速度(传感器系)
           boxes: list of dict(center, wlh, rot(Quaternion), name, ann_token,
-                              v_obj_sensor(3,) 或 None)
-          v_ego_norm, ego_gap_s, channel, timestamp
+                              v_obj_sensor(3,) 或 None); load_boxes=False 时为 []
+          R_gs/t_gs: 传感器 -> 全局 位姿 | v_ego_norm, ego_gap_s, channel, timestamp
         """
         tsc = self.tsc
         sd = tsc.get("sample_data", sd_token)
@@ -80,13 +80,17 @@ class TruckScenesRadar:
         t_se = np.asarray(cs["translation"])
         ep = tsc.get("ego_pose", sd["ego_pose_token"])
         R_eg = Quaternion(ep["rotation"]).rotation_matrix          # ego -> global
+        t_eg = np.asarray(ep["translation"])
 
         e, gap = self.ego_motion_at(sd["timestamp"])
         v_ego = np.array([e["vx"], e["vy"], e["vz"]], float)        # ego 系
         omega = np.array([e.get("roll_rate", 0.0), e.get("pitch_rate", 0.0),
                           e.get("yaw_rate", 0.0)], float)
 
-        path, boxes_raw, _ = tsc.get_sample_data(sd_token)          # boxes 已在传感器系
+        if load_boxes:
+            path, boxes_raw, _ = tsc.get_sample_data(sd_token)      # boxes 已在传感器系
+        else:
+            path, boxes_raw = tsc.get_sample_data_path(sd_token), []
         _, arr = read_pcd(path)
         xyz = np.stack([np.asarray(arr["x"], float), np.asarray(arr["y"], float),
                         np.asarray(arr["z"], float)], 1)
@@ -119,8 +123,13 @@ class TruckScenesRadar:
             boxes.append(dict(center=b.center, wlh=b.wlh, rot=b.orientation,
                               name=b.name, ann_token=b.token, v_obj_sensor=v_obj_sensor))
 
+        # 传感器 -> 全局 位姿(时序 warp 用)
+        R_gs = R_eg @ R_se
+        t_gs = R_eg @ t_se + t_eg
+
         return dict(xyz=xyz, v_r=v_r, rcs=rcs, rhat=rhat, rng=rng,
                     pred_static_vr=pred_static_vr, v_plat_s=v_plat_s, boxes=boxes,
+                    R_gs=R_gs, t_gs=t_gs,
                     v_ego_norm=float(np.linalg.norm(v_ego)), ego_gap_s=gap,
                     channel=sd["channel"], timestamp=sd["timestamp"])
 
