@@ -1,0 +1,13 @@
+/home/huayiming/.conda/envs/hym_radar/lib/python3.10/site-packages/truckscenes/truckscenes.py:100: UserWarning: The visualization dependencies are not installed on your system! Run 'pip install "truckscenes-devkit[all]"'.
+  warnings.warn('''The visualization dependencies are not installed on your system! '''
+== 帧数: 1512(跳过低速 888)  总点数: 804823
+== 静/动比例: 背景 94.2% | 框内-静止 2.1% | 框内-运动 3.7%
+== 运动目标类别 Top8: [('vehicle.car', 32668), ('static_object.traffic_sign', 12399), ('vehicle.truck', 6332), ('vehicle.trailer', 4704), ('movable_object.trafficcone', 2312), ('human.pedestrian.adult', 1832), ('vehicle.ego_trailer', 1189), ('vehicle.bus.rigid', 484)]
+
+                      背景静态 (含 ω×r 修正): N=  758230  med=-0.003  MAD=0.205  RMSc=1.413  |r|<0.25: 56.2% |r|<0.5: 75.1% |r|<1.0: 84.9%
+                     背景静态 (无 ω×r, 对照): N=  758230  med=-0.007  MAD=0.234  RMSc=1.422  |r|<0.25: 51.9% |r|<0.5: 71.3% |r|<1.0: 84.2%
+                               框内静止目标: N=   16677  med=+0.015  MAD=0.092  RMSc=0.444  |r|<0.25: 82.5% |r|<0.5: 95.0% |r|<1.0: 97.5%
+            运动目标 vs (v_obj-v_plat)·r̂: N=   29916  med=+0.044  MAD=0.260  RMSc=1.950  |r|<0.25: 48.9% |r|<0.5: 67.4% |r|<1.0: 79.8%
+
+== 图已存: /home/huayiming/Workspace/radar_gen/results/static_dynamic_validation.png
+== DONE
