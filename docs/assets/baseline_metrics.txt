@@ -1,0 +1,6 @@
+val 指标(N=24, 中位):
+  CD         = 8.525 m   (GT 互比锚: 12.233 m)
+  CD_Doppler = 12.002
+  MMD-RBF    = 0.06174
+  JSD        = 0.3773
+  v_r std    gen=5.52  gt=3.52
