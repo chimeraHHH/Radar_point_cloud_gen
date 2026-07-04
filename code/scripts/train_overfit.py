@@ -24,11 +24,21 @@ from diffusers import DDPMScheduler, DDIMScheduler     # noqa: E402
 PAIRS = os.path.expanduser("~/data/radar_gen/truckscenes/pairs_mini")
 RES = os.path.expanduser("~/Workspace/radar_gen/results")
 os.makedirs(RES, exist_ok=True)
-N_PAIRS, STEPS, BS, LR = 64, 8000, 16, 2e-4
+N_PAIRS, STEPS, BS, LR = 64, 20000, 32, 3e-4
 torch.manual_seed(0)
 
 mani = json.load(open(f"{PAIRS}/manifest.json"))
-sel = [m for m in mani["pairs"] if m["v_ego_norm"] > 2.0][:N_PAIRS]
+cand = [m for m in mani["pairs"] if m["v_ego_norm"] > 2.0]
+sel = cand[:: max(1, len(cand) // N_PAIRS)][:N_PAIRS]          # 跨场景/通道抽样
+# 评估对: 8 个不同 scene 各取一对(都在训练集内, 仍是过拟合测试)
+eval_idx, seen = [], set()
+for i, m in enumerate(sel):
+    if m["scene"] not in seen:
+        seen.add(m["scene"]); eval_idx.append(i)
+    if len(eval_idx) == 8:
+        break
+E = len(eval_idx)
+print("eval scenes:", [sel[i]["scene"][:14] for i in eval_idx])
 print(f"pairs={len(sel)} (要求 {N_PAIRS})")
 
 radar_raw = np.stack([np.load(f"{PAIRS}/{m['file']}")["radar"] for m in sel])
@@ -52,9 +62,10 @@ dev = torch.device("cuda")
 radar_t = torch.tensor(radar, dtype=torch.float32, device=dev)
 lidar_t = torch.tensor(lidar, dtype=torch.float32, device=dev)
 
-model = RadarPointDenoiser().to(dev)
+model = RadarPointDenoiser(dim=256, depth=6, heads=8).to(dev)
 n_par = sum(p.numel() for p in model.parameters())
 opt = torch.optim.AdamW(model.parameters(), lr=LR)
+lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=STEPS)
 sched = DDPMScheduler(num_train_timesteps=1000, beta_schedule="squaredcos_cap_v2")
 print(f"model params={n_par/1e6:.2f}M")
 
@@ -71,7 +82,8 @@ for step in range(1, STEPS + 1):
     opt.zero_grad(set_to_none=True)
     loss.backward()
     opt.step()
-    if step % 250 == 0 or step == 1:
+    lr_sched.step()
+    if step % 500 == 0 or step == 1:
         log.append((step, loss.item()))
         print(f"step {step:5d}  loss {loss.item():.4f}  ({time.time()-t0:.0f}s)")
 
@@ -80,16 +92,16 @@ torch.save(dict(model=model.state_dict(), r_mu=R_MU, r_sd=R_SD, l_mu=L_MU, l_sd=
 
 # ---- DDIM 采样 8 个(条件取训练集前 8 对) ----
 model.eval()
-ddim = DDIMScheduler(num_train_timesteps=1000, beta_schedule="squaredcos_cap_v2")
-ddim.set_timesteps(100)
+ddim = DDPMScheduler(num_train_timesteps=1000, beta_schedule="squaredcos_cap_v2")
+ddim.set_timesteps(1000)
 with torch.no_grad():
-    x = torch.randn(8, radar_t.shape[1], 5, device=dev)
-    cond = lidar_t[:8]
+    x = torch.randn(E, radar_t.shape[1], 5, device=dev)
+    cond = lidar_t[eval_idx]
     for t in ddim.timesteps:
-        eps = model(x, t.expand(8).to(dev), cond)
+        eps = model(x, t.expand(E).to(dev), cond)
         x = ddim.step(eps, t, x).prev_sample
 gen = np.stack([denorm_radar(g) for g in x.cpu().numpy()])
-gt = np.stack([denorm_radar(g) for g in radar[:8]])
+gt = np.stack([denorm_radar(g) for g in radar[eval_idx]])
 
 
 def chamfer_xyz(a, b):
@@ -97,10 +109,12 @@ def chamfer_xyz(a, b):
     return float(d.min(1).values.mean() + d.min(0).values.mean()) / 2
 
 
-cds = [chamfer_xyz(gen[i], gt[i]) for i in range(8)]
-cds_rand = [chamfer_xyz(gen[i], gt[(i + 3) % 8]) for i in range(8)]  # 错配对照
-print(f"\nChamfer(gen vs 配对GT):  med={np.median(cds):.2f} m  {['%.1f' % c for c in cds]}")
-print(f"Chamfer(gen vs 错配GT):  med={np.median(cds_rand):.2f} m (应明显更大)")
+cds = [chamfer_xyz(gen[i], gt[i]) for i in range(E)]
+cds_rand = [chamfer_xyz(gen[i], gt[(i + 3) % E]) for i in range(E)]      # 跨场景错配
+cds_gtgt = [chamfer_xyz(gt[i], gt[(i + 3) % E]) for i in range(E)]       # GT 间跨场景基准
+print(f"\nChamfer(gen vs 配对GT):    med={np.median(cds):.2f} m  {['%.1f' % c for c in cds]}")
+print(f"Chamfer(gen vs 跨场景GT):  med={np.median(cds_rand):.2f} m (条件若生效应明显更大)")
+print(f"Chamfer(GT vs 跨场景GT):   med={np.median(cds_gtgt):.2f} m (场景间本底差异)")
 print(f"v_r 分布: GT std={gt[:, :, 3].std():.2f}  gen std={gen[:, :, 3].std():.2f}")
 
 # ---- 图: loss 曲线 + BEV 对比 ----
