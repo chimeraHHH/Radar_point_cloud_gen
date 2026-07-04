@@ -60,9 +60,18 @@ class RadarPointDenoiser(nn.Module):
         self.blocks = nn.ModuleList([Block(dim, heads) for _ in range(depth)])
         self.head = nn.Sequential(nn.LayerNorm(dim), nn.Linear(dim, pt_ch))
         self.dim = dim
+        # CFG 无条件分支的可学习占位(token 与全局特征)
+        self.null_token = nn.Parameter(torch.zeros(1, 1, dim))
+        self.null_g = nn.Parameter(torch.zeros(1, dim))
 
-    def forward(self, x_t, t, lidar):               # x_t (B,N,5), t (B,), lidar (B,M,4)
+    def forward(self, x_t, t, lidar, drop=None):
+        """x_t (B,N,5), t (B,), lidar (B,M,4); drop (B,) bool=True 用无条件分支(CFG)."""
         tokens, g = self.enc(lidar)
+        if drop is not None:
+            B, T, D = tokens.shape
+            m = drop.view(B, 1, 1)
+            tokens = torch.where(m, self.null_token.expand(B, T, D), tokens)
+            g = torch.where(drop.view(B, 1), self.null_g.expand(B, D), g)
         te = self.t_mlp(timestep_embedding(t, self.dim))    # (B,D)
         h = self.embed(x_t) + (te + g)[:, None, :]
         for blk in self.blocks:
