@@ -1,0 +1,6 @@
+tag=base lam=0.0  val N=24 中位:
+  CD=8.077 m (锚 12.233)  CD_Doppler=11.974
+  MMD=0.05897  JSD=0.3703
+  v_r std gen=4.99 gt=3.52
+  PCE(gen): med|r|=8.059  <0.5: 2.9%
+  PCE(GT):  med|r|=2.248  <0.5: 36.4%

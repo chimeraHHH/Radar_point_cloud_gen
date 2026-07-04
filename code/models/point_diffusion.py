@@ -63,17 +63,21 @@ class RadarPointDenoiser(nn.Module):
         # CFG 无条件分支的可学习占位(token 与全局特征)
         self.null_token = nn.Parameter(torch.zeros(1, 1, dim))
         self.null_g = nn.Parameter(torch.zeros(1, dim))
+        # ego 运动条件(v_ego_s|omega_s|t_s, 9 维): 物理信息, 不参与 CFG drop
+        self.ego_mlp = nn.Sequential(nn.Linear(9, dim), nn.SiLU(), nn.Linear(dim, dim))
 
-    def forward(self, x_t, t, lidar, drop=None):
-        """x_t (B,N,5), t (B,), lidar (B,M,4); drop (B,) bool=True 用无条件分支(CFG)."""
+    def forward(self, x_t, t, lidar, drop=None, ego=None):
+        """x_t (B,N,5), t (B,), lidar (B,M,4); drop (B,) bool=CFG 无条件分支; ego (B,9)."""
         tokens, g = self.enc(lidar)
         if drop is not None:
             B, T, D = tokens.shape
             m = drop.view(B, 1, 1)
             tokens = torch.where(m, self.null_token.expand(B, T, D), tokens)
             g = torch.where(drop.view(B, 1), self.null_g.expand(B, D), g)
-        te = self.t_mlp(timestep_embedding(t, self.dim))    # (B,D)
-        h = self.embed(x_t) + (te + g)[:, None, :]
+        base = self.t_mlp(timestep_embedding(t, self.dim)) + g          # (B,D)
+        if ego is not None:
+            base = base + self.ego_mlp(ego)
+        h = self.embed(x_t) + base[:, None, :]
         for blk in self.blocks:
             h = blk(h, tokens)
         return self.head(h)

@@ -4,8 +4,8 @@ G1="${1:-2}"; G2="${2:-6}"; LAM="${3:-0.1}"
 pkill -f "python.*train_ablate" 2>/dev/null
 source /home/metaiot_guest/miniconda3/etc/profile.d/conda.sh
 conda activate hym_radar
-setsid bash -c "CUDA_VISIBLE_DEVICES=$G1 python ~/Workspace/radar_gen/scripts/train_ablate.py 0 base > ~/Workspace/radar_gen/results/ablate_base_log.txt 2>&1" < /dev/null &
+setsid bash -c "CUDA_VISIBLE_DEVICES=$G1 python ~/Workspace/radar_gen/scripts/train_ablate.py 0 ego_base > ~/Workspace/radar_gen/results/ablate_ego_base_log.txt 2>&1" < /dev/null &
 disown
-setsid bash -c "CUDA_VISIBLE_DEVICES=$G2 python ~/Workspace/radar_gen/scripts/train_ablate.py $LAM phys > ~/Workspace/radar_gen/results/ablate_phys_log.txt 2>&1" < /dev/null &
+setsid bash -c "CUDA_VISIBLE_DEVICES=$G2 python ~/Workspace/radar_gen/scripts/train_ablate.py $LAM ego_phys > ~/Workspace/radar_gen/results/ablate_ego_phys_log.txt 2>&1" < /dev/null &
 disown
-echo "LAUNCHED base@GPU$G1 phys(lam=$LAM)@GPU$G2"
+echo "LAUNCHED ego_base@GPU$G1 ego_phys(lam=$LAM)@GPU$G2"

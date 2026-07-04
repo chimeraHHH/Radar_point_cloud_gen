@@ -67,6 +67,9 @@ Lva = torch.tensor((l_va - L_MU) / L_SD, dtype=torch.float32, device=dev)
 Eva = torch.tensor(e_va, dtype=torch.float32, device=dev)
 MU_t = torch.tensor(R_MU, dtype=torch.float32, device=dev)
 SD_t = torch.tensor(R_SD, dtype=torch.float32, device=dev)
+E_MU = e_tr.mean(0); E_SD = e_tr.std(0) + 1e-3
+EtrN = torch.tensor((e_tr - E_MU) / E_SD, dtype=torch.float32, device=dev)
+EvaN = torch.tensor((e_va - E_MU) / E_SD, dtype=torch.float32, device=dev)
 
 model = RadarPointDenoiser(dim=256, depth=6, heads=8).to(dev)
 opt = torch.optim.AdamW(model.parameters(), lr=LR)
@@ -79,12 +82,13 @@ t0 = time.time()
 for step in range(1, STEPS + 1):
     idx = torch.randint(0, len(tr), (BS,), device=dev)
     x0, cond, ego = Rtr[idx], Ltr[idx], Etr[idx]
+    egoN = EtrN[idx]
     t = torch.randint(0, 1000, (BS,), device=dev)
     noise = torch.randn_like(x0)
     xt = sched.add_noise(x0, noise, t)
     drop = torch.rand(BS, device=dev) < CFG_DROP
     with torch.autocast("cuda", dtype=torch.bfloat16):
-        eps = model(xt, t, cond, drop)
+        eps = model(xt, t, cond, drop, egoN)
         loss_mse = F.mse_loss(eps, noise)
         loss = loss_mse
         if LAM > 0:
@@ -108,13 +112,14 @@ for step in range(1, STEPS + 1):
         print(f"step {step:6d}  mse {float(loss_mse):.4f}  phys {lp:.4f}  "
               f"({time.time()-t0:.0f}s)", flush=True)
 
-torch.save(dict(ema=ema, r_mu=R_MU, r_sd=R_SD, lam=LAM), f"{RES}/ablate_{TAG}_ckpt.pt")
+torch.save(dict(ema=ema, r_mu=R_MU, r_sd=R_SD, e_mu=E_MU, e_sd=E_SD, lam=LAM), f"{RES}/ablate_{TAG}_ckpt.pt")
 model.load_state_dict(ema)
 model.eval()
 
 # ---- 采样(与基线同协议: CFG w=2, DDPM-1000)----
 eidx = np.linspace(0, len(va) - 1, N_EVAL).astype(int)
 cond, egoE = Lva[eidx], Eva[eidx]
+egoEN = EvaN[eidx]
 samp = DDPMScheduler(num_train_timesteps=1000, beta_schedule="squaredcos_cap_v2")
 samp.set_timesteps(1000)
 with torch.no_grad():
@@ -123,8 +128,9 @@ with torch.no_grad():
     dT = torch.ones(N_EVAL, dtype=torch.bool, device=dev)
     for t in samp.timesteps:
         tb = t.expand(N_EVAL).to(dev)
-        e = model(x, tb, cond, dT) + CFG_W * (model(x, tb, cond, dF) - model(x, tb, cond, dT))
-        x = samp.step(e, t, x).prev_sample
+        e_c = model(x, tb, cond, dF, egoEN)
+        e_u = model(x, tb, cond, dT, egoEN)
+        x = samp.step(e_u + CFG_W * (e_c - e_u), t, x).prev_sample
 gen = x.cpu().numpy() * R_SD + R_MU
 gt = r_va[eidx]
 
