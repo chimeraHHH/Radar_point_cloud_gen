@@ -24,40 +24,30 @@ from diffusers import DDPMScheduler, DDIMScheduler     # noqa: E402
 PAIRS = os.path.expanduser("~/data/radar_gen/truckscenes/pairs_mini")
 RES = os.path.expanduser("~/Workspace/radar_gen/results")
 os.makedirs(RES, exist_ok=True)
-N_PAIRS, STEPS, BS, LR = 64, 3000, 16, 2e-4
+N_PAIRS, STEPS, BS, LR = 64, 8000, 16, 2e-4
 torch.manual_seed(0)
 
 mani = json.load(open(f"{PAIRS}/manifest.json"))
-st = mani["stats"]
 sel = [m for m in mani["pairs"] if m["v_ego_norm"] > 2.0][:N_PAIRS]
 print(f"pairs={len(sel)} (要求 {N_PAIRS})")
 
+radar_raw = np.stack([np.load(f"{PAIRS}/{m['file']}")["radar"] for m in sel])
+lidar_raw = np.stack([np.load(f"{PAIRS}/{m['file']}")["lidar"] for m in sel])
 
-def norm_radar(r):
-    out = r.copy()
-    out[:, :3] /= st["radar_xyz_scale"]
-    out[:, 3] /= st["vr_scale"]
-    out[:, 4] = (out[:, 4] - st["rcs_mean"]) / (st["rcs_std"] + 1e-6)
-    return out
+# 逐通道标准化(零均值/单位方差)——教训: 固定尺度除法留下 x 均值~1.3、v_r std~0.13, 扩散学不动
+R_MU = radar_raw.reshape(-1, 5).mean(0)
+R_SD = radar_raw.reshape(-1, 5).std(0) + 1e-6
+L_MU = lidar_raw.reshape(-1, 4).mean(0)
+L_SD = lidar_raw.reshape(-1, 4).std(0) + 1e-6
+print("radar mu:", R_MU.round(2), "sd:", R_SD.round(2))
 
 
 def denorm_radar(r):
-    out = r.copy()
-    out[:, :3] *= st["radar_xyz_scale"]
-    out[:, 3] *= st["vr_scale"]
-    out[:, 4] = out[:, 4] * (st["rcs_std"] + 1e-6) + st["rcs_mean"]
-    return out
+    return r * R_SD + R_MU
 
 
-def norm_lidar(l):
-    out = l.copy()
-    out[:, :3] /= st["lidar_xyz_scale"]
-    out[:, 3] = (out[:, 3] - st["intensity_mean"]) / (st["intensity_std"] + 1e-6)
-    return out
-
-
-radar = np.stack([norm_radar(np.load(f"{PAIRS}/{m['file']}")["radar"]) for m in sel])
-lidar = np.stack([norm_lidar(np.load(f"{PAIRS}/{m['file']}")["lidar"]) for m in sel])
+radar = (radar_raw - R_MU) / R_SD
+lidar = (lidar_raw - L_MU) / L_SD
 dev = torch.device("cuda")
 radar_t = torch.tensor(radar, dtype=torch.float32, device=dev)
 lidar_t = torch.tensor(lidar, dtype=torch.float32, device=dev)
@@ -81,11 +71,12 @@ for step in range(1, STEPS + 1):
     opt.zero_grad(set_to_none=True)
     loss.backward()
     opt.step()
-    if step % 100 == 0 or step == 1:
+    if step % 250 == 0 or step == 1:
         log.append((step, loss.item()))
         print(f"step {step:5d}  loss {loss.item():.4f}  ({time.time()-t0:.0f}s)")
 
-torch.save(dict(model=model.state_dict(), stats=st), f"{RES}/overfit_ckpt.pt")
+torch.save(dict(model=model.state_dict(), r_mu=R_MU, r_sd=R_SD, l_mu=L_MU, l_sd=L_SD),
+           f"{RES}/overfit_ckpt.pt")
 
 # ---- DDIM 采样 8 个(条件取训练集前 8 对) ----
 model.eval()
