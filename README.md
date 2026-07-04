@@ -9,7 +9,7 @@
 - [docs/competitor_rescan_2026-07.md](docs/competitor_rescan_2026-07.md)：**竞品重扫备忘**（P0），确认两条主线空白仍成立、核心基线无开源代码。
 - [docs/p0_setup_checklist.md](docs/p0_setup_checklist.md)：**P0 就绪清单**——WHU 服务器环境搭建 + VoD/TruckScenes 数据字段核对，含 G0 通过判据与需人工先行的阻塞项。
 - [docs/p0_progress_2026-07-03.md](docs/p0_progress_2026-07-03.md)：**P0 进度纪要**——环境落地、TruckScenes mini 字段实测、**自洽性校验通过**（Doppler=RAW，`v_r≈−v_ego·r̂` 残差 MAD 0.24 m/s）。
-- [docs/p2_progress_2026-07-05.md](docs/p2_progress_2026-07-05.md)：**P2 进度纪要**——可微自门控物理约束 + 消融：轮1 PCE↓13% 但揭示 **ego 条件缺失**是根因；轮2 +ego 条件对照。
+- [docs/p2_progress_2026-07-05.md](docs/p2_progress_2026-07-05.md)：**P2 进度纪要**——可微自门控物理约束 + 消融：四臂消融完成：**ego 条件使 PCE↓89%**、+物理损失后静态一致性 89.3%@0.5(超 GT)，并诚实记录**动态多样性塌缩**→ 指向动态分支 L_dop。
 - [docs/p1_progress_2026-07-04.md](docs/p1_progress_2026-07-04.md)：**P1 进度纪要**——数据管线代码（`code/`）+ 静/动分离物理验证：框内静止目标 **95% 内点@0.5 m/s**、ω×r 修正有实测收益、动态软约束可行、发现框速度伪运动陷阱（R3 实证）。
 - [docs/related_work_doppler.md](docs/related_work_doppler.md)：自动驾驶毫米波雷达点云生成中的 Doppler 文献调研，梳理哪些工作已经生成/回归 Doppler，以及真正剩下的研究空白。
 - [docs/prior_art_deep_dive.md](docs/prior_art_deep_dive.md)：对最接近的 4D-RaDiff 与 RadarGen 做精读对比，重点分析它们如何处理 Doppler、缺少什么物理约束。

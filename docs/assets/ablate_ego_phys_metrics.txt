@@ -1,0 +1,6 @@
+tag=ego_phys lam=0.1  val N=24 中位:
+  CD=8.901 m (锚 12.233)  CD_Doppler=10.306
+  MMD=0.05945  JSD=0.3999
+  v_r std gen=0.55 gt=3.52
+  PCE(gen): med|r|=0.148  <0.5: 89.3%
+  PCE(GT):  med|r|=2.248  <0.5: 36.4%
