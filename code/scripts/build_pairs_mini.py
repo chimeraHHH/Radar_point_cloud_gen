@@ -14,7 +14,7 @@ from truckscenes import TruckScenes                             # noqa: E402
 
 DATAROOT = os.path.expanduser("~/data/radar_gen/truckscenes/man-truckscenes")
 VER = "v1.2-mini"
-OUT = os.path.expanduser("~/data/radar_gen/truckscenes/pairs_mini")
+OUT = os.path.expanduser("~/data/radar_gen/truckscenes/pairs_mini_v2")
 os.makedirs(OUT, exist_ok=True)
 
 tsc = TruckScenes(VER, DATAROOT, verbose=False)
@@ -36,7 +36,8 @@ for si, scene in enumerate(tsc.scene):
             np.savez_compressed(os.path.join(OUT, name),
                                 lidar=pair["lidar"], radar=pair["radar"],
                                 pred_static_vr=pair["pred_static_vr"],
-                                v_ego_norm=pair["v_ego_norm"])
+                                v_ego_s=pair["v_ego_s"], omega_s=pair["omega_s"],
+                                t_s=pair["t_s"], v_ego_norm=pair["v_ego_norm"])
             manifest.append(dict(file=name, channel=ch, scene=scene["name"],
                                  sample_token=smp["token"],
                                  v_ego_norm=float(pair["v_ego_norm"])))

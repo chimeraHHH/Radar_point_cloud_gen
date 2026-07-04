@@ -87,5 +87,8 @@ def build_pair(tsc, ldr, sample, radar_ch, lidar_global,
     radar = np.concatenate([fr["xyz"][idx], fr["v_r"][idx, None], fr["rcs"][idx, None]], 1)
     return dict(lidar=lid.astype(np.float32), radar=radar.astype(np.float32),
                 pred_static_vr=fr["pred_static_vr"][idx].astype(np.float32),
+                v_ego_s=fr["v_ego_s"].astype(np.float32),
+                omega_s=fr["omega_s"].astype(np.float32),
+                t_s=fr["t_s"].astype(np.float32),
                 v_ego_norm=np.float32(fr["v_ego_norm"]),
                 channel=radar_ch, sample_token=sample["token"])

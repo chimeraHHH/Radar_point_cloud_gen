@@ -127,9 +127,16 @@ class TruckScenesRadar:
         R_gs = R_eg @ R_se
         t_gs = R_eg @ t_se + t_eg
 
+        # ego 运动向量投到传感器系(物理损失在任意生成点上重算 v_plat 用):
+        # v_plat_s(p) = v_ego_s + omega_s × (p + t_s),与逐点 v_plat_s 等价(SO(3) 叉积恒等式)
+        v_ego_s = R_se.T @ v_ego
+        omega_s = R_se.T @ omega
+        t_s = R_se.T @ t_se
+
         return dict(xyz=xyz, v_r=v_r, rcs=rcs, rhat=rhat, rng=rng,
                     pred_static_vr=pred_static_vr, v_plat_s=v_plat_s, boxes=boxes,
                     R_gs=R_gs, t_gs=t_gs,
+                    v_ego_s=v_ego_s, omega_s=omega_s, t_s=t_s,
                     v_ego_norm=float(np.linalg.norm(v_ego)), ego_gap_s=gap,
                     channel=sd["channel"], timestamp=sd["timestamp"])
 
