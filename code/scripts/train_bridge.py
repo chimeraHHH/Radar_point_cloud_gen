@@ -28,6 +28,8 @@ from losses.physics import (self_gated_static_loss, pce_report,  # noqa: E402
 COND = sys.argv[1]
 TAG = sys.argv[2]
 PDIR = sys.argv[3] if len(sys.argv) > 3 else "temporal_mini_k10"
+AUG = bool(int(sys.argv[4])) if len(sys.argv) > 4 else False
+LAM_TEMP = float(sys.argv[5]) if len(sys.argv) > 5 else 0.0
 assert COND in ("ego", "dopp")
 PAIRS = os.path.expanduser(f"~/data/radar_gen/truckscenes/{PDIR}")
 RES = os.path.expanduser("~/Workspace/radar_gen/results")
@@ -36,7 +38,7 @@ STEPS, BS, LR, LAM, SIGMA = 40000, 64, 3e-4, 0.1, 0.05
 EMA_DECAY, N_EVAL, ODE_STEPS = 0.999, 24, 50
 torch.manual_seed(0)
 np.random.seed(0)
-print(f"== bridge tag={TAG} cond={COND} pairs={PDIR}")
+print(f"== bridge tag={TAG} cond={COND} pairs={PDIR} aug={AUG} lam_temp={LAM_TEMP}")
 
 mani = json.load(open(f"{PAIRS}/manifest.json"))
 scenes = sorted({m["scene"] for m in mani["pairs"]})
@@ -47,18 +49,21 @@ print(f"train={len(tr)} val={len(va)}")
 
 
 def load(ms):
-    r, c, cp, e = [], [], [], []
+    r, c, cp, p0, e, dt = [], [], [], [], [], []
     for m in ms:
         z = np.load(f"{PAIRS}/{m['file']}")
         zp = np.load(f"{PAIRS}/{m['file'].replace('.npz', '.perm.npz')}")
+        perm = zp[f"perm_{COND}"]
         r.append(z["radar"]); c.append(z[f"cond_{COND}"])
-        cp.append(z[f"cond_{COND}"][zp[f"perm_{COND}"]])     # 与 GT 行对齐的草稿
-        e.append(z["ego"])
-    return np.stack(r), np.stack(c), np.stack(cp), np.stack(e)
+        cp.append(z[f"cond_{COND}"][perm])                   # 与 GT 行对齐的草稿
+        p0.append(z["cond_ego"][perm])                       # 同一批 prev 点的纯 ego-warp 位置(L_temp 锚)
+        e.append(z["ego"]); dt.append(z["dt"])
+    return (np.stack(r), np.stack(c), np.stack(cp), np.stack(p0),
+            np.stack(e), np.array(dt, dtype=np.float32))
 
 
-r_tr, c_tr, cp_tr, e_tr = load(tr)
-r_va, c_va, cp_va, e_va = load(va)
+r_tr, c_tr, cp_tr, p0_tr, e_tr, dt_tr = load(tr)
+r_va, c_va, cp_va, p0_va, e_va, dt_va = load(va)
 R_MU = r_tr.reshape(-1, 5).mean(0); R_SD = r_tr.reshape(-1, 5).std(0) + 1e-6
 E_MU = e_tr.mean(0); E_SD = e_tr.std(0) + 1e-3
 
@@ -72,6 +77,10 @@ Eva = torch.tensor(e_va, dtype=torch.float32, device=dev)
 EvaN = torch.tensor((e_va - E_MU) / E_SD, dtype=torch.float32, device=dev)
 MU_t = torch.tensor(R_MU, dtype=torch.float32, device=dev)
 SD_t = torch.tensor(R_SD, dtype=torch.float32, device=dev)
+P0tr = torch.tensor(p0_tr, dtype=torch.float32, device=dev)          # 物理单位
+DTtr = torch.tensor(dt_tr, dtype=torch.float32, device=dev)
+DM_tr = torch.tensor(np.linalg.norm(r_tr[:, :, :3] - cp_tr[:, :, :3], axis=-1),
+                     dtype=torch.float32, device=dev)                # GT-草稿匹配距离(持久点门控)
 
 model = RadarPointDenoiser(dim=256, depth=6, heads=8, pt_ch=5, lidar_ch=5).to(dev)
 opt = torch.optim.AdamW(model.parameters(), lr=LR)
@@ -82,6 +91,12 @@ t0 = time.time()
 for step in range(1, STEPS + 1):
     idx = torch.randint(0, len(tr), (BS,), device=dev)
     gt, cond, draft, ego, egoN = Rtr[idx], Ctr[idx], CPtr[idx], Etr[idx], EtrN[idx]
+    if AUG:   # rollout-aware: 以概率 0.5 给"草稿/条件"加噪, 模拟生成帧作为输入(治分布偏移)
+        on = (torch.rand(BS, 1, 1, device=dev) < 0.5).float()
+        sig = torch.rand(BS, 1, 1, device=dev) * torch.tensor(
+            [1.0, 1.0, 0.3, 0.5, 0.5], device=dev) / SD_t   # 物理量级→归一化空间
+        cond = cond + on * sig * torch.randn_like(cond)
+        draft = draft + on * sig * torch.randn_like(draft)
     t = torch.rand(BS, device=dev)
     tb = t[:, None, None]
     xt = (1 - tb) * draft + tb * gt + SIGMA * (1 - tb) * torch.randn_like(gt)
@@ -94,6 +109,17 @@ for step in range(1, STEPS + 1):
         loss_phys = self_gated_static_loss(x1_phys, ego[:, :3], ego[:, 3:6],
                                            ego[:, 6:9], step_w=t)
         loss = loss_mse + LAM * loss_phys
+        loss_temp = x1_phys.new_zeros(())
+        if LAM_TEMP > 0:   # L_temp = |Δrange − v̄_r·Δt|, 持久点门控(GT-草稿匹配距离)
+            p0 = P0tr[idx]
+            rng0 = p0[..., :3].norm(dim=-1)
+            rng1 = x1_phys[..., :3].norm(dim=-1)
+            vbar = 0.5 * (p0[..., 3] + x1_phys[..., 3])
+            rr = (rng1 - rng0) - vbar * DTtr[idx][:, None]
+            wm = torch.exp(-(DM_tr[idx] ** 2) / (2 * 2.0 ** 2)) * t[:, None]
+            hub = F.huber_loss(rr, torch.zeros_like(rr), delta=0.5, reduction="none")
+            loss_temp = (wm * hub).sum() / (wm.sum() + 1e-6)
+            loss = loss + LAM_TEMP * loss_temp
     opt.zero_grad(set_to_none=True)
     loss.backward()
     opt.step(); lr_sched.step()
@@ -105,9 +131,9 @@ for step in range(1, STEPS + 1):
                 ema[k].copy_(v)
     if step % 2000 == 0 or step == 1:
         print(f"step {step:6d}  v-mse {float(loss_mse):.4f}  phys {float(loss_phys):.4f}  "
-              f"({time.time()-t0:.0f}s)", flush=True)
+              f"temp {float(loss_temp):.4f}  ({time.time()-t0:.0f}s)", flush=True)
 
-torch.save(dict(ema=ema, r_mu=R_MU, r_sd=R_SD, e_mu=E_MU, e_sd=E_SD, cond=COND),
+torch.save(dict(ema=ema, r_mu=R_MU, r_sd=R_SD, e_mu=E_MU, e_sd=E_SD, cond=COND, aug=AUG, lam_temp=LAM_TEMP),
            f"{RES}/bridge_{TAG}_ckpt.pt")
 model.load_state_dict(ema)
 model.eval()
