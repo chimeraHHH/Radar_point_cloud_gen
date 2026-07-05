@@ -14,7 +14,9 @@ from truckscenes import TruckScenes                      # noqa: E402
 
 DATAROOT = os.path.expanduser("~/data/radar_gen/truckscenes/man-truckscenes")
 VER = "v1.2-mini"
-K, STRIDE = 5, 2
+import sys as _sys
+K = int(_sys.argv[1]) if len(_sys.argv) > 1 else 5
+STRIDE = 2
 OUT = os.path.expanduser(f"~/data/radar_gen/truckscenes/temporal_mini_k{K}")
 os.makedirs(OUT, exist_ok=True)
 

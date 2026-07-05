@@ -28,8 +28,9 @@ from diffusers import DDPMScheduler                            # noqa: E402
 
 COND = sys.argv[1]           # "ego" | "dopp"
 TAG = sys.argv[2]
+PDIR = sys.argv[3] if len(sys.argv) > 3 else "temporal_mini_k5"
 assert COND in ("ego", "dopp")
-PAIRS = os.path.expanduser("~/data/radar_gen/truckscenes/temporal_mini_k5")
+PAIRS = os.path.expanduser(f"~/data/radar_gen/truckscenes/{PDIR}")
 RES = os.path.expanduser("~/Workspace/radar_gen/results")
 os.makedirs(RES, exist_ok=True)
 STEPS, BS, LR, LAM = 40000, 64, 3e-4, 0.1
