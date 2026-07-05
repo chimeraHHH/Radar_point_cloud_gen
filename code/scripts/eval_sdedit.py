@@ -72,8 +72,8 @@ for ts in T_STARTS:
                 x = torch.randn_like(cond_t)
             else:
                 noise = torch.randn_like(cond_t)
-                tt = torch.full((N_EVAL,), ts - 1, dtype=torch.long)
-                x = samp.add_noise(cond_t, noise.cpu(), tt).to(dev)
+                tt = torch.full((N_EVAL,), ts - 1, dtype=torch.long, device=dev)
+                x = samp.add_noise(cond_t, noise, tt)
             for t in samp.timesteps:
                 if int(t) >= ts:
                     continue
