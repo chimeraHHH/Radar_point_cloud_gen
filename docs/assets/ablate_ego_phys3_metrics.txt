@@ -1,0 +1,7 @@
+tag=ego_phys3 lam=0.1 lam_dyn=0.0  val N=24 中位:
+  CD=8.994 m (锚 12.233)  CD_Doppler=10.514
+  MMD=0.06352  JSD=0.3896
+  v_r std gen=0.62 gt=3.52
+  PCE(gen): med|r|=0.123  <0.5: 90.0%
+  PCE(GT):  med|r|=2.248  <0.5: 36.4%
+  W1(v_r)=2.810 m/s   动态样占比 gen=3.5% / GT=57.6%

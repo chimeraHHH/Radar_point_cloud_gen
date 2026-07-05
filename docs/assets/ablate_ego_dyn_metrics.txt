@@ -1,0 +1,7 @@
+tag=ego_dyn lam=0.1 lam_dyn=0.1  val N=24 中位:
+  CD=9.565 m (锚 12.233)  CD_Doppler=11.084
+  MMD=0.11197  JSD=0.4497
+  v_r std gen=1.12 gt=3.52
+  PCE(gen): med|r|=0.676  <0.5: 38.6%
+  PCE(GT):  med|r|=2.248  <0.5: 36.4%
+  W1(v_r)=2.656 m/s   动态样占比 gen=32.3% / GT=57.6%
