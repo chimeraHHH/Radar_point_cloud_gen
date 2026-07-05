@@ -81,18 +81,19 @@ def sample_pts(fr):
     return np.concatenate([fr["xyz"][idx], fr["v_r"][idx, None], fr["rcs"][idx, None]], 1).astype(np.float32)
 
 
-# ---- 加载两个桥式模型 ----
+# ---- 加载桥式模型(argv 指定 tag 列表) ----
+TAGS = sys.argv[1:] if len(sys.argv) > 1 else ["br_ego", "br_dopp"]
 models = {}
-for cond in ("ego", "dopp"):
-    ck = torch.load(f"{RES}/bridge_br_{cond}_ckpt.pt", map_location="cpu", weights_only=False)
+for tag in TAGS:
+    ck = torch.load(f"{RES}/bridge_{tag}_ckpt.pt", map_location="cpu", weights_only=False)
     m = RadarPointDenoiser(dim=256, depth=6, heads=8, pt_ch=5, lidar_ch=5).to(dev)
     m.load_state_dict(ck["ema"]); m.eval()
-    models[cond] = (m, ck)
+    models[tag] = (m, ck)
 
 
-def bridge_step(cond, drafts, egos):
+def bridge_step(tag, drafts, egos):
     """drafts (B,N,5) 物理单位 → 精修后 (B,N,5)."""
-    m, ck = models[cond]
+    m, ck = models[tag]
     R_MU, R_SD, E_MU, E_SD = ck["r_mu"], ck["r_sd"], ck["e_mu"], ck["e_sd"]
     x = torch.tensor((drafts - R_MU) / R_SD, dtype=torch.float32, device=dev)
     condt = x.clone()
@@ -106,19 +107,22 @@ def bridge_step(cond, drafts, egos):
 
 
 # ---- rollout ----
-state = {a: [sample_pts(s[0]) for s in segs] for a in ("copy_ego", "copy_dopp", "bridge_ego", "bridge_dopp")}
+ARMS = ["copy_ego", "copy_dopp"] + [f"bridge_{t}" for t in TAGS]
+MODE = {f"bridge_{t}": models[t][1]["cond"] for t in TAGS}
+MODE.update(copy_ego="ego", copy_dopp="dopp")
+state = {a: [sample_pts(s[0]) for s in segs] for a in ARMS}
 rows = []
 pce_rows = []
 for step in range(1, T_STEPS + 1):
     # 各臂推进
     for arm in state:
-        mode = "dopp" if "dopp" in arm else "ego"
+        mode = MODE[arm]
         drafts = np.stack([
             make_draft(state[arm][i], ego_vecs(segs[i][step - 1]), segs[i][step - 1], segs[i][step], mode)
             for i in range(len(segs))])
         if arm.startswith("bridge"):
             egos = np.stack([ego_vecs(segs[i][step]) for i in range(len(segs))])
-            out = bridge_step(mode, drafts, egos)
+            out = bridge_step(arm[len("bridge_"):], drafts, egos)
             state[arm] = [out[i] for i in range(len(segs))]
         else:
             state[arm] = [drafts[i] for i in range(len(segs))]
@@ -130,23 +134,25 @@ for step in range(1, T_STEPS + 1):
     rows.append((step, cds))
     egos_t = torch.tensor(np.stack([ego_vecs(segs[i][step]) for i in range(len(segs))]), dtype=torch.float32)
     pces = {}
-    for arm in ("copy_dopp", "bridge_dopp"):
+    for arm in ["copy_dopp"] + [f"bridge_{t}" for t in TAGS]:
         cl = torch.tensor(np.stack(state[arm]), dtype=torch.float32)
         pces[arm] = pce_report(cl, egos_t[:, :3], egos_t[:, 3:6], egos_t[:, 6:9])["frac<0.5"]
     gtc = torch.tensor(np.stack([sample_pts(segs[i][step]) for i in range(len(segs))]), dtype=torch.float32)
     pces["GT"] = pce_report(gtc, egos_t[:, :3], egos_t[:, 3:6], egos_t[:, 6:9])["frac<0.5"]
     pce_rows.append((step, pces))
 
+hdr = " ".join(f"{a:>12s}" for a in ARMS)
 lines = [f"Rollout 漂移测试 (K=10≈0.5s/步, {len(segs)} segments, val 场景)",
-         f"{'step':>4s} {'t(s)':>5s} {'copy_ego':>9s} {'copy_dopp':>10s} {'bridge_ego':>11s} {'bridge_dopp':>12s}   [CD med, m]"]
+         f"{'step':>4s} {'t(s)':>5s} {hdr}   [CD med, m]"]
 for step, cds in rows:
-    lines.append(f"{step:>4d} {step*0.5:>5.1f} {cds['copy_ego']:>9.3f} {cds['copy_dopp']:>10.3f} "
-                 f"{cds['bridge_ego']:>11.3f} {cds['bridge_dopp']:>12.3f}")
+    vals = " ".join(f"{cds[a]:>12.3f}" for a in ARMS)
+    lines.append(f"{step:>4d} {step*0.5:>5.1f} {vals}")
 lines.append("")
-lines.append(f"{'step':>4s} {'PCE<0.5: copy_dopp':>18s} {'bridge_dopp':>12s} {'GT':>6s}")
+pcearms = ["copy_dopp"] + [f"bridge_{t}" for t in TAGS] + ["GT"]
+lines.append("PCE<0.5:  " + " ".join(f"{a:>12s}" for a in pcearms))
 for step, p in pce_rows:
-    lines.append(f"{step:>4d} {p['copy_dopp']*100:>17.1f}% {p['bridge_dopp']*100:>11.1f}% {p['GT']*100:>5.1f}%")
+    lines.append(f"step{step}:  " + " ".join(f"{p[a]*100:>11.1f}%" for a in pcearms))
 report = "\n".join(lines)
 print(report)
-open(f"{RES}/rollout_metrics.txt", "w").write(report + "\n")
+open(f"{RES}/rollout_metrics_v2.txt", "w").write(report + "\n")
 print("== DONE")

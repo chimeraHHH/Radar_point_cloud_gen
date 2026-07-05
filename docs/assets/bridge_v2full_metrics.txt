@@ -1,0 +1,6 @@
+tag=v2full cond=dopp bridge(RF, ODE50)  val N=24 中位:
+  CD=4.629 m (锚 11.111 | 复制条件 3.451)
+  CD_Doppler=5.053  MMD=0.01506  JSD=0.2042
+  v_r std gen=2.28 gt=2.94
+  PCE(gen) med|r|=0.843 <0.5:36.3%  | PCE(GT) med|r|=2.276 <0.5:39.0%
+  W1(v_r)=0.706   动态样占比 gen=46.3% / GT=57.7%
