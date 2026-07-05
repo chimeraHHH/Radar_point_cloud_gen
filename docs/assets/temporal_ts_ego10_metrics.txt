@@ -1,0 +1,6 @@
+tag=ts_ego10 cond=ego  val N=24 中位:
+  CD=7.662 m (锚 11.111 | 复制条件 3.493)
+  CD_Doppler=8.961  MMD=0.04762  JSD=0.3112
+  v_r std gen=1.81 gt=2.94
+  PCE(gen) med|r|=0.232 <0.5:63.1%  | PCE(GT) med|r|=2.276 <0.5:39.0%
+  W1(v_r)=1.902   动态样占比 gen=23.9% / GT=57.7%

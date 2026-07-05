@@ -1,0 +1,6 @@
+tag=ts_dopp10 cond=dopp  val N=24 中位:
+  CD=7.868 m (锚 11.111 | 复制条件 3.451)
+  CD_Doppler=8.887  MMD=0.04872  JSD=0.3274
+  v_r std gen=1.76 gt=2.94
+  PCE(gen) med|r|=0.240 <0.5:63.8%  | PCE(GT) med|r|=2.276 <0.5:39.0%
+  W1(v_r)=1.933   动态样占比 gen=24.2% / GT=57.7%
