@@ -20,13 +20,14 @@ import matplotlib.pyplot as plt
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from models.point_diffusion import RadarPointDenoiser          # noqa: E402
 from eval.gen_metrics import full_report, chamfer              # noqa: E402
-from losses.physics import self_gated_static_loss, pce_report  # noqa: E402
+from losses.physics import self_gated_static_loss, dynamic_consistency_loss, pce_report  # noqa: E402
 
 from diffusers import DDPMScheduler                            # noqa: E402
 
 LAM = float(sys.argv[1])
-TAG = sys.argv[2]
-PAIRS = os.path.expanduser("~/data/radar_gen/truckscenes/pairs_mini_v2")
+LAM_DYN = float(sys.argv[2])
+TAG = sys.argv[3]
+PAIRS = os.path.expanduser("~/data/radar_gen/truckscenes/pairs_mini_v3")
 RES = os.path.expanduser("~/Workspace/radar_gen/results")
 os.makedirs(RES, exist_ok=True)
 STEPS, BS, LR = 40000, 64, 3e-4
@@ -34,7 +35,7 @@ CFG_DROP, CFG_W, EMA_DECAY = 0.1, 2.0, 0.999
 N_EVAL = 24
 torch.manual_seed(0)
 np.random.seed(0)
-print(f"== ablate tag={TAG} lam={LAM}")
+print(f"== ablate tag={TAG} lam_static={LAM} lam_dyn={LAM_DYN}")
 
 mani = json.load(open(f"{PAIRS}/manifest.json"))
 scenes = sorted({m["scene"] for m in mani["pairs"]})
@@ -45,16 +46,20 @@ print(f"train={len(tr)} val={len(va)}")
 
 
 def load(ms):
-    r, l, e = [], [], []
+    r, l, e, lb, vo = [], [], [], [], []
     for m in ms:
         z = np.load(f"{PAIRS}/{m['file']}")
         r.append(z["radar"]); l.append(z["lidar"])
         e.append(np.concatenate([z["v_ego_s"], z["omega_s"], z["t_s"]]))
-    return np.stack(r), np.stack(l), np.stack(e)
+        lb.append(z["label"]); vo.append(z["v_obj_s"])
+    return np.stack(r), np.stack(l), np.stack(e), np.stack(lb), np.stack(vo)
 
 
-r_tr, l_tr, e_tr = load(tr)
-r_va, l_va, e_va = load(va)
+r_tr, l_tr, e_tr, lb_tr, vo_tr = load(tr)
+r_va, l_va, e_va, lb_va, vo_va = load(va)
+DYNtr = torch.tensor(lb_tr == 2, device="cuda")
+VOtr = torch.tensor(vo_tr, dtype=torch.float32, device="cuda")
+print(f"动态点占比 train={float((lb_tr==2).mean())*100:.1f}%")
 R_MU = r_tr.reshape(-1, 5).mean(0); R_SD = r_tr.reshape(-1, 5).std(0) + 1e-6
 L_MU = l_tr.reshape(-1, 4).mean(0); L_SD = l_tr.reshape(-1, 4).std(0) + 1e-6
 
@@ -91,13 +96,16 @@ for step in range(1, STEPS + 1):
         eps = model(xt, t, cond, drop, egoN)
         loss_mse = F.mse_loss(eps, noise)
         loss = loss_mse
-        if LAM > 0:
+        if LAM > 0 or LAM_DYN > 0:
             ab = acp[t]
             x0_hat = (xt - (1 - ab).sqrt()[:, None, None] * eps) / ab.sqrt()[:, None, None]
             x0_phys = x0_hat * SD_t + MU_t
             loss_phys = self_gated_static_loss(x0_phys, ego[:, :3], ego[:, 3:6],
-                                               ego[:, 6:9], step_w=ab)
-            loss = loss_mse + LAM * loss_phys
+                                               ego[:, 6:9], step_w=ab) if LAM > 0 else x0_phys.new_zeros(())
+            loss_dyn = dynamic_consistency_loss(x0_phys, VOtr[idx], DYNtr[idx],
+                                                ego[:, :3], ego[:, 3:6], ego[:, 6:9],
+                                                step_w=ab) if LAM_DYN > 0 else x0_phys.new_zeros(())
+            loss = loss_mse + LAM * loss_phys + LAM_DYN * loss_dyn
     opt.zero_grad(set_to_none=True)
     loss.backward()
     opt.step(); lr_sched.step()
@@ -109,10 +117,11 @@ for step in range(1, STEPS + 1):
                 ema[k].copy_(v)
     if step % 2000 == 0 or step == 1:
         lp = float(loss_phys) if LAM > 0 else 0.0
-        print(f"step {step:6d}  mse {float(loss_mse):.4f}  phys {lp:.4f}  "
+        ld = float(loss_dyn) if LAM_DYN > 0 else 0.0
+        print(f"step {step:6d}  mse {float(loss_mse):.4f}  phys {lp:.4f}  dyn {ld:.4f}  "
               f"({time.time()-t0:.0f}s)", flush=True)
 
-torch.save(dict(ema=ema, r_mu=R_MU, r_sd=R_SD, e_mu=E_MU, e_sd=E_SD, lam=LAM), f"{RES}/ablate_{TAG}_ckpt.pt")
+torch.save(dict(ema=ema, r_mu=R_MU, r_sd=R_SD, e_mu=E_MU, e_sd=E_SD, lam=LAM, lam_dyn=LAM_DYN), f"{RES}/ablate_{TAG}_ckpt.pt")
 model.load_state_dict(ema)
 model.eval()
 
@@ -143,13 +152,22 @@ egoC = egoE.cpu()
 pce_gen = pce_report(gen_t, egoC[:, :3], egoC[:, 3:6], egoC[:, 6:9])
 pce_gt = pce_report(gt_t, egoC[:, :3], egoC[:, 3:6], egoC[:, 6:9])
 med = lambda k: float(np.median([r[k] for r in reps]))
+# v_r 分布: 1D Wasserstein(池化) + 残差>1 的"动态样"占比
+q = np.linspace(0, 1, 200)
+w1_vr = float(np.abs(np.quantile(gen[:, :, 3], q) - np.quantile(gt[:, :, 3], q)).mean())
+from losses.physics import static_pred_vr
+def dynfrac(c):
+    ct = torch.tensor(c, dtype=torch.float32)
+    r = ct[..., 3] - static_pred_vr(ct[..., :3], egoC[:, :3], egoC[:, 3:6], egoC[:, 6:9])
+    return float((r.abs() > 1.0).float().mean())
 report = "\n".join([
-    f"tag={TAG} lam={LAM}  val N={N_EVAL} 中位:",
+    f"tag={TAG} lam={LAM} lam_dyn={LAM_DYN}  val N={N_EVAL} 中位:",
     f"  CD={med('cd'):.3f} m (锚 {np.median(cd_anchor):.3f})  CD_Doppler={med('cd_dopp'):.3f}",
     f"  MMD={med('mmd'):.5f}  JSD={med('jsd'):.4f}",
     f"  v_r std gen={np.median([r['vr_std_gen'] for r in reps]):.2f} gt={np.median([r['vr_std_gt'] for r in reps]):.2f}",
     f"  PCE(gen): med|r|={pce_gen['med_abs']:.3f}  <0.5: {pce_gen['frac<0.5']*100:.1f}%",
     f"  PCE(GT):  med|r|={pce_gt['med_abs']:.3f}  <0.5: {pce_gt['frac<0.5']*100:.1f}%",
+    f"  W1(v_r)={w1_vr:.3f} m/s   动态样占比 gen={dynfrac(gen)*100:.1f}% / GT={dynfrac(gt)*100:.1f}%",
 ])
 print("\n" + report)
 open(f"{RES}/ablate_{TAG}_metrics.txt", "w").write(report + "\n")

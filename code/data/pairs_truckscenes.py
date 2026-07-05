@@ -69,12 +69,19 @@ def sample_n(arr, n, rng):
 
 
 def build_pair(tsc, ldr, sample, radar_ch, lidar_global,
-               n_lidar=4096, n_radar=384, min_radar_pts=50, rng=None):
-    """构建单个配对; 点数不足或无 FoV 交集返回 None."""
+               n_lidar=4096, n_radar=384, min_radar_pts=50, rng=None,
+               v_moving_thr=1.0):
+    """构建单个配对; 点数不足或无 FoV 交集返回 None.
+
+    v3: 附带逐点静/动标签与运动目标速度(动态一致性损失用);
+    v_moving_thr=1.0 抬高判动门限, 缓解框速度差分噪声误标(R3)。
+    """
+    from data.truckscenes_loader import label_static_dynamic
     rng = rng or np.random.default_rng(0)
-    fr = ldr.load_frame(sample["data"][radar_ch], load_boxes=False)
+    fr = ldr.load_frame(sample["data"][radar_ch], load_boxes=True)
     if len(fr["xyz"]) < min_radar_pts:
         return None
+    labels, v_obj = label_static_dynamic(fr, v_moving_thr=v_moving_thr)
     # LiDAR: 全局 -> 该雷达传感器系
     lid = lidar_global.copy()
     lid[:, :3] = (lid[:, :3] - fr["t_gs"]) @ fr["R_gs"]
@@ -87,6 +94,8 @@ def build_pair(tsc, ldr, sample, radar_ch, lidar_global,
     radar = np.concatenate([fr["xyz"][idx], fr["v_r"][idx, None], fr["rcs"][idx, None]], 1)
     return dict(lidar=lid.astype(np.float32), radar=radar.astype(np.float32),
                 pred_static_vr=fr["pred_static_vr"][idx].astype(np.float32),
+                label=labels[idx].astype(np.int8),
+                v_obj_s=np.nan_to_num(v_obj[idx]).astype(np.float32),
                 v_ego_s=fr["v_ego_s"].astype(np.float32),
                 omega_s=fr["omega_s"].astype(np.float32),
                 t_s=fr["t_s"].astype(np.float32),

@@ -44,6 +44,29 @@ def self_gated_static_loss(x0_phys, v_ego_s, omega_s, t_s,
     return (w * hub).sum() / (w.sum() + 1e-6)
 
 
+def dynamic_consistency_loss(x0_phys, v_obj_s, dyn_mask, v_ego_s, omega_s, t_s,
+                             delta=1.0, step_w=None):
+    """监督式动态一致性损失 L_dop(proposal 主线 A 第二项).
+
+    利用扩散训练中 x̂0 与 GT 点的 1:1 对应: 对 GT 标签为运动目标的点,
+    约束生成的 v_r 与 (v_obj − v_plat(p̂))·r̂(p̂) 一致(几何取生成点, 速度取框速度)。
+
+    x0_phys: (B,N,5) 物理单位 x̂0 | v_obj_s: (B,N,3) 框速度(传感器系, 非动态点任意)
+    dyn_mask: (B,N) bool | step_w: (B,) 时间步权重
+    """
+    xyz, vr = x0_phys[..., :3], x0_phys[..., 3]
+    rhat = xyz / (xyz.norm(dim=-1, keepdim=True) + 1e-6)
+    v_plat = v_ego_s[:, None, :] + torch.cross(
+        omega_s[:, None, :].expand_as(xyz), xyz + t_s[:, None, :], dim=-1)
+    pred = ((v_obj_s - v_plat) * rhat).sum(-1)
+    r = vr - pred
+    w = dyn_mask.float()
+    if step_w is not None:
+        w = w * step_w[:, None]
+    hub = F.huber_loss(r, torch.zeros_like(r), delta=delta, reduction="none")
+    return (w * hub).sum() / (w.sum() + 1e-6)
+
+
 @torch.no_grad()
 def pce_report(cloud_phys, v_ego_s, omega_s, t_s, thr=(0.25, 0.5, 1.0)):
     """物理一致性误差 PCE(评估指标): 点云对静态解析关系的残差统计.
