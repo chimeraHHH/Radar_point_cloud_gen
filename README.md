@@ -17,6 +17,9 @@
 - [docs/survey_temporal_doppler.md](docs/survey_temporal_doppler.md)：多帧雷达点云生成与 Doppler 时序一致性的专项调研，论证 `v_r * dt ≈ drange` 这类约束用于生成/增强任务的可行性。
 - [docs/papers/README.md](docs/papers/README.md)：本项目收集的论文 PDF 索引，按“生成 Doppler”“几何增强”“时序-Doppler 耦合”等主题归类。
 
+- [paper/outline.md](paper/outline.md)：**论文骨架**——章节-素材映射、主表设计、贡献点、兜底方案。
+- [paper/draft_method.md](paper/draft_method.md)：**Method 初稿蓝本**——观察研究要点 + 全部公式(已定型) + 已证伪路线清单。
+
 ## 当前方向
 
 基于现有调研，较有潜力的方向是：**学习式多帧雷达点云增强/生成，同时联合生成 Doppler，并利用 Doppler 与帧间径向位移之间的物理关系建立时序一致性约束**。
