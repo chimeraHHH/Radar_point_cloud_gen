@@ -11,6 +11,7 @@
 - [docs/p0_progress_2026-07-03.md](docs/p0_progress_2026-07-03.md)：**P0 进度纪要**——环境落地、TruckScenes mini 字段实测、**自洽性校验通过**（Doppler=RAW，`v_r≈−v_ego·r̂` 残差 MAD 0.24 m/s）。
 - [docs/p2_progress_2026-07-05.md](docs/p2_progress_2026-07-05.md)：**P2 进度纪要**——可微自门控物理约束 + 消融：三轮六臂消融完成：**ego 条件使 PCE↓89%**；静态约束推一致性至 90%@0.5；**动态分支 L_dop 恢复多样性(动态样 3.5%→32.3%)**——主线 A 三组件机制全部实证。
 - [docs/p3_progress_2026-07-05.md](docs/p3_progress_2026-07-05.md)：**P3 预研纪要**——时序条件 ≫ LiDAR 条件(CD 8.5→7.2)；0.25s 视距 dopp-warp 条件无增益(负结果)；复制条件基线完爆从头生成；SDEdit 精修反伤草稿(模型瓶颈)；**dopp-warp 草稿 0.5s 起占优(视距翻转)→ **桥式扩散(RF+OT配对)验证成功:CD 7.7→4.0、MMD↓79%、修复复制的物理陈旧(PCE 19.7%→40.4%≈GT)**；rollout 2.5s:几何漂移暂未胜 ego-only 下限(G3 待战)，但物理新鲜度大胜(25.1% vs 陈旧链 8.6%)——"必须联合生成 Doppler"的定量证据；复赛证伪白噪增广、确认 L_temp(W1 0.706 最佳)，**G3 主杠杆收敛为规模(trainval)**。
+- [docs/p3_fullscale_2026-07-06.md](docs/p3_fullscale_2026-07-06.md)：**G3 规模战**——trainval 全量(326k对)+40M 桥式：**G3 机制层通过(Doppler-warp 链几何优于 ego-only −31%@2.5s)**；dopp 草稿使生成 −24%(首次大分离)；分布形态贴合 GT；桥式几何税待 scheduled sampling。
 - [docs/p1_progress_2026-07-04.md](docs/p1_progress_2026-07-04.md)：**P1 进度纪要**——数据管线代码（`code/`）+ 静/动分离物理验证：框内静止目标 **95% 内点@0.5 m/s**、ω×r 修正有实测收益、动态软约束可行、发现框速度伪运动陷阱（R3 实证）。
 - [docs/related_work_doppler.md](docs/related_work_doppler.md)：自动驾驶毫米波雷达点云生成中的 Doppler 文献调研，梳理哪些工作已经生成/回归 Doppler，以及真正剩下的研究空白。
 - [docs/prior_art_deep_dive.md](docs/prior_art_deep_dive.md)：对最接近的 4D-RaDiff 与 RadarGen 做精读对比，重点分析它们如何处理 Doppler、缺少什么物理约束。

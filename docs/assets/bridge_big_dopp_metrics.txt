@@ -1,0 +1,6 @@
+tag=big_dopp cond=dopp bridge(RF, ODE50)  val N=24 中位:
+  CD=5.130 m (锚 11.071 | 复制条件 4.830)
+  CD_Doppler=5.893  MMD=0.03325  JSD=0.2760
+  v_r std gen=4.86 gt=7.22
+  PCE(gen) med|r|=10.080 <0.5:30.6%  | PCE(GT) med|r|=10.042 <0.5:31.1%
+  W1(v_r)=0.805   动态样占比 gen=62.0% / GT=65.5%

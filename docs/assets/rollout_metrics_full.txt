@@ -1,0 +1,18 @@
+/home/huayiming/.conda/envs/hym_radar/lib/python3.10/site-packages/truckscenes/truckscenes.py:100: UserWarning: The visualization dependencies are not installed on your system! Run 'pip install "truckscenes-devkit[all]"'.
+  warnings.warn('''The visualization dependencies are not installed on your system! '''
+segments=24
+Rollout 漂移测试 (K=10≈0.5s/步, 24 segments, val 场景)
+step  t(s)     copy_ego    copy_dopp bridge_big_dopp bridge_big_ego   [CD med, m]
+   1   0.5        3.655        3.629        6.651        6.521
+   2   1.0        5.030        4.689        8.405        8.355
+   3   1.5        6.899        5.997       11.212       10.097
+   4   2.0       10.202        8.013       13.144       13.309
+   5   2.5       13.335        9.256       13.645       15.760
+
+PCE<0.5:     copy_dopp bridge_big_dopp bridge_big_ego           GT
+step1:         26.1%        69.1%        48.2%        66.7%
+step2:         19.3%        54.4%        30.7%        63.3%
+step3:         16.4%        41.8%        21.2%        66.1%
+step4:         14.1%        38.2%        17.2%        65.9%
+step5:         12.4%        38.0%        20.2%        65.1%
+== DONE

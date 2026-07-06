@@ -1,0 +1,6 @@
+tag=big_ego cond=ego bridge(RF, ODE50)  val N=24 中位:
+  CD=6.769 m (锚 11.071 | 复制条件 3.918)
+  CD_Doppler=7.842  MMD=0.05639  JSD=0.3612
+  v_r std gen=4.85 gt=7.22
+  PCE(gen) med|r|=9.644 <0.5:24.0%  | PCE(GT) med|r|=10.042 <0.5:31.1%
+  W1(v_r)=0.736   动态样占比 gen=68.9% / GT=65.5%
