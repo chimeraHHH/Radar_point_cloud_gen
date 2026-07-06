@@ -22,16 +22,20 @@ from losses.physics import pce_report                          # noqa: E402
 
 from truckscenes import TruckScenes                            # noqa: E402
 
-DATAROOT = os.path.expanduser("~/data/radar_gen/truckscenes/man-truckscenes")
+DATAROOT = os.environ.get("TSROOT",
+    os.path.expanduser("~/data/radar_gen/truckscenes/man-truckscenes"))
+VER = os.environ.get("TSVER", "v1.2-mini")
+VAL_N = int(os.environ.get("VAL_N", "2"))
+SEGCAP = int(os.environ.get("SEGCAP", "24"))
 RES = os.path.expanduser("~/Workspace/radar_gen/results")
 K, T_STEPS, START, NPTS, ODE = 10, 5, 40, 384, 50
 dev = torch.device("cuda")
 rng = np.random.default_rng(0)
 
-tsc = TruckScenes("v1.2-mini", DATAROOT, verbose=False)
+tsc = TruckScenes(VER, DATAROOT, verbose=False)
 ldr = TruckScenesRadar(tsc)
 scenes = sorted(tsc.scene, key=lambda s: s["name"])
-val_scenes = scenes[-2:]
+val_scenes = scenes[-VAL_N:]
 
 # ---- 收集 12 个 segment(2 场景 × 6 通道), 每个 T_STEPS+1 帧 ----
 segs = []
@@ -49,6 +53,10 @@ for scene in val_scenes:
         if any(len(f["xyz"]) < 50 for f in frames):
             continue
         segs.append(frames)
+        if len(segs) >= SEGCAP:
+            break
+    if len(segs) >= SEGCAP:
+        break
 print(f"segments={len(segs)}")
 
 
@@ -86,7 +94,7 @@ TAGS = sys.argv[1:] if len(sys.argv) > 1 else ["br_ego", "br_dopp"]
 models = {}
 for tag in TAGS:
     ck = torch.load(f"{RES}/bridge_{tag}_ckpt.pt", map_location="cpu", weights_only=False)
-    m = RadarPointDenoiser(dim=256, depth=6, heads=8, pt_ch=5, lidar_ch=5).to(dev)
+    m = RadarPointDenoiser(dim=ck.get("dim", 256), depth=ck.get("depth", 6), heads=8, pt_ch=5, lidar_ch=5).to(dev)
     m.load_state_dict(ck["ema"]); m.eval()
     models[tag] = (m, ck)
 
@@ -154,5 +162,5 @@ for step, p in pce_rows:
     lines.append(f"step{step}:  " + " ".join(f"{p[a]*100:>11.1f}%" for a in pcearms))
 report = "\n".join(lines)
 print(report)
-open(f"{RES}/rollout_metrics_v2.txt", "w").write(report + "\n")
+open(f"{RES}/rollout_metrics_{os.environ.get(chr(39)+chr(84)+chr(65)+chr(71)+chr(39), chr(118)+chr(50))}.txt", "w").write(report + "\n")
 print("== DONE")

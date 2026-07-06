@@ -30,11 +30,14 @@ TAG = sys.argv[2]
 PDIR = sys.argv[3] if len(sys.argv) > 3 else "temporal_mini_k10"
 AUG = bool(int(sys.argv[4])) if len(sys.argv) > 4 else False
 LAM_TEMP = float(sys.argv[5]) if len(sys.argv) > 5 else 0.0
+DIM = int(sys.argv[6]) if len(sys.argv) > 6 else 256
+DEPTH = int(sys.argv[7]) if len(sys.argv) > 7 else 6
 assert COND in ("ego", "dopp")
 PAIRS = os.path.expanduser(f"~/data/radar_gen/truckscenes/{PDIR}")
 RES = os.path.expanduser("~/Workspace/radar_gen/results")
 os.makedirs(RES, exist_ok=True)
-STEPS, BS, LR, LAM, SIGMA = 40000, 64, 3e-4, 0.1, 0.05
+STEPS = int(os.environ.get("STEPS", 40000))
+BS, LR, LAM, SIGMA = 64, 3e-4, 0.1, 0.05
 EMA_DECAY, N_EVAL, ODE_STEPS = 0.999, 24, 50
 torch.manual_seed(0)
 np.random.seed(0)
@@ -42,7 +45,7 @@ print(f"== bridge tag={TAG} cond={COND} pairs={PDIR} aug={AUG} lam_temp={LAM_TEM
 
 mani = json.load(open(f"{PAIRS}/manifest.json"))
 scenes = sorted({m["scene"] for m in mani["pairs"]})
-val_scenes = set(scenes[-2:])
+val_scenes = set(scenes[-int(os.environ.get("VAL_N", "2")):])
 tr = [m for m in mani["pairs"] if m["scene"] not in val_scenes]
 va = [m for m in mani["pairs"] if m["scene"] in val_scenes]
 print(f"train={len(tr)} val={len(va)}")
@@ -82,7 +85,8 @@ DTtr = torch.tensor(dt_tr, dtype=torch.float32, device=dev)
 DM_tr = torch.tensor(np.linalg.norm(r_tr[:, :, :3] - cp_tr[:, :, :3], axis=-1),
                      dtype=torch.float32, device=dev)                # GT-草稿匹配距离(持久点门控)
 
-model = RadarPointDenoiser(dim=256, depth=6, heads=8, pt_ch=5, lidar_ch=5).to(dev)
+model = RadarPointDenoiser(dim=DIM, depth=DEPTH, heads=8, pt_ch=5, lidar_ch=5).to(dev)
+print(f"model dim={DIM} depth={DEPTH} params={sum(p.numel() for p in model.parameters())/1e6:.1f}M steps={STEPS}")
 opt = torch.optim.AdamW(model.parameters(), lr=LR)
 lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=STEPS)
 ema = {k: v.detach().clone() for k, v in model.state_dict().items()}
@@ -133,7 +137,7 @@ for step in range(1, STEPS + 1):
         print(f"step {step:6d}  v-mse {float(loss_mse):.4f}  phys {float(loss_phys):.4f}  "
               f"temp {float(loss_temp):.4f}  ({time.time()-t0:.0f}s)", flush=True)
 
-torch.save(dict(ema=ema, r_mu=R_MU, r_sd=R_SD, e_mu=E_MU, e_sd=E_SD, cond=COND, aug=AUG, lam_temp=LAM_TEMP),
+torch.save(dict(ema=ema, r_mu=R_MU, r_sd=R_SD, e_mu=E_MU, e_sd=E_SD, cond=COND, aug=AUG, lam_temp=LAM_TEMP, dim=DIM, depth=DEPTH),
            f"{RES}/bridge_{TAG}_ckpt.pt")
 model.load_state_dict(ema)
 model.eval()
