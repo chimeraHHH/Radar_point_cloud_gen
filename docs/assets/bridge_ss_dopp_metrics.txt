@@ -1,0 +1,4 @@
+tag=ss_dopp scheduled-sampling(P=0.4)  val N=24 中位:
+  CD=5.063 (复制 4.908)  CD_Doppler=5.767
+  MMD=0.03099  JSD=0.2519
+  PCE(gen)<0.5:30.9% | PCE(GT)<0.5:31.4%

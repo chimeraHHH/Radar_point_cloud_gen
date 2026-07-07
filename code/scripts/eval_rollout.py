@@ -162,5 +162,5 @@ for step, p in pce_rows:
     lines.append(f"step{step}:  " + " ".join(f"{p[a]*100:>11.1f}%" for a in pcearms))
 report = "\n".join(lines)
 print(report)
-open(f"{RES}/rollout_metrics_{os.environ.get(chr(39)+chr(84)+chr(65)+chr(71)+chr(39), chr(118)+chr(50))}.txt", "w").write(report + "\n")
+open(f"{RES}/rollout_metrics_{os.environ.get("TAG", "v2")}.txt", "w").write(report + "\n")
 print("== DONE")
