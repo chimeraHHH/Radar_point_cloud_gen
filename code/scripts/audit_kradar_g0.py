@@ -5,8 +5,10 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import math
+import subprocess
 import sys
 import time
 from collections import defaultdict
@@ -35,6 +37,23 @@ from cube_dense.observability import (  # noqa: E402
 
 
 QUANTILES = (0.0, 0.5, 0.9, 0.99, 0.999, 1.0)
+
+
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while chunk := handle.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def git_commit(repo: Path) -> str | None:
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=repo, text=True
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
 
 
 def load_sensor_times(path: Path) -> dict[str, float]:
@@ -505,6 +524,7 @@ def main() -> None:
     parser.add_argument("--audit-manifest", type=Path, default=None)
     parser.add_argument("--scene-split", type=Path, default=None)
     parser.add_argument("--odometry-root", type=Path, default=None)
+    parser.add_argument("--source-commit", default=None)
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument(
         "--lidar-time-reference",
@@ -515,6 +535,12 @@ def main() -> None:
 
     if not torch.cuda.is_available() or not args.device.startswith("cuda"):
         raise RuntimeError("G0 audit requires an available CUDA device")
+    repo = Path(__file__).resolve().parents[2]
+    source_commit = args.source_commit or git_commit(repo)
+    if source_commit is None:
+        raise RuntimeError(
+            "Source commit is unavailable; pass --source-commit for reproducibility"
+        )
     args.output.mkdir(parents=True, exist_ok=True)
     args.cache_root.mkdir(parents=True, exist_ok=True)
     resources = args.root / "resources"
@@ -586,6 +612,17 @@ def main() -> None:
         frames = existing.get("frames", [])
     payload = {
         "device": args.device,
+        "provenance": {
+            "git_commit": source_commit,
+            "audit_manifest_sha256": None
+            if args.audit_manifest is None
+            else sha256(args.audit_manifest),
+            "scene_split_sha256": None
+            if args.scene_split is None
+            else sha256(args.scene_split),
+            "device_name": torch.cuda.get_device_name(args.device),
+            "torch_version": torch.__version__,
+        },
         "protocol": (
             "cross-scene manifest audit"
             if args.audit_manifest is not None
@@ -832,6 +869,8 @@ def main() -> None:
     print(json.dumps(payload["aggregate"], indent=2), flush=True)
     if any("error" in frame for frame in frames):
         raise SystemExit(2)
+    if not payload["aggregate"]["gate_pass"]:
+        raise SystemExit(3)
 
 
 if __name__ == "__main__":
