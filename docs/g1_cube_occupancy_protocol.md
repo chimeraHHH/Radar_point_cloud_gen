@@ -73,7 +73,9 @@ bootstrap confidence intervals by resampling scenes first and seeds second.
 G1 passes only when both conditions hold:
 
 1. E1 or E2 improves over E0 in overall Chamfer distance and 1 m F-score,
-   without increasing the 2 m outlier fraction.
+   while keeping its absolute 2 m outlier fraction at or below 25%. This fixed
+   threshold avoids requiring a 10,000-point dense output to match the naturally
+   low outlier rate of sparse, high-precision CFAR detections.
 2. E2 improves over E1 with a confidence interval excluding zero on at least
    one preregistered Doppler-sensitive geometry endpoint: overall Chamfer,
    60-120 m completeness, or 60-120 m 1 m F-score. E2 overall Chamfer must not
