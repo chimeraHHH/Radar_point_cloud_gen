@@ -43,6 +43,7 @@ class TrainConfig:
     max_eval_frames: int
     train_limit: int | None
     validation_limit: int | None
+    overfit_one_frame: bool
     log_center: float
     log_scale: float
 
@@ -177,6 +178,7 @@ def main() -> None:
     parser.add_argument("--max-eval-frames", type=int, default=8)
     parser.add_argument("--train-limit", type=int, default=None)
     parser.add_argument("--validation-limit", type=int, default=None)
+    parser.add_argument("--overfit-one-frame", action="store_true")
     parser.add_argument("--normalization-stats", type=Path, required=True)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--source-commit", default=None)
@@ -218,6 +220,9 @@ def main() -> None:
         raise ValueError(
             "Normalization center and scale must be finite with positive scale"
         )
+    if args.overfit_one_frame:
+        args.train_limit = 1
+        args.validation_limit = 1
     config = TrainConfig(
         mode=args.mode,
         epochs=args.epochs,
@@ -231,6 +236,7 @@ def main() -> None:
         max_eval_frames=args.max_eval_frames,
         train_limit=args.train_limit,
         validation_limit=args.validation_limit,
+        overfit_one_frame=args.overfit_one_frame,
         log_center=log_center,
         log_scale=log_scale,
     )
@@ -269,7 +275,10 @@ def main() -> None:
         args.data_root, args.cache_root, args.manifest, ("train",)
     )
     validation_set = KRadarCubeDataset(
-        args.data_root, args.cache_root, args.manifest, ("validation",)
+        args.data_root,
+        args.cache_root,
+        args.manifest,
+        ("train",) if config.overfit_one_frame else ("validation",),
     )
     train_indices = selected_indices(len(train_set), config.train_limit)
     validation_indices = selected_indices(
@@ -373,6 +382,29 @@ def main() -> None:
             provenance,
         )
         print(json.dumps(record), flush=True)
+
+    best_checkpoint = torch.load(
+        args.output / "best.pt", map_location=device, weights_only=False
+    )
+    model.load_state_dict(best_checkpoint["model"])
+    best_validation = evaluate(
+        model,
+        validation_set,
+        validation_indices,
+        axes,
+        config,
+        device,
+    )
+    best_report = {
+        "best_epoch": int(best_checkpoint["epoch"]),
+        "selection_metric": "generated.chamfer_m.median",
+        "selection_value": best_chamfer,
+        "validation": best_validation,
+    }
+    (args.output / "best_validation_metrics.json").write_text(
+        json.dumps(best_report, indent=2) + "\n", encoding="utf-8"
+    )
+    print(json.dumps({"best_validation": best_report}), flush=True)
 
 
 if __name__ == "__main__":
