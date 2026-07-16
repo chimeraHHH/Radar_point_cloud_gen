@@ -59,6 +59,12 @@ def main() -> None:
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--proxy", default=None)
     parser.add_argument(
+        "--workers",
+        type=int,
+        default=6,
+        help="Concurrent byte-range requests per archive member.",
+    )
+    parser.add_argument(
         "--labels",
         nargs="+",
         default=DEFAULT_LABELS,
@@ -79,6 +85,7 @@ def main() -> None:
             metadata_members,
             args.output,
             args.manifest,
+            workers=args.workers,
         )
         sensor_members = build_sensor_members(args.sequence, args.labels, args.output)
         members = metadata_members + sensor_members
@@ -86,7 +93,14 @@ def main() -> None:
             json.dumps({"sequence": args.sequence, "members": members}, indent=2),
             flush=True,
         )
-        records = fetch_members(client, args.sequence, members, args.output, args.manifest)
+        records = fetch_members(
+            client,
+            args.sequence,
+            members,
+            args.output,
+            args.manifest,
+            workers=args.workers,
+        )
     print(json.dumps([record.__dict__ for record in records], indent=2), flush=True)
 
 

@@ -5,10 +5,10 @@ from __future__ import annotations
 import binascii
 import json
 import os
-import shutil
 import struct
 import time
 import zlib
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import AbstractContextManager
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -173,6 +173,7 @@ def _download_compressed_range(
     output: Path,
     timeout: int,
     chunk_size: int = 8 * 1024 * 1024,
+    workers: int = 6,
 ) -> int:
     output.parent.mkdir(parents=True, exist_ok=True)
     resumed = output.stat().st_size if output.exists() else 0
@@ -180,44 +181,57 @@ def _download_compressed_range(
         output.unlink()
         resumed = 0
 
-    with output.open("a+b") as handle:
+    def read_range(request_start: int, request_end: int) -> bytes:
+        expected = request_end - request_start + 1
+        last_error: Exception | None = None
+        for attempt in range(8):
+            response: requests.Response | None = None
+            try:
+                response = _request_range(
+                    session, url, request_start, request_end, timeout
+                )
+                payload = bytearray()
+                for chunk in response.iter_content(chunk_size=1024 * 1024):
+                    if chunk:
+                        payload.extend(chunk)
+                if len(payload) != expected:
+                    raise RuntimeError(
+                        f"Truncated range {request_start}-{request_end}: "
+                        f"{len(payload)} != {expected}"
+                    )
+                return bytes(payload)
+            except (requests.RequestException, RuntimeError) as exc:
+                last_error = exc
+                if attempt == 7:
+                    break
+                time.sleep(min(2**attempt, 30))
+            finally:
+                if response is not None:
+                    response.close()
+        raise RuntimeError(
+            f"Range {request_start}-{request_end} failed after retries"
+        ) from last_error
+
+    workers = max(1, workers)
+    with output.open("a+b") as handle, ThreadPoolExecutor(
+        max_workers=workers
+    ) as executor:
         while handle.tell() < size:
             local_offset = handle.tell()
-            request_start = start + local_offset
-            request_end = min(start + size - 1, request_start + chunk_size - 1)
-            expected = request_end - request_start + 1
-            last_error: Exception | None = None
-            for attempt in range(8):
-                response: requests.Response | None = None
-                received = 0
-                try:
-                    response = _request_range(
-                        session, url, request_start, request_end, timeout
-                    )
-                    for chunk in response.iter_content(chunk_size=1024 * 1024):
-                        if not chunk:
-                            continue
-                        handle.write(chunk)
-                        received += len(chunk)
-                    handle.flush()
-                    if received != expected:
-                        raise RuntimeError(
-                            f"Truncated range {request_start}-{request_end}: "
-                            f"{received} != {expected}"
-                        )
+            ranges: list[tuple[int, int]] = []
+            for worker_index in range(workers):
+                request_start = start + local_offset + worker_index * chunk_size
+                if request_start >= start + size:
                     break
-                except (requests.RequestException, RuntimeError) as exc:
-                    last_error = exc
-                    handle.seek(local_offset)
-                    handle.truncate()
-                    if attempt == 7:
-                        raise RuntimeError(
-                            f"Range {request_start}-{request_end} failed after retries"
-                        ) from last_error
-                    time.sleep(min(2**attempt, 30))
-                finally:
-                    if response is not None:
-                        response.close()
+                request_end = min(start + size - 1, request_start + chunk_size - 1)
+                ranges.append((request_start, request_end))
+            futures = [
+                executor.submit(read_range, request_start, request_end)
+                for request_start, request_end in ranges
+            ]
+            for future in futures:
+                handle.write(future.result())
+            handle.flush()
     return resumed
 
 
@@ -270,22 +284,50 @@ def fetch_members(
     members: Iterable[str],
     output_root: Path,
     manifest_path: Path,
+    workers: int = 6,
 ) -> list[DownloadRecord]:
     """Fetch selected ZIP members with byte-range resume and CRC verification."""
 
     url = client.archive_url(sequence)
     requested = list(dict.fromkeys(members))
-    with RemoteZip(url, session=client.session) as archive:
-        index = {info.filename: info for info in archive.infolist()}
+    index = None
+    last_index_error: Exception | None = None
+    for attempt in range(8):
+        try:
+            with RemoteZip(url, session=client.session) as archive:
+                index = {info.filename: info for info in archive.infolist()}
+            break
+        except Exception as error:  # RemoteZip wraps transient HTTP errors.
+            last_index_error = error
+            if attempt == 7:
+                break
+            time.sleep(min(2**attempt, 30))
+    if index is None:
+        raise RuntimeError(
+            f"Unable to read sequence {sequence} ZIP index after retries"
+        ) from last_index_error
 
-    missing = sorted(set(requested) - set(index))
+    resolved = {}
+    missing = []
+    for member in requested:
+        if member in index:
+            resolved[member] = index[member]
+            continue
+        suffix = "/" + member.split("/", maxsplit=1)[-1]
+        matches = [info for name, info in index.items() if name.endswith(suffix)]
+        if len(matches) == 1:
+            resolved[member] = matches[0]
+        else:
+            missing.append(member)
     if missing:
-        raise FileNotFoundError(f"Members absent from sequence {sequence}: {missing}")
+        raise FileNotFoundError(
+            f"Members absent or ambiguous in sequence {sequence}: {sorted(missing)}"
+        )
 
     records: list[DownloadRecord] = []
     scratch = output_root / ".compressed"
     for member in requested:
-        info = index[member]
+        info = resolved[member]
         if info.compress_type not in SUPPORTED_COMPRESSION:
             raise RuntimeError(
                 f"Unsupported compression type {info.compress_type} for {info.filename}"
@@ -298,7 +340,7 @@ def fetch_members(
         ):
             records.append(
                 DownloadRecord(
-                    member=member,
+                    member=info.filename,
                     output=str(output),
                     size=info.file_size,
                     compressed_size=info.compress_size,
@@ -326,12 +368,13 @@ def fetch_members(
             info.compress_size,
             compressed,
             client.timeout,
+            workers=workers,
         )
         _inflate_and_verify(compressed, output, info)
         compressed.unlink(missing_ok=True)
         records.append(
             DownloadRecord(
-                member=member,
+                member=info.filename,
                 output=str(output),
                 size=info.file_size,
                 compressed_size=info.compress_size,
@@ -346,7 +389,6 @@ def fetch_members(
             encoding="utf-8",
         )
 
-    shutil.rmtree(scratch, ignore_errors=True)
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
         json.dumps([asdict(record) for record in records], indent=2) + "\n",

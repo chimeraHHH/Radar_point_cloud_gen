@@ -46,7 +46,9 @@ class KRadarFrame:
     indices: FrameIndices
     cube_drae: np.ndarray
     lidar64: np.ndarray
+    lidar64_fields: tuple[str, ...]
     lidar128: np.ndarray | None
+    lidar128_fields: tuple[str, ...] | None
     calibration: Calibration
 
 
@@ -75,7 +77,7 @@ def load_tesseract(path: Path, reverse_angular_axes: bool = True) -> np.ndarray:
         cube = np.flip(np.flip(cube, axis=2), axis=3)
     if not np.isfinite(cube).all():
         raise ValueError(f"Non-finite values in {path}")
-    return cube
+    return np.ascontiguousarray(cube)
 
 
 def load_pcd_ascii(path: Path) -> tuple[np.ndarray, list[str]]:
@@ -178,11 +180,14 @@ def load_frame(
         sequence_root / "info_calib" / "calib_radar_lidar.txt",
         z_offset_m=z_offset_m,
     )
-    lidar64, _ = load_pcd_ascii(
+    lidar64, lidar64_fields = load_pcd_ascii(
         sequence_root / "os2-64" / f"os2-64_{indices.lidar64:05d}.pcd"
     )
     lidar128_path = sequence_root / "os1-128" / f"os1-128_{indices.lidar128:05d}.pcd"
-    lidar128 = load_pcd_ascii(lidar128_path)[0] if lidar128_path.exists() else None
+    if lidar128_path.exists():
+        lidar128, lidar128_fields = load_pcd_ascii(lidar128_path)
+    else:
+        lidar128, lidar128_fields = None, None
     cube = load_tesseract(
         sequence_root / "radar_tesseract" / f"tesseract_{indices.radar:05d}.mat"
     )
@@ -199,4 +204,14 @@ def load_frame(
     )
     if cube.shape != expected_shape:
         raise ValueError(f"Cube/axis shape mismatch: {cube.shape} != {expected_shape}")
-    return KRadarFrame(indices, cube, lidar64, lidar128, calibration)
+    return KRadarFrame(
+        indices=indices,
+        cube_drae=cube,
+        lidar64=lidar64,
+        lidar64_fields=tuple(lidar64_fields),
+        lidar128=lidar128,
+        lidar128_fields=None
+        if lidar128_fields is None
+        else tuple(lidar128_fields),
+        calibration=calibration,
+    )

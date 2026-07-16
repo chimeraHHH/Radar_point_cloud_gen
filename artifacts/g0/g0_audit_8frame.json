@@ -1,0 +1,1719 @@
+{
+  "device": "cuda:0",
+  "axes": {
+    "doppler_mps": {
+      "count": 64,
+      "min": -1.932591218305504,
+      "max": 1.872197742733457,
+      "median_step": 0.060393475572046995,
+      "strictly_increasing": true
+    },
+    "range_m": {
+      "count": 256,
+      "min": 0.0,
+      "max": 118.037109375,
+      "median_step": 0.462890625,
+      "strictly_increasing": true
+    },
+    "azimuth_rad": {
+      "count": 107,
+      "min": -0.9250245035569946,
+      "max": 0.9250245035569946,
+      "median_step": 0.01745329251994332,
+      "strictly_increasing": true
+    },
+    "elevation_rad": {
+      "count": 37,
+      "min": -0.3141592653589793,
+      "max": 0.3141592653589793,
+      "median_step": 0.017453292519943292,
+      "strictly_increasing": true
+    }
+  },
+  "frames": [
+    {
+      "label": "00033_00001.txt",
+      "schema": {
+        "on_disk_shape": [
+          64,
+          256,
+          37,
+          107
+        ],
+        "logical_shape": [
+          64,
+          256,
+          107,
+          37
+        ],
+        "raw_dtype": "float64",
+        "raw_nbytes": 518914048,
+        "gpu_dtype": "torch.float32",
+        "power_quantile_levels": [
+          0.0,
+          0.5,
+          0.9,
+          0.99,
+          0.999,
+          1.0
+        ],
+        "power_quantiles": [
+          818.1611938476562,
+          49939701760.0,
+          214189539328.0,
+          1216832077824.0,
+          20269462716416.0,
+          2.688107330624553e+17
+        ],
+        "lidar64_shape": [
+          131072,
+          9
+        ],
+        "lidar64_fields": [
+          "x",
+          "y",
+          "z",
+          "intensity",
+          "t",
+          "reflectivity",
+          "ring",
+          "ambient",
+          "range"
+        ],
+        "lidar128_shape": [
+          262144,
+          9
+        ],
+        "lidar128_fields": [
+          "x",
+          "y",
+          "z",
+          "intensity",
+          "t",
+          "reflectivity",
+          "ring",
+          "ambient",
+          "range"
+        ]
+      },
+      "synchronization": {
+        "label_timestamp": 1643292946.710046,
+        "os2_delta_ms": 0.0,
+        "os1_delta_ms": -25.7723331451416
+      },
+      "motion": {
+        "position_xyz_m": [
+          0.08818783829183621,
+          0.30750915487700176,
+          -0.02732904363731382
+        ],
+        "velocity_xyz_mps": [
+          3.816508372184002,
+          13.21363181170694,
+          -1.0992240576407997
+        ],
+        "speed_mps": 13.797611943347317,
+        "heading_rad": 1.2896724976561,
+        "yaw_rate_radps": -0.08497156621976924,
+        "nearest_timestamp_delta_ms": 23.468971252441406,
+        "interpolation_bracket_ms": 102.19192504882812
+      },
+      "lidar_scan_timing": {
+        "point_time_field": "t",
+        "point_time_unit": "nanoseconds from scan origin",
+        "duration_ms": 99.98344630002975,
+        "selected_reference": "start",
+        "translation_during_scan_m": 1.3795327928063157,
+        "margin_median_by_reference": {
+          "none": -0.9795935750007629,
+          "start": -0.9336017966270447,
+          "center": -0.9708588719367981,
+          "end": -1.0455248355865479
+        }
+      },
+      "calibration_xyz_m": [
+        -2.54,
+        0.3,
+        0.7
+      ],
+      "cfar": {
+        "candidate_count": 917,
+        "retained_count": 917,
+        "threshold_scale": 6.941853557129729
+      },
+      "cfar_roundtrip": {
+        "point_count": 917,
+        "exact_bin_count": 917,
+        "exact_bin_fraction": 1.0,
+        "max_relative_power_error": 0.0
+      },
+      "observability": {
+        "source_count": 131072,
+        "in_fov_count": 17463,
+        "in_fov_fraction": 0.13323211669921875,
+        "surface_count": 11131,
+        "surface_fraction_of_fov": 0.6374047994613647,
+        "observable_count": 2501,
+        "observable_fraction_of_surface": 0.22468781471252441,
+        "confidence_quantiles_surface": [
+          7.522854866692796e-05,
+          0.1338656097650528,
+          0.8364232778549194,
+          0.9737918376922607,
+          0.9906098246574402,
+          0.9909879565238953
+        ],
+        "margin_median_surface": -0.9336017966270447
+      },
+      "alignment_null": {
+        "correct_margin_median": -0.9336017966270447,
+        "mirror_margin_median": -1.2608307600021362,
+        "correct_minus_mirror_margin": 0.32722896337509155
+      },
+      "calibration_sensitivity": {
+        "z_0.0m": {
+          "source_count": 131072,
+          "in_fov_count": 17463,
+          "in_fov_fraction": 0.13323211669921875,
+          "surface_count": 13690,
+          "surface_fraction_of_fov": 0.7839431762695312,
+          "observable_count": 2669,
+          "observable_fraction_of_surface": 0.194959819316864,
+          "confidence_quantiles_surface": [
+            0.00017704065248835832,
+            0.11192236095666885,
+            0.7717599868774414,
+            0.9650077819824219,
+            0.990645170211792,
+            0.9909879565238953
+          ],
+          "margin_median_surface": -1.0356268882751465
+        },
+        "z_0.7m": {
+          "source_count": 131072,
+          "in_fov_count": 17463,
+          "in_fov_fraction": 0.13323211669921875,
+          "surface_count": 11131,
+          "surface_fraction_of_fov": 0.6374047994613647,
+          "observable_count": 2501,
+          "observable_fraction_of_surface": 0.22468781471252441,
+          "confidence_quantiles_surface": [
+            7.522854866692796e-05,
+            0.1338656097650528,
+            0.8364232778549194,
+            0.9737918376922607,
+            0.9906098246574402,
+            0.9909879565238953
+          ],
+          "margin_median_surface": -0.9336017966270447
+        },
+        "z_1.0m": {
+          "source_count": 131072,
+          "in_fov_count": 17463,
+          "in_fov_fraction": 0.13323211669921875,
+          "surface_count": 9641,
+          "surface_fraction_of_fov": 0.5520815253257751,
+          "observable_count": 2664,
+          "observable_fraction_of_surface": 0.2763198912143707,
+          "confidence_quantiles_surface": [
+            0.00020224048057571054,
+            0.15330734848976135,
+            0.8710181713104248,
+            0.978119969367981,
+            0.9904711842536926,
+            0.9909879565238953
+          ],
+          "margin_median_surface": -0.854446530342102
+        }
+      },
+      "doppler_alias": {
+        "doppler_bin_step_mps": 0.060393452644348145,
+        "alias_period_mps": 3.8651809692382812,
+        "negative_ego_hypothesis_median_error_mps": 1.4210445880889893,
+        "positive_ego_hypothesis_median_error_mps": 1.387975811958313,
+        "zero_centered_hypothesis_median_error_mps": 0.24157392978668213,
+        "preferred_static_hypothesis": "zero_centered",
+        "interpretation": "Zero-centered power dominates; this audit does not support applying a raw ego-radial correction without a separate compensation study.",
+        "random_circular_median_baseline_mps": 0.9662952423095703
+      },
+      "elapsed_seconds": 12.204
+    },
+    {
+      "label": "00034_00002.txt",
+      "schema": {
+        "on_disk_shape": [
+          64,
+          256,
+          37,
+          107
+        ],
+        "logical_shape": [
+          64,
+          256,
+          107,
+          37
+        ],
+        "raw_dtype": "float64",
+        "raw_nbytes": 518914048,
+        "gpu_dtype": "torch.float32",
+        "power_quantile_levels": [
+          0.0,
+          0.5,
+          0.9,
+          0.99,
+          0.999,
+          1.0
+        ],
+        "power_quantiles": [
+          63373.515625,
+          49867558912.0,
+          213723561984.0,
+          1234030952448.0,
+          18720000835584.0,
+          2.683873523662848e+17
+        ],
+        "lidar64_shape": [
+          131072,
+          9
+        ],
+        "lidar64_fields": [
+          "x",
+          "y",
+          "z",
+          "intensity",
+          "t",
+          "reflectivity",
+          "ring",
+          "ambient",
+          "range"
+        ],
+        "lidar128_shape": [
+          262144,
+          9
+        ],
+        "lidar128_fields": [
+          "x",
+          "y",
+          "z",
+          "intensity",
+          "t",
+          "reflectivity",
+          "ring",
+          "ambient",
+          "range"
+        ]
+      },
+      "synchronization": {
+        "label_timestamp": 1643292946.8092804,
+        "os2_delta_ms": 0.0,
+        "os1_delta_ms": -22.654056549072266
+      },
+      "motion": {
+        "position_xyz_m": [
+          0.4710027186761229,
+          1.6264479432624115,
+          -0.1318809219858156
+        ],
+        "velocity_xyz_mps": [
+          4.055142578286351,
+          13.587703865061808,
+          -0.890926371800415
+        ],
+        "speed_mps": 14.207872024156746,
+        "heading_rad": 1.2807786906329182,
+        "yaw_rate_radps": -0.10133933123450013,
+        "nearest_timestamp_delta_ms": 20.511388778686523,
+        "interpolation_bracket_ms": 90.76595306396484
+      },
+      "lidar_scan_timing": {
+        "point_time_field": "t",
+        "point_time_unit": "nanoseconds from scan origin",
+        "duration_ms": 99.92723166942596,
+        "selected_reference": "start",
+        "translation_during_scan_m": 1.4197533192874672,
+        "margin_median_by_reference": {
+          "none": -1.0174229145050049,
+          "start": -0.9509749412536621,
+          "center": -1.0058270692825317,
+          "end": -1.1257116794586182
+        }
+      },
+      "calibration_xyz_m": [
+        -2.54,
+        0.3,
+        0.7
+      ],
+      "cfar": {
+        "candidate_count": 991,
+        "retained_count": 991,
+        "threshold_scale": 6.941853557129729
+      },
+      "cfar_roundtrip": {
+        "point_count": 991,
+        "exact_bin_count": 991,
+        "exact_bin_fraction": 1.0,
+        "max_relative_power_error": 0.0
+      },
+      "observability": {
+        "source_count": 131072,
+        "in_fov_count": 17847,
+        "in_fov_fraction": 0.13616180419921875,
+        "surface_count": 11228,
+        "surface_fraction_of_fov": 0.6291253566741943,
+        "observable_count": 3363,
+        "observable_fraction_of_surface": 0.29951906204223633,
+        "confidence_quantiles_surface": [
+          1.0456551535753533e-05,
+          0.12988793849945068,
+          0.902782678604126,
+          0.9770843386650085,
+          0.9860675930976868,
+          0.9916104674339294
+        ],
+        "margin_median_surface": -0.9509749412536621
+      },
+      "alignment_null": {
+        "correct_margin_median": -0.9509749412536621,
+        "mirror_margin_median": -1.1929446458816528,
+        "correct_minus_mirror_margin": 0.24196970462799072
+      },
+      "calibration_sensitivity": {
+        "z_0.0m": {
+          "source_count": 131072,
+          "in_fov_count": 17847,
+          "in_fov_fraction": 0.13616180419921875,
+          "surface_count": 13840,
+          "surface_fraction_of_fov": 0.7754804491996765,
+          "observable_count": 3339,
+          "observable_fraction_of_surface": 0.2412572205066681,
+          "confidence_quantiles_surface": [
+            5.777339174528606e-05,
+            0.10475985705852509,
+            0.8312087059020996,
+            0.9700806140899658,
+            0.9860915541648865,
+            0.9886282086372375
+          ],
+          "margin_median_surface": -1.0729162693023682
+        },
+        "z_0.7m": {
+          "source_count": 131072,
+          "in_fov_count": 17847,
+          "in_fov_fraction": 0.13616180419921875,
+          "surface_count": 11228,
+          "surface_fraction_of_fov": 0.6291253566741943,
+          "observable_count": 3363,
+          "observable_fraction_of_surface": 0.29951906204223633,
+          "confidence_quantiles_surface": [
+            1.0456551535753533e-05,
+            0.12988793849945068,
+            0.902782678604126,
+            0.9770843386650085,
+            0.9860675930976868,
+            0.9916104674339294
+          ],
+          "margin_median_surface": -0.9509749412536621
+        },
+        "z_1.0m": {
+          "source_count": 131072,
+          "in_fov_count": 17847,
+          "in_fov_fraction": 0.13616180419921875,
+          "surface_count": 9569,
+          "surface_fraction_of_fov": 0.5361685156822205,
+          "observable_count": 3273,
+          "observable_fraction_of_surface": 0.3420419991016388,
+          "confidence_quantiles_surface": [
+            1.2875714674009942e-05,
+            0.1603946089744568,
+            0.9287877678871155,
+            0.9798133373260498,
+            0.986735999584198,
+            0.9916104674339294
+          ],
+          "margin_median_surface": -0.8276474475860596
+        }
+      },
+      "doppler_alias": {
+        "doppler_bin_step_mps": 0.060393452644348145,
+        "alias_period_mps": 3.8651809692382812,
+        "negative_ego_hypothesis_median_error_mps": 1.4272716045379639,
+        "positive_ego_hypothesis_median_error_mps": 1.3021498918533325,
+        "zero_centered_hypothesis_median_error_mps": 0.3019673824310303,
+        "preferred_static_hypothesis": "zero_centered",
+        "interpretation": "Zero-centered power dominates; this audit does not support applying a raw ego-radial correction without a separate compensation study.",
+        "random_circular_median_baseline_mps": 0.9662952423095703
+      },
+      "elapsed_seconds": 9.075
+    },
+    {
+      "label": "00035_00003.txt",
+      "schema": {
+        "on_disk_shape": [
+          64,
+          256,
+          37,
+          107
+        ],
+        "logical_shape": [
+          64,
+          256,
+          107,
+          37
+        ],
+        "raw_dtype": "float64",
+        "raw_nbytes": 518914048,
+        "gpu_dtype": "torch.float32",
+        "power_quantile_levels": [
+          0.0,
+          0.5,
+          0.9,
+          0.99,
+          0.999,
+          1.0
+        ],
+        "power_quantiles": [
+          833.7686157226562,
+          49419558912.0,
+          210936299520.0,
+          1112082350080.0,
+          17768810283008.0,
+          2.6747276485040538e+17
+        ],
+        "lidar64_shape": [
+          131072,
+          9
+        ],
+        "lidar64_fields": [
+          "x",
+          "y",
+          "z",
+          "intensity",
+          "t",
+          "reflectivity",
+          "ring",
+          "ambient",
+          "range"
+        ],
+        "lidar128_shape": [
+          262144,
+          9
+        ],
+        "lidar128_fields": [
+          "x",
+          "y",
+          "z",
+          "intensity",
+          "t",
+          "reflectivity",
+          "ring",
+          "ambient",
+          "range"
+        ]
+      },
+      "synchronization": {
+        "label_timestamp": 1643292946.9076061,
+        "os2_delta_ms": 0.0,
+        "os1_delta_ms": -24.962186813354492
+      },
+      "motion": {
+        "position_xyz_m": [
+          0.8853681938125999,
+          2.9795920780092877,
+          -0.21135588663684254
+        ],
+        "velocity_xyz_mps": [
+          4.14052094497981,
+          13.38581896698158,
+          -0.9340869133227482
+        ],
+        "speed_mps": 14.042670026539152,
+        "heading_rad": 1.2707837576947227,
+        "yaw_rate_radps": -0.05540149480938046,
+        "nearest_timestamp_delta_ms": 28.071165084838867,
+        "interpolation_bracket_ms": 100.83293914794922
+      },
+      "lidar_scan_timing": {
+        "point_time_field": "t",
+        "point_time_unit": "nanoseconds from scan origin",
+        "duration_ms": 99.95847195386887,
+        "selected_reference": "start",
+        "translation_during_scan_m": 1.4036838380052488,
+        "margin_median_by_reference": {
+          "none": -1.0120947360992432,
+          "start": -0.9893983602523804,
+          "center": -1.0060338973999023,
+          "end": -1.0827794075012207
+        }
+      },
+      "calibration_xyz_m": [
+        -2.54,
+        0.3,
+        0.7
+      ],
+      "cfar": {
+        "candidate_count": 950,
+        "retained_count": 950,
+        "threshold_scale": 6.941853557129729
+      },
+      "cfar_roundtrip": {
+        "point_count": 950,
+        "exact_bin_count": 950,
+        "exact_bin_fraction": 1.0,
+        "max_relative_power_error": 0.0
+      },
+      "observability": {
+        "source_count": 131072,
+        "in_fov_count": 18064,
+        "in_fov_fraction": 0.1378173828125,
+        "surface_count": 11653,
+        "surface_fraction_of_fov": 0.6450952291488647,
+        "observable_count": 3141,
+        "observable_fraction_of_surface": 0.2695443332195282,
+        "confidence_quantiles_surface": [
+          6.345504516502842e-05,
+          0.12144716084003448,
+          0.8931130766868591,
+          0.9718445539474487,
+          0.9927121996879578,
+          0.9937478303909302
+        ],
+        "margin_median_surface": -0.9893983602523804
+      },
+      "alignment_null": {
+        "correct_margin_median": -0.9893983602523804,
+        "mirror_margin_median": -1.280576467514038,
+        "correct_minus_mirror_margin": 0.2911781072616577
+      },
+      "calibration_sensitivity": {
+        "z_0.0m": {
+          "source_count": 131072,
+          "in_fov_count": 18064,
+          "in_fov_fraction": 0.1378173828125,
+          "surface_count": 14021,
+          "surface_fraction_of_fov": 0.7761846780776978,
+          "observable_count": 2892,
+          "observable_fraction_of_surface": 0.20626205205917358,
+          "confidence_quantiles_surface": [
+            3.788285903283395e-05,
+            0.11689963936805725,
+            0.7674328088760376,
+            0.9680073261260986,
+            0.9924988150596619,
+            0.9937478303909302
+          ],
+          "margin_median_surface": -1.0110615491867065
+        },
+        "z_0.7m": {
+          "source_count": 131072,
+          "in_fov_count": 18064,
+          "in_fov_fraction": 0.1378173828125,
+          "surface_count": 11653,
+          "surface_fraction_of_fov": 0.6450952291488647,
+          "observable_count": 3141,
+          "observable_fraction_of_surface": 0.2695443332195282,
+          "confidence_quantiles_surface": [
+            6.345504516502842e-05,
+            0.12144716084003448,
+            0.8931130766868591,
+            0.9718445539474487,
+            0.9927121996879578,
+            0.9937478303909302
+          ],
+          "margin_median_surface": -0.9893983602523804
+        },
+        "z_1.0m": {
+          "source_count": 131072,
+          "in_fov_count": 18064,
+          "in_fov_fraction": 0.1378173828125,
+          "surface_count": 9912,
+          "surface_fraction_of_fov": 0.5487156510353088,
+          "observable_count": 3037,
+          "observable_fraction_of_surface": 0.3063962757587433,
+          "confidence_quantiles_surface": [
+            6.345504516502842e-05,
+            0.14219695329666138,
+            0.9073749780654907,
+            0.9757260680198669,
+            0.9931114912033081,
+            0.9935709238052368
+          ],
+          "margin_median_surface": -0.8986432552337646
+        }
+      },
+      "doppler_alias": {
+        "doppler_bin_step_mps": 0.060393452644348145,
+        "alias_period_mps": 3.8651809692382812,
+        "negative_ego_hypothesis_median_error_mps": 1.4019129276275635,
+        "positive_ego_hypothesis_median_error_mps": 1.3596826791763306,
+        "zero_centered_hypothesis_median_error_mps": 0.3019673824310303,
+        "preferred_static_hypothesis": "zero_centered",
+        "interpretation": "Zero-centered power dominates; this audit does not support applying a raw ego-radial correction without a separate compensation study.",
+        "random_circular_median_baseline_mps": 0.9662952423095703
+      },
+      "elapsed_seconds": 10.387
+    },
+    {
+      "label": "00036_00004.txt",
+      "schema": {
+        "on_disk_shape": [
+          64,
+          256,
+          37,
+          107
+        ],
+        "logical_shape": [
+          64,
+          256,
+          107,
+          37
+        ],
+        "raw_dtype": "float64",
+        "raw_nbytes": 518914048,
+        "gpu_dtype": "torch.float32",
+        "power_quantile_levels": [
+          0.0,
+          0.5,
+          0.9,
+          0.99,
+          0.999,
+          1.0
+        ],
+        "power_quantiles": [
+          26258.02734375,
+          50397360128.0,
+          217597575168.0,
+          1330770214912.0,
+          20794117718016.0,
+          2.6770495078242714e+17
+        ],
+        "lidar64_shape": [
+          131072,
+          9
+        ],
+        "lidar64_fields": [
+          "x",
+          "y",
+          "z",
+          "intensity",
+          "t",
+          "reflectivity",
+          "ring",
+          "ambient",
+          "range"
+        ],
+        "lidar128_shape": [
+          262144,
+          9
+        ],
+        "lidar128_fields": [
+          "x",
+          "y",
+          "z",
+          "intensity",
+          "t",
+          "reflectivity",
+          "ring",
+          "ambient",
+          "range"
+        ]
+      },
+      "synchronization": {
+        "label_timestamp": 1643292947.0064476,
+        "os2_delta_ms": 0.0,
+        "os1_delta_ms": -22.753238677978516
+      },
+      "motion": {
+        "position_xyz_m": [
+          1.2873391814801067,
+          4.262395370499523,
+          -0.3198093989592962
+        ],
+        "velocity_xyz_mps": [
+          3.4601782131441228,
+          11.14480598926038,
+          -0.7891407001003778
+        ],
+        "speed_mps": 11.696250546629301,
+        "heading_rad": 1.2702702120864116,
+        "yaw_rate_radps": 0.02024547655834371,
+        "nearest_timestamp_delta_ms": 26.079654693603516,
+        "interpolation_bracket_ms": 100.84700584411621
+      },
+      "lidar_scan_timing": {
+        "point_time_field": "t",
+        "point_time_unit": "nanoseconds from scan origin",
+        "duration_ms": 99.93799030780792,
+        "selected_reference": "start",
+        "translation_during_scan_m": 1.1688997737667322,
+        "margin_median_by_reference": {
+          "none": -1.0617210865020752,
+          "start": -0.9275097846984863,
+          "center": -1.036704659461975,
+          "end": -1.1669455766677856
+        }
+      },
+      "calibration_xyz_m": [
+        -2.54,
+        0.3,
+        0.7
+      ],
+      "cfar": {
+        "candidate_count": 872,
+        "retained_count": 872,
+        "threshold_scale": 6.941853557129729
+      },
+      "cfar_roundtrip": {
+        "point_count": 872,
+        "exact_bin_count": 872,
+        "exact_bin_fraction": 1.0,
+        "max_relative_power_error": 0.0
+      },
+      "observability": {
+        "source_count": 131072,
+        "in_fov_count": 17936,
+        "in_fov_fraction": 0.1368408203125,
+        "surface_count": 11425,
+        "surface_fraction_of_fov": 0.636987030506134,
+        "observable_count": 3015,
+        "observable_fraction_of_surface": 0.2638949751853943,
+        "confidence_quantiles_surface": [
+          5.955209053354338e-05,
+          0.13528461754322052,
+          0.8690298199653625,
+          0.9785646200180054,
+          0.9920123219490051,
+          0.9925296902656555
+        ],
+        "margin_median_surface": -0.9275097846984863
+      },
+      "alignment_null": {
+        "correct_margin_median": -0.9275097846984863,
+        "mirror_margin_median": -1.2335278987884521,
+        "correct_minus_mirror_margin": 0.3060181140899658
+      },
+      "calibration_sensitivity": {
+        "z_0.0m": {
+          "source_count": 131072,
+          "in_fov_count": 17936,
+          "in_fov_fraction": 0.1368408203125,
+          "surface_count": 14041,
+          "surface_fraction_of_fov": 0.7828389406204224,
+          "observable_count": 2703,
+          "observable_fraction_of_surface": 0.19250765442848206,
+          "confidence_quantiles_surface": [
+            8.8748216512613e-05,
+            0.10693986713886261,
+            0.7367539405822754,
+            0.9735681414604187,
+            0.9920123219490051,
+            0.9925296902656555
+          ],
+          "margin_median_surface": -1.061193585395813
+        },
+        "z_0.7m": {
+          "source_count": 131072,
+          "in_fov_count": 17936,
+          "in_fov_fraction": 0.1368408203125,
+          "surface_count": 11425,
+          "surface_fraction_of_fov": 0.636987030506134,
+          "observable_count": 3015,
+          "observable_fraction_of_surface": 0.2638949751853943,
+          "confidence_quantiles_surface": [
+            5.955209053354338e-05,
+            0.13528461754322052,
+            0.8690298199653625,
+            0.9785646200180054,
+            0.9920123219490051,
+            0.9925296902656555
+          ],
+          "margin_median_surface": -0.9275097846984863
+        },
+        "z_1.0m": {
+          "source_count": 131072,
+          "in_fov_count": 17936,
+          "in_fov_fraction": 0.1368408203125,
+          "surface_count": 9628,
+          "surface_fraction_of_fov": 0.5367974638938904,
+          "observable_count": 3137,
+          "observable_fraction_of_surface": 0.3258205056190491,
+          "confidence_quantiles_surface": [
+            9.40254976740107e-05,
+            0.18140952289104462,
+            0.9068910479545593,
+            0.9823804497718811,
+            0.9920123219490051,
+            0.9923769235610962
+          ],
+          "margin_median_surface": -0.7534134387969971
+        }
+      },
+      "doppler_alias": {
+        "doppler_bin_step_mps": 0.060393452644348145,
+        "alias_period_mps": 3.8651809692382812,
+        "negative_ego_hypothesis_median_error_mps": 0.6225206851959229,
+        "positive_ego_hypothesis_median_error_mps": 0.5128664970397949,
+        "zero_centered_hypothesis_median_error_mps": 0.3623608350753784,
+        "preferred_static_hypothesis": "zero_centered",
+        "interpretation": "Zero-centered power dominates; this audit does not support applying a raw ego-radial correction without a separate compensation study.",
+        "random_circular_median_baseline_mps": 0.9662952423095703
+      },
+      "elapsed_seconds": 19.153
+    },
+    {
+      "label": "00037_00005.txt",
+      "schema": {
+        "on_disk_shape": [
+          64,
+          256,
+          37,
+          107
+        ],
+        "logical_shape": [
+          64,
+          256,
+          107,
+          37
+        ],
+        "raw_dtype": "float64",
+        "raw_nbytes": 518914048,
+        "gpu_dtype": "torch.float32",
+        "power_quantile_levels": [
+          0.0,
+          0.5,
+          0.9,
+          0.99,
+          0.999,
+          1.0
+        ],
+        "power_quantiles": [
+          3308.74365234375,
+          49908490240.0,
+          214100672512.0,
+          1199373811712.0,
+          18976404930560.0,
+          2.673761968057221e+17
+        ],
+        "lidar64_shape": [
+          131072,
+          9
+        ],
+        "lidar64_fields": [
+          "x",
+          "y",
+          "z",
+          "intensity",
+          "t",
+          "reflectivity",
+          "ring",
+          "ambient",
+          "range"
+        ],
+        "lidar128_shape": [
+          262144,
+          9
+        ],
+        "lidar128_fields": [
+          "x",
+          "y",
+          "z",
+          "intensity",
+          "t",
+          "reflectivity",
+          "ring",
+          "ambient",
+          "range"
+        ]
+      },
+      "synchronization": {
+        "label_timestamp": 1643292947.1066217,
+        "os2_delta_ms": 0.0,
+        "os1_delta_ms": -23.299455642700195
+      },
+      "motion": {
+        "position_xyz_m": [
+          1.575,
+          5.201252186671715,
+          -0.368
+        ],
+        "velocity_xyz_mps": [
+          1.9116895929193034,
+          6.2704363269790635,
+          -0.3563601940533186
+        ],
+        "speed_mps": 6.565053040020346,
+        "heading_rad": 1.2748807640070199,
+        "yaw_rate_radps": 0.025795741077187517,
+        "nearest_timestamp_delta_ms": 25.406837463378906,
+        "interpolation_bracket_ms": 100.74615478515625
+      },
+      "lidar_scan_timing": {
+        "point_time_field": "t",
+        "point_time_unit": "nanoseconds from scan origin",
+        "duration_ms": 99.96671229600906,
+        "selected_reference": "start",
+        "translation_during_scan_m": 0.6562867684597536,
+        "margin_median_by_reference": {
+          "none": -0.9605977535247803,
+          "start": -0.965254008769989,
+          "center": -0.9627565145492554,
+          "end": -1.0208348035812378
+        }
+      },
+      "calibration_xyz_m": [
+        -2.54,
+        0.3,
+        0.7
+      ],
+      "cfar": {
+        "candidate_count": 827,
+        "retained_count": 827,
+        "threshold_scale": 6.941853557129729
+      },
+      "cfar_roundtrip": {
+        "point_count": 827,
+        "exact_bin_count": 827,
+        "exact_bin_fraction": 1.0,
+        "max_relative_power_error": 0.0
+      },
+      "observability": {
+        "source_count": 131072,
+        "in_fov_count": 17158,
+        "in_fov_fraction": 0.1309051513671875,
+        "surface_count": 10790,
+        "surface_fraction_of_fov": 0.6288611888885498,
+        "observable_count": 2710,
+        "observable_fraction_of_surface": 0.2511584758758545,
+        "confidence_quantiles_surface": [
+          8.41954824863933e-05,
+          0.12669436633586884,
+          0.8327848315238953,
+          0.9761842489242554,
+          0.9859870076179504,
+          0.9873129725456238
+        ],
+        "margin_median_surface": -0.965254008769989
+      },
+      "alignment_null": {
+        "correct_margin_median": -0.965254008769989,
+        "mirror_margin_median": -1.347010612487793,
+        "correct_minus_mirror_margin": 0.38175660371780396
+      },
+      "calibration_sensitivity": {
+        "z_0.0m": {
+          "source_count": 131072,
+          "in_fov_count": 17158,
+          "in_fov_fraction": 0.1309051513671875,
+          "surface_count": 13172,
+          "surface_fraction_of_fov": 0.767688512802124,
+          "observable_count": 2470,
+          "observable_fraction_of_surface": 0.18751898407936096,
+          "confidence_quantiles_surface": [
+            0.00014867506979499012,
+            0.1124272570014,
+            0.7391522526741028,
+            0.9633978009223938,
+            0.9849493503570557,
+            0.9864329695701599
+          ],
+          "margin_median_surface": -1.0330920219421387
+        },
+        "z_0.7m": {
+          "source_count": 131072,
+          "in_fov_count": 17158,
+          "in_fov_fraction": 0.1309051513671875,
+          "surface_count": 10790,
+          "surface_fraction_of_fov": 0.6288611888885498,
+          "observable_count": 2710,
+          "observable_fraction_of_surface": 0.2511584758758545,
+          "confidence_quantiles_surface": [
+            8.41954824863933e-05,
+            0.12669436633586884,
+            0.8327848315238953,
+            0.9761842489242554,
+            0.9859870076179504,
+            0.9873129725456238
+          ],
+          "margin_median_surface": -0.965254008769989
+        },
+        "z_1.0m": {
+          "source_count": 131072,
+          "in_fov_count": 17158,
+          "in_fov_fraction": 0.1309051513671875,
+          "surface_count": 9074,
+          "surface_fraction_of_fov": 0.5288494825363159,
+          "observable_count": 2852,
+          "observable_fraction_of_surface": 0.3143045902252197,
+          "confidence_quantiles_surface": [
+            0.00015106628416106105,
+            0.14702929556369781,
+            0.8753794431686401,
+            0.979584813117981,
+            0.9861424565315247,
+            0.986873209476471
+          ],
+          "margin_median_surface": -0.8790466785430908
+        }
+      },
+      "doppler_alias": {
+        "doppler_bin_step_mps": 0.060393452644348145,
+        "alias_period_mps": 3.8651809692382812,
+        "negative_ego_hypothesis_median_error_mps": 1.5053467750549316,
+        "positive_ego_hypothesis_median_error_mps": 1.160637617111206,
+        "zero_centered_hypothesis_median_error_mps": 0.3623608350753784,
+        "preferred_static_hypothesis": "zero_centered",
+        "interpretation": "Zero-centered power dominates; this audit does not support applying a raw ego-radial correction without a separate compensation study.",
+        "random_circular_median_baseline_mps": 0.9662952423095703
+      },
+      "elapsed_seconds": 15.618
+    },
+    {
+      "label": "00038_00006.txt",
+      "schema": {
+        "on_disk_shape": [
+          64,
+          256,
+          37,
+          107
+        ],
+        "logical_shape": [
+          64,
+          256,
+          107,
+          37
+        ],
+        "raw_dtype": "float64",
+        "raw_nbytes": 518914048,
+        "gpu_dtype": "torch.float32",
+        "power_quantile_levels": [
+          0.0,
+          0.5,
+          0.9,
+          0.99,
+          0.999,
+          1.0
+        ],
+        "power_quantiles": [
+          78373.140625,
+          50191941632.0,
+          216984780800.0,
+          1323298717696.0,
+          20144971579392.0,
+          2.6790820581474304e+17
+        ],
+        "lidar64_shape": [
+          131072,
+          9
+        ],
+        "lidar64_fields": [
+          "x",
+          "y",
+          "z",
+          "intensity",
+          "t",
+          "reflectivity",
+          "ring",
+          "ambient",
+          "range"
+        ],
+        "lidar128_shape": [
+          262144,
+          9
+        ],
+        "lidar128_fields": [
+          "x",
+          "y",
+          "z",
+          "intensity",
+          "t",
+          "reflectivity",
+          "ring",
+          "ambient",
+          "range"
+        ]
+      },
+      "synchronization": {
+        "label_timestamp": 1643292947.2064466,
+        "os2_delta_ms": 0.0,
+        "os1_delta_ms": -20.97606658935547
+      },
+      "motion": {
+        "position_xyz_m": [
+          1.6685677414185809,
+          5.512795362199407,
+          -0.39080419828543306
+        ],
+        "velocity_xyz_mps": [
+          2.4362586560383472,
+          7.946421830155559,
+          -0.5410949992940799
+        ],
+        "speed_mps": 8.329091183325806,
+        "heading_rad": 1.275484501155379,
+        "yaw_rate_radps": -0.04233405091160726,
+        "nearest_timestamp_delta_ms": 24.48558807373047,
+        "interpolation_bracket_ms": 104.15196418762207
+      },
+      "lidar_scan_timing": {
+        "point_time_field": "t",
+        "point_time_unit": "nanoseconds from scan origin",
+        "duration_ms": 99.95527565479279,
+        "selected_reference": "start",
+        "translation_during_scan_m": 0.8325366051832351,
+        "margin_median_by_reference": {
+          "none": -1.0508954524993896,
+          "start": -0.9292364120483398,
+          "center": -1.0278300046920776,
+          "end": -1.0770679712295532
+        }
+      },
+      "calibration_xyz_m": [
+        -2.54,
+        0.3,
+        0.7
+      ],
+      "cfar": {
+        "candidate_count": 891,
+        "retained_count": 891,
+        "threshold_scale": 6.941853557129729
+      },
+      "cfar_roundtrip": {
+        "point_count": 891,
+        "exact_bin_count": 891,
+        "exact_bin_fraction": 1.0,
+        "max_relative_power_error": 0.0
+      },
+      "observability": {
+        "source_count": 131072,
+        "in_fov_count": 17721,
+        "in_fov_fraction": 0.13520050048828125,
+        "surface_count": 11203,
+        "surface_fraction_of_fov": 0.6321877837181091,
+        "observable_count": 3042,
+        "observable_fraction_of_surface": 0.27153441309928894,
+        "confidence_quantiles_surface": [
+          0.00013723995652981102,
+          0.1348811388015747,
+          0.8595221638679504,
+          0.9724273085594177,
+          0.9840121269226074,
+          0.9864971041679382
+        ],
+        "margin_median_surface": -0.9292364120483398
+      },
+      "alignment_null": {
+        "correct_margin_median": -0.9292364120483398,
+        "mirror_margin_median": -1.3768283128738403,
+        "correct_minus_mirror_margin": 0.4475919008255005
+      },
+      "calibration_sensitivity": {
+        "z_0.0m": {
+          "source_count": 131072,
+          "in_fov_count": 17721,
+          "in_fov_fraction": 0.13520050048828125,
+          "surface_count": 13759,
+          "surface_fraction_of_fov": 0.776423454284668,
+          "observable_count": 2961,
+          "observable_fraction_of_surface": 0.21520459651947021,
+          "confidence_quantiles_surface": [
+            0.00044854983570985496,
+            0.11040593683719635,
+            0.7890876531600952,
+            0.9678481221199036,
+            0.984347939491272,
+            0.9864971041679382
+          ],
+          "margin_median_surface": -1.0433006286621094
+        },
+        "z_0.7m": {
+          "source_count": 131072,
+          "in_fov_count": 17721,
+          "in_fov_fraction": 0.13520050048828125,
+          "surface_count": 11203,
+          "surface_fraction_of_fov": 0.6321877837181091,
+          "observable_count": 3042,
+          "observable_fraction_of_surface": 0.27153441309928894,
+          "confidence_quantiles_surface": [
+            0.00013723995652981102,
+            0.1348811388015747,
+            0.8595221638679504,
+            0.9724273085594177,
+            0.9840121269226074,
+            0.9864971041679382
+          ],
+          "margin_median_surface": -0.9292364120483398
+        },
+        "z_1.0m": {
+          "source_count": 131072,
+          "in_fov_count": 17721,
+          "in_fov_fraction": 0.13520050048828125,
+          "surface_count": 9412,
+          "surface_fraction_of_fov": 0.5311212539672852,
+          "observable_count": 2954,
+          "observable_fraction_of_surface": 0.3138546645641327,
+          "confidence_quantiles_surface": [
+            3.19035243592225e-05,
+            0.1609753668308258,
+            0.906771719455719,
+            0.9752365946769714,
+            0.9846768379211426,
+            0.9864971041679382
+          ],
+          "margin_median_surface": -0.825973629951477
+        }
+      },
+      "doppler_alias": {
+        "doppler_bin_step_mps": 0.060393452644348145,
+        "alias_period_mps": 3.8651809692382812,
+        "negative_ego_hypothesis_median_error_mps": 0.4729740619659424,
+        "positive_ego_hypothesis_median_error_mps": 0.7537074089050293,
+        "zero_centered_hypothesis_median_error_mps": 0.42275428771972656,
+        "preferred_static_hypothesis": "zero_centered",
+        "interpretation": "Zero-centered power dominates; this audit does not support applying a raw ego-radial correction without a separate compensation study.",
+        "random_circular_median_baseline_mps": 0.9662952423095703
+      },
+      "elapsed_seconds": 11.927
+    },
+    {
+      "label": "00039_00007.txt",
+      "schema": {
+        "on_disk_shape": [
+          64,
+          256,
+          37,
+          107
+        ],
+        "logical_shape": [
+          64,
+          256,
+          107,
+          37
+        ],
+        "raw_dtype": "float64",
+        "raw_nbytes": 518914048,
+        "gpu_dtype": "torch.float32",
+        "power_quantile_levels": [
+          0.0,
+          0.5,
+          0.9,
+          0.99,
+          0.999,
+          1.0
+        ],
+        "power_quantiles": [
+          133148.515625,
+          50644443136.0,
+          219821441024.0,
+          1363391807488.0,
+          21551650963456.0,
+          2.6763901444449894e+17
+        ],
+        "lidar64_shape": [
+          131072,
+          9
+        ],
+        "lidar64_fields": [
+          "x",
+          "y",
+          "z",
+          "intensity",
+          "t",
+          "reflectivity",
+          "ring",
+          "ambient",
+          "range"
+        ],
+        "lidar128_shape": [
+          262144,
+          9
+        ],
+        "lidar128_fields": [
+          "x",
+          "y",
+          "z",
+          "intensity",
+          "t",
+          "reflectivity",
+          "ring",
+          "ambient",
+          "range"
+        ]
+      },
+      "synchronization": {
+        "label_timestamp": 1643292947.306503,
+        "os2_delta_ms": 0.0,
+        "os1_delta_ms": -24.422407150268555
+      },
+      "motion": {
+        "position_xyz_m": [
+          2.0676524344999714,
+          6.813512525389303,
+          -0.47931537948419434
+        ],
+        "velocity_xyz_mps": [
+          4.255238637484076,
+          13.500415703074598,
+          -0.8266545111117307
+        ],
+        "speed_mps": 14.179267883022096,
+        "heading_rad": 1.2654593097391569,
+        "yaw_rate_radps": -0.03673674010310211,
+        "nearest_timestamp_delta_ms": 20.390033721923828,
+        "interpolation_bracket_ms": 95.43108940124512
+      },
+      "lidar_scan_timing": {
+        "point_time_field": "t",
+        "point_time_unit": "nanoseconds from scan origin",
+        "duration_ms": 99.97543692588806,
+        "selected_reference": "start",
+        "translation_during_scan_m": 1.4175785018943459,
+        "margin_median_by_reference": {
+          "none": -1.0158910751342773,
+          "start": -0.9378675222396851,
+          "center": -1.0053906440734863,
+          "end": -1.192740797996521
+        }
+      },
+      "calibration_xyz_m": [
+        -2.54,
+        0.3,
+        0.7
+      ],
+      "cfar": {
+        "candidate_count": 938,
+        "retained_count": 938,
+        "threshold_scale": 6.941853557129729
+      },
+      "cfar_roundtrip": {
+        "point_count": 938,
+        "exact_bin_count": 938,
+        "exact_bin_fraction": 1.0,
+        "max_relative_power_error": 0.0
+      },
+      "observability": {
+        "source_count": 131072,
+        "in_fov_count": 17884,
+        "in_fov_fraction": 0.136444091796875,
+        "surface_count": 11236,
+        "surface_fraction_of_fov": 0.6282710433006287,
+        "observable_count": 2952,
+        "observable_fraction_of_surface": 0.26272696256637573,
+        "confidence_quantiles_surface": [
+          6.255652260733768e-05,
+          0.13287952542304993,
+          0.8366784453392029,
+          0.9814968109130859,
+          0.9862560629844666,
+          0.9899033308029175
+        ],
+        "margin_median_surface": -0.9378675222396851
+      },
+      "alignment_null": {
+        "correct_margin_median": -0.9378675222396851,
+        "mirror_margin_median": -1.3087865114212036,
+        "correct_minus_mirror_margin": 0.37091898918151855
+      },
+      "calibration_sensitivity": {
+        "z_0.0m": {
+          "source_count": 131072,
+          "in_fov_count": 17886,
+          "in_fov_fraction": 0.1364593505859375,
+          "surface_count": 13703,
+          "surface_fraction_of_fov": 0.7661299705505371,
+          "observable_count": 3026,
+          "observable_fraction_of_surface": 0.22082754969596863,
+          "confidence_quantiles_surface": [
+            1.833311762311496e-05,
+            0.09749384969472885,
+            0.8213326334953308,
+            0.9796480536460876,
+            0.9859376549720764,
+            0.9872006177902222
+          ],
+          "margin_median_surface": -1.1126930713653564
+        },
+        "z_0.7m": {
+          "source_count": 131072,
+          "in_fov_count": 17884,
+          "in_fov_fraction": 0.136444091796875,
+          "surface_count": 11236,
+          "surface_fraction_of_fov": 0.6282710433006287,
+          "observable_count": 2952,
+          "observable_fraction_of_surface": 0.26272696256637573,
+          "confidence_quantiles_surface": [
+            6.255652260733768e-05,
+            0.13287952542304993,
+            0.8366784453392029,
+            0.9814968109130859,
+            0.9862560629844666,
+            0.9899033308029175
+          ],
+          "margin_median_surface": -0.9378675222396851
+        },
+        "z_1.0m": {
+          "source_count": 131072,
+          "in_fov_count": 17883,
+          "in_fov_fraction": 0.13643646240234375,
+          "surface_count": 9367,
+          "surface_fraction_of_fov": 0.5237935781478882,
+          "observable_count": 2928,
+          "observable_fraction_of_surface": 0.3125867545604706,
+          "confidence_quantiles_surface": [
+            5.079514085082337e-05,
+            0.1610705405473709,
+            0.8718408942222595,
+            0.9827350974082947,
+            0.9870316386222839,
+            0.9899033308029175
+          ],
+          "margin_median_surface": -0.8251420855522156
+        }
+      },
+      "doppler_alias": {
+        "doppler_bin_step_mps": 0.060393452644348145,
+        "alias_period_mps": 3.8651809692382812,
+        "negative_ego_hypothesis_median_error_mps": 1.3634380102157593,
+        "positive_ego_hypothesis_median_error_mps": 1.2037549018859863,
+        "zero_centered_hypothesis_median_error_mps": 0.48314785957336426,
+        "preferred_static_hypothesis": "zero_centered",
+        "interpretation": "Zero-centered power dominates; this audit does not support applying a raw ego-radial correction without a separate compensation study.",
+        "random_circular_median_baseline_mps": 0.9662952423095703
+      },
+      "elapsed_seconds": 20.748
+    },
+    {
+      "label": "00040_00008.txt",
+      "schema": {
+        "on_disk_shape": [
+          64,
+          256,
+          37,
+          107
+        ],
+        "logical_shape": [
+          64,
+          256,
+          107,
+          37
+        ],
+        "raw_dtype": "float64",
+        "raw_nbytes": 518914048,
+        "gpu_dtype": "torch.float32",
+        "power_quantile_levels": [
+          0.0,
+          0.5,
+          0.9,
+          0.99,
+          0.999,
+          1.0
+        ],
+        "power_quantiles": [
+          15968.3212890625,
+          50820128768.0,
+          221197680640.0,
+          1449102934016.0,
+          24785960566784.0,
+          2.6743206574030848e+17
+        ],
+        "lidar64_shape": [
+          131072,
+          9
+        ],
+        "lidar64_fields": [
+          "x",
+          "y",
+          "z",
+          "intensity",
+          "t",
+          "reflectivity",
+          "ring",
+          "ambient",
+          "range"
+        ],
+        "lidar128_shape": [
+          262144,
+          9
+        ],
+        "lidar128_fields": [
+          "x",
+          "y",
+          "z",
+          "intensity",
+          "t",
+          "reflectivity",
+          "ring",
+          "ambient",
+          "range"
+        ]
+      },
+      "synchronization": {
+        "label_timestamp": 1643292947.4077134,
+        "os2_delta_ms": 0.0,
+        "os1_delta_ms": -27.032136917114258
+      },
+      "motion": {
+        "position_xyz_m": [
+          2.5177706661368413,
+          8.21728361728649,
+          -0.5600388569968849
+        ],
+        "velocity_xyz_mps": [
+          4.168005340325644,
+          13.335841517527731,
+          -0.8812386056318395
+        ],
+        "speed_mps": 13.999768533002799,
+        "heading_rad": 1.267994285380825,
+        "yaw_rate_radps": 0.035871178392302416,
+        "nearest_timestamp_delta_ms": 26.169300079345703,
+        "interpolation_bracket_ms": 100.7988452911377
+      },
+      "lidar_scan_timing": {
+        "point_time_field": "t",
+        "point_time_unit": "nanoseconds from scan origin",
+        "duration_ms": 99.96607154607773,
+        "selected_reference": "start",
+        "translation_during_scan_m": 1.3995018627986855,
+        "margin_median_by_reference": {
+          "none": -1.125382900238037,
+          "start": -1.0991625785827637,
+          "center": -1.1049854755401611,
+          "end": -1.2693729400634766
+        }
+      },
+      "calibration_xyz_m": [
+        -2.54,
+        0.3,
+        0.7
+      ],
+      "cfar": {
+        "candidate_count": 1005,
+        "retained_count": 1005,
+        "threshold_scale": 6.941853557129729
+      },
+      "cfar_roundtrip": {
+        "point_count": 1005,
+        "exact_bin_count": 1005,
+        "exact_bin_fraction": 1.0,
+        "max_relative_power_error": 0.0
+      },
+      "observability": {
+        "source_count": 131072,
+        "in_fov_count": 17850,
+        "in_fov_fraction": 0.1361846923828125,
+        "surface_count": 11325,
+        "surface_fraction_of_fov": 0.6344537734985352,
+        "observable_count": 2813,
+        "observable_fraction_of_surface": 0.24838852882385254,
+        "confidence_quantiles_surface": [
+          3.188183836755343e-05,
+          0.0999009907245636,
+          0.9019269347190857,
+          0.9807259440422058,
+          0.9867549538612366,
+          0.9902951717376709
+        ],
+        "margin_median_surface": -1.0991625785827637
+      },
+      "alignment_null": {
+        "correct_margin_median": -1.0991625785827637,
+        "mirror_margin_median": -1.4016109704971313,
+        "correct_minus_mirror_margin": 0.3024483919143677
+      },
+      "calibration_sensitivity": {
+        "z_0.0m": {
+          "source_count": 131072,
+          "in_fov_count": 17850,
+          "in_fov_fraction": 0.1361846923828125,
+          "surface_count": 13836,
+          "surface_fraction_of_fov": 0.7751260995864868,
+          "observable_count": 2844,
+          "observable_fraction_of_surface": 0.20555073022842407,
+          "confidence_quantiles_surface": [
+            9.824732114793733e-05,
+            0.08601520955562592,
+            0.8009997606277466,
+            0.9787407517433167,
+            0.9866874814033508,
+            0.9902951717376709
+          ],
+          "margin_median_surface": -1.1824076175689697
+        },
+        "z_0.7m": {
+          "source_count": 131072,
+          "in_fov_count": 17850,
+          "in_fov_fraction": 0.1361846923828125,
+          "surface_count": 11325,
+          "surface_fraction_of_fov": 0.6344537734985352,
+          "observable_count": 2813,
+          "observable_fraction_of_surface": 0.24838852882385254,
+          "confidence_quantiles_surface": [
+            3.188183836755343e-05,
+            0.0999009907245636,
+            0.9019269347190857,
+            0.9807259440422058,
+            0.9867549538612366,
+            0.9902951717376709
+          ],
+          "margin_median_surface": -1.0991625785827637
+        },
+        "z_1.0m": {
+          "source_count": 131072,
+          "in_fov_count": 17850,
+          "in_fov_fraction": 0.1361846923828125,
+          "surface_count": 9461,
+          "surface_fraction_of_fov": 0.5300280451774597,
+          "observable_count": 2695,
+          "observable_fraction_of_surface": 0.28485360741615295,
+          "confidence_quantiles_surface": [
+            3.7981935747666284e-05,
+            0.12579898536205292,
+            0.9268333911895752,
+            0.9823684096336365,
+            0.9888666868209839,
+            0.991303563117981
+          ],
+          "margin_median_surface": -0.9693125486373901
+        }
+      },
+      "doppler_alias": {
+        "doppler_bin_step_mps": 0.060393452644348145,
+        "alias_period_mps": 3.8651809692382812,
+        "negative_ego_hypothesis_median_error_mps": 1.2852449417114258,
+        "positive_ego_hypothesis_median_error_mps": 1.2847352027893066,
+        "zero_centered_hypothesis_median_error_mps": 0.5435411930084229,
+        "preferred_static_hypothesis": "zero_centered",
+        "interpretation": "Zero-centered power dominates; this audit does not support applying a raw ego-radial correction without a separate compensation study.",
+        "random_circular_median_baseline_mps": 0.9662952423095703
+      },
+      "elapsed_seconds": 23.508
+    }
+  ],
+  "aggregate": {
+    "successful_frames": 8,
+    "failed_frames": 0,
+    "os2_abs_delta_ms_max": 0.0,
+    "os1_abs_delta_ms_mean": 23.98398518562317,
+    "os1_abs_delta_ms_max": 27.032136917114258,
+    "odometry_nearest_delta_ms_max": 28.071165084838867,
+    "cfar_roundtrip_fraction_min": 1.0,
+    "observable_fraction_mean": 0.26143182069063187,
+    "observable_fraction_std": 0.02016199630787524,
+    "correct_minus_mirror_margin_mean": 0.33363884687423706,
+    "selected_minus_no_deskew_margin_mean": 0.061324261128902435,
+    "checks": {
+      "required_frame_count": true,
+      "schema_consistent": true,
+      "os2_label_sync_le_1ms": true,
+      "odometry_support_le_60ms": true,
+      "lidar_point_time_present": true,
+      "selected_deskew_not_worse_than_none": true,
+      "cfar_exact_roundtrip": true,
+      "observable_target_nonempty": true,
+      "observable_target_stable": true,
+      "correct_azimuth_beats_mirror": true,
+      "doppler_hypothesis_beats_random": true
+    },
+    "gate_pass": true
+  },
+  "dataset_description": "urban,night,normal"
+}
