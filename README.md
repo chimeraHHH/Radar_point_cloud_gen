@@ -6,6 +6,7 @@
 
 - [docs/proposal.md](docs/proposal.md)：**一页正式立项书**，把「单帧物理一致性约束」与「时序 Doppler 驱动生成」两条主线整合为统一课题（含方法、数据、评估、里程碑、风险）。
 - [docs/work_plan.md](docs/work_plan.md)：**工作计划**（CVPR 2027 锚定，~19 周），含分阶段任务、团队分工、决策门 Go/No-Go、风险应急。
+- [docs/work_plan_cube_to_dense_topconf.md](docs/work_plan_cube_to_dense_topconf.md)：**修正后的顶会工作计划**，以完整 4D Radar Cube 生成稠密 `XYZ+Doppler` 为主线，覆盖 Cube-point 双向闭环、实验矩阵、G0-G4 决策门与投稿展示方案。
 - [docs/competitor_rescan_2026-07.md](docs/competitor_rescan_2026-07.md)：**竞品重扫备忘**（P0），确认两条主线空白仍成立、核心基线无开源代码。
 - [docs/p0_setup_checklist.md](docs/p0_setup_checklist.md)：**P0 就绪清单**——WHU 服务器环境搭建 + VoD/TruckScenes 数据字段核对，含 G0 通过判据与需人工先行的阻塞项。
 - [docs/p0_progress_2026-07-03.md](docs/p0_progress_2026-07-03.md)：**P0 进度纪要**——环境落地、TruckScenes mini 字段实测、**自洽性校验通过**（Doppler=RAW，`v_r≈−v_ego·r̂` 残差 MAD 0.24 m/s）。
