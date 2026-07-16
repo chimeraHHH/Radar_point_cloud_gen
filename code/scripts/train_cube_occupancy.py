@@ -177,14 +177,47 @@ def main() -> None:
     parser.add_argument("--max-eval-frames", type=int, default=8)
     parser.add_argument("--train-limit", type=int, default=None)
     parser.add_argument("--validation-limit", type=int, default=None)
-    parser.add_argument("--log-center", type=float, default=11.0)
-    parser.add_argument("--log-scale", type=float, default=2.0)
+    parser.add_argument("--normalization-stats", type=Path, required=True)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--source-commit", default=None)
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
     if not torch.cuda.is_available() or not args.device.startswith("cuda"):
         raise RuntimeError("Cube occupancy training requires CUDA")
+    manifest_hash = sha256(args.manifest)
+    scene_split_hash = sha256(args.scene_split)
+    manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
+    expected_normalization_frames = [
+        {
+            "sequence": int(record["sequence"]),
+            "radar_index": int(record["radar_index"]),
+        }
+        for record in manifest["frames"]
+        if record["partition"] == "train"
+    ]
+    normalization = json.loads(args.normalization_stats.read_text(encoding="utf-8"))
+    if normalization["partitions"] != ["train"]:
+        raise ValueError("Normalization statistics must use the train partition only")
+    if normalization["frame_limit"] is not None:
+        raise ValueError("Normalization statistics must cover the full train partition")
+    if normalization["frames"] != expected_normalization_frames:
+        raise ValueError(
+            "Normalization frame list does not match the full train partition"
+        )
+    if normalization["manifest_sha256"] != manifest_hash:
+        raise ValueError(
+            "Normalization manifest hash does not match the training manifest"
+        )
+    if normalization["scene_split_sha256"] != scene_split_hash:
+        raise ValueError(
+            "Normalization split hash does not match the training split"
+        )
+    log_center = float(normalization["normalization"]["center"])
+    log_scale = float(normalization["normalization"]["scale"])
+    if not np.isfinite(log_center) or not np.isfinite(log_scale) or log_scale <= 0:
+        raise ValueError(
+            "Normalization center and scale must be finite with positive scale"
+        )
     config = TrainConfig(
         mode=args.mode,
         epochs=args.epochs,
@@ -198,8 +231,8 @@ def main() -> None:
         max_eval_frames=args.max_eval_frames,
         train_limit=args.train_limit,
         validation_limit=args.validation_limit,
-        log_center=args.log_center,
-        log_scale=args.log_scale,
+        log_center=log_center,
+        log_scale=log_scale,
     )
     random.seed(config.seed)
     np.random.seed(config.seed)
@@ -220,8 +253,9 @@ def main() -> None:
         )
     provenance = {
         "git_commit": source_commit,
-        "manifest_sha256": sha256(args.manifest),
-        "scene_split_sha256": sha256(args.scene_split),
+        "manifest_sha256": manifest_hash,
+        "scene_split_sha256": scene_split_hash,
+        "normalization_sha256": sha256(args.normalization_stats),
         "device": torch.cuda.get_device_name(device),
         "torch_version": torch.__version__,
     }
@@ -241,9 +275,12 @@ def main() -> None:
     validation_indices = selected_indices(
         len(validation_set), config.validation_limit
     )
-    evaluation_indices = selected_indices(
-        len(validation_set), min(config.max_eval_frames, len(validation_indices))
+    evaluation_positions = selected_indices(
+        len(validation_indices), min(config.max_eval_frames, len(validation_indices))
     )
+    evaluation_indices = [
+        validation_indices[position] for position in evaluation_positions
+    ]
     model = CubeOccupancyNet(
         config.mode,
         torch.from_numpy(axes.doppler_mps),
