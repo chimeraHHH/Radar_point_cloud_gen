@@ -31,12 +31,15 @@ P0/G0 starts from official K-Radar sequence 1 full `radar_tesseract` data, synch
 - CA-CFAR points return to their exact DRAE bins in 100% of cases with zero power lookup error.
 - The observable-target protocol retains 26.14% +/- 2.02% of first-surface LiDAR points at confidence >= 0.5. Correct azimuth beats a mirrored null by 0.334 log-threshold margin.
 - High-power Doppler is empirically zero-centered. The audit therefore preserves the full spectrum and does not apply an unsupported ego-radial correction.
+- The official File Station listing currently publishes 53/58 sequence archives; sequences 15, 16, 17, 19 and 20 are absent and are explicitly excluded rather than assigned inferred metadata.
+- The frozen 53-sequence split contains 22,419 train, 4,836 validation and 4,790 test frames (69.961%/15.091%/14.948%) with zero sequence overlap and required attribute coverage in every partition.
+- The 100-frame cross-scene audit manifest covers all 45 train/validation sequences with 76 train and 24 validation frames; test is untouched and all selected timestamps have one-to-one official odometry support.
 
-Evidence: `artifacts/g0/g0_audit_8frame.json`, `artifacts/g0/g0_audit_8frame.md`, and `artifacts/g0/g0_audit_seq01_00033.png`.
+Evidence: `artifacts/g0/g0_audit_8frame.json`, `artifacts/g0/g0_audit_8frame.md`, `artifacts/g0/g0_audit_seq01_00033.png`, `artifacts/g0/g0_archive_availability.json`, `artifacts/g0/g0_scene_split.json`, and `artifacts/g0/g0_audit_100_manifest.json`.
 
 ## Open risks
 
 - The public archive has no per-radar timestamp text file; synchronization is encoded by official label mappings. Timing uncertainty must be reported rather than invented.
 - Calibration files provide frame offset and planar translation; the official pipeline supplies the vertical offset from configuration. The selected vertical convention must be sensitivity-tested.
 - Full sequence archives are hundreds of GB, so all acquisition must remain selective and resumable.
-- The eight-frame result is a sequence-1 feasibility audit, not final cross-scene evidence. G0 remains open until the 100-frame scene-isolated audit and split manifest are complete.
+- The eight-frame result is a sequence-1 feasibility audit, not final cross-scene evidence. G0 remains open until the selected 100-frame CUDA audit completes and passes.

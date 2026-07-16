@@ -13,7 +13,7 @@
 - [x] Verify CFAR point spatial/Doppler round trip into Cube bins.
 - [x] Define and audit the radar-observable LiDAR confidence target.
 - [ ] Expand the visual/numeric audit to at least 100 frames across isolated scenes.
-- [ ] Freeze scene-level train/validation/test split and minimal cache schema.
+- [x] Freeze scene-level train/validation/test split and minimal cache schema.
 - [ ] Decide G0 using direct evidence.
 
 ## P1-P6

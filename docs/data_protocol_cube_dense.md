@@ -7,6 +7,36 @@
 - Heavy data and caches live under `/storage/data/metaiot_data/wangning_radar` on `WHUServer-L40S`.
 - Local execution is limited to source editing, version control, and artifact transport. Numerical audits run on CUDA on the GPU server.
 
+The official File Station listing currently exposes 53 of the documented 58
+sequence ZIPs. Sequences `15,16,17,19,20` are absent from `/KRadar` rather than
+failed downloads, so they are explicitly excluded instead of assigned guessed
+metadata. The availability snapshot is stored in
+`artifacts/g0/g0_archive_availability.json`.
+
+## Scene-isolated split
+
+The union of official labelled frames is repartitioned at whole-sequence
+granularity. A deterministic mixed-integer program minimizes frame and
+road/time/weather distribution error under a hard frame-ratio tolerance and
+requires every attribute represented by at least three sequences to occur in
+all three partitions.
+
+| Partition | Sequences | Frames | Achieved ratio |
+|---|---:|---:|---:|
+| Train | 37 | 22,419 | 69.961% |
+| Validation | 8 | 4,836 | 15.091% |
+| Test | 8 | 4,790 | 14.948% |
+
+The split passes frame conservation, attribute coverage, ratio tolerance and
+zero sequence-overlap checks. Adjacent frames cannot cross partitions. The
+complete immutable mapping is `artifacts/g0/g0_scene_split.json`.
+
+The 100-frame G0 cohort samples 76 train and 24 validation frames over all 45
+non-test sequences. Every sequence contributes at least two evenly spaced
+interior frames; test remains untouched. Official KITTI-format odometry rows
+are attached one-to-one to label-defined OS2 timestamps. The cohort manifest is
+`artifacts/g0/g0_audit_100_manifest.json`.
+
 ## Canonical tensor
 
 The MATLAB variable is stored as `arrDREA` with shape `(64,256,37,107)` and dtype `float64`. The loader transposes it into canonical `(D,R,A,E)=(64,256,107,37)`, applies the official angular-axis reversal, makes the result contiguous, and casts to `float32` on CUDA.
@@ -76,4 +106,7 @@ The full DRAE tensor remains the source of truth and is not duplicated in the ca
 
 ## Evidence boundary
 
-The current eight-frame sequence-1 audit passes all numerical checks. It is a feasibility result, not final scene-level evidence. G0 closes only after a deterministic sequence-isolated split and at least 100 cross-scene audited frames are available.
+The eight-frame sequence-1 audit passes all numerical checks and the
+scene-isolated split is frozen. The selected 100-frame cross-scene cohort is
+currently being downloaded and CRC-verified; therefore G0 remains open until
+that complete CUDA audit passes.

@@ -9,6 +9,7 @@ import json
 import math
 import sys
 import time
+from collections import defaultdict
 from pathlib import Path
 
 import matplotlib
@@ -55,6 +56,48 @@ def load_odometry(path: Path) -> dict[str, np.ndarray]:
         [np.gradient(position[:, axis], timestamp) for axis in range(3)]
     )
     heading = np.unwrap(np.arctan2(velocity[:, 1], velocity[:, 0]))
+    yaw_rate = np.gradient(heading, timestamp)
+    return {
+        "timestamp": timestamp,
+        "position": position,
+        "velocity": velocity,
+        "heading": heading,
+        "yaw_rate": yaw_rate,
+    }
+
+
+def load_pose_odometry(
+    path: Path,
+    labels: list[str],
+    os2_times: dict[str, float],
+) -> dict[str, np.ndarray]:
+    """Attach official KITTI-format poses to label-defined OS2 timestamps."""
+
+    labels = sorted(
+        labels,
+        key=lambda name: int(name.removesuffix(".txt").split("_", maxsplit=1)[1]),
+    )
+    values = np.loadtxt(path, dtype=np.float64)
+    if values.ndim == 1:
+        values = values[None, :]
+    if values.shape != (len(labels), 12):
+        raise ValueError(
+            f"Odometry/label mismatch in {path}: {values.shape} vs {len(labels)} labels"
+        )
+    poses = values.reshape(-1, 3, 4)
+    lidar_indices = [
+        int(name.removesuffix(".txt").split("_", maxsplit=1)[1])
+        for name in labels
+    ]
+    timestamp = np.asarray(
+        [os2_times[f"os2-64_{index:05d}.pcd"] for index in lidar_indices],
+        dtype=np.float64,
+    )
+    position = poses[:, :, 3]
+    heading = np.unwrap(np.arctan2(poses[:, 1, 0], poses[:, 0, 0]))
+    velocity = np.column_stack(
+        [np.gradient(position[:, axis], timestamp) for axis in range(3)]
+    )
     yaw_rate = np.gradient(heading, timestamp)
     return {
         "timestamp": timestamp,
@@ -341,6 +384,22 @@ def aggregate_report(frames: list[dict], required_frames: int) -> dict:
     return {
         "successful_frames": len(successful),
         "failed_frames": len(frames) - len(successful),
+        "sequence_count": len({frame.get("sequence", 1) for frame in successful}),
+        "partition_frame_count": {
+            partition: sum(
+                frame.get("partition", "feasibility") == partition
+                for frame in successful
+            )
+            for partition in sorted(
+                {frame.get("partition", "feasibility") for frame in successful}
+            )
+        },
+        "ego_speed_mps_min": float(
+            min(frame["motion"]["speed_mps"] for frame in successful)
+        ),
+        "ego_speed_mps_max": float(
+            max(frame["motion"]["speed_mps"] for frame in successful)
+        ),
         "os2_abs_delta_ms_max": float(max(os2_delta)),
         "os1_abs_delta_ms_mean": float(np.mean(os1_delta)),
         "os1_abs_delta_ms_max": float(max(os1_delta)),
@@ -353,6 +412,46 @@ def aggregate_report(frames: list[dict], required_frames: int) -> dict:
         "checks": checks,
         "gate_pass": bool(all(checks.values())),
     }
+
+
+def stratified_report(frames: list[dict]) -> dict:
+    successful = [frame for frame in frames if "error" not in frame]
+    groups: dict[str, list[dict]] = defaultdict(list)
+    for frame in successful:
+        group_name = f"partition:{frame.get('partition', 'feasibility')}"
+        groups[group_name].append(frame)
+        for tag in frame.get("description", []):
+            groups[f"tag:{tag}"].append(frame)
+
+    def summarize(group: list[dict]) -> dict:
+        observable = [
+            frame["observability"]["observable_fraction_of_surface"]
+            for frame in group
+        ]
+        alignment = [
+            frame["alignment_null"]["correct_minus_mirror_margin"]
+            for frame in group
+        ]
+        deskew = [
+            frame["lidar_scan_timing"]["margin_median_by_reference"][
+                frame["lidar_scan_timing"]["selected_reference"]
+            ]
+            - frame["lidar_scan_timing"]["margin_median_by_reference"]["none"]
+            for frame in group
+        ]
+        speed = [frame["motion"]["speed_mps"] for frame in group]
+        return {
+            "frame_count": len(group),
+            "sequence_count": len({frame.get("sequence", 1) for frame in group}),
+            "observable_fraction_mean": float(np.mean(observable)),
+            "observable_fraction_std": float(np.std(observable)),
+            "correct_minus_mirror_margin_mean": float(np.mean(alignment)),
+            "selected_minus_no_deskew_margin_mean": float(np.mean(deskew)),
+            "ego_speed_mps_min": float(min(speed)),
+            "ego_speed_mps_max": float(max(speed)),
+        }
+
+    return {name: summarize(group) for name, group in sorted(groups.items())}
 
 
 def write_markdown(path: Path, payload: dict) -> None:
@@ -375,6 +474,9 @@ def write_markdown(path: Path, payload: dict) -> None:
             "",
             "## Aggregate Evidence",
             "",
+            f"- Sequences covered: {aggregate.get('sequence_count', 0)}",
+            f"- Partition frame counts: {aggregate.get('partition_frame_count', {})}",
+            f"- Ego-speed range: {aggregate.get('ego_speed_mps_min', float('nan')):.3f} to {aggregate.get('ego_speed_mps_max', float('nan')):.3f} m/s",
             f"- OS2/label maximum timestamp delta: {aggregate.get('os2_abs_delta_ms_max', float('nan')):.6f} ms",
             f"- OS1/label mean absolute delta: {aggregate.get('os1_abs_delta_ms_mean', float('nan')):.3f} ms",
             f"- Odometry nearest-sample maximum delta: {aggregate.get('odometry_nearest_delta_ms_max', float('nan')):.3f} ms",
@@ -400,6 +502,9 @@ def main() -> None:
     parser.add_argument("--max-cfar-points", type=int, default=10_000)
     parser.add_argument("--false-alarm-rate", type=float, default=1e-3)
     parser.add_argument("--labels", nargs="*", default=None)
+    parser.add_argument("--audit-manifest", type=Path, default=None)
+    parser.add_argument("--scene-split", type=Path, default=None)
+    parser.add_argument("--odometry-root", type=Path, default=None)
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument(
         "--lidar-time-reference",
@@ -412,26 +517,64 @@ def main() -> None:
         raise RuntimeError("G0 audit requires an available CUDA device")
     args.output.mkdir(parents=True, exist_ok=True)
     args.cache_root.mkdir(parents=True, exist_ok=True)
-    sequence_root = args.root / "1"
     resources = args.root / "resources"
     axes = load_axes(resources)
-    label_paths = (
-        [sequence_root / "info_label" / name for name in args.labels]
-        if args.labels
-        else sorted((sequence_root / "info_label").glob("*.txt"))
-    )[: args.max_frames]
-    os1_times = load_sensor_times(sequence_root / "time_info" / "os1-128.txt")
-    os2_times = load_sensor_times(sequence_root / "time_info" / "os2-64.txt")
-    odometry = load_odometry(resources / "seq_1_local.csv")
-    odometry_cuda = {
-        key: torch.as_tensor(
-            value,
-            dtype=torch.float64 if key == "timestamp" else torch.float32,
-            device=args.device,
-        )
-        for key, value in odometry.items()
-        if key in {"timestamp", "position", "heading"}
-    }
+    if args.audit_manifest is None:
+        sequence_root = args.root / "1"
+        label_paths = (
+            [sequence_root / "info_label" / name for name in args.labels]
+            if args.labels
+            else sorted((sequence_root / "info_label").glob("*.txt"))
+        )[: args.max_frames]
+        frame_specs = [
+            {"sequence": 1, "partition": "feasibility", "label": path.name}
+            for path in label_paths
+        ]
+        scene_split = None
+    else:
+        if args.scene_split is None or args.odometry_root is None:
+            raise ValueError(
+                "--scene-split and --odometry-root are required with --audit-manifest"
+            )
+        manifest = json.loads(args.audit_manifest.read_text(encoding="utf-8"))
+        frame_specs = manifest["frames"][: args.max_frames]
+        scene_split = json.loads(args.scene_split.read_text(encoding="utf-8"))
+
+    contexts: dict[int, dict] = {}
+
+    def sequence_context(sequence: int, partition: str) -> dict:
+        if sequence in contexts:
+            return contexts[sequence]
+        sequence_root = args.root / str(sequence)
+        os1_times = load_sensor_times(sequence_root / "time_info" / "os1-128.txt")
+        os2_times = load_sensor_times(sequence_root / "time_info" / "os2-64.txt")
+        if scene_split is None:
+            odometry = load_odometry(resources / "seq_1_local.csv")
+        else:
+            labels = scene_split["splits"][partition]["labels"][str(sequence)]
+            odometry = load_pose_odometry(
+                args.odometry_root / f"gt_{sequence:02d}.txt",
+                labels,
+                os2_times,
+            )
+        odometry_cuda = {
+            key: torch.as_tensor(
+                value,
+                dtype=torch.float64 if key == "timestamp" else torch.float32,
+                device=args.device,
+            )
+            for key, value in odometry.items()
+            if key in {"timestamp", "position", "heading"}
+        }
+        context = {
+            "root": sequence_root,
+            "os1_times": os1_times,
+            "os2_times": os2_times,
+            "odometry": odometry,
+            "odometry_cuda": odometry_cuda,
+        }
+        contexts[sequence] = context
+        return context
     config = CFARConfig(
         false_alarm_rate=args.false_alarm_rate,
         max_points=args.max_cfar_points,
@@ -443,6 +586,11 @@ def main() -> None:
         frames = existing.get("frames", [])
     payload = {
         "device": args.device,
+        "protocol": (
+            "cross-scene manifest audit"
+            if args.audit_manifest is not None
+            else "sequence-1 feasibility audit"
+        ),
         "axes": {
             "doppler_mps": axis_report(axes.doppler_mps),
             "range_m": axis_report(axes.range_m),
@@ -452,14 +600,41 @@ def main() -> None:
         "frames": frames,
     }
 
-    for label_path in label_paths:
+    for spec in frame_specs:
+        sequence = int(spec["sequence"])
+        partition = spec["partition"]
+        context = sequence_context(sequence, partition)
+        sequence_root = context["root"]
+        os1_times = context["os1_times"]
+        os2_times = context["os2_times"]
+        odometry = context["odometry"]
+        odometry_cuda = context["odometry_cuda"]
+        label_path = sequence_root / "info_label" / spec["label"]
         if any(
-            frame.get("label") == label_path.name and "error" not in frame
+            frame.get("sequence", 1) == sequence
+            and frame.get("label") == label_path.name
+            and "error" not in frame
             for frame in frames
         ):
-            print(json.dumps({"label": label_path.name, "status": "cached"}), flush=True)
+            print(
+                json.dumps(
+                    {
+                        "sequence": sequence,
+                        "label": label_path.name,
+                        "status": "cached",
+                    }
+                ),
+                flush=True,
+            )
             continue
-        frames = [frame for frame in frames if frame.get("label") != label_path.name]
+        frames = [
+            frame
+            for frame in frames
+            if not (
+                frame.get("sequence", 1) == sequence
+                and frame.get("label") == label_path.name
+            )
+        ]
         started = time.monotonic()
         try:
             frame = load_frame(sequence_root, label_path, resources)
@@ -542,6 +717,9 @@ def main() -> None:
                 mirror_target.threshold_margin[mirror_target.surface_mask].median().item()
             )
             frame_report = {
+                "sequence": sequence,
+                "partition": partition,
+                "description": spec.get("description", []),
                 "label": label_path.name,
                 "schema": {
                     "on_disk_shape": list(raw_metadata[1]),
@@ -608,13 +786,16 @@ def main() -> None:
                 "elapsed_seconds": round(time.monotonic() - started, 3),
             }
             save_cache(
-                args.cache_root / f"seq01_radar_{frame.indices.radar:05d}.npz",
+                args.cache_root
+                / f"seq{sequence:02d}_radar_{frame.indices.radar:05d}.npz",
                 result,
                 target,
                 motion,
             )
             save_figure(
-                args.output / "figures" / f"seq01_radar_{frame.indices.radar:05d}.png",
+                args.output
+                / "figures"
+                / f"seq{sequence:02d}_radar_{frame.indices.radar:05d}.png",
                 axes,
                 result,
                 target,
@@ -626,20 +807,26 @@ def main() -> None:
         except Exception as error:  # Continue the audit so all failures are visible.
             frames.append(
                 {
+                    "sequence": sequence,
+                    "partition": partition,
                     "label": label_path.name,
                     "error": f"{type(error).__name__}: {error}",
                     "elapsed_seconds": round(time.monotonic() - started, 3),
                 }
             )
             print(json.dumps(frames[-1], indent=2), flush=True)
-        frames.sort(key=lambda frame: frame["label"])
+        frames.sort(key=lambda item: (item.get("sequence", 1), item["label"]))
         payload["frames"] = frames
         report_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
     payload["aggregate"] = aggregate_report(frames, args.required_frames)
-    payload["dataset_description"] = (
-        sequence_root / "description.txt"
-    ).read_text(encoding="utf-8").strip()
+    payload["stratified"] = stratified_report(frames)
+    payload["dataset_descriptions"] = {
+        str(sequence): (args.root / str(sequence) / "description.txt")
+        .read_text(encoding="utf-8")
+        .strip()
+        for sequence in sorted({int(spec["sequence"]) for spec in frame_specs})
+    }
     report_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     write_markdown(args.output / "g0_audit.md", payload)
     print(json.dumps(payload["aggregate"], indent=2), flush=True)

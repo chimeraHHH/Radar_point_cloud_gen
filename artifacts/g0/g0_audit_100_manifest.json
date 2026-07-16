@@ -1,0 +1,1723 @@
+{
+  "protocol": "cross-scene train/validation G0 audit; test remains untouched",
+  "selection": {
+    "method": "evenly spaced interior labels per sequence",
+    "requested_frames": 100,
+    "partitions": [
+      "train",
+      "validation"
+    ],
+    "base_frames_per_sequence": 2,
+    "extra_sequence_priority": "validation first, then sequence frame count"
+  },
+  "summary": {
+    "frame_count": 100,
+    "sequence_count": 45,
+    "frame_count_by_partition": {
+      "train": 76,
+      "validation": 24
+    },
+    "frame_count_by_tag": {
+      "alleyway": 4,
+      "countryside": 13,
+      "day": 59,
+      "fog": 11,
+      "heavysnow": 13,
+      "highway": 30,
+      "lightsnow": 7,
+      "mountain": 11,
+      "night": 41,
+      "normal": 30,
+      "overcast": 2,
+      "parkinglots": 5,
+      "rain": 15,
+      "shoulder": 4,
+      "sleet": 22,
+      "university": 2,
+      "urban": 31
+    },
+    "frames_per_sequence": {
+      "1": 2,
+      "2": 2,
+      "3": 2,
+      "4": 2,
+      "5": 2,
+      "6": 3,
+      "7": 2,
+      "8": 2,
+      "9": 3,
+      "11": 3,
+      "12": 3,
+      "14": 2,
+      "18": 2,
+      "21": 2,
+      "22": 2,
+      "24": 2,
+      "25": 2,
+      "26": 2,
+      "27": 2,
+      "28": 2,
+      "29": 2,
+      "30": 3,
+      "31": 2,
+      "32": 2,
+      "33": 2,
+      "34": 3,
+      "35": 2,
+      "38": 3,
+      "39": 2,
+      "40": 2,
+      "42": 2,
+      "43": 3,
+      "44": 2,
+      "45": 2,
+      "46": 2,
+      "47": 2,
+      "49": 2,
+      "50": 2,
+      "51": 3,
+      "52": 2,
+      "53": 2,
+      "55": 3,
+      "56": 2,
+      "57": 2,
+      "58": 2
+    }
+  },
+  "checks": {
+    "required_frame_count": true,
+    "all_selected_sequences_covered": true,
+    "unique_frames": true,
+    "test_partition_untouched": true,
+    "odometry_one_to_one": true
+  },
+  "odometry_checks": {
+    "1": {
+      "label_count": 597,
+      "pose_count": 597,
+      "one_to_one": true
+    },
+    "2": {
+      "label_count": 462,
+      "pose_count": 462,
+      "one_to_one": true
+    },
+    "3": {
+      "label_count": 597,
+      "pose_count": 597,
+      "one_to_one": true
+    },
+    "4": {
+      "label_count": 588,
+      "pose_count": 588,
+      "one_to_one": true
+    },
+    "5": {
+      "label_count": 597,
+      "pose_count": 597,
+      "one_to_one": true
+    },
+    "6": {
+      "label_count": 594,
+      "pose_count": 594,
+      "one_to_one": true
+    },
+    "7": {
+      "label_count": 595,
+      "pose_count": 595,
+      "one_to_one": true
+    },
+    "8": {
+      "label_count": 567,
+      "pose_count": 567,
+      "one_to_one": true
+    },
+    "9": {
+      "label_count": 833,
+      "pose_count": 833,
+      "one_to_one": true
+    },
+    "11": {
+      "label_count": 1195,
+      "pose_count": 1195,
+      "one_to_one": true
+    },
+    "12": {
+      "label_count": 888,
+      "pose_count": 888,
+      "one_to_one": true
+    },
+    "14": {
+      "label_count": 595,
+      "pose_count": 595,
+      "one_to_one": true
+    },
+    "18": {
+      "label_count": 594,
+      "pose_count": 594,
+      "one_to_one": true
+    },
+    "21": {
+      "label_count": 597,
+      "pose_count": 597,
+      "one_to_one": true
+    },
+    "22": {
+      "label_count": 598,
+      "pose_count": 598,
+      "one_to_one": true
+    },
+    "24": {
+      "label_count": 598,
+      "pose_count": 598,
+      "one_to_one": true
+    },
+    "25": {
+      "label_count": 597,
+      "pose_count": 597,
+      "one_to_one": true
+    },
+    "26": {
+      "label_count": 597,
+      "pose_count": 597,
+      "one_to_one": true
+    },
+    "27": {
+      "label_count": 598,
+      "pose_count": 598,
+      "one_to_one": true
+    },
+    "28": {
+      "label_count": 597,
+      "pose_count": 597,
+      "one_to_one": true
+    },
+    "29": {
+      "label_count": 597,
+      "pose_count": 597,
+      "one_to_one": true
+    },
+    "30": {
+      "label_count": 470,
+      "pose_count": 470,
+      "one_to_one": true
+    },
+    "31": {
+      "label_count": 598,
+      "pose_count": 598,
+      "one_to_one": true
+    },
+    "32": {
+      "label_count": 597,
+      "pose_count": 597,
+      "one_to_one": true
+    },
+    "33": {
+      "label_count": 598,
+      "pose_count": 598,
+      "one_to_one": true
+    },
+    "34": {
+      "label_count": 598,
+      "pose_count": 598,
+      "one_to_one": true
+    },
+    "35": {
+      "label_count": 597,
+      "pose_count": 597,
+      "one_to_one": true
+    },
+    "38": {
+      "label_count": 597,
+      "pose_count": 597,
+      "one_to_one": true
+    },
+    "39": {
+      "label_count": 597,
+      "pose_count": 597,
+      "one_to_one": true
+    },
+    "40": {
+      "label_count": 598,
+      "pose_count": 598,
+      "one_to_one": true
+    },
+    "42": {
+      "label_count": 598,
+      "pose_count": 598,
+      "one_to_one": true
+    },
+    "43": {
+      "label_count": 598,
+      "pose_count": 598,
+      "one_to_one": true
+    },
+    "44": {
+      "label_count": 597,
+      "pose_count": 597,
+      "one_to_one": true
+    },
+    "45": {
+      "label_count": 592,
+      "pose_count": 592,
+      "one_to_one": true
+    },
+    "46": {
+      "label_count": 598,
+      "pose_count": 598,
+      "one_to_one": true
+    },
+    "47": {
+      "label_count": 266,
+      "pose_count": 266,
+      "one_to_one": true
+    },
+    "49": {
+      "label_count": 598,
+      "pose_count": 598,
+      "one_to_one": true
+    },
+    "50": {
+      "label_count": 597,
+      "pose_count": 597,
+      "one_to_one": true
+    },
+    "51": {
+      "label_count": 597,
+      "pose_count": 597,
+      "one_to_one": true
+    },
+    "52": {
+      "label_count": 598,
+      "pose_count": 598,
+      "one_to_one": true
+    },
+    "53": {
+      "label_count": 597,
+      "pose_count": 597,
+      "one_to_one": true
+    },
+    "55": {
+      "label_count": 494,
+      "pose_count": 494,
+      "one_to_one": true
+    },
+    "56": {
+      "label_count": 598,
+      "pose_count": 598,
+      "one_to_one": true
+    },
+    "57": {
+      "label_count": 598,
+      "pose_count": 598,
+      "one_to_one": true
+    },
+    "58": {
+      "label_count": 598,
+      "pose_count": 598,
+      "one_to_one": true
+    }
+  },
+  "frames": [
+    {
+      "sequence": 1,
+      "partition": "train",
+      "description": [
+        "urban",
+        "night",
+        "normal"
+      ],
+      "label": "00232_00200.txt",
+      "radar_index": 232,
+      "lidar64_index": 200,
+      "timestamp": 1643292966.6067164,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 1,
+      "partition": "train",
+      "description": [
+        "urban",
+        "night",
+        "normal"
+      ],
+      "label": "00430_00398.txt",
+      "radar_index": 430,
+      "lidar64_index": 398,
+      "timestamp": 1643292986.4063764,
+      "odometry_pose_index": 397
+    },
+    {
+      "sequence": 2,
+      "partition": "train",
+      "description": [
+        "highway",
+        "night",
+        "normal"
+      ],
+      "label": "00185_00155.txt",
+      "radar_index": 185,
+      "lidar64_index": 155,
+      "timestamp": 1643293144.1094024,
+      "odometry_pose_index": 154
+    },
+    {
+      "sequence": 2,
+      "partition": "train",
+      "description": [
+        "highway",
+        "night",
+        "normal"
+      ],
+      "label": "00338_00308.txt",
+      "radar_index": 338,
+      "lidar64_index": 308,
+      "timestamp": 1643293159.4051034,
+      "odometry_pose_index": 307
+    },
+    {
+      "sequence": 3,
+      "partition": "train",
+      "description": [
+        "highway",
+        "night",
+        "normal"
+      ],
+      "label": "00230_00200.txt",
+      "radar_index": 230,
+      "lidar64_index": 200,
+      "timestamp": 1643293303.300115,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 3,
+      "partition": "train",
+      "description": [
+        "highway",
+        "night",
+        "normal"
+      ],
+      "label": "00428_00398.txt",
+      "radar_index": 428,
+      "lidar64_index": 398,
+      "timestamp": 1643293323.1000092,
+      "odometry_pose_index": 397
+    },
+    {
+      "sequence": 4,
+      "partition": "train",
+      "description": [
+        "highway",
+        "night",
+        "normal"
+      ],
+      "label": "00238_00197.txt",
+      "radar_index": 238,
+      "lidar64_index": 197,
+      "timestamp": 1643295370.6078458,
+      "odometry_pose_index": 196
+    },
+    {
+      "sequence": 4,
+      "partition": "train",
+      "description": [
+        "highway",
+        "night",
+        "normal"
+      ],
+      "label": "00433_00392.txt",
+      "radar_index": 433,
+      "lidar64_index": 392,
+      "timestamp": 1643295390.1074271,
+      "odometry_pose_index": 391
+    },
+    {
+      "sequence": 5,
+      "partition": "train",
+      "description": [
+        "urban",
+        "day",
+        "normal"
+      ],
+      "label": "00231_00200.txt",
+      "radar_index": 231,
+      "lidar64_index": 200,
+      "timestamp": 1643357413.5307515,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 5,
+      "partition": "train",
+      "description": [
+        "urban",
+        "day",
+        "normal"
+      ],
+      "label": "00429_00398.txt",
+      "radar_index": 429,
+      "lidar64_index": 398,
+      "timestamp": 1643357433.3288698,
+      "odometry_pose_index": 397
+    },
+    {
+      "sequence": 6,
+      "partition": "validation",
+      "description": [
+        "urban",
+        "night",
+        "normal"
+      ],
+      "label": "00183_00149.txt",
+      "radar_index": 183,
+      "lidar64_index": 149,
+      "timestamp": 1643295858.9049935,
+      "odometry_pose_index": 148
+    },
+    {
+      "sequence": 6,
+      "partition": "validation",
+      "description": [
+        "urban",
+        "night",
+        "normal"
+      ],
+      "label": "00331_00297.txt",
+      "radar_index": 331,
+      "lidar64_index": 297,
+      "timestamp": 1643295873.7040708,
+      "odometry_pose_index": 296
+    },
+    {
+      "sequence": 6,
+      "partition": "validation",
+      "description": [
+        "urban",
+        "night",
+        "normal"
+      ],
+      "label": "00480_00446.txt",
+      "radar_index": 480,
+      "lidar64_index": 446,
+      "timestamp": 1643295888.6035671,
+      "odometry_pose_index": 445
+    },
+    {
+      "sequence": 7,
+      "partition": "train",
+      "description": [
+        "alleyway",
+        "night",
+        "normal"
+      ],
+      "label": "00232_00199.txt",
+      "radar_index": 232,
+      "lidar64_index": 199,
+      "timestamp": 1643296346.2074368,
+      "odometry_pose_index": 198
+    },
+    {
+      "sequence": 7,
+      "partition": "train",
+      "description": [
+        "alleyway",
+        "night",
+        "normal"
+      ],
+      "label": "00430_00397.txt",
+      "radar_index": 430,
+      "lidar64_index": 397,
+      "timestamp": 1643296366.001158,
+      "odometry_pose_index": 396
+    },
+    {
+      "sequence": 8,
+      "partition": "train",
+      "description": [
+        "university",
+        "night",
+        "normal"
+      ],
+      "label": "00221_00190.txt",
+      "radar_index": 221,
+      "lidar64_index": 190,
+      "timestamp": 1643297706.2955806,
+      "odometry_pose_index": 189
+    },
+    {
+      "sequence": 8,
+      "partition": "train",
+      "description": [
+        "university",
+        "night",
+        "normal"
+      ],
+      "label": "00409_00378.txt",
+      "radar_index": 409,
+      "lidar64_index": 378,
+      "timestamp": 1643297725.095344,
+      "odometry_pose_index": 377
+    },
+    {
+      "sequence": 9,
+      "partition": "train",
+      "description": [
+        "highway",
+        "day",
+        "normal"
+      ],
+      "label": "00232_00209.txt",
+      "radar_index": 232,
+      "lidar64_index": 209,
+      "timestamp": 1643184472.187837,
+      "odometry_pose_index": 208
+    },
+    {
+      "sequence": 9,
+      "partition": "train",
+      "description": [
+        "highway",
+        "day",
+        "normal"
+      ],
+      "label": "00440_00417.txt",
+      "radar_index": 440,
+      "lidar64_index": 417,
+      "timestamp": 1643184492.9876251,
+      "odometry_pose_index": 416
+    },
+    {
+      "sequence": 9,
+      "partition": "train",
+      "description": [
+        "highway",
+        "day",
+        "normal"
+      ],
+      "label": "00648_00625.txt",
+      "radar_index": 648,
+      "lidar64_index": 625,
+      "timestamp": 1643184513.791134,
+      "odometry_pose_index": 624
+    },
+    {
+      "sequence": 11,
+      "partition": "train",
+      "description": [
+        "highway",
+        "day",
+        "normal"
+      ],
+      "label": "00332_00299.txt",
+      "radar_index": 332,
+      "lidar64_index": 299,
+      "timestamp": 1643184762.7918963,
+      "odometry_pose_index": 298
+    },
+    {
+      "sequence": 11,
+      "partition": "train",
+      "description": [
+        "highway",
+        "day",
+        "normal"
+      ],
+      "label": "00631_00598.txt",
+      "radar_index": 631,
+      "lidar64_index": 598,
+      "timestamp": 1643184792.6857324,
+      "odometry_pose_index": 597
+    },
+    {
+      "sequence": 11,
+      "partition": "train",
+      "description": [
+        "highway",
+        "day",
+        "normal"
+      ],
+      "label": "00930_00897.txt",
+      "radar_index": 930,
+      "lidar64_index": 897,
+      "timestamp": 1643184822.586454,
+      "odometry_pose_index": 896
+    },
+    {
+      "sequence": 12,
+      "partition": "validation",
+      "description": [
+        "highway",
+        "day",
+        "normal"
+      ],
+      "label": "00259_00223.txt",
+      "radar_index": 259,
+      "lidar64_index": 223,
+      "timestamp": 1643184894.6852114,
+      "odometry_pose_index": 222
+    },
+    {
+      "sequence": 12,
+      "partition": "validation",
+      "description": [
+        "highway",
+        "day",
+        "normal"
+      ],
+      "label": "00481_00445.txt",
+      "radar_index": 481,
+      "lidar64_index": 445,
+      "timestamp": 1643184916.8857267,
+      "odometry_pose_index": 444
+    },
+    {
+      "sequence": 12,
+      "partition": "validation",
+      "description": [
+        "highway",
+        "day",
+        "normal"
+      ],
+      "label": "00702_00666.txt",
+      "radar_index": 702,
+      "lidar64_index": 666,
+      "timestamp": 1643184938.988836,
+      "odometry_pose_index": 665
+    },
+    {
+      "sequence": 14,
+      "partition": "train",
+      "description": [
+        "urban",
+        "day",
+        "normal"
+      ],
+      "label": "00232_00199.txt",
+      "radar_index": 232,
+      "lidar64_index": 199,
+      "timestamp": 1643354874.5368252,
+      "odometry_pose_index": 198
+    },
+    {
+      "sequence": 14,
+      "partition": "train",
+      "description": [
+        "urban",
+        "day",
+        "normal"
+      ],
+      "label": "00430_00397.txt",
+      "radar_index": 430,
+      "lidar64_index": 397,
+      "timestamp": 1643354894.337779,
+      "odometry_pose_index": 396
+    },
+    {
+      "sequence": 18,
+      "partition": "train",
+      "description": [
+        "urban",
+        "day",
+        "normal"
+      ],
+      "label": "00234_00199.txt",
+      "radar_index": 234,
+      "lidar64_index": 199,
+      "timestamp": 1643356380.0463772,
+      "odometry_pose_index": 198
+    },
+    {
+      "sequence": 18,
+      "partition": "train",
+      "description": [
+        "urban",
+        "day",
+        "normal"
+      ],
+      "label": "00431_00396.txt",
+      "radar_index": 431,
+      "lidar64_index": 396,
+      "timestamp": 1643356399.741304,
+      "odometry_pose_index": 395
+    },
+    {
+      "sequence": 21,
+      "partition": "train",
+      "description": [
+        "alleyway",
+        "night",
+        "rain"
+      ],
+      "label": "00204_00200.txt",
+      "radar_index": 204,
+      "lidar64_index": 200,
+      "timestamp": 1644836584.2353919,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 21,
+      "partition": "train",
+      "description": [
+        "alleyway",
+        "night",
+        "rain"
+      ],
+      "label": "00402_00398.txt",
+      "radar_index": 402,
+      "lidar64_index": 398,
+      "timestamp": 1644836604.0371158,
+      "odometry_pose_index": 397
+    },
+    {
+      "sequence": 22,
+      "partition": "train",
+      "description": [
+        "urban",
+        "night",
+        "overcast"
+      ],
+      "label": "00202_00200.txt",
+      "radar_index": 202,
+      "lidar64_index": 200,
+      "timestamp": 1644743544.24469,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 22,
+      "partition": "train",
+      "description": [
+        "urban",
+        "night",
+        "overcast"
+      ],
+      "label": "00401_00399.txt",
+      "radar_index": 401,
+      "lidar64_index": 399,
+      "timestamp": 1644743564.1434896,
+      "odometry_pose_index": 398
+    },
+    {
+      "sequence": 24,
+      "partition": "train",
+      "description": [
+        "urban",
+        "night",
+        "rain"
+      ],
+      "label": "00203_00200.txt",
+      "radar_index": 203,
+      "lidar64_index": 200,
+      "timestamp": 1644745783.318024,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 24,
+      "partition": "train",
+      "description": [
+        "urban",
+        "night",
+        "rain"
+      ],
+      "label": "00402_00399.txt",
+      "radar_index": 402,
+      "lidar64_index": 399,
+      "timestamp": 1644745803.218321,
+      "odometry_pose_index": 398
+    },
+    {
+      "sequence": 25,
+      "partition": "train",
+      "description": [
+        "urban",
+        "night",
+        "rain"
+      ],
+      "label": "00200_00201.txt",
+      "radar_index": 200,
+      "lidar64_index": 201,
+      "timestamp": 1644746240.3144782,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 25,
+      "partition": "train",
+      "description": [
+        "urban",
+        "night",
+        "rain"
+      ],
+      "label": "00398_00399.txt",
+      "radar_index": 398,
+      "lidar64_index": 399,
+      "timestamp": 1644746260.1165671,
+      "odometry_pose_index": 397
+    },
+    {
+      "sequence": 26,
+      "partition": "train",
+      "description": [
+        "countryside",
+        "day",
+        "rain"
+      ],
+      "label": "00205_00200.txt",
+      "radar_index": 205,
+      "lidar64_index": 200,
+      "timestamp": 1644793466.6323447,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 26,
+      "partition": "train",
+      "description": [
+        "countryside",
+        "day",
+        "rain"
+      ],
+      "label": "00403_00398.txt",
+      "radar_index": 403,
+      "lidar64_index": 398,
+      "timestamp": 1644793486.4333594,
+      "odometry_pose_index": 397
+    },
+    {
+      "sequence": 27,
+      "partition": "train",
+      "description": [
+        "countryside",
+        "day",
+        "sleet"
+      ],
+      "label": "00204_00200.txt",
+      "radar_index": 204,
+      "lidar64_index": 200,
+      "timestamp": 1644793742.7445812,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 27,
+      "partition": "train",
+      "description": [
+        "countryside",
+        "day",
+        "sleet"
+      ],
+      "label": "00403_00399.txt",
+      "radar_index": 403,
+      "lidar64_index": 399,
+      "timestamp": 1644793762.6477609,
+      "odometry_pose_index": 398
+    },
+    {
+      "sequence": 28,
+      "partition": "train",
+      "description": [
+        "mountain",
+        "day",
+        "sleet"
+      ],
+      "label": "00203_00200.txt",
+      "radar_index": 203,
+      "lidar64_index": 200,
+      "timestamp": 1644793881.3595912,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 28,
+      "partition": "train",
+      "description": [
+        "mountain",
+        "day",
+        "sleet"
+      ],
+      "label": "00401_00398.txt",
+      "radar_index": 401,
+      "lidar64_index": 398,
+      "timestamp": 1644793901.1652722,
+      "odometry_pose_index": 397
+    },
+    {
+      "sequence": 29,
+      "partition": "train",
+      "description": [
+        "mountain",
+        "day",
+        "sleet"
+      ],
+      "label": "00200_00200.txt",
+      "radar_index": 200,
+      "lidar64_index": 200,
+      "timestamp": 1644794055.1701052,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 29,
+      "partition": "train",
+      "description": [
+        "mountain",
+        "day",
+        "sleet"
+      ],
+      "label": "00399_00399.txt",
+      "radar_index": 399,
+      "lidar64_index": 399,
+      "timestamp": 1644794075.072273,
+      "odometry_pose_index": 397
+    },
+    {
+      "sequence": 30,
+      "partition": "validation",
+      "description": [
+        "parkinglots",
+        "day",
+        "sleet"
+      ],
+      "label": "00123_00118.txt",
+      "radar_index": 123,
+      "lidar64_index": 118,
+      "timestamp": 1644794835.1214297,
+      "odometry_pose_index": 117
+    },
+    {
+      "sequence": 30,
+      "partition": "validation",
+      "description": [
+        "parkinglots",
+        "day",
+        "sleet"
+      ],
+      "label": "00240_00235.txt",
+      "radar_index": 240,
+      "lidar64_index": 235,
+      "timestamp": 1644794846.8199153,
+      "odometry_pose_index": 234
+    },
+    {
+      "sequence": 30,
+      "partition": "validation",
+      "description": [
+        "parkinglots",
+        "day",
+        "sleet"
+      ],
+      "label": "00358_00353.txt",
+      "radar_index": 358,
+      "lidar64_index": 353,
+      "timestamp": 1644794858.6205447,
+      "odometry_pose_index": 352
+    },
+    {
+      "sequence": 31,
+      "partition": "train",
+      "description": [
+        "countryside",
+        "day",
+        "sleet"
+      ],
+      "label": "00206_00200.txt",
+      "radar_index": 206,
+      "lidar64_index": 200,
+      "timestamp": 1644798235.9953556,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 31,
+      "partition": "train",
+      "description": [
+        "countryside",
+        "day",
+        "sleet"
+      ],
+      "label": "00405_00399.txt",
+      "radar_index": 405,
+      "lidar64_index": 399,
+      "timestamp": 1644798255.8950758,
+      "odometry_pose_index": 398
+    },
+    {
+      "sequence": 32,
+      "partition": "train",
+      "description": [
+        "countryside",
+        "day",
+        "rain"
+      ],
+      "label": "00205_00200.txt",
+      "radar_index": 205,
+      "lidar64_index": 200,
+      "timestamp": 1644799580.885052,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 32,
+      "partition": "train",
+      "description": [
+        "countryside",
+        "day",
+        "rain"
+      ],
+      "label": "00403_00398.txt",
+      "radar_index": 403,
+      "lidar64_index": 398,
+      "timestamp": 1644799600.6861503,
+      "odometry_pose_index": 397
+    },
+    {
+      "sequence": 33,
+      "partition": "train",
+      "description": [
+        "countryside",
+        "day",
+        "rain"
+      ],
+      "label": "00205_00200.txt",
+      "radar_index": 205,
+      "lidar64_index": 200,
+      "timestamp": 1644799698.0859277,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 33,
+      "partition": "train",
+      "description": [
+        "countryside",
+        "day",
+        "rain"
+      ],
+      "label": "00404_00399.txt",
+      "radar_index": 404,
+      "lidar64_index": 399,
+      "timestamp": 1644799717.9872198,
+      "odometry_pose_index": 398
+    },
+    {
+      "sequence": 34,
+      "partition": "validation",
+      "description": [
+        "countryside",
+        "night",
+        "rain"
+      ],
+      "label": "00153_00150.txt",
+      "radar_index": 153,
+      "lidar64_index": 150,
+      "timestamp": 1644836918.5255451,
+      "odometry_pose_index": 149
+    },
+    {
+      "sequence": 34,
+      "partition": "validation",
+      "description": [
+        "countryside",
+        "night",
+        "rain"
+      ],
+      "label": "00302_00299.txt",
+      "radar_index": 302,
+      "lidar64_index": 299,
+      "timestamp": 1644836933.4259663,
+      "odometry_pose_index": 298
+    },
+    {
+      "sequence": 34,
+      "partition": "validation",
+      "description": [
+        "countryside",
+        "night",
+        "rain"
+      ],
+      "label": "00452_00449.txt",
+      "radar_index": 452,
+      "lidar64_index": 449,
+      "timestamp": 1644836948.4220898,
+      "odometry_pose_index": 448
+    },
+    {
+      "sequence": 35,
+      "partition": "train",
+      "description": [
+        "parkinglots",
+        "night",
+        "sleet"
+      ],
+      "label": "00205_00200.txt",
+      "radar_index": 205,
+      "lidar64_index": 200,
+      "timestamp": 1644837247.9259431,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 35,
+      "partition": "train",
+      "description": [
+        "parkinglots",
+        "night",
+        "sleet"
+      ],
+      "label": "00403_00398.txt",
+      "radar_index": 403,
+      "lidar64_index": 398,
+      "timestamp": 1644837267.7261071,
+      "odometry_pose_index": 397
+    },
+    {
+      "sequence": 38,
+      "partition": "validation",
+      "description": [
+        "mountain",
+        "day",
+        "fog"
+      ],
+      "label": "00158_00150.txt",
+      "radar_index": 158,
+      "lidar64_index": 150,
+      "timestamp": 1647590411.736112,
+      "odometry_pose_index": 149
+    },
+    {
+      "sequence": 38,
+      "partition": "validation",
+      "description": [
+        "mountain",
+        "day",
+        "fog"
+      ],
+      "label": "00307_00299.txt",
+      "radar_index": 307,
+      "lidar64_index": 299,
+      "timestamp": 1647590426.6357815,
+      "odometry_pose_index": 298
+    },
+    {
+      "sequence": 38,
+      "partition": "validation",
+      "description": [
+        "mountain",
+        "day",
+        "fog"
+      ],
+      "label": "00456_00448.txt",
+      "radar_index": 456,
+      "lidar64_index": 448,
+      "timestamp": 1647590441.5338454,
+      "odometry_pose_index": 447
+    },
+    {
+      "sequence": 39,
+      "partition": "train",
+      "description": [
+        "mountain",
+        "day",
+        "fog"
+      ],
+      "label": "00207_00200.txt",
+      "radar_index": 207,
+      "lidar64_index": 200,
+      "timestamp": 1647590499.3337286,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 39,
+      "partition": "train",
+      "description": [
+        "mountain",
+        "day",
+        "fog"
+      ],
+      "label": "00405_00398.txt",
+      "radar_index": 405,
+      "lidar64_index": 398,
+      "timestamp": 1647590519.1365862,
+      "odometry_pose_index": 397
+    },
+    {
+      "sequence": 40,
+      "partition": "train",
+      "description": [
+        "mountain",
+        "day",
+        "fog"
+      ],
+      "label": "00204_00200.txt",
+      "radar_index": 204,
+      "lidar64_index": 200,
+      "timestamp": 1647590682.53742,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 40,
+      "partition": "train",
+      "description": [
+        "mountain",
+        "day",
+        "fog"
+      ],
+      "label": "00403_00399.txt",
+      "radar_index": 403,
+      "lidar64_index": 399,
+      "timestamp": 1647590702.4463892,
+      "odometry_pose_index": 398
+    },
+    {
+      "sequence": 42,
+      "partition": "train",
+      "description": [
+        "urban",
+        "day",
+        "lightsnow"
+      ],
+      "label": "00209_00200.txt",
+      "radar_index": 209,
+      "lidar64_index": 200,
+      "timestamp": 1647591973.676973,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 42,
+      "partition": "train",
+      "description": [
+        "urban",
+        "day",
+        "lightsnow"
+      ],
+      "label": "00408_00399.txt",
+      "radar_index": 408,
+      "lidar64_index": 399,
+      "timestamp": 1647591993.5924332,
+      "odometry_pose_index": 398
+    },
+    {
+      "sequence": 43,
+      "partition": "validation",
+      "description": [
+        "urban",
+        "day",
+        "lightsnow"
+      ],
+      "label": "00155_00150.txt",
+      "radar_index": 155,
+      "lidar64_index": 150,
+      "timestamp": 1647592043.0369112,
+      "odometry_pose_index": 149
+    },
+    {
+      "sequence": 43,
+      "partition": "validation",
+      "description": [
+        "urban",
+        "day",
+        "lightsnow"
+      ],
+      "label": "00304_00299.txt",
+      "radar_index": 304,
+      "lidar64_index": 299,
+      "timestamp": 1647592057.9372885,
+      "odometry_pose_index": 298
+    },
+    {
+      "sequence": 43,
+      "partition": "validation",
+      "description": [
+        "urban",
+        "day",
+        "lightsnow"
+      ],
+      "label": "00454_00449.txt",
+      "radar_index": 454,
+      "lidar64_index": 449,
+      "timestamp": 1647592072.9419432,
+      "odometry_pose_index": 448
+    },
+    {
+      "sequence": 44,
+      "partition": "train",
+      "description": [
+        "shoulder",
+        "day",
+        "fog"
+      ],
+      "label": "00209_00200.txt",
+      "radar_index": 209,
+      "lidar64_index": 200,
+      "timestamp": 1647593574.064835,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 44,
+      "partition": "train",
+      "description": [
+        "shoulder",
+        "day",
+        "fog"
+      ],
+      "label": "00407_00398.txt",
+      "radar_index": 407,
+      "lidar64_index": 398,
+      "timestamp": 1647593593.8497007,
+      "odometry_pose_index": 397
+    },
+    {
+      "sequence": 45,
+      "partition": "train",
+      "description": [
+        "shoulder",
+        "day",
+        "fog"
+      ],
+      "label": "00219_00198.txt",
+      "radar_index": 219,
+      "lidar64_index": 198,
+      "timestamp": 1647593938.0175917,
+      "odometry_pose_index": 197
+    },
+    {
+      "sequence": 45,
+      "partition": "train",
+      "description": [
+        "shoulder",
+        "day",
+        "fog"
+      ],
+      "label": "00416_00395.txt",
+      "radar_index": 416,
+      "lidar64_index": 395,
+      "timestamp": 1647593957.7493322,
+      "odometry_pose_index": 394
+    },
+    {
+      "sequence": 46,
+      "partition": "train",
+      "description": [
+        "highway",
+        "night",
+        "heavysnow"
+      ],
+      "label": "00205_00200.txt",
+      "radar_index": 205,
+      "lidar64_index": 200,
+      "timestamp": 1647609260.4128335,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 46,
+      "partition": "train",
+      "description": [
+        "highway",
+        "night",
+        "heavysnow"
+      ],
+      "label": "00404_00399.txt",
+      "radar_index": 404,
+      "lidar64_index": 399,
+      "timestamp": 1647609280.285826,
+      "odometry_pose_index": 398
+    },
+    {
+      "sequence": 47,
+      "partition": "train",
+      "description": [
+        "highway",
+        "night",
+        "heavysnow"
+      ],
+      "label": "00094_00089.txt",
+      "radar_index": 94,
+      "lidar64_index": 89,
+      "timestamp": 1647609317.194879,
+      "odometry_pose_index": 88
+    },
+    {
+      "sequence": 47,
+      "partition": "train",
+      "description": [
+        "highway",
+        "night",
+        "heavysnow"
+      ],
+      "label": "00514_00509.txt",
+      "radar_index": 514,
+      "lidar64_index": 509,
+      "timestamp": 1647609359.2367318,
+      "odometry_pose_index": 177
+    },
+    {
+      "sequence": 49,
+      "partition": "train",
+      "description": [
+        "highway",
+        "night",
+        "lightsnow"
+      ],
+      "label": "00206_00200.txt",
+      "radar_index": 206,
+      "lidar64_index": 200,
+      "timestamp": 1647610005.868879,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 49,
+      "partition": "train",
+      "description": [
+        "highway",
+        "night",
+        "lightsnow"
+      ],
+      "label": "00405_00399.txt",
+      "radar_index": 405,
+      "lidar64_index": 399,
+      "timestamp": 1647610025.7665687,
+      "odometry_pose_index": 398
+    },
+    {
+      "sequence": 50,
+      "partition": "train",
+      "description": [
+        "highway",
+        "night",
+        "sleet"
+      ],
+      "label": "00207_00200.txt",
+      "radar_index": 207,
+      "lidar64_index": 200,
+      "timestamp": 1647611324.3067915,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 50,
+      "partition": "train",
+      "description": [
+        "highway",
+        "night",
+        "sleet"
+      ],
+      "label": "00405_00398.txt",
+      "radar_index": 405,
+      "lidar64_index": 398,
+      "timestamp": 1647611344.1102703,
+      "odometry_pose_index": 397
+    },
+    {
+      "sequence": 51,
+      "partition": "validation",
+      "description": [
+        "highway",
+        "night",
+        "sleet"
+      ],
+      "label": "00156_00150.txt",
+      "radar_index": 156,
+      "lidar64_index": 150,
+      "timestamp": 1647611387.0305066,
+      "odometry_pose_index": 149
+    },
+    {
+      "sequence": 51,
+      "partition": "validation",
+      "description": [
+        "highway",
+        "night",
+        "sleet"
+      ],
+      "label": "00305_00299.txt",
+      "radar_index": 305,
+      "lidar64_index": 299,
+      "timestamp": 1647611401.9365523,
+      "odometry_pose_index": 298
+    },
+    {
+      "sequence": 51,
+      "partition": "validation",
+      "description": [
+        "highway",
+        "night",
+        "sleet"
+      ],
+      "label": "00454_00448.txt",
+      "radar_index": 454,
+      "lidar64_index": 448,
+      "timestamp": 1647611416.8365862,
+      "odometry_pose_index": 447
+    },
+    {
+      "sequence": 52,
+      "partition": "train",
+      "description": [
+        "highway",
+        "night",
+        "sleet"
+      ],
+      "label": "00202_00200.txt",
+      "radar_index": 202,
+      "lidar64_index": 200,
+      "timestamp": 1647611457.5499523,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 52,
+      "partition": "train",
+      "description": [
+        "highway",
+        "night",
+        "sleet"
+      ],
+      "label": "00401_00399.txt",
+      "radar_index": 401,
+      "lidar64_index": 399,
+      "timestamp": 1647611477.4460154,
+      "odometry_pose_index": 398
+    },
+    {
+      "sequence": 53,
+      "partition": "train",
+      "description": [
+        "highway",
+        "day",
+        "sleet"
+      ],
+      "label": "00204_00200.txt",
+      "radar_index": 204,
+      "lidar64_index": 200,
+      "timestamp": 1647647369.2494245,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 53,
+      "partition": "train",
+      "description": [
+        "highway",
+        "day",
+        "sleet"
+      ],
+      "label": "00402_00398.txt",
+      "radar_index": 402,
+      "lidar64_index": 398,
+      "timestamp": 1647647389.054131,
+      "odometry_pose_index": 397
+    },
+    {
+      "sequence": 55,
+      "partition": "validation",
+      "description": [
+        "urban",
+        "day",
+        "heavysnow"
+      ],
+      "label": "00129_00124.txt",
+      "radar_index": 129,
+      "lidar64_index": 124,
+      "timestamp": 1647648675.9463866,
+      "odometry_pose_index": 123
+    },
+    {
+      "sequence": 55,
+      "partition": "validation",
+      "description": [
+        "urban",
+        "day",
+        "heavysnow"
+      ],
+      "label": "00252_00247.txt",
+      "radar_index": 252,
+      "lidar64_index": 247,
+      "timestamp": 1647648688.3299484,
+      "odometry_pose_index": 246
+    },
+    {
+      "sequence": 55,
+      "partition": "validation",
+      "description": [
+        "urban",
+        "day",
+        "heavysnow"
+      ],
+      "label": "00376_00371.txt",
+      "radar_index": 376,
+      "lidar64_index": 371,
+      "timestamp": 1647648700.7685177,
+      "odometry_pose_index": 370
+    },
+    {
+      "sequence": 56,
+      "partition": "train",
+      "description": [
+        "urban",
+        "day",
+        "heavysnow"
+      ],
+      "label": "00206_00200.txt",
+      "radar_index": 206,
+      "lidar64_index": 200,
+      "timestamp": 1647650281.457648,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 56,
+      "partition": "train",
+      "description": [
+        "urban",
+        "day",
+        "heavysnow"
+      ],
+      "label": "00405_00399.txt",
+      "radar_index": 405,
+      "lidar64_index": 399,
+      "timestamp": 1647650301.3414176,
+      "odometry_pose_index": 398
+    },
+    {
+      "sequence": 57,
+      "partition": "train",
+      "description": [
+        "urban",
+        "day",
+        "heavysnow"
+      ],
+      "label": "00205_00200.txt",
+      "radar_index": 205,
+      "lidar64_index": 200,
+      "timestamp": 1647650347.8251321,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 57,
+      "partition": "train",
+      "description": [
+        "urban",
+        "day",
+        "heavysnow"
+      ],
+      "label": "00404_00399.txt",
+      "radar_index": 404,
+      "lidar64_index": 399,
+      "timestamp": 1647650367.716424,
+      "odometry_pose_index": 398
+    },
+    {
+      "sequence": 58,
+      "partition": "train",
+      "description": [
+        "urban",
+        "day",
+        "heavysnow"
+      ],
+      "label": "00205_00200.txt",
+      "radar_index": 205,
+      "lidar64_index": 200,
+      "timestamp": 1647650414.4102883,
+      "odometry_pose_index": 199
+    },
+    {
+      "sequence": 58,
+      "partition": "train",
+      "description": [
+        "urban",
+        "day",
+        "heavysnow"
+      ],
+      "label": "00404_00399.txt",
+      "radar_index": 404,
+      "lidar64_index": 399,
+      "timestamp": 1647650434.315003,
+      "odometry_pose_index": 398
+    }
+  ]
+}

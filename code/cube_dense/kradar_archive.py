@@ -57,40 +57,55 @@ class SynologySession(AbstractContextManager["SynologySession"]):
         self.sid: str | None = None
 
     def login(self) -> None:
-        response = self.session.post(
-            f"{self.base_url}/webapi/entry.cgi",
-            data={
-                "api": "SYNO.API.Auth",
-                "version": "7",
-                "method": "login",
-                "account": self.account,
-                "passwd": self.password,
-                "session": "FileStation",
-                "format": "sid",
-            },
-            timeout=self.timeout,
-        )
-        response.raise_for_status()
-        payload = response.json()
-        if not payload.get("success"):
-            raise RuntimeError(f"Synology login failed: {payload}")
-        self.sid = payload["data"]["sid"]
+        last_error: Exception | None = None
+        for attempt in range(8):
+            try:
+                response = self.session.post(
+                    f"{self.base_url}/webapi/entry.cgi",
+                    data={
+                        "api": "SYNO.API.Auth",
+                        "version": "7",
+                        "method": "login",
+                        "account": self.account,
+                        "passwd": self.password,
+                        "session": "FileStation",
+                        "format": "sid",
+                    },
+                    timeout=self.timeout,
+                )
+                response.raise_for_status()
+                payload = response.json()
+                if not payload.get("success"):
+                    raise RuntimeError(f"Synology login failed: {payload}")
+                self.sid = payload["data"]["sid"]
+                return
+            except (requests.RequestException, RuntimeError, ValueError) as error:
+                last_error = error
+                if attempt == 7:
+                    break
+                time.sleep(min(2**attempt, 30))
+        raise RuntimeError("Synology login failed after retries") from last_error
 
     def logout(self) -> None:
         if not self.sid:
             return
         try:
-            self.session.post(
-                f"{self.base_url}/webapi/entry.cgi",
-                data={
-                    "api": "SYNO.API.Auth",
-                    "version": "7",
-                    "method": "logout",
-                    "session": "FileStation",
-                    "_sid": self.sid,
-                },
-                timeout=self.timeout,
-            )
+            try:
+                self.session.post(
+                    f"{self.base_url}/webapi/entry.cgi",
+                    data={
+                        "api": "SYNO.API.Auth",
+                        "version": "7",
+                        "method": "logout",
+                        "session": "FileStation",
+                        "_sid": self.sid,
+                    },
+                    timeout=self.timeout,
+                )
+            except requests.RequestException:
+                # Logout is best effort; a dropped proxy must not hide the
+                # acquisition error that triggered context-manager cleanup.
+                pass
         finally:
             self.sid = None
 
@@ -313,19 +328,31 @@ def fetch_members(
         if member in index:
             resolved[member] = index[member]
             continue
-        suffix = "/" + member.split("/", maxsplit=1)[-1]
-        matches = [info for name, info in index.items() if name.endswith(suffix)]
+        canonical_suffix = "/" + member
+        matches = [
+            info for name, info in index.items() if name.endswith(canonical_suffix)
+        ]
         if len(matches) == 1:
             resolved[member] = matches[0]
-        else:
-            missing.append(member)
+            continue
+        short_suffix = "/" + member.split("/", maxsplit=1)[-1]
+        short_matches = [
+            info for name, info in index.items() if name.endswith(short_suffix)
+        ]
+        if len(short_matches) == 1:
+            resolved[member] = short_matches[0]
+            continue
+        missing.append(member)
     if missing:
         raise FileNotFoundError(
             f"Members absent or ambiguous in sequence {sequence}: {sorted(missing)}"
         )
 
     records: list[DownloadRecord] = []
-    scratch = output_root / ".compressed"
+    # Metadata files often have identical names and CRCs across sequences. Keep
+    # partial ranges sequence-local so concurrent fetches cannot consume or
+    # delete another archive's resumable state.
+    scratch = output_root / ".compressed" / f"{sequence:02d}"
     for member in requested:
         info = resolved[member]
         if info.compress_type not in SUPPORTED_COMPRESSION:
@@ -360,7 +387,9 @@ def fetch_members(
         data_offset = _data_offset(
             client.session, url, info.header_offset, client.timeout
         )
-        compressed = scratch / f"{info.CRC:08x}-{Path(member).name}.part"
+        compressed = scratch / (
+            f"{info.header_offset:016x}-{info.CRC:08x}-{Path(member).name}.part"
+        )
         resumed = _download_compressed_range(
             client.session,
             url,
