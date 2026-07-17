@@ -9,8 +9,10 @@ RAED Cube and must output a newly inferred `XYZ + Doppler distribution +
 confidence` point cloud.
 
 G4 starts after a single-frame parent has been frozen. The parent is same-seed
-C3 when G3 passes; if G3 fails, the frozen same-seed G2 winner is used and the
-Cube-cycle claim remains failed. This fallback cannot retroactively pass G3.
+C3 when G3 passes; if G3 fails, the matched same-seed C0 continuous-point arm
+is used and the Cube-cycle claim remains failed. C0 keeps the exact offset and
+point-query architecture while removing all cycle losses, so temporal arms
+remain structurally comparable. This fallback cannot retroactively pass G3.
 
 ## Frozen Temporal Cohort
 

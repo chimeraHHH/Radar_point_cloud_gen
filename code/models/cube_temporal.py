@@ -7,37 +7,14 @@ import torch.nn as nn
 
 from models.cube_cycle import CubeCycleNet
 from models.cube_occupancy import ResidualBlock3d
-from models.temporal_prior import WarpedPrior, prior_point_features
+from models.temporal_prior import (
+    WarpedPrior,
+    nearest_point_indices,
+    prior_point_features,
+)
 
 
 FUSION_MODES = ("concat", "cross_attention", "draft_refinement")
-
-
-def nearest_prior_indices(
-    query_xyz_m: torch.Tensor,
-    prior_xyz_m: torch.Tensor,
-    neighbor_count: int,
-    chunk_size: int = 1024,
-) -> tuple[torch.Tensor, torch.Tensor]:
-    if query_xyz_m.ndim != 2 or query_xyz_m.shape[1] != 3:
-        raise ValueError("Temporal queries must be (N,3) Cartesian points")
-    if prior_xyz_m.ndim != 2 or prior_xyz_m.shape[1] != 3:
-        raise ValueError("Temporal prior must be (M,3) Cartesian points")
-    if prior_xyz_m.shape[0] == 0:
-        raise ValueError("Cannot query an empty temporal prior")
-    count = min(neighbor_count, prior_xyz_m.shape[0])
-    distances = []
-    indices = []
-    for start in range(0, query_xyz_m.shape[0], chunk_size):
-        distance = torch.cdist(
-            query_xyz_m[start : start + chunk_size], prior_xyz_m
-        )
-        values, selected = torch.topk(
-            distance, count, dim=1, largest=False, sorted=True
-        )
-        distances.append(values)
-        indices.append(selected)
-    return torch.cat(indices), torch.cat(distances)
 
 
 class CubeTemporalNet(CubeCycleNet):
@@ -167,7 +144,7 @@ class CubeTemporalNet(CubeCycleNet):
                 if self.fusion_mode == "cross_attention"
                 else 1
             )
-            neighbor_index, _ = nearest_prior_indices(
+            neighbor_index, _ = nearest_point_indices(
                 query_xyz_m, prior_xyz, neighbor_count
             )
             neighbor_xyz = prior_xyz[neighbor_index]

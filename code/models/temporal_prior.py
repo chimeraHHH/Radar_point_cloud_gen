@@ -21,6 +21,35 @@ class WarpedPrior:
     confidence: torch.Tensor
 
 
+def nearest_point_indices(
+    query_xyz_m: torch.Tensor,
+    reference_xyz_m: torch.Tensor,
+    neighbor_count: int = 1,
+    chunk_size: int = 1024,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    if query_xyz_m.ndim != 2 or query_xyz_m.shape[1] != 3:
+        raise ValueError("Temporal queries must be (N,3) Cartesian points")
+    if reference_xyz_m.ndim != 2 or reference_xyz_m.shape[1] != 3:
+        raise ValueError("Temporal reference must be (M,3) Cartesian points")
+    if reference_xyz_m.shape[0] == 0:
+        raise ValueError("Cannot query an empty temporal reference")
+    if neighbor_count < 1:
+        raise ValueError("Neighbor count must be positive")
+    count = min(neighbor_count, reference_xyz_m.shape[0])
+    distances = []
+    indices = []
+    for start in range(0, query_xyz_m.shape[0], chunk_size):
+        distance = torch.cdist(
+            query_xyz_m[start : start + chunk_size], reference_xyz_m
+        )
+        values, selected = torch.topk(
+            distance, count, dim=1, largest=False, sorted=True
+        )
+        distances.append(values)
+        indices.append(selected)
+    return torch.cat(indices), torch.cat(distances)
+
+
 def transform_points(points_xyz: torch.Tensor, transform: torch.Tensor) -> torch.Tensor:
     if points_xyz.ndim != 2 or points_xyz.shape[1] != 3:
         raise ValueError(f"Expected (N,3) points, got {points_xyz.shape}")

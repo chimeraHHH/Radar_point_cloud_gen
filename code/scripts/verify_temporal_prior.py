@@ -19,6 +19,8 @@ from models.cube_cycle import CubeCycleNet, continuous_rae_to_xyz  # noqa: E402
 from models.cube_temporal import CubeTemporalNet, FUSION_MODES  # noqa: E402
 from models.cube_occupancy import parameter_count  # noqa: E402
 from models.point_to_cube import soft_splat_features  # noqa: E402
+from losses.temporal_consistency import temporal_match, temporal_radial_loss  # noqa: E402
+from eval.temporal_cube import temporal_consistency_report  # noqa: E402
 from models.temporal_prior import (  # noqa: E402
     WarpedPrior,
     gated_doppler_warp,
@@ -120,6 +122,52 @@ def main() -> None:
         apply_doppler_displacement=False,
     )
     ego_only_error = float((ego_only.xyz_m - xyz).abs().max().item())
+
+    consistent_current_xyz = warped.xyz_m.detach().clone()
+    consistent_match = temporal_match(
+        xyz,
+        probability,
+        confidence,
+        consistent_current_xyz,
+        probability,
+        confidence,
+        transform,
+        delta_seconds,
+        doppler_mps,
+        doppler_lower,
+        doppler_period,
+        dynamic_threshold_mps=0.1,
+    )
+    consistent_report = temporal_consistency_report(
+        consistent_match,
+        confidence,
+        consistent_current_xyz.detach(),
+        confidence,
+        range_m,
+        azimuth_rad,
+        elevation_rad,
+    )
+    perturbed_xyz = (
+        warped.xyz_m + 0.5 * radial_direction
+    ).detach().requires_grad_(True)
+    perturbed_match = temporal_match(
+        xyz,
+        probability,
+        confidence,
+        perturbed_xyz,
+        probability,
+        confidence,
+        transform,
+        delta_seconds,
+        doppler_mps,
+        doppler_lower,
+        doppler_period,
+        dynamic_threshold_mps=0.1,
+    )
+    perturbed_temporal_loss = temporal_radial_loss(perturbed_match)
+    perturbed_temporal_loss.backward()
+    perturbed_temporal_error = float(perturbed_match.radial_error_m.mean().item())
+    temporal_xyz_gradient = float(perturbed_xyz.grad.norm().item())
 
     translated_transform = torch.eye(4, dtype=torch.float32, device=device)
     translated_transform[:3, 3] = torch.tensor([1.0, -2.0, 0.5], device=device)
@@ -318,6 +366,20 @@ def main() -> None:
             gradient_norms["confidence_logits"]
         )
         and gradient_norms["confidence_logits"] > 0.0,
+        "consistent_temporal_radial_error_near_zero": consistent_report[
+            "temporal_radial_error_mean_m"
+        ]
+        <= args.absolute_tolerance,
+        "consistent_temporal_flicker_near_zero": consistent_report[
+            "occupancy_flicker"
+        ]
+        <= 10.0 * args.absolute_tolerance,
+        "temporal_metric_detects_radial_perturbation": perturbed_temporal_error
+        >= consistent_report["temporal_radial_error_mean_m"] + 0.1,
+        "temporal_loss_xyz_gradient_finite_nonzero": np.isfinite(
+            temporal_xyz_gradient
+        )
+        and temporal_xyz_gradient > 0.0,
         "all_fusion_fallbacks_exact": maximum_fallback_error
         <= args.absolute_tolerance,
         "all_fusion_temporal_gradients_nonzero": all_temporal_gradients_nonzero,
@@ -338,6 +400,9 @@ def main() -> None:
         "rigid_transform_max_error_m": transform_error,
         "feature_splat_conservation_error": conservation_error,
         "gradient_norms": gradient_norms,
+        "consistent_temporal_report": consistent_report,
+        "perturbed_temporal_error_m": perturbed_temporal_error,
+        "temporal_xyz_gradient_norm": temporal_xyz_gradient,
         "parent_model_parameters": parent_parameters,
         "maximum_fusion_parameter_increase": maximum_parameter_increase,
         "maximum_fusion_fallback_error": maximum_fallback_error,
