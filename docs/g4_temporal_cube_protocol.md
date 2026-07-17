@@ -135,6 +135,8 @@ the single-frame paper proceeds according to G2/G3 without weakening this gate.
 ## Required Artifacts
 
 - immutable temporal manifest and CRC-verified download manifests;
+- CUDA temporal-prior verifier covering coordinate round trips, ego/Doppler
+  warps, raster conservation, descending axes, and nonzero gradients;
 - T4-T6 preflight report and frozen selection decision;
 - same-seed T0-T3 and selected temporal outputs on every validation frame;
 - scheduled-sampling logs and teacher/recurrent exposure counts;
