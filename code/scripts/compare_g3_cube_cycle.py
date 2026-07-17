@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from collections import defaultdict
 from pathlib import Path
@@ -23,10 +24,45 @@ ENDPOINTS = {
     "confidence_ece": ("doppler", "soft_ece_10bin", "lower"),
 }
 CONFIG_PAIR_EXCLUSIONS = {"variant", "seed"}
+ROBUSTNESS_PROTOCOL = "g3_cube_cycle_robustness_v1"
+REQUIRED_ROBUSTNESS_CONDITIONS = {
+    "clean",
+    "log_power_noise_snr20db",
+    "log_power_noise_snr10db",
+    "log_power_noise_snr5db",
+    "doppler_shift_m2",
+    "doppler_shift_m1",
+    "doppler_shift_p1",
+    "doppler_shift_p2",
+    "azimuth_offset_p0p25_bin",
+    "azimuth_offset_p0p5_bin",
+    "elevation_offset_p0p25_bin",
+    "elevation_offset_p0p5_bin",
+    "confidence_temperature_0p5",
+    "confidence_temperature_1p0",
+    "confidence_temperature_2p0",
+}
+REQUIRED_ROBUSTNESS_AGGREGATES = (
+    ("cycle", "local_spectrum_kl"),
+    ("doppler", "static_pce_median_mps"),
+    ("generated_geometry", "chamfer_m"),
+    ("cycle", "covered_cell_count"),
+)
+
+
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def load_run(path: Path, expected_variant: str) -> dict:
-    document = json.loads((path / "config.json").read_text(encoding="utf-8"))
+    path = path.resolve()
+    config_path = path / "config.json"
+    checkpoint_path = path / "best.pt"
+    document = json.loads(config_path.read_text(encoding="utf-8"))
     config = document["config"]
     provenance = document["provenance"]
     if config["variant"] != expected_variant:
@@ -42,11 +78,91 @@ def load_run(path: Path, expected_variant: str) -> dict:
     }
     return {
         "path": str(path),
+        "config_sha256": sha256(config_path),
+        "best_checkpoint_sha256": sha256(checkpoint_path),
         "seed": int(config["seed"]),
         "config": config,
         "provenance": provenance,
         "best_epoch": int(metrics["best_epoch"]),
         "frames": frames,
+    }
+
+
+def validate_robustness(
+    robustness: dict,
+    arms: dict[str, dict[int, dict]],
+) -> dict:
+    if robustness.get("protocol") != ROBUSTNESS_PROTOCOL:
+        raise ValueError("G3 robustness report uses the wrong protocol")
+    if robustness.get("schema_version") != 1:
+        raise ValueError("Unsupported G3 robustness schema")
+    if robustness.get("completed") is not True:
+        raise ValueError("G3 robustness report is not complete")
+    report_checks = robustness.get("checks")
+    if not isinstance(report_checks, dict) or not report_checks or not all(
+        value is True for value in report_checks.values()
+    ):
+        raise ValueError("G3 robustness report contains failed completion checks")
+    definitions = robustness.get("condition_definitions", [])
+    condition_ids = {definition.get("condition_id") for definition in definitions}
+    if condition_ids != REQUIRED_ROBUSTNESS_CONDITIONS:
+        missing = sorted(REQUIRED_ROBUSTNESS_CONDITIONS - condition_ids)
+        extra = sorted(condition_ids - REQUIRED_ROBUSTNESS_CONDITIONS)
+        raise ValueError(
+            f"G3 robustness conditions differ: missing={missing}, extra={extra}"
+        )
+
+    expected_runs = {}
+    for report_variant, arm_name in (("none", "c0_none"), ("full", "c3_full")):
+        for seed, run in arms[arm_name].items():
+            expected_runs[(report_variant, seed)] = run
+    report_runs = {
+        (run.get("variant"), int(run.get("seed"))): run
+        for run in robustness.get("runs", [])
+    }
+    if set(report_runs) != set(expected_runs):
+        raise ValueError("G3 robustness C0/C3 seed matrix differs from clean runs")
+
+    reference_frames = set(next(iter(arms["c0_none"].values()))["frames"])
+    if int(robustness.get("full_validation_frame_count", -1)) != len(reference_frames):
+        raise ValueError("G3 robustness report does not cover the frozen validation set")
+    for run_key, expected in expected_runs.items():
+        reported = report_runs[run_key]
+        if str(Path(reported.get("run_path", "")).resolve()) != expected["path"]:
+            raise ValueError(f"Robustness run path differs for {run_key}")
+        if reported.get("config_sha256") != expected["config_sha256"]:
+            raise ValueError(f"Robustness config hash differs for {run_key}")
+        if reported.get("best_checkpoint_sha256") != expected["best_checkpoint_sha256"]:
+            raise ValueError(f"Robustness checkpoint hash differs for {run_key}")
+        if reported.get("model_source_commit") != expected["provenance"]["git_commit"]:
+            raise ValueError(f"Robustness model source differs for {run_key}")
+        conditions = reported.get("conditions", {})
+        if set(conditions) != REQUIRED_ROBUSTNESS_CONDITIONS:
+            raise ValueError(f"Robustness condition matrix incomplete for {run_key}")
+        for condition_id, result in conditions.items():
+            if int(result.get("frame_count", -1)) != len(reference_frames):
+                raise ValueError(
+                    f"Robustness frame count differs for {run_key} {condition_id}"
+                )
+            frame_keys = {
+                (int(frame["sequence"]), int(frame["radar_index"]))
+                for frame in result.get("frames", [])
+            }
+            if frame_keys != reference_frames:
+                raise ValueError(
+                    f"Robustness frame identities differ for {run_key} {condition_id}"
+                )
+            for source, metric in REQUIRED_ROBUSTNESS_AGGREGATES:
+                if metric not in result.get(source, {}):
+                    raise ValueError(
+                        f"Missing robustness metric {source}.{metric} for "
+                        f"{run_key} {condition_id}"
+                    )
+    return {
+        "protocol": ROBUSTNESS_PROTOCOL,
+        "condition_count": len(REQUIRED_ROBUSTNESS_CONDITIONS),
+        "run_count": len(report_runs),
+        "frame_count_per_condition": len(reference_frames),
     }
 
 
@@ -238,6 +354,7 @@ def main() -> None:
         args.renderer_test_report.read_text(encoding="utf-8")
     )
     robustness = json.loads(args.robustness_report.read_text(encoding="utf-8"))
+    robustness_validation = validate_robustness(robustness, arms)
     rng = np.random.default_rng(args.seed)
     comparisons = {
         "c1_local_vs_c0_none": compare(
@@ -263,7 +380,7 @@ def main() -> None:
     ece_degradation_upper = -primary["confidence_ece"]["improvement_ci95"][0]
     checks = {
         "renderer_unit_test_passed": renderer_test.get("passed") is True,
-        "robustness_matrix_completed": robustness.get("completed") is True,
+        "robustness_matrix_completed": True,
         "local_spectrum_kl_gain": confidently_better(
             primary["local_spectrum_kl"]
         ),
@@ -293,6 +410,7 @@ def main() -> None:
         "comparisons": comparisons,
         "renderer_test_report": str(args.renderer_test_report),
         "robustness_report": str(args.robustness_report),
+        "robustness_validation": robustness_validation,
         "confidence_ece_degradation_upper_ci95": ece_degradation_upper,
         "checks": checks,
         "g3_passed": all(checks.values()),

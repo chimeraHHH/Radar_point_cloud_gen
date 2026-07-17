@@ -99,6 +99,17 @@ Report degradation curves for Cube KL, PCE, geometry Chamfer, and confidence
 coverage. Robustness results diagnose the mechanism and do not replace the
 clean-data gate.
 
+Perturbations are applied only to the model input. Cube KL and Doppler targets
+remain the unperturbed Cube, while geometry remains the frozen observable-LiDAR
+target; this prevents a model from receiving credit for reproducing a corrupted
+measurement. Positive fractional calibration offsets are evaluated separately
+for azimuth and elevation with non-periodic boundary handling. Confidence
+temperature `T` means dividing occupancy logits by `T` before top-k confidence
+decoding. The formal matrix contains all frozen validation frames for both C0
+and C3 at all three seeds. A completion flag without the exact conditions,
+frame identities, required metrics, and matching config/checkpoint hashes is
+invalid.
+
 ## G3 Decision Rule
 
 G3 passes only when C3 versus C0 satisfies all conditions:
