@@ -64,6 +64,7 @@ class KRadarCubeDataset(Dataset):
             "cube_drae": torch.from_numpy(cube),
             "occupancy": torch.from_numpy(occupancy),
             "target_xyz_confidence": torch.from_numpy(target),
+            "target_rae_index": torch.from_numpy(target_index),
             "cfar_xyzd_power_snr": torch.from_numpy(cfar),
             "ego_velocity_xyz_mps": torch.from_numpy(ego_velocity),
             "ego_speed_mps": torch.from_numpy(ego_speed),
