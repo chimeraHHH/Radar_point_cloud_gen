@@ -58,6 +58,7 @@ class TrainConfig:
     max_eval_frames: int
     train_limit: int | None
     validation_limit: int | None
+    base_channels: int
     log_center: float
     log_scale: float
     static_hypothesis: str
@@ -319,6 +320,7 @@ def main() -> None:
         max_eval_frames=args.max_eval_frames,
         train_limit=args.train_limit,
         validation_limit=args.validation_limit,
+        base_channels=int(parent_config["base_channels"]),
         log_center=float(parent_config["log_center"]),
         log_scale=float(parent_config["log_scale"]),
         static_hypothesis=static_hypothesis,
@@ -346,7 +348,7 @@ def main() -> None:
         torch.from_numpy(axes.doppler_mps),
         torch.from_numpy(axes.azimuth_rad),
         torch.from_numpy(axes.elevation_rad),
-        base_channels=int(parent_config["base_channels"]),
+        base_channels=config.base_channels,
         log_center=config.log_center,
         log_scale=config.log_scale,
         static_hypothesis=config.static_hypothesis,
