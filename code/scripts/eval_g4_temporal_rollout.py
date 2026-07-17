@@ -504,6 +504,7 @@ def main() -> None:
         "fusion_mode": fusion_mode,
         "arm_id": arm_id,
         "seed": seed,
+        "parent_variant": config["parent_variant"],
         "manifest_sha256": manifest_hash,
         "scene_split_sha256": scene_split_hash,
         "normalization_sha256": normalization_hash,

@@ -135,6 +135,12 @@ three formal seeds:
 5. all model/data/checkpoint provenance matches and test sequences remain
    untouched.
 
+Conditions 3 and 4 use conservative paired-bootstrap bounds: non-degradation
+thresholds are applied to the upper 95% relative-change bound, while the 90%
+retention thresholds are applied to the lower 95% ratio bound. The bootstrap
+resamples seeds and validation sequences; frames within a sequence are averaged
+before inference and are not treated as independent observations.
+
 T1/T2 mechanism results and the T4-T6 preflight cannot replace the selected
 three-seed comparison. If G4 fails, temporal fusion is moved to the appendix;
 the single-frame paper proceeds according to G2/G3 without weakening this gate.
