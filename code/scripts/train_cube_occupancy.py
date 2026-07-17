@@ -357,10 +357,6 @@ def main() -> None:
         scheduler.load_state_dict(last_checkpoint["scheduler"])
         last_epoch = int(last_checkpoint["epoch"])
         start_epoch = last_epoch + 1
-        if start_epoch > config.epochs:
-            raise ValueError(
-                f"Run already reached epoch {last_checkpoint['epoch']} of {config.epochs}"
-            )
         best_chamfer, best_epoch = best_recorded_chamfer(args.output, last_epoch)
         best_path = args.output / "best.pt"
         recorded_best_epoch = None
