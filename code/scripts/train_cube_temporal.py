@@ -941,10 +941,13 @@ def main() -> None:
         config,
         device,
     )
+    full_validation_score = selection_score(final_metrics)
     final_report = {
         "best_epoch": int(best["epoch"]),
         "selection_metric": "temporal_radial_error + 0.25 * current_chamfer + 0.25 * local_spectrum_kl",
-        "selection_value": best_score,
+        "selection_value": full_validation_score,
+        "full_validation_selection_value": full_validation_score,
+        "checkpoint_selection_value": best_score,
         "validation": final_metrics,
     }
     atomic_json(args.output / "best_validation_metrics.json", final_report)
