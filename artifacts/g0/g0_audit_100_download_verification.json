@@ -1,0 +1,475 @@
+{
+  "passed": true,
+  "expected_frame_count": 100,
+  "cube_count": 100,
+  "lidar_count": 100,
+  "label_count": 100,
+  "expected_sequences": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    11,
+    12,
+    14,
+    18,
+    21,
+    22,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    38,
+    39,
+    40,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    49,
+    50,
+    51,
+    52,
+    53,
+    55,
+    56,
+    57,
+    58
+  ],
+  "summary_valid": false,
+  "summary_required": false,
+  "summary": {
+    "requested_sequences": [
+      46
+    ],
+    "completed_sequences": [
+      46
+    ],
+    "failures": []
+  },
+  "verified_file_count": 480,
+  "invalid_files": [],
+  "sequence_reports": [
+    {
+      "sequence": 1,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 2,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 3,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 4,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 5,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 6,
+      "expected_members": 13,
+      "manifest_members": 13,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 7,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 8,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 9,
+      "expected_members": 13,
+      "manifest_members": 13,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 11,
+      "expected_members": 13,
+      "manifest_members": 13,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 12,
+      "expected_members": 13,
+      "manifest_members": 13,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 14,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 18,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 21,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 22,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 24,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 25,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 26,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 27,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 28,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 29,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 30,
+      "expected_members": 13,
+      "manifest_members": 13,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 31,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 32,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 33,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 34,
+      "expected_members": 13,
+      "manifest_members": 13,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 35,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 38,
+      "expected_members": 13,
+      "manifest_members": 13,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 39,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 40,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 42,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 43,
+      "expected_members": 13,
+      "manifest_members": 13,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 44,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 45,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 46,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 47,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 49,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 50,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 51,
+      "expected_members": 13,
+      "manifest_members": 13,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 52,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 53,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 55,
+      "expected_members": 13,
+      "manifest_members": 13,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 56,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 57,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 58,
+      "expected_members": 10,
+      "manifest_members": 10,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    }
+  ],
+  "errors": []
+}

@@ -65,6 +65,7 @@ def main() -> None:
     parser.add_argument("--download-manifest-dir", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument("--require-full-summary", action="store_true")
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
     if args.output.exists() and not args.overwrite:
@@ -160,13 +161,15 @@ def main() -> None:
             f"expected={expected_frame_count}"
         )
 
+    # Targeted retries overwrite summary.json with their subset. Per-sequence
+    # manifests and fresh CRC checks are the authoritative completeness proof.
     summary_valid = bool(
         summary
         and summary.get("requested_sequences") == expected_sequences
         and summary.get("completed_sequences") == expected_sequences
         and not summary.get("failures")
     )
-    if not summary_valid:
+    if args.require_full_summary and not summary_valid:
         errors.append("Downloader summary is absent, incomplete, or contains failures")
     report = {
         "passed": not errors,
@@ -176,6 +179,8 @@ def main() -> None:
         "label_count": label_count,
         "expected_sequences": expected_sequences,
         "summary_valid": summary_valid,
+        "summary_required": args.require_full_summary,
+        "summary": summary,
         "verified_file_count": len(file_reports),
         "invalid_files": invalid_files,
         "sequence_reports": sequence_reports,
