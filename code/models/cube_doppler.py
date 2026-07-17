@@ -190,6 +190,28 @@ class CubeDopplerNet(CubeOccupancyNet):
         gathered, (batch, _, azimuth, elevation) = self.gathered_features(
             features, indices
         )
+        return self.query_from_projected(
+            gathered, batch, azimuth, elevation, ego_speed_mps
+        )
+
+    def query_from_projected(
+        self,
+        gathered: torch.Tensor,
+        batch: torch.Tensor,
+        azimuth: torch.Tensor,
+        elevation: torch.Tensor,
+        ego_speed_mps: torch.Tensor,
+    ) -> dict[str, torch.Tensor]:
+        """Apply Doppler heads to already projected per-point features."""
+
+        if gathered.ndim != 2 or gathered.shape[1] != self.project.out_channels:
+            raise ValueError(
+                f"Expected projected point features (*,{self.project.out_channels}), "
+                f"got {gathered.shape}"
+            )
+        point_count = gathered.shape[0]
+        if any(index.shape != (point_count,) for index in (batch, azimuth, elevation)):
+            raise ValueError("Projected point indices do not match feature count")
         if self.head_mode == "scalar":
             scalar_unwrapped = self.scalar_head(gathered).squeeze(1)
             scalar = torch.remainder(

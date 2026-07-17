@@ -15,9 +15,12 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from models.cube_cycle import continuous_rae_to_xyz  # noqa: E402
+from models.cube_cycle import CubeCycleNet, continuous_rae_to_xyz  # noqa: E402
+from models.cube_temporal import CubeTemporalNet, FUSION_MODES  # noqa: E402
+from models.cube_occupancy import parameter_count  # noqa: E402
 from models.point_to_cube import soft_splat_features  # noqa: E402
 from models.temporal_prior import (  # noqa: E402
+    WarpedPrior,
     gated_doppler_warp,
     rasterize_temporal_prior,
     transform_points,
@@ -152,6 +155,146 @@ def main() -> None:
         "features": float(gradient_features.grad.norm().item()),
         "confidence_logits": float(confidence_logits.grad.norm().item()),
     }
+    model_kwargs = {
+        "head_mode": "physics_distribution",
+        "doppler_mps": doppler_mps,
+        "range_m": range_m,
+        "azimuth_rad": azimuth_rad,
+        "elevation_rad": elevation_rad,
+        "base_channels": 8,
+        "static_hypothesis": "zero_centered",
+    }
+    parent = CubeCycleNet(**model_kwargs).to(device).eval()
+    small_cube = torch.rand(1, 64, 16, 12, 8, device=device)
+    query_indices = torch.stack(
+        (
+            torch.randint(0, 16, (32,), device=device),
+            torch.randint(0, 12, (32,), device=device),
+            torch.randint(0, 8, (32,), device=device),
+        ),
+        dim=1,
+    )
+    query_xyz = continuous_rae_to_xyz(
+        query_indices.float(), range_m, azimuth_rad, elevation_rad
+    )
+    ego_speed = torch.tensor([5.0], device=device)
+    with torch.no_grad():
+        parent_occupancy, parent_features = parent(small_cube)
+        parent_query = parent.query_cycle(
+            parent_features, query_indices, ego_speed
+        )
+    fusion_coordinates = torch.stack(
+        (
+            torch.rand(48, device=device) * 15.0,
+            torch.rand(48, device=device) * 11.0,
+            torch.rand(48, device=device) * 7.0,
+        ),
+        dim=1,
+    )
+    fusion_xyz = continuous_rae_to_xyz(
+        fusion_coordinates, range_m, azimuth_rad, elevation_rad
+    )
+    fusion_probability = torch.softmax(torch.randn(48, 64, device=device), dim=1)
+    fusion_confidence = torch.sigmoid(torch.randn(48, device=device))
+    fusion_prior = WarpedPrior(
+        xyz_m=fusion_xyz,
+        coordinates_rae=fusion_coordinates,
+        valid=torch.ones(48, dtype=torch.bool, device=device),
+        dynamic_gate=torch.rand(48, device=device) > 0.5,
+        residual_doppler_mps=torch.randn(48, device=device),
+        probability=fusion_probability,
+        confidence=fusion_confidence,
+    )
+    small_raster = rasterize_temporal_prior(
+        fusion_prior,
+        doppler_mps,
+        doppler_lower,
+        doppler_period,
+        spatial_shape=(16, 12, 8),
+    )
+    fusion_reports = {}
+    maximum_fallback_error = 0.0
+    maximum_parameter_increase = 0.0
+    all_temporal_gradients_nonzero = True
+    parent_parameters = parameter_count(parent)
+    for fusion_mode in FUSION_MODES:
+        model = CubeTemporalNet(fusion_mode=fusion_mode, **model_kwargs).to(device)
+        missing, unexpected = model.load_state_dict(parent.state_dict(), strict=False)
+        if not missing or unexpected:
+            raise RuntimeError(
+                f"Unexpected temporal initialization for {fusion_mode}: "
+                f"missing={missing}, unexpected={unexpected}"
+            )
+        model.eval()
+        with torch.no_grad():
+            fallback_occupancy, fallback_features = model.forward_temporal(
+                small_cube, None
+            )
+            fallback_query = model.query_temporal(
+                fallback_features,
+                query_indices,
+                query_xyz,
+                ego_speed,
+                None,
+            )
+        fallback_error = max(
+            float((fallback_occupancy - parent_occupancy).abs().max().item()),
+            *(
+                float((fallback_query[key] - parent_query[key]).abs().max().item())
+                for key in ("probability", "offset_rae_bins", "xyz_m")
+            ),
+        )
+        maximum_fallback_error = max(maximum_fallback_error, fallback_error)
+        model.train()
+        model.zero_grad(set_to_none=True)
+        condition_raster = small_raster if fusion_mode == "concat" else None
+        occupancy, features = model.forward_temporal(small_cube, condition_raster)
+        prediction = model.query_temporal(
+            features,
+            query_indices,
+            query_xyz,
+            ego_speed,
+            fusion_prior,
+        )
+        model_loss = (
+            occupancy.square().mean()
+            + prediction["offset_rae_bins"].square().mean()
+            + prediction["logits"].square().mean()
+        )
+        model_loss.backward()
+        temporal_gradient_norms = {
+            name: float(parameter.grad.norm().item())
+            for name, parameter in model.named_parameters()
+            if parameter.grad is not None
+            and any(
+                prefix in name
+                for prefix in (
+                    "prior_",
+                    "concat_",
+                    "relative_",
+                    "temporal_",
+                    "draft_",
+                )
+            )
+        }
+        temporal_gradient_max = max(temporal_gradient_norms.values(), default=0.0)
+        temporal_gradients_ok = bool(
+            np.isfinite(temporal_gradient_max) and temporal_gradient_max > 0.0
+        )
+        all_temporal_gradients_nonzero &= temporal_gradients_ok
+        parameters = parameter_count(model)
+        relative_increase = (parameters - parent_parameters) / parent_parameters
+        maximum_parameter_increase = max(maximum_parameter_increase, relative_increase)
+        fusion_reports[fusion_mode] = {
+            "parameters": parameters,
+            "relative_parameter_increase": relative_increase,
+            "missing_parent_key_count": len(missing),
+            "fallback_max_error": fallback_error,
+            "temporal_gradient_max": temporal_gradient_max,
+            "temporal_gradient_parameter_count": len(temporal_gradient_norms),
+        }
+        del model, occupancy, features, prediction, model_loss
+        torch.cuda.empty_cache()
     checks = {
         "xyz_rae_roundtrip": bool(valid.all())
         and roundtrip_error <= args.absolute_tolerance,
@@ -175,6 +318,10 @@ def main() -> None:
             gradient_norms["confidence_logits"]
         )
         and gradient_norms["confidence_logits"] > 0.0,
+        "all_fusion_fallbacks_exact": maximum_fallback_error
+        <= args.absolute_tolerance,
+        "all_fusion_temporal_gradients_nonzero": all_temporal_gradients_nonzero,
+        "fusion_parameter_increase_le_5pct": maximum_parameter_increase <= 0.05,
     }
     report = {
         "schema_version": 1,
@@ -191,6 +338,10 @@ def main() -> None:
         "rigid_transform_max_error_m": transform_error,
         "feature_splat_conservation_error": conservation_error,
         "gradient_norms": gradient_norms,
+        "parent_model_parameters": parent_parameters,
+        "maximum_fusion_parameter_increase": maximum_parameter_increase,
+        "maximum_fusion_fallback_error": maximum_fallback_error,
+        "fusion_reports": fusion_reports,
         "checks": checks,
         "passed": all(checks.values()),
     }

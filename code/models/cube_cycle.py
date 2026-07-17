@@ -81,9 +81,28 @@ class CubeCycleNet(CubeDopplerNet):
         indices: torch.Tensor,
         ego_speed_mps: torch.Tensor,
     ) -> dict[str, torch.Tensor]:
-        result = self.query(features, indices, ego_speed_mps)
-        gathered, _ = self.gathered_features(features, indices)
+        gathered, (batch, _, azimuth, elevation) = self.gathered_features(
+            features, indices
+        )
+        result = self.query_from_projected(
+            gathered, batch, azimuth, elevation, ego_speed_mps
+        )
+        return self.cycle_output_from_projected(result, gathered, indices)
+
+    def cycle_output_from_projected(
+        self,
+        doppler_result: dict[str, torch.Tensor],
+        gathered: torch.Tensor,
+        indices: torch.Tensor,
+        offset_override_bins: torch.Tensor | None = None,
+    ) -> dict[str, torch.Tensor]:
         offset = torch.tanh(self.offset_head(gathered)) * self.maximum_offset_bins
+        if offset_override_bins is not None:
+            if offset_override_bins.shape != offset.shape:
+                raise ValueError("Temporal offset override has the wrong shape")
+            offset = offset_override_bins.clamp(
+                -self.maximum_offset_bins, self.maximum_offset_bins
+            )
         coordinates = indices[:, -3:].to(offset) + offset
         xyz = continuous_rae_to_xyz(
             coordinates,
@@ -92,7 +111,7 @@ class CubeCycleNet(CubeDopplerNet):
             self.elevation_rad,
         )
         return {
-            **result,
+            **doppler_result,
             "offset_rae_bins": offset,
             "coordinates_rae": coordinates,
             "xyz_m": xyz,
