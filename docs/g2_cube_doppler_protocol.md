@@ -47,15 +47,24 @@ out-of-FOV queries are reported and cannot be silently removed.
 
 ## Static/Dynamic Physics Mixture
 
+Before E5, calibrate the dataset convention using only train-partition CFAR
+points outside every annotated 3D box. Compare the three wrapped hypotheses
+`-dot(v_ego, r_hat)`, `+dot(v_ego, r_hat)`, and zero-centered compensation.
+Freeze the train winner only if its frame-median circular error beats the
+runner-up by at least `0.05 m/s`, then evaluate that frozen choice on validation.
+No validation frame participates in selecting the sign or compensation mode.
+
 For a point with radial unit vector `r_hat` and platform velocity `v_ego`, the
-static radial velocity is
+uncompensated static radial velocity is
 
 ```text
 v_static = -dot(v_ego, r_hat).
 ```
 
 K-Radar aliasing is handled with circular Doppler distance on the measured
-axis. E5 predicts a static probability and a dynamic residual distribution:
+axis. The analytic distribution is centered at the frozen calibrated
+hypothesis, which may be zero if the Cube is already ego compensated. E5
+predicts a static probability and a dynamic residual distribution:
 
 ```text
 p(v_r) = p_static * p_analytic(v_r | v_ego, r_hat)
@@ -64,13 +73,16 @@ p(v_r) = p_static * p_analytic(v_r | v_ego, r_hat)
 
 The analytic component is a wrapped Gaussian with one-bin fixed standard
 deviation. A detached soft static/dynamic supervision target is derived from
-the distance between the observed local spectrum and `v_static`: at most
+the distance between the observed local spectrum and the calibrated static
+center: at most
 `1.0 m/s` is static, at least `2.0 m/s` is dynamic, and the interval is linearly
 interpolated. The target is a training label, not a test-time oracle.
 
-E5 receives ego motion explicitly so counterfactual interventions can alter
-the analytic component. The learned dynamic component must remain responsive
-to Cube evidence and must not be overwritten by the static prior.
+E5 receives ego motion explicitly. Under an ego-radial convention,
+counterfactual interventions must alter the analytic component; under a
+zero-centered compensated convention, the correct response is invariance near
+zero. The learned dynamic component must remain responsive to Cube evidence and
+must not be overwritten by the static prior.
 
 ## Training Protocol
 
@@ -104,8 +116,8 @@ static/dynamic threshold is tuned after viewing G2 validation outcomes.
 - PCE at `0.25`, `0.5`, and `1.0 m/s` on the static subset;
 - distribution confidence ECE and NLL;
 - predicted versus target dynamic fraction;
-- ego-speed counterfactual response at multipliers `0`, `0.5`, `1`, `1.5`,
-  and `2`, including slope and monotonicity.
+- convention-aware ego-speed counterfactual response at multipliers `0`,
+  `0.5`, `1`, `1.5`, and `2`, including slope and monotonicity or invariance.
 
 ### Geometry safeguard
 
@@ -125,9 +137,11 @@ G2 passes only when all conditions hold:
 4. E5's predicted dynamic fraction is between 0.5 and 1.5 times the target
    dynamic fraction and at least 5%; otherwise the physics mixture is declared
    collapsed.
-5. Counterfactual ego-speed response is monotonic from multipliers 0 to 2 with
-   positive slope. Saturation outside the training range is reported but is
-   not by itself a failure.
+5. Counterfactual ego-speed response matches the frozen sensor convention. For
+   an ego-radial convention it is monotonic with the calibrated sign; for a
+   zero-centered compensated convention the absolute fitted slope is at most
+   `0.1`. Saturation outside the training range is reported but is not by
+   itself a failure.
 
 If E4 does not beat E3, inspect circular-label construction and spectrum-query
 calibration before changing the model. If E5 fails while E4 passes, proceed to
