@@ -107,6 +107,9 @@ The full DRAE tensor remains the source of truth and is not duplicated in the ca
 ## Evidence boundary
 
 The eight-frame sequence-1 audit passes all numerical checks and the
-scene-isolated split is frozen. The selected 100-frame cross-scene cohort is
-currently being downloaded and CRC-verified; therefore G0 remains open until
-that complete CUDA audit passes.
+scene-isolated split is frozen. The selected cross-scene cohort now contains
+exactly 100 Cube, 100 OS2-64 and 100 label frame artifacts. A fresh independent
+check validates all 480 requested archive members by member set, uncompressed
+size and CRC with zero errors. A 45-frame contiguous-prefix CUDA audit passes
+all 11 interim checks, but G0 remains open until the complete 100-frame CUDA
+audit passes.

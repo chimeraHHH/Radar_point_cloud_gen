@@ -12,7 +12,8 @@
 - [x] Deskew OS2-64 with its per-point nanosecond timestamp and interpolated ego pose.
 - [x] Verify CFAR point spatial/Doppler round trip into Cube bins.
 - [x] Define and audit the radar-observable LiDAR confidence target.
-- [ ] Expand the visual/numeric audit to at least 100 frames across isolated scenes.
+- [x] Download and independently CRC-verify the frozen 100-frame cross-scene cohort.
+- [ ] Complete the 100-frame visual/numeric CUDA audit across isolated scenes.
 - [x] Freeze scene-level train/validation/test split and minimal cache schema.
 - [ ] Decide G0 using direct evidence.
 

@@ -34,8 +34,10 @@ P0/G0 starts from official K-Radar sequence 1 full `radar_tesseract` data, synch
 - The official File Station listing currently publishes 53/58 sequence archives; sequences 15, 16, 17, 19 and 20 are absent and are explicitly excluded rather than assigned inferred metadata.
 - The frozen 53-sequence split contains 22,419 train, 4,836 validation and 4,790 test frames (69.961%/15.091%/14.948%) with zero sequence overlap and required attribute coverage in every partition.
 - The 100-frame cross-scene audit manifest covers all 45 train/validation sequences with 76 train and 24 validation frames; test is untouched and all selected timestamps have one-to-one official odometry support.
+- The full selected cohort is present on the GPU server: 100 Cube tensors, 100 OS2-64 scans and 100 labels. Independent verification checks all 480 requested members by exact set, size and CRC with zero errors.
+- An interim 45-frame CUDA audit across 21 sequences passes all 11 checks with zero frame errors. It is diagnostic evidence only; the final G0 decision remains gated on all 100 frames.
 
-Evidence: `artifacts/g0/g0_audit_8frame.json`, `artifacts/g0/g0_audit_8frame.md`, `artifacts/g0/g0_audit_seq01_00033.png`, `artifacts/g0/g0_archive_availability.json`, `artifacts/g0/g0_scene_split.json`, and `artifacts/g0/g0_audit_100_manifest.json`.
+Evidence: `artifacts/g0/g0_audit_8frame.json`, `artifacts/g0/g0_audit_8frame.md`, `artifacts/g0/g0_audit_seq01_00033.png`, `artifacts/g0/g0_archive_availability.json`, `artifacts/g0/g0_scene_split.json`, `artifacts/g0/g0_audit_100_manifest.json`, `artifacts/g0/g0_audit_100_download_verification.json`, and `artifacts/g0/partial45/`.
 
 ## Open risks
 
