@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import random
+import shutil
 import subprocess
 import sys
 import time
@@ -145,7 +146,9 @@ def save_checkpoint(
     epoch: int,
     config: TrainConfig,
     provenance: dict,
+    record: dict | None = None,
 ) -> None:
+    temporary = path.with_suffix(path.suffix + ".tmp")
     torch.save(
         {
             "model": model.state_dict(),
@@ -154,9 +157,26 @@ def save_checkpoint(
             "epoch": epoch,
             "config": asdict(config),
             "provenance": provenance,
+            "record": record,
         },
-        path,
+        temporary,
     )
+    temporary.replace(path)
+
+
+def best_recorded_chamfer(output: Path, maximum_epoch: int) -> tuple[float, int]:
+    values = []
+    for path in sorted(output.glob("metrics_epoch_*.json")):
+        epoch = int(path.stem.rsplit("_", maxsplit=1)[1])
+        if epoch > maximum_epoch:
+            continue
+        metrics = json.loads(path.read_text(encoding="utf-8"))
+        values.append(
+            (float(metrics["generated"]["chamfer_m"]["median"]), epoch)
+        )
+    if not values:
+        raise ValueError("Resume run has no recorded validation metrics")
+    return min(values)
 
 
 def main() -> None:
@@ -183,6 +203,7 @@ def main() -> None:
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--source-commit", default=None)
     parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
     if not torch.cuda.is_available() or not args.device.startswith("cuda"):
         raise RuntimeError("Cube occupancy training requires CUDA")
@@ -246,10 +267,18 @@ def main() -> None:
     torch.cuda.manual_seed_all(config.seed)
     torch.backends.cudnn.benchmark = True
     device = torch.device(args.device)
-    if args.output.exists() and any(args.output.iterdir()) and not args.overwrite:
+    if args.overwrite and args.resume:
+        raise ValueError("--overwrite and --resume are mutually exclusive")
+    output_nonempty = args.output.exists() and any(args.output.iterdir())
+    if output_nonempty and args.overwrite:
+        shutil.rmtree(args.output)
+        output_nonempty = False
+    if output_nonempty and not args.resume:
         raise FileExistsError(
-            f"Run directory is not empty: {args.output}; use --overwrite explicitly"
+            f"Run directory is not empty: {args.output}; use --resume or --overwrite"
         )
+    if args.resume and not output_nonempty:
+        raise FileNotFoundError(f"No existing run to resume: {args.output}")
     args.output.mkdir(parents=True, exist_ok=True)
     repo = Path(__file__).resolve().parents[2]
     source_commit = args.source_commit or git_commit(repo)
@@ -265,11 +294,18 @@ def main() -> None:
         "device": torch.cuda.get_device_name(device),
         "torch_version": torch.__version__,
     }
-    (args.output / "config.json").write_text(
-        json.dumps({"config": asdict(config), "provenance": provenance}, indent=2)
-        + "\n",
-        encoding="utf-8",
-    )
+    run_document = {"config": asdict(config), "provenance": provenance}
+    config_path = args.output / "config.json"
+    if args.resume:
+        recorded = json.loads(config_path.read_text(encoding="utf-8"))
+        if recorded != run_document:
+            raise ValueError("Resume configuration or provenance does not match the run")
+    else:
+        temporary_config = config_path.with_suffix(".json.tmp")
+        temporary_config.write_text(
+            json.dumps(run_document, indent=2) + "\n", encoding="utf-8"
+        )
+        temporary_config.replace(config_path)
     axes = load_axes(args.data_root / "resources")
     train_set = KRadarCubeDataset(
         args.data_root, args.cache_root, args.manifest, ("train",)
@@ -303,6 +339,70 @@ def main() -> None:
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=config.epochs
     )
+    start_epoch = 1
+    best_chamfer = float("inf")
+    prior_elapsed_seconds = 0.0
+    if args.resume:
+        last_checkpoint = torch.load(
+            args.output / "last.pt", map_location=device, weights_only=False
+        )
+        if last_checkpoint["config"] != asdict(config):
+            raise ValueError("Last checkpoint configuration does not match the run")
+        if last_checkpoint["provenance"] != provenance:
+            raise ValueError("Last checkpoint provenance does not match the run")
+        model.load_state_dict(last_checkpoint["model"], strict=True)
+        optimizer.load_state_dict(last_checkpoint["optimizer"])
+        scheduler.load_state_dict(last_checkpoint["scheduler"])
+        last_epoch = int(last_checkpoint["epoch"])
+        start_epoch = last_epoch + 1
+        if start_epoch > config.epochs:
+            raise ValueError(
+                f"Run already reached epoch {last_checkpoint['epoch']} of {config.epochs}"
+            )
+        best_chamfer, best_epoch = best_recorded_chamfer(args.output, last_epoch)
+        best_path = args.output / "best.pt"
+        recorded_best_epoch = None
+        if best_path.exists():
+            recorded_best = torch.load(
+                best_path, map_location="cpu", weights_only=False
+            )
+            recorded_best_epoch = int(recorded_best["epoch"])
+        if recorded_best_epoch != best_epoch:
+            if best_epoch != last_epoch:
+                raise ValueError("Best checkpoint and recorded validation metrics differ")
+            save_checkpoint(
+                best_path,
+                model,
+                optimizer,
+                scheduler,
+                last_epoch,
+                config,
+                provenance,
+                last_checkpoint.get("record"),
+            )
+        log_path = args.output / "train_log.jsonl"
+        log_records = [
+            json.loads(line)
+            for line in (
+                log_path.read_text(encoding="utf-8").splitlines()
+                if log_path.exists()
+                else []
+            )
+            if line.strip()
+        ]
+        logged_epoch = int(log_records[-1]["epoch"]) if log_records else 0
+        if logged_epoch != last_epoch:
+            checkpoint_record = last_checkpoint.get("record")
+            if (
+                checkpoint_record is None
+                or logged_epoch != last_epoch - 1
+                or int(checkpoint_record["epoch"]) != last_epoch
+            ):
+                raise ValueError("Training log and last checkpoint epochs differ")
+            with log_path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(checkpoint_record) + "\n")
+            log_records.append(checkpoint_record)
+        prior_elapsed_seconds = float(log_records[-1]["elapsed_seconds"])
     print(
         json.dumps(
             {
@@ -310,16 +410,16 @@ def main() -> None:
                 "train_frames": len(train_indices),
                 "validation_frames": len(validation_indices),
                 "evaluation_frames": len(evaluation_indices),
+                "start_epoch": start_epoch,
                 "provenance": provenance,
             },
             indent=2,
         ),
         flush=True,
     )
-    best_chamfer = float("inf")
     log_path = args.output / "train_log.jsonl"
     started = time.monotonic()
-    for epoch in range(1, config.epochs + 1):
+    for epoch in range(start_epoch, config.epochs + 1):
         model.train()
         order = train_indices.copy()
         random.Random(config.seed + epoch).shuffle(order)
@@ -341,7 +441,9 @@ def main() -> None:
             "epoch": epoch,
             "train_loss_mean": float(np.mean(epoch_losses)),
             "learning_rate": scheduler.get_last_lr()[0],
-            "elapsed_seconds": round(time.monotonic() - started, 3),
+            "elapsed_seconds": round(
+                prior_elapsed_seconds + time.monotonic() - started, 3
+            ),
         }
         should_evaluate = epoch == 1 or epoch % config.eval_every == 0
         if should_evaluate:
@@ -359,19 +461,9 @@ def main() -> None:
                 json.dumps(metrics, indent=2) + "\n", encoding="utf-8"
             )
             chamfer = metrics["generated"]["chamfer_m"]["median"]
-            if chamfer < best_chamfer:
-                best_chamfer = chamfer
-                save_checkpoint(
-                    args.output / "best.pt",
-                    model,
-                    optimizer,
-                    scheduler,
-                    epoch,
-                    config,
-                    provenance,
-                )
-        with log_path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(record) + "\n")
+            is_best = chamfer < best_chamfer
+        else:
+            is_best = False
         save_checkpoint(
             args.output / "last.pt",
             model,
@@ -380,7 +472,22 @@ def main() -> None:
             epoch,
             config,
             provenance,
+            record,
         )
+        if is_best:
+            best_chamfer = chamfer
+            save_checkpoint(
+                args.output / "best.pt",
+                model,
+                optimizer,
+                scheduler,
+                epoch,
+                config,
+                provenance,
+                record,
+            )
+        with log_path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(record) + "\n")
         print(json.dumps(record), flush=True)
 
     best_checkpoint = torch.load(
