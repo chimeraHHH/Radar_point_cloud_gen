@@ -72,6 +72,11 @@ T3 aggregates the current T0 prediction and up to four warped historical T0
 predictions, then applies confidence-aware RAE voxel suppression and returns
 exactly 10,000 points. It may reuse history but cannot hallucinate new evidence.
 This controls for the core behavior of Doppler-driven temporal aggregation.
+The frozen suppression score is `confidence * exp(-age / 4)`, where age is the
+integer history depth in frames. One highest-scoring point is retained per
+integer RAE voxel; if fewer than 10,000 unique voxels remain, suppressed points
+are restored in score order. Exact ties prefer the newer, then lower-indexed,
+candidate. These rules are fixed before any temporal result is observed.
 
 T4 rasterizes prior position, confidence, circular Doppler mean, and Doppler
 entropy into the current RAE grid before concatenation. T5 uses bounded local
