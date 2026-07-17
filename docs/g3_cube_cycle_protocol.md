@@ -29,6 +29,11 @@ The occupancy decoder, Doppler head, optimizer, schedule, output count, and
 evaluation code are otherwise matched. C3 is the only preregistered primary G3
 comparison. C1/C2 cannot replace C3 after observing results.
 
+All arms use the same base objective: occupancy loss with weight `1.0`, Doppler
+head loss with weight `1.0`, and confidence-weighted continuous-point Chamfer
+with weight `0.1`. Thus C0 also trains its offset head; the cycle arms cannot
+gain merely because only they receive a continuous-position gradient.
+
 ## Renderer and Loss
 
 For point `i`, continuous RAE coordinate `u_i`, confidence `c_i`, and Doppler
