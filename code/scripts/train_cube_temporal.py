@@ -31,7 +31,6 @@ from eval.dense_geometry import (  # noqa: E402
     aggregate_geometry_reports,
     geometry_report,
     nearest_distance,
-    occupancy_to_points,
 )
 from eval.doppler_distribution import (  # noqa: E402
     aggregate_doppler_reports,
@@ -48,14 +47,11 @@ from losses.temporal_consistency import (  # noqa: E402
     temporal_match,
     temporal_radial_loss,
 )
-from models.cube_doppler import query_cube_spectrum, split_query_indices  # noqa: E402
+from models.cube_doppler import query_cube_spectrum  # noqa: E402
 from models.cube_occupancy import parameter_count  # noqa: E402
 from models.cube_temporal import CubeTemporalNet, FUSION_MODES  # noqa: E402
+from models.temporal_inference import predict_temporal_pair  # noqa: E402
 from models.point_to_cube import soft_splat_raed  # noqa: E402
-from models.temporal_prior import (  # noqa: E402
-    gated_doppler_warp,
-    rasterize_temporal_prior,
-)
 
 
 TEMPORAL_PARAMETER_PREFIXES = (
@@ -74,6 +70,7 @@ TEMPORAL_PARAMETER_PREFIXES = (
 class TrainConfig:
     fusion_mode: str
     parent_variant: str
+    parent_head_mode: str
     epochs: int
     joint_start_epoch: int
     temporal_learning_rate: float
@@ -126,18 +123,6 @@ def temporal_parameter(name: str) -> bool:
     return name.startswith(TEMPORAL_PARAMETER_PREFIXES)
 
 
-def static_center(
-    model: CubeTemporalNet,
-    prediction: dict[str, torch.Tensor],
-    indices: torch.Tensor,
-    ego_speed: torch.Tensor,
-) -> torch.Tensor:
-    if "static_center_mps" in prediction:
-        return prediction["static_center_mps"]
-    batch, _, azimuth, elevation = split_query_indices(indices, 1)
-    return model.static_center(batch, azimuth, elevation, ego_speed)
-
-
 def continuous_chamfer_loss(
     prediction_xyz: torch.Tensor,
     target_xyz: torch.Tensor,
@@ -180,36 +165,6 @@ def teacher_state(
     )
 
 
-def make_prior(
-    state: PointPrediction,
-    pair: dict,
-    model: CubeTemporalNet,
-    device: torch.device,
-    dynamic_threshold_mps: float,
-):
-    transform = torch.tensor(
-        pair["current_from_previous"], dtype=torch.float32, device=device
-    ).reshape(4, 4)
-    delta_seconds = torch.tensor(
-        pair["delta_seconds"], dtype=torch.float32, device=device
-    )
-    return gated_doppler_warp(
-        state.xyz_m,
-        state.probability,
-        state.confidence,
-        transform,
-        delta_seconds,
-        model.doppler_mps,
-        model.doppler_lower_mps,
-        model.doppler_period_mps,
-        model.range_m,
-        model.azimuth_rad,
-        model.elevation_rad,
-        previous_static_center_mps=state.static_center_mps,
-        dynamic_threshold_mps=dynamic_threshold_mps,
-    ), transform, delta_seconds
-
-
 def predict_pair(
     model: CubeTemporalNet,
     current_item: dict,
@@ -219,49 +174,16 @@ def predict_pair(
     config: TrainConfig,
     device: torch.device,
 ) -> dict:
-    prior, transform, delta_seconds = make_prior(
+    return predict_temporal_pair(
+        model,
+        current_item,
         prior_state,
         pair,
-        model,
-        device,
+        axes,
+        config.point_count,
         config.dynamic_threshold_mps,
+        device,
     )
-    prior_raster = None
-    if config.fusion_mode == "concat":
-        prior_raster = rasterize_temporal_prior(
-            prior,
-            model.doppler_mps,
-            model.doppler_lower_mps,
-            model.doppler_period_mps,
-        )
-    cube = current_item["cube_drae"].unsqueeze(0).to(device)
-    occupancy = current_item["occupancy"].unsqueeze(0).to(device)
-    ego_speed = current_item["ego_speed_mps"].reshape(1).to(device)
-    with torch.autocast("cuda", dtype=torch.bfloat16):
-        occupancy_logits, features = model.forward_temporal(cube, prior_raster)
-    query_xyz, confidence, indices = occupancy_to_points(
-        occupancy_logits[0].float(), axes, point_count=config.point_count
-    )
-    with torch.autocast("cuda", dtype=torch.bfloat16):
-        prediction = model.query_temporal(
-            features, indices, query_xyz, ego_speed, prior
-        )
-    current_static = static_center(model, prediction, indices, ego_speed)
-    return {
-        "prior": prior,
-        "transform": transform,
-        "delta_seconds": delta_seconds,
-        "cube": cube,
-        "occupancy": occupancy,
-        "occupancy_logits": occupancy_logits,
-        "features": features,
-        "query_xyz": query_xyz,
-        "confidence": confidence,
-        "indices": indices,
-        "prediction": prediction,
-        "current_static_center_mps": current_static,
-        "ego_speed": ego_speed,
-    }
 
 
 def training_loss(
@@ -594,6 +516,7 @@ def main() -> None:
     config = TrainConfig(
         fusion_mode=args.fusion_mode,
         parent_variant=parent_config["variant"],
+        parent_head_mode=parent_config["parent_head_mode"],
         epochs=args.epochs,
         joint_start_epoch=args.joint_start_epoch,
         temporal_learning_rate=args.temporal_learning_rate,
@@ -635,7 +558,7 @@ def main() -> None:
     axes = load_axes(args.data_root / "resources")
     model = CubeTemporalNet(
         config.fusion_mode,
-        parent_config["parent_head_mode"],
+        config.parent_head_mode,
         torch.from_numpy(axes.doppler_mps),
         torch.from_numpy(axes.range_m),
         torch.from_numpy(axes.azimuth_rad),
