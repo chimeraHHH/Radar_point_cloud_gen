@@ -23,6 +23,7 @@ DOPPLER_SENSITIVE_ENDPOINTS = (
     "range_60_120m_completeness_mean_distance_m",
     "range_60_120m_fscore_1m",
 )
+CONFIG_PAIR_EXCLUSIONS = {"mode", "seed"}
 
 
 def load_run(path: Path, expected_mode: str) -> dict:
@@ -61,6 +62,9 @@ def validate_pairs(rae_max: dict[int, dict], full_raed: dict[int, dict]) -> None
         raise ValueError("RAE-Max and Full-RAED seed sets differ")
     reference_frames = None
     reference_hashes = None
+    reference_runtime = None
+    reference_config = None
+    parameter_counts: dict[str, set[int]] = defaultdict(set)
     for mode_runs in (rae_max, full_raed):
         for run in mode_runs.values():
             frame_keys = set(run["frames"])
@@ -69,13 +73,60 @@ def validate_pairs(rae_max: dict[int, dict], full_raed: dict[int, dict]) -> None
                 run["provenance"]["scene_split_sha256"],
                 run["provenance"]["normalization_sha256"],
             )
+            runtime = (
+                run["provenance"]["git_commit"],
+                run["provenance"]["torch_version"],
+                run["provenance"]["device"],
+            )
             if reference_frames is None:
                 reference_frames = frame_keys
                 reference_hashes = hashes
+                reference_runtime = runtime
             if frame_keys != reference_frames:
                 raise ValueError("Validation frame sets differ across G1 runs")
             if hashes != reference_hashes:
                 raise ValueError("Manifest, split, or normalization hashes differ")
+            if runtime != reference_runtime:
+                raise ValueError("Source commit or runtime differs across G1 runs")
+            paired_config = {
+                key: value
+                for key, value in run["config"].items()
+                if key not in CONFIG_PAIR_EXCLUSIONS
+            }
+            if reference_config is None:
+                reference_config = paired_config
+            if paired_config != reference_config:
+                raise ValueError("G1 training configurations differ beyond mode and seed")
+            if "model_parameter_count" not in run["provenance"]:
+                raise ValueError("G1 run provenance lacks model parameter count")
+            parameter_counts[run["config"]["mode"]].add(
+                int(run["provenance"]["model_parameter_count"])
+            )
+    if any(len(values) != 1 for values in parameter_counts.values()):
+        raise ValueError("Model parameter counts differ across seeds")
+    rae_parameters = next(iter(parameter_counts["rae_max"]))
+    full_parameters = next(iter(parameter_counts["full_raed"]))
+    relative_increase = (full_parameters - rae_parameters) / rae_parameters
+    if relative_increase > 0.01:
+        raise ValueError(
+            f"Full-RAED parameter increase {relative_increase:.4%} exceeds 1%"
+        )
+
+
+def parameter_parity(rae_max: dict[int, dict], full_raed: dict[int, dict]) -> dict:
+    rae_parameters = int(
+        next(iter(rae_max.values()))["provenance"]["model_parameter_count"]
+    )
+    full_parameters = int(
+        next(iter(full_raed.values()))["provenance"]["model_parameter_count"]
+    )
+    return {
+        "rae_max": rae_parameters,
+        "full_raed": full_parameters,
+        "relative_increase": (full_parameters - rae_parameters) / rae_parameters,
+        "maximum_relative_increase": 0.01,
+        "passed": (full_parameters - rae_parameters) / rae_parameters <= 0.01,
+    }
 
 
 def paired_groups(
@@ -265,6 +316,7 @@ def main() -> None:
         "bootstrap_samples": args.bootstrap_samples,
         "bootstrap_seed": args.seed,
         "seeds": sorted(rae_max),
+        "model_parameter_parity": parameter_parity(rae_max, full_raed),
         "gate_thresholds": {
             "maximum_dense_outlier_fraction_2m": 0.25,
             "maximum_full_raed_chamfer_relative_degradation": 0.02,

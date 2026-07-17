@@ -286,6 +286,15 @@ def main() -> None:
         raise RuntimeError(
             "Source commit is unavailable; pass --source-commit for a reproducible run"
         )
+    axes = load_axes(args.data_root / "resources")
+    model = CubeOccupancyNet(
+        config.mode,
+        torch.from_numpy(axes.doppler_mps),
+        base_channels=config.base_channels,
+        log_center=config.log_center,
+        log_scale=config.log_scale,
+    ).to(device)
+    model_parameter_count = parameter_count(model)
     provenance = {
         "git_commit": source_commit,
         "manifest_sha256": manifest_hash,
@@ -293,6 +302,7 @@ def main() -> None:
         "normalization_sha256": sha256(args.normalization_stats),
         "device": torch.cuda.get_device_name(device),
         "torch_version": torch.__version__,
+        "model_parameter_count": model_parameter_count,
     }
     run_document = {"config": asdict(config), "provenance": provenance}
     config_path = args.output / "config.json"
@@ -306,7 +316,6 @@ def main() -> None:
             json.dumps(run_document, indent=2) + "\n", encoding="utf-8"
         )
         temporary_config.replace(config_path)
-    axes = load_axes(args.data_root / "resources")
     train_set = KRadarCubeDataset(
         args.data_root, args.cache_root, args.manifest, ("train",)
     )
@@ -326,13 +335,6 @@ def main() -> None:
     evaluation_indices = [
         validation_indices[position] for position in evaluation_positions
     ]
-    model = CubeOccupancyNet(
-        config.mode,
-        torch.from_numpy(axes.doppler_mps),
-        base_channels=config.base_channels,
-        log_center=config.log_center,
-        log_scale=config.log_scale,
-    ).to(device)
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay
     )
@@ -406,7 +408,7 @@ def main() -> None:
     print(
         json.dumps(
             {
-                "parameters": parameter_count(model),
+                "parameters": model_parameter_count,
                 "train_frames": len(train_indices),
                 "validation_frames": len(validation_indices),
                 "evaluation_frames": len(evaluation_indices),
