@@ -64,6 +64,17 @@ def wait_for_json(path: Path, poll_seconds: int, event: str) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def g1_parent_runs(
+    comparison_path: Path, source_commit: str, seeds: list[int]
+) -> dict[int, Path]:
+    """Resolve G1 parents beside the comparison, not inside the G2 run root."""
+    tag = source_commit[:8]
+    return {
+        seed: comparison_path.parent / f"g1_full_raed_seed{seed}_{tag}"
+        for seed in seeds
+    }
+
+
 def gpu_state(index: int) -> tuple[int, int]:
     output = subprocess.check_output(
         [
@@ -462,11 +473,9 @@ def main() -> None:
     )
 
     source_tag = args.source_commit[:8]
-    g1_tag = args.g1_source_commit[:8]
-    g1_parents = {
-        seed: args.run_root / f"g1_full_raed_seed{seed}_{g1_tag}"
-        for seed in args.seeds
-    }
+    g1_parents = g1_parent_runs(
+        args.g1_comparison, args.g1_source_commit, args.seeds
+    )
     for seed, parent in g1_parents.items():
         if not completed_run(parent, 50, args.g1_source_commit):
             raise ValueError(f"Incomplete G1 parent for seed {seed}: {parent}")
