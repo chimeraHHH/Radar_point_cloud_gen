@@ -35,6 +35,37 @@ def wait_for_json(path: Path, poll_seconds: int, event: str) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def wait_for_download_completion(
+    path: Path,
+    expected_sequences: set[int],
+    poll_seconds: int,
+) -> dict:
+    while True:
+        if not path.is_file():
+            emit("waiting_for_g4_download", missing=str(path))
+            time.sleep(poll_seconds)
+            continue
+        try:
+            document = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as error:
+            emit("waiting_for_g4_download_summary", error=f"{type(error).__name__}: {error}")
+            time.sleep(poll_seconds)
+            continue
+        completed = {int(value) for value in document.get("completed_sequences", [])}
+        failures = document.get("failures", [])
+        if completed == expected_sequences and not failures:
+            return document
+        emit(
+            "waiting_for_g4_download_recovery",
+            completed_sequences=len(completed),
+            expected_sequences=len(expected_sequences),
+            missing_sequences=sorted(expected_sequences - completed),
+            unexpected_sequences=sorted(completed - expected_sequences),
+            failure_count=len(failures),
+        )
+        time.sleep(poll_seconds)
+
+
 def report_source(document: dict) -> str | None:
     return (
         document.get("source_commit")
@@ -319,10 +350,16 @@ def main() -> None:
     if args.required_frames != 2160:
         raise ValueError("Formal G4 requires the frozen 2160-frame cohort")
     python = Path(os.environ.get("PYTHON", "python"))
-    download_summary = wait_for_json(
+    temporal_manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
+    expected_sequences = {
+        int(frame["sequence"]) for frame in temporal_manifest["frames"]
+    }
+    if len(expected_sequences) != 45:
+        raise ValueError("Formal G4 manifest requires exactly 45 sequences")
+    download_summary = wait_for_download_completion(
         args.download_manifest_dir / "summary.json",
+        expected_sequences,
         args.poll_seconds,
-        "waiting_for_g4_download",
     )
     emit(
         "g4_download_finished",
