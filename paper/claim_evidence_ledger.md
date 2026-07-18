@@ -1,6 +1,6 @@
 # Claim-Evidence Ledger
 
-> Updated: 2026-07-19 01:20 CST
+> Updated: 2026-07-19 01:35 CST
 > Rule: a claim is paper-eligible only when its frozen gate is complete and the authoritative artifact is recorded here.
 
 ## Claim Matrix
@@ -8,8 +8,8 @@
 | ID | Candidate claim | Required evidence | Current evidence | Status | Allowed wording now |
 |---|---|---|---|---|---|
 | C0 | The K-Radar Cube-to-dense data path has reliable axes, synchronization, timing choice, and radar-observable targets. | G0 100-frame audit, all checks, no frame errors, frozen hashes. | `artifacts/g0/g0_repair_100_pass_2026-07-18.md`; 100/100, 11/11. | Passed | “The development cohort passed the preregistered data audit.” |
-| C1 | Preserving the full 64-bin Doppler spectrum improves dense geometry over a matched Doppler-collapsed encoder. | E2 vs E1, three seeds, scene-first paired CI; Doppler-sensitive endpoint improves and overall Chamfer does not regress beyond tolerance. | First formal G1 failed: E2 Chamfer +28.3% and far completeness +232.6% vs E1. One zero-initialized residual-spectrum redesign is allowed. | Recovery pending | “We test whether the full Doppler spectrum improves geometry.” |
-| C2 | Per-point circular Doppler distributions are more useful and faithful than scalar regression. | E4 vs E3 on NLL/KL, circular W1, calibration, PCE, CD-Doppler, and geometry tolerance. | Queue waits for G1. | Pending | “We parameterize Doppler as a circular distribution.” |
+| C1 | Preserving the full 64-bin Doppler spectrum improves dense geometry over a matched Doppler-collapsed encoder. | E2 vs E1, three seeds, scene-first paired CI; Doppler-sensitive endpoint improves and overall Chamfer does not regress beyond tolerance. | First formal G1 failed: E2 Chamfer +28.3% and far completeness +232.6% vs E1. One zero-initialized residual-spectrum redesign is deployed at `0e5fe84`; H200 preflight is queued behind unrelated compute. | Recovery pending | “We test whether the full Doppler spectrum improves geometry.” |
+| C2 | Per-point circular Doppler distributions are more useful and faithful than scalar regression. | E4 vs E3 on NLL/KL, circular W1, calibration, PCE, CD-Doppler, and geometry tolerance. | `0e5fe84` G2/G3 queue waits for the recovery G1 comparison and exits without training unless G1 passes. | Pending | “We parameterize Doppler as a circular distribution.” |
 | C3 | Generated points can explain the measured Cube through a differentiable cycle without confidence or coverage collapse. | C0-C3 ablation; cycle metric gain plus independent geometry/physical/downstream gain; confidence, coverage, ECE, and saturation pass. | Renderer tests and protocol exist; formal G3 not run. | Pending | “We introduce a differentiable point-to-Cube cycle and evaluate anti-collapse criteria.” |
 | C4 | A warped historical prediction improves temporal consistency while the current Cube refreshes geometry and Doppler. | T0/T3/T4-T6, current-frame accuracy, radial error, flicker, refresh, 25-step rollout, three seeds. | Manifest 10/10; 2,160-frame data download active. | Pending | “We study a current-observation temporal extension.” |
 | C5 | The frozen model improves object radial-velocity estimation and generalizes across operating slices. | G4 family frozen; untouched P5 test, downstream report, scene-first uncertainty, slices. | Test manifest intentionally absent. | Pending | No result claim. |
@@ -32,11 +32,11 @@
 |---|---|---|
 | G0 | `artifacts/g0/g0_repair_100_pass_2026-07-18.md` | Passed |
 | Static audit | `artifacts/g2/static_doppler_failure_recovery_2026-07-18.md` | Failed; E5 removed |
-| G1 | `artifacts/g1/g1_formal_failure_decision_2026-07-19.md`; server comparison in `formal_a7d06db` | First run failed; one bounded recovery pending |
-| G2/G3 | Server: `formal_bb45ecbf/` and queue summary | Pending G1 |
+| G1 | `artifacts/g1/g1_formal_failure_decision_2026-07-19.md`; first comparison in `formal_a7d06db`; recovery expected at server `formal_0e5fe84_g1_recovery/g1_comparison_0e5fe843.json` | First run failed; one bounded recovery queued on H200 |
+| G2/G3 | Server: `formal_0e5fe84_g2_g3/g2_g3_queue_summary_0e5fe843.json`; parent comparison and runs are resolved from `formal_0e5fe84_g1_recovery/` | Hard-gated on recovery G1; E5 remains omitted |
 | G4 data | `artifacts/g4/g4_temporal_manifest_a7d06db1.json`; download summary | Manifest passed; download pending |
-| G4 | Server: `formal_bb45ecbf/g4_queue_summary_bb45ecbf.json` | Pending |
-| P5 | Server: `formal_188a9a2/p5_queue_summary_188a9a2.json` | Test locked |
+| G4 | Expected server queue will be rebound to the frozen `0e5fe84` G2/G3 summary after that gate closes; no current formal queue is authoritative | Data download active; training pending G2/G3 |
+| P5 | Expected server queue will be rebound only after G4 family freeze | Test locked |
 
 ## Figure and Table Evidence Contracts
 
