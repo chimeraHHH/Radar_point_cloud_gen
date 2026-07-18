@@ -62,6 +62,22 @@ def validate_g0_lidar_time_reference(report: dict, expected: str) -> None:
         )
 
 
+def lidar_time_origin_shift(
+    reference: str, scan_duration_seconds: float
+) -> float | None:
+    if reference not in LIDAR_TIME_REFERENCES:
+        raise ValueError(f"Unknown LiDAR time reference: {reference}")
+    if scan_duration_seconds < 0.0:
+        raise ValueError("LiDAR scan duration cannot be negative")
+    if reference == "none":
+        return None
+    return {
+        "start": 0.0,
+        "center": -scan_duration_seconds / 2.0,
+        "end": -scan_duration_seconds,
+    }[reference]
+
+
 def atomic_json(path: Path, document: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
@@ -312,17 +328,23 @@ def main() -> None:
             device=lidar.device,
         )
         point_offsets_s = lidar[:, frame.lidar64_fields.index("t")] * 1e-9
-        deskewed = deskew_lidar_to_reference(
-            points_xyz=lidar[:, :3],
-            point_offsets_s=point_offsets_s,
-            reference_timestamp=frame.indices.timestamp,
-            timestamp_origin_shift_s=0.0,
-            calibration_xyz_m=calibration,
-            odometry_timestamps=context["cuda_trajectory"]["timestamp"],
-            odometry_positions=context["cuda_trajectory"]["position"],
-            odometry_headings=context["cuda_trajectory"]["heading"],
+        origin_shift = lidar_time_origin_shift(
+            args.lidar_time_reference, float(point_offsets_s.max().item())
         )
-        target = observable_lidar_target(deskewed, axes, cfar)
+        if origin_shift is None:
+            aligned_lidar = lidar[:, :3] + calibration
+        else:
+            aligned_lidar = deskew_lidar_to_reference(
+                points_xyz=lidar[:, :3],
+                point_offsets_s=point_offsets_s,
+                reference_timestamp=frame.indices.timestamp,
+                timestamp_origin_shift_s=origin_shift,
+                calibration_xyz_m=calibration,
+                odometry_timestamps=context["cuda_trajectory"]["timestamp"],
+                odometry_positions=context["cuda_trajectory"]["position"],
+                odometry_headings=context["cuda_trajectory"]["heading"],
+            )
+        target = observable_lidar_target(aligned_lidar, axes, cfar)
         motion = interpolate_motion(
             context["trajectory"], frame.indices.timestamp
         )
@@ -348,7 +370,7 @@ def main() -> None:
         )
         atomic_json(args.output, report)
         print(json.dumps(record), flush=True)
-        del frame, cube, cfar, lidar, deskewed, target
+        del frame, cube, cfar, lidar, aligned_lidar, target
         torch.cuda.empty_cache()
 
     frame_records = report["frames"]
