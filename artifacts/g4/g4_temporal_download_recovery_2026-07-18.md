@@ -59,3 +59,26 @@ The authoritative failed download summary is stored at:
 
 Until these conditions hold, G4 must remain pending and cannot contribute a
 main-paper temporal claim.
+
+## Recovery resumed
+
+At `2026-07-18T14:43Z`, the current public read-only account documented by the
+[official K-Radar dataset guide](https://github.com/kaist-avelab/K-Radar/blob/main/docs/dataset.md)
+was verified without persisting its values. Direct
+H200 access to the QuickConnect endpoint timed out, while the existing local
+HTTP proxy at `127.0.0.1:7890` returned the endpoint and authenticated
+successfully. This identifies network routing, rather than an invalid dataset
+account, as the prior login failure.
+
+The selective downloader was resumed on H200 from source commit
+`188a9a2ef10c487edb887873bea446b56dc280cc`, retaining all existing `.part`
+files. It uses two persistent sequence sessions and 12 byte-range workers per
+session; this avoids the previous repeated concurrent-login pattern while
+overlapping two sequence-local transfers. Credentials remain process-only and
+are absent from the repository and logs.
+
+Runtime log:
+`/home/wangning/Workspace/radar_cube_dense/launch_logs/188a9a2/g4_download.log`.
+
+The G4 queue still waits for all 45 sequence manifests and a fresh exact-size
+and CRC pass. Resuming the downloader does not alter or relax that gate.
