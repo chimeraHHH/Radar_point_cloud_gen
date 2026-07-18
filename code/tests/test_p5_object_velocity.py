@@ -16,6 +16,49 @@ SPEC.loader.exec_module(MODULE)
 
 
 class P5ObjectVelocityTest(unittest.TestCase):
+    @staticmethod
+    def static_audit(
+        hypothesis: str = "positive_ego",
+        train_margin: float = 0.1,
+        minimum_margin: float = 0.05,
+        passed: bool = False,
+    ) -> dict:
+        return {
+            "protocol": {
+                "selection_partition": "train",
+                "minimum_selection_margin_mps": minimum_margin,
+            },
+            "train": {
+                "selected_hypothesis": hypothesis,
+                "selected_margin_to_second_mps": train_margin,
+            },
+            "frozen_hypothesis": hypothesis,
+            "checks": {
+                "required_frame_count": True,
+                "no_frame_errors": True,
+                "train_hypothesis_meets_selection_margin": train_margin
+                >= minimum_margin,
+                "frozen_hypothesis_beats_random_on_validation": passed,
+            },
+            "passed": passed,
+        }
+
+    def test_failed_static_prior_can_supply_train_frozen_sign(self) -> None:
+        calibration = MODULE.frozen_sign_calibration(self.static_audit())
+        self.assertEqual(calibration["hypothesis"], "positive_ego")
+        self.assertTrue(calibration["sign_only_calibration"])
+        self.assertFalse(calibration["physics_prior_claim_enabled"])
+
+    def test_sign_calibration_rejects_insufficient_train_margin(self) -> None:
+        with self.assertRaisesRegex(ValueError, "selection margin"):
+            MODULE.frozen_sign_calibration(self.static_audit(train_margin=0.01))
+
+    def test_sign_calibration_rejects_zero_centered_hypothesis(self) -> None:
+        with self.assertRaisesRegex(ValueError, "Unsupported"):
+            MODULE.frozen_sign_calibration(
+                self.static_audit(hypothesis="zero_centered")
+            )
+
     def test_alias_boundary_error_is_circular(self) -> None:
         error = MODULE.circular_error(-1.9, 1.9, 4.0)
         self.assertAlmostEqual(error, 0.2)

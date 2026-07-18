@@ -68,6 +68,16 @@ The box inclusion margin is zero and cannot be tuned on test. This task tests
 whether a dense `XYZ + Doppler` cloud supports a physical downstream estimate;
 it is not presented as a replacement for a trained 3D detector.
 
+The range-rate sign mapping is selected on the training partition by the frozen
+static-Doppler audit. A failed validation test of the analytic static prior does
+not invalidate this sign mapping when the audit has complete frames, no frame
+errors, and meets the preregistered training selection margin. In that branch,
+P5 records `sign_only_calibration=true` and
+`physics_prior_claim_enabled=false`: the sign may define the descriptive
+downstream target, but it cannot restore E5, a static-background prior, or any
+physics-prior claim. Zero-centered and under-margin hypotheses are invalid for
+the downstream task.
+
 ## Generalization Slices
 
 Report every primary and downstream endpoint by:

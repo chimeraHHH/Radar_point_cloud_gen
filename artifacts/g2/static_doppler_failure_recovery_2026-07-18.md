@@ -37,6 +37,10 @@ this cohort.
   provenance, because their comparison does not use the analytic static prior.
 - G2 passes only if E4 satisfies the frozen distribution-versus-scalar gates.
 - G3 proceeds from E4 only after that distribution gate passes.
+- P5 may reuse the already frozen `positive_ego` train sign only to map adjacent
+  box range rate into the Cube Doppler axis. It must record
+  `sign_only_calibration=true` and cannot turn this descriptive mapping into an
+  E5 or analytic static-prior claim.
 - The full spectrum remains the source of truth; no sign, offset, SNR threshold,
   or validation criterion is tuned further.
 

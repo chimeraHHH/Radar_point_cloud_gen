@@ -27,6 +27,7 @@ FORMAL_SEEDS = (20260716, 20260717, 20260718)
 DISTANCE_BINS = ("0-30", "30-60", "60-120", ">=120")
 SPEED_BINS = ("0-0.5", "0.5-2", ">=2")
 MOTION_STATES = ("static_like", "dynamic")
+SIGN_HYPOTHESES = ("positive_ego", "negative_ego")
 
 
 def sha256(path: Path) -> str:
@@ -50,6 +51,43 @@ def wrap_scalar(value: float, lower: float, period: float) -> float:
 
 def circular_error(observed: float, target: float, period: float) -> float:
     return float(np.remainder(observed - target + period / 2.0, period) - period / 2.0)
+
+
+def frozen_sign_calibration(static_audit: dict) -> dict:
+    """Validate the train-frozen Doppler sign without reviving a failed prior."""
+    protocol = static_audit.get("protocol", {})
+    train = static_audit.get("train", {})
+    checks = static_audit.get("checks", {})
+    hypothesis = static_audit.get("frozen_hypothesis")
+    if hypothesis not in SIGN_HYPOTHESES:
+        raise ValueError(f"Unsupported frozen Doppler convention: {hypothesis}")
+    if protocol.get("selection_partition") != "train":
+        raise ValueError("Doppler sign convention was not selected on train")
+    if train.get("selected_hypothesis") != hypothesis:
+        raise ValueError("Frozen Doppler hypothesis differs from the train selection")
+
+    minimum_margin = float(protocol["minimum_selection_margin_mps"])
+    train_margin = float(train["selected_margin_to_second_mps"])
+    if train_margin < minimum_margin:
+        raise ValueError("Frozen Doppler sign does not meet the train selection margin")
+    required_checks = (
+        "required_frame_count",
+        "no_frame_errors",
+        "train_hypothesis_meets_selection_margin",
+    )
+    if not all(checks.get(name) is True for name in required_checks):
+        raise ValueError("Static Doppler audit is not valid for sign-only calibration")
+
+    audit_passed = static_audit.get("passed") is True
+    return {
+        "hypothesis": hypothesis,
+        "audit_passed": audit_passed,
+        "sign_only_calibration": not audit_passed,
+        "selection_partition": "train",
+        "train_selection_margin_mps": train_margin,
+        "minimum_selection_margin_mps": minimum_margin,
+        "physics_prior_claim_enabled": audit_passed,
+    }
 
 
 def parse_boxes(path: Path, calibration_xyz_m: np.ndarray) -> list[dict]:
@@ -456,11 +494,8 @@ def main() -> None:
         raise ValueError("Formal P5 cohort requires 8 test windows / 384 frames")
     if len(records) != len(manifest["frames"]):
         raise ValueError("P5 manifest must contain only the test partition")
-    if static_audit.get("passed") is not True:
-        raise ValueError("Frozen static Doppler convention audit did not pass")
-    hypothesis = static_audit["frozen_hypothesis"]
-    if hypothesis not in ("positive_ego", "negative_ego"):
-        raise ValueError(f"Unsupported frozen Doppler convention: {hypothesis}")
+    sign_calibration = frozen_sign_calibration(static_audit)
+    hypothesis = sign_calibration["hypothesis"]
 
     axes = load_axes(args.data_root / "resources")
     doppler_mps = axes.doppler_mps.astype(np.float64)
@@ -719,6 +754,8 @@ def main() -> None:
         "three_formal_seeds": tuple(sorted(baseline_by_seed)) == FORMAL_SEEDS
         and tuple(sorted(temporal_by_seed)) == FORMAL_SEEDS,
         "one_frozen_temporal_family": temporal_family_count == 1,
+        "doppler_sign_frozen_on_train": sign_calibration["selection_partition"]
+        == "train",
         "matched_boxes_nonempty": expected_box_count_per_seed > 0,
         "all_methods_cover_every_matched_box": len(observations)
         == expected_box_count_per_seed * len(FORMAL_SEEDS) * len(methods),
@@ -750,6 +787,20 @@ def main() -> None:
             "scene_split_sha256": sha256(args.scene_split),
             "static_doppler_audit": str(args.static_doppler_audit.resolve()),
             "static_doppler_audit_sha256": sha256(args.static_doppler_audit),
+            "static_doppler_audit_passed": sign_calibration["audit_passed"],
+            "sign_only_calibration": sign_calibration["sign_only_calibration"],
+            "physics_prior_claim_enabled": sign_calibration[
+                "physics_prior_claim_enabled"
+            ],
+            "doppler_sign_selection_partition": sign_calibration[
+                "selection_partition"
+            ],
+            "doppler_sign_train_margin_mps": sign_calibration[
+                "train_selection_margin_mps"
+            ],
+            "doppler_sign_minimum_margin_mps": sign_calibration[
+                "minimum_selection_margin_mps"
+            ],
             "baseline_report_sha256": baseline_report_hashes,
             "temporal_report_sha256": temporal_report_hashes,
             "formal_seeds": list(FORMAL_SEEDS),
