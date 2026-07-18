@@ -32,6 +32,12 @@ The centered-window rule uses no model output, LiDAR quality metric, object
 label, speed threshold, or validation result. The formal manifest is immutable
 after download begins.
 
+Dense-target construction must reuse the LiDAR time reference frozen by the
+passed full G0 report. For the current formal cohort this is `none`, selected
+from train-only evidence after `start` was falsified. The G4 queue passes this
+value explicitly, and cache construction rejects any mismatch or missing G0
+reference metadata.
+
 ## Historical Prior
 
 For a generated previous-frame point `p`, transform it into the current sensor

@@ -331,6 +331,11 @@ def main() -> None:
     parser.add_argument("--normalization", type=Path, required=True)
     parser.add_argument("--odometry-root", type=Path, required=True)
     parser.add_argument("--g0-report", type=Path, required=True)
+    parser.add_argument(
+        "--lidar-time-reference",
+        choices=("none", "start", "center", "end"),
+        default="none",
+    )
     parser.add_argument("--g2-g3-summary", type=Path, required=True)
     parser.add_argument("--dense-cache-report", type=Path, required=True)
     parser.add_argument("--run-root", type=Path, required=True)
@@ -469,6 +474,8 @@ def main() -> None:
             str(args.odometry_root),
             "--g0-report",
             str(args.g0_report),
+            "--lidar-time-reference",
+            args.lidar_time_reference,
             "--output",
             str(args.dense_cache_report),
             "--device",

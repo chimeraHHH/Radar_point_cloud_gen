@@ -32,6 +32,7 @@ from cube_dense.observability import (  # noqa: E402
 
 
 CACHE_SCHEMA_VERSION = 1
+LIDAR_TIME_REFERENCES = ("none", "start", "center", "end")
 
 
 def sha256(path: Path) -> str:
@@ -40,6 +41,25 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def validate_g0_lidar_time_reference(report: dict, expected: str) -> None:
+    successful = [
+        frame for frame in report.get("frames", []) if "error" not in frame
+    ]
+    if not successful:
+        raise ValueError("G0 report has no successful frames")
+    references = {
+        frame.get("lidar_scan_timing", {}).get("selected_reference")
+        for frame in successful
+    }
+    if None in references:
+        raise ValueError("G0 report is missing the selected LiDAR time reference")
+    if references != {expected}:
+        raise ValueError(
+            "Dense-cache LiDAR time reference differs from G0: "
+            f"expected {expected}, found {sorted(references)}"
+        )
 
 
 def atomic_json(path: Path, document: dict) -> None:
@@ -168,7 +188,7 @@ def main() -> None:
     parser.add_argument("--false-alarm-rate", type=float, default=1e-3)
     parser.add_argument("--max-cfar-points", type=int, default=10_000)
     parser.add_argument(
-        "--lidar-time-reference", choices=("start",), default="start"
+        "--lidar-time-reference", choices=LIDAR_TIME_REFERENCES, required=True
     )
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--required-frames", type=int, default=None)
@@ -187,6 +207,7 @@ def main() -> None:
     g0_report = json.loads(args.g0_report.read_text(encoding="utf-8"))
     if g0_report.get("aggregate", {}).get("gate_pass") is not True:
         raise ValueError("Dense cache requires a passed full G0 audit")
+    validate_g0_lidar_time_reference(g0_report, args.lidar_time_reference)
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
     if manifest.get("gate_pass") is not True:
         raise ValueError("Dense-cache manifest did not pass its data gate")
