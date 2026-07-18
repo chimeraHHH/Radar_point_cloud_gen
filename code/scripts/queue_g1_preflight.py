@@ -87,11 +87,32 @@ def run_logged(command: list[str], log_path: Path, gpu: int) -> None:
 
 
 def wait_for_g0(report_path: Path, required_frames: int, poll_seconds: int) -> dict:
-    while not report_path.exists():
-        emit("waiting_for_g0", report=str(report_path))
-        time.sleep(poll_seconds)
-    report = json.loads(report_path.read_text(encoding="utf-8"))
-    aggregate = report["aggregate"]
+    while True:
+        if not report_path.exists():
+            emit("waiting_for_g0", report=str(report_path))
+            time.sleep(poll_seconds)
+            continue
+        try:
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as error:
+            emit(
+                "waiting_for_g0_report",
+                report=str(report_path),
+                error=f"{type(error).__name__}: {error}",
+            )
+            time.sleep(poll_seconds)
+            continue
+        aggregate = report.get("aggregate")
+        if aggregate is None:
+            emit(
+                "waiting_for_g0_completion",
+                report=str(report_path),
+                completed_frames=len(report.get("frames", [])),
+                required_frames=required_frames,
+            )
+            time.sleep(poll_seconds)
+            continue
+        break
     checks = {
         "required_frame_count": int(aggregate["successful_frames"])
         == required_frames,
