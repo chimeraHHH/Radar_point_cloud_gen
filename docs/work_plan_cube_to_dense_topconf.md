@@ -6,6 +6,8 @@
 > 第二阶段扩展：历史点云经门控 Doppler-warp 后，作为当前 Cube 生成的时序先验  
 > 关联材料：[proposal.md](proposal.md) · [draft_method.md](../paper/draft_method.md) · [技术路线图](assets/cube_to_dense_technical_roadmap.png)
 
+> **2026-07-18 证据修订（不追溯修改原门槛）：**修复版 G0 已以 100/100 帧、11/11 检查通过；G1 preflight 已通过并正在运行三种子正式对照。独立静态 Doppler 审计在 validation 上失败且有界 SNR recovery 未恢复，因此 E5 与“解析静态先验”贡献已移除，E3/E4 继续。G4 的 2,160 帧 manifest 已通过，官方数据断点下载中；P5 test 在 G4 family 冻结前保持锁定。当前主张状态见 [claim_evidence_ledger.md](../paper/claim_evidence_ledger.md)。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---
@@ -37,7 +39,7 @@ P_t = {(x_i, y_i, z_i, v_r,i, c_i)}_(i=1)^N,
 1. **完整 RAED Cube 条件生成**：保留 Doppler 轴，不将输入提前压缩为普通 RAE 强度张量。
 2. **稠密 `XYZ + Doppler + confidence` 联合输出**：在恢复高质量几何的同时，为每个生成点估计速度分布及可靠性。
 3. **Cube-point 双向物理闭环**：由 Cube 生成点云，再将生成点可微重投影回 Cube，约束空间位置和 Doppler 频谱共同自洽。
-4. **解析静态项与学习动态项分解**：静态背景 Doppler 由 ego motion 解析计算，动态残差由 Cube 频谱学习，避免把所有速度作为自由属性回归。
+4. **解析静态项与学习动态项分解（候选已否决）**：该候选需要稳定的跨分区静态 Doppler 约定；当前 validation 未优于 circular-random，故 E5 已移除，不能作为当前创新。
 5. **当前观测主导的时序生成**：历史点云仅提供 Doppler-warp 先验，当前 Cube 负责补点、纠错和刷新 Doppler，区别于简单历史点聚合。
 
 ### 1.4 不应作为核心创新的表述
@@ -205,8 +207,8 @@ L = L_geo
 | E2 | Full-RAED -> dense XYZ | Doppler 频谱是否帮助几何 | 主表、消融 |
 | E3 | E2 + Doppler scalar head | 简单增加速度头的效果 | 消融 |
 | E4 | E2 + Doppler distribution head | 分布预测是否优于标量回归 | 主表、消融 |
-| E5 | E4 + static/dynamic physics | 物理分解是否减少不一致 | 主表 |
-| E6 | E5 + Cube cycle | 双向闭环是否带来核心增益 | 核心消融 |
+| E5 | E4 + static/dynamic physics | 预注册候选，静态审计失败后取消 | 负结果/附录 |
+| E6 | E4 + Cube cycle | 双向闭环是否带来核心增益 | 核心消融 |
 | E7 | E6 + temporal prior | 历史先验是否提升稳定性 | 时序表 |
 
 ### 5.2 必须包含的基线
@@ -453,12 +455,12 @@ Cube cycle 必须在 Doppler 频谱匹配、PCE、几何或下游任务中至少
 1. **Figure 1**：4D Cube -> dense XYZ+Doppler 总览与 Cube-point 双向闭环。
 2. **Figure 2**：生成位置查询 Doppler 频谱和 point-to-Cube renderer。
 3. **Figure 3**：几何、Doppler、confidence 的定性结果与失败案例。
-4. **Figure 4**：静态解析、动态残差、时序一致性的机制分析。
+4. **Figure 4**：Cube-cycle 的频谱、coverage、confidence、校准与时序一致性机制分析。
 
 ### 主表
 
 1. **Table 1**：与 CFAR、RaLD 类、SDDiff 类方法的几何和 Doppler 主结果。
-2. **Table 2**：Full-RAED、Doppler head、physics、cycle 的完整消融。
+2. **Table 2**：Full-RAED、scalar/distribution Doppler head 与 cycle 的完整消融；E5 仅作失败分支记录。
 3. **Table 3**：时序扩展与 DoppDrive/ego-only/single-frame 对比。
 4. **Table 4**：下游任务、效率和泛化。
 
@@ -480,7 +482,6 @@ Cube cycle 必须在 Doppler 频谱匹配、PCE、几何或下游任务中至少
 Full-RAED Cube Encoder
   + dense XYZ generator
   + Doppler distribution head
-  + static/dynamic physical decomposition
   + differentiable Cube-point cycle
 ```
 
@@ -510,12 +511,15 @@ Full-RAED Cube Encoder
 
 ## 12. 下一步行动清单
 
-- [ ] 获取并核对当前 4D Radar Cube 文件格式、维度、单位和 Doppler 口径。
-- [ ] 确认同步 LiDAR、ego motion、标定和场景划分是否齐全。
-- [ ] 实现最小 Cube loader 与单帧可视化。
-- [ ] 验证 CFAR 点 `XYZ+Doppler` 能否准确回查到 Cube 峰值。
-- [ ] 定义 radar-observable LiDAR target 和 confidence mask。
-- [ ] 建立 `RAE-Max -> dense XYZ` 最小基线。
-- [ ] 再实现 Full-RAED Encoder，正式启动 E1/E2 对照。
+- [x] 获取并核对当前 4D Radar Cube 文件格式、维度、单位和 Doppler 口径。
+- [x] 确认同步 LiDAR、ego motion、标定和场景划分是否齐全。
+- [x] 实现最小 Cube loader 与单帧可视化。
+- [x] 验证 CFAR 点 `XYZ+Doppler` 能否准确回查到 Cube 峰值。
+- [x] 定义 radar-observable LiDAR target 和 confidence mask。
+- [x] 建立 `RAE-Max -> dense XYZ` 最小基线。
+- [x] 实现 Full-RAED Encoder，并启动 E1/E2 三种子正式对照。
+- [ ] 关闭 G1 comparison，并按冻结结果释放或终止 G2/G3。
+- [ ] 完成 G4 45/45 序列下载、CRC、时序训练与 family freeze。
+- [ ] 释放 P5 test 并完成 P6 论文证据包。
 
-> 当前最高优先级不是继续优化旧时序模型，而是完成 **G0 数据闭环**，并打通第一个可复现的 `4D Cube -> dense XYZ` 基线。
+> 当前最高优先级是关闭 **G1 Full-RAED vs RAE-Max** 决策；G4 数据下载与 P6 证据整理并行推进。

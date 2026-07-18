@@ -70,17 +70,22 @@ HTTP proxy at `127.0.0.1:7890` returned the endpoint and authenticated
 successfully. This identifies network routing, rather than an invalid dataset
 account, as the prior login failure.
 
-The selective downloader was resumed on H200 from source commit
-`188a9a2ef10c487edb887873bea446b56dc280cc`, retaining all existing `.part`
-files. It uses two persistent sequence sessions and 12 byte-range workers per
-session; this avoids the previous repeated concurrent-login pattern while
-overlapping two sequence-local transfers. Credentials remain process-only and
-are absent from the repository and logs.
+The selective downloader was resumed on H200 and then upgraded to source commit
+`37bd755` while retaining all existing `.part` files. It uses two persistent
+sequence sessions and 12 byte-range workers per session; this avoids the
+previous repeated concurrent-login pattern while overlapping two
+sequence-local transfers. Credentials remain process-only and are absent from
+the repository and logs.
 
 The downloader now writes the global summary atomically after every completed
 or failed sequence and retries only the unfinished sequence set. A process
 restart may recheck already valid members, but member CRC checks and
 sequence-local compressed ranges prevent silent partial-file promotion.
+
+At the `2026-07-18 23:15 CST` report cutoff, partial data had grown to 15 GiB.
+No sequence had yet completed its full member set and final CRC, so the global
+summary correctly remained at 0/45 completed sequences with zero current
+failures while the first two sequence workers were active.
 
 Runtime log:
 `/home/wangning/Workspace/radar_cube_dense/launch_logs/188a9a2/g4_download.log`.

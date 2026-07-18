@@ -1,70 +1,222 @@
-# Method 章节初稿(公式已定型;英文成稿前的权威蓝本)
+# Method Blueprint: Full-RAED Cube to Dense Radar Points
 
-## 3. Physical Analysis(观察研究章节要点)
+> Authority: current Cube-to-dense implementation and frozen G0-G4 protocols
+> Updated: 2026-07-18 23:15 CST
+> Evidence rule: this file defines the method, not experimental success
 
-**Obs. 1(口径与结构)**:4D 雷达逐点速度 `vrel ∈ R³` 为纯径向向量(|cos(vrel, r̂)|≡1,实测 P05=1.0000),故标量 Doppler `v_r = vrel·r̂` 无损;口径为 raw(含自车),即 `v_r = d(range)/dt`。
+## 1. Problem Formulation
 
-**Obs. 2(静态解析性)**:静止散射体严格满足
-```
-v_r = −v_plat(p)·r̂,   v_plat(p) = v_ego + ω × (p + t_s),   r̂ = p/‖p‖        (1)
-```
-(传感器系;t_s = R_seᵀ t_se 为安装杠杆)。实测:干净关联的静止目标残差 MAD 0.09 m/s、95%@0.5;背景含杂波 75%@0.5;ω×r 项贡献 +4.3pp@0.25。→ **背景 Doppler 不必学习,可解析给定**;现有生成工作(RadarGen/4D-RaDiff/SDDiff)全部靠回归"猜"这一项。
+For time `t`, the canonical radar measurement is a non-negative RAED Cube
 
-**Obs. 3(时序陈旧性)**:v_r 即时距变化率,故帧间满足 `Δrange ≈ v̄_r·Δt`。但**不更新 v_r 的 warp 链会自我污染**:2.5s 后陈旧 Doppler 链的物理一致率从 37%崩至 8.6%,且几何漂移反超纯 ego 链(6.15 vs 5.29 m)。→ 多帧雷达生成**必须联合更新 Doppler**。
-
-## 4. Method
-
-### 4.1 记号
-点云 `X = {(p_i, v_i, s_i)}`(位置/Doppler/RCS);ego 运动 `e = (v_ego, ω, t_s) ∈ R⁹`(部署时恒可得);生成模型 `G_θ`。
-
-### 4.2 Ego-conditioned 生成(必要性)
-v_r 的自车分量由 (1) 解析决定但依赖 e;不输入 e 的模型原理上无法自洽(实测:加 e 条件使 PCE 中位 8.06→0.92 m/s,−89%)。e 经 MLP 注入全局条件;**不参与 CFG drop**(物理信息,非语义条件)。
-
-### 4.3 物理一致性损失(主线 A)
-在扩散/流的干净样本估计 x̂₁ 上施加(物理单位):
-
-**静态自门控硬约束**
-```
-r_i = v̂_i − (−v_plat(p̂_i)·r̂_i),   w_i = exp(−r_i²/2τ²)  (detach)
-L_static = Σ w_i·huber_δ(r_i) / Σ w_i                                    (2)
-```
-自门控只把已近静态流形的点拉到严格一致,免运动分割标注(τ=1, δ=0.5)。
-
-**动态一致性软损失**(利用扩散训练 x̂↔GT 的 1:1 对应取标签)
-```
-L_dop = mean_{i∈dyn} huber(v̂_i − (v_obj,i − v_plat(p̂_i))·r̂_i)            (3)
-```
-v_obj 取自框速度(判动门限 1.0 m/s 抑制标注差分噪声)。消融:仅静态 → 动态多样性塌缩(v_r std 3.52→0.55,PCE 反超 GT 为红旗);+L_dop 恢复(动态样占比 3.5%→32.3%,PCE 回到 ≈GT)。
-
-**时间步加权**:两者均乘 ᾱ_t(扩散)或 t(流)——x̂₁ 不可靠时约束自动趋零。
-
-### 4.4 桥式时序生成(主线 B:FlowRadar)
-**草稿构造**:上一帧 X^{t}(生成或实测)经门控 Doppler-warp 推进:
-```
-p ← p + 1[|v_r−v_r^static|>γ]·(v_r−v_r^static)·Δt·r̂,  再经位姿 T_t→t+1 刚体变换   (4)
-```
-(γ=1;未门控推进会放大杂波——负结果实证)。
-
-**Rectified-flow 桥**:离线 OT(匈牙利)配对草稿与目标帧点集后,
-```
-x_u = (1−u)·draft_π + u·X^{t+1} + σ(1−u)ε,   L_flow = ‖G_θ(x_u,u,c) − (X^{t+1}−draft_π)‖²   (5)
-```
-推理从草稿 Euler 积分(无需配对);**复制=v≡0 特例 → 构造上不劣于 warp 链**。对比条件扩散:CD 7.7→4.0、MMD −79%、JSD −46%;并修复复制链的物理陈旧(PCE 19.7%→40.4%≈GT 39.0%)。
-
-**时序一致性损失**(proposal 的 L_temp,桥式对应关系下可逐点实现)
-```
-L_temp = mean_i κ_i·huber(‖p̂_i‖ − ‖p⁰_i‖ − v̄_i·Δt),  v̄=½(v_r^{t}+v̂_i),  κ_i=exp(−d_match²/2τ_m²)   (6)
-```
-p⁰ 为同一 prev 点的纯 ego-warp 位置(锚),κ 为持久点门控。实测 W1(v_r) 1.005→0.706。
-
-### 4.5 训练目标
-```
-L = L_flow(或 L_eps) + λ₁ L_static + λ₂ L_dop + λ₃ L_temp        (默认 λ=0.1)
+```text
+C_t in R_+^(D x R x A x E),  (D,R,A,E) = (64,256,107,37).
 ```
 
-## 已证伪路线(Limitations/消融素材)
-- 无 ego 条件的物理损失(隔靴搔痒,PCE 仅 −13%)
-- 从头条件扩散做时序(败于复制基线 2.4×)
-- SDEdit 部分扩散(任意 t_start 精修均损伤草稿)
-- 白噪草稿增广治 rollout 分布偏移(生成误差是结构化的)
-- 静态-only 约束(动态塌缩)
+The model reconstructs a fixed-size radar-observable point set
+
+```text
+P_t = {(p_i, q_i, v_hat_i, c_i)}_(i=1)^N,  N = 10,000,
+```
+
+where `p_i=(x_i,y_i,z_i)`, `q_i` is a 64-bin circular Doppler distribution, `v_hat_i` is its circular scalar summary, and `c_i` is visibility confidence. The target is not the complete LiDAR surface; it is the subset supported by radar field of view, Cube energy, first-surface visibility, and range constraints.
+
+## 2. Cube Normalization and Matched Encoders
+
+Power values are normalized with train-only statistics:
+
+```text
+C_tilde = clip((log10(C_t + 1) - mu_train) / s_train, -4, 4).
+```
+
+The geometry experiment uses matched input encoders:
+
+- **RAE-Max:** one channel obtained by maximizing over Doppler.
+- **RAE-Moments:** peak power, circular Doppler mean, and spread.
+- **Full-RAED:** all 64 Doppler bins as input channels.
+
+Each representation is projected to `b=8` channels with a `1x1x1` convolution. The same residual 3D U-Net then operates over the RAE grid:
+
+```text
+F0 = Res3D_b(Proj(C_tilde))
+F1 = Res3D_2b(Conv3D_s2(F0))
+Z  = Res3D_4b(Conv3D_s2(F1))
+U1 = Res3D_2b([Up(Z), F1])
+F  = Res3D_b([Up(U1), F0]).
+```
+
+Each residual block contains two `3x3x3` convolutions, GroupNorm, SiLU, and an optional `1x1x1` skip projection. Upsampling is trilinear. A `1x1x1` occupancy head produces logits on the `256x107x37` RAE grid.
+
+## 3. Radar-Observable Occupancy and Dense Decoding
+
+Radar-observable LiDAR points are projected into the RAE grid. If multiple targets share a cell, their maximum visibility confidence defines the soft target `Y_rae in [0,1]`.
+
+The occupancy objective is
+
+```text
+L_occ = L_soft-focal + 0.25 L_soft-dice.
+```
+
+At inference, global top-k decoding selects 10,000 distinct RAE cells. Every cell is decoded once, preventing duplicated points from creating artificial density. The occupancy probability also provides point confidence.
+
+## 4. Point-Conditioned Doppler Prediction
+
+Features are gathered at selected RAE locations and passed through a Linear-SiLU projection.
+
+### 4.1 Scalar Head
+
+The scalar baseline predicts one Doppler value and wraps it to the sensor alias interval. For distributional metrics, it is converted to a fixed-width wrapped Gaussian.
+
+### 4.2 Distribution Head
+
+The distribution head predicts 64 logits:
+
+```text
+q_i(d) = softmax(W_d f_i),
+v_hat_i = CircMean(q_i, v_D).
+```
+
+Training uses the normalized `log1p(power)` spectrum queried from the current Cube at the target location:
+
+```text
+L_dop = - sum_i sum_d w_i q_i*(d) log q_i(d),
+```
+
+where `w_i` is target visibility confidence. Circular mean, scalar error, and Wasserstein distance explicitly respect the Doppler alias period.
+
+### 4.3 Rejected Analytic Static Mixture
+
+The implementation supports a candidate mixture
+
+```text
+q_i(v) = s_i q_static(v | p_i, v_ego) + (1-s_i) q_dynamic(v | C_t, p_i).
+```
+
+However, the frozen static-background audit selected `positive_ego` on train with a `0.096906 m/s` margin, while validation error `1.020193 m/s` was worse than the circular-random reference `0.966296 m/s`. A bounded SNR-quantile recovery also failed. Therefore this head is excluded from formal G2 and cannot support an analytic physics-prior claim. It remains documented only as a rejected branch.
+
+## 5. Continuous RAE Point Parameterization
+
+For each selected cell, the cycle model predicts a bounded sub-bin offset:
+
+```text
+Delta u_i = 0.5 tanh(h_offset(f_i)),
+u_i = (r_i, a_i, e_i) + Delta u_i.
+```
+
+Each component lies in `[-0.5,0.5]` bins. Interpolated physical range, azimuth, and elevation are converted to Cartesian coordinates:
+
+```text
+p_i = [rho_i cos(eps_i) cos(alpha_i),
+       rho_i cos(eps_i) sin(alpha_i),
+       rho_i sin(eps_i)].
+```
+
+A confidence-weighted symmetric Chamfer term is applied with weight `0.1`. All G3 arms train the same offset head, so cycle arms do not receive an unmatched continuous-coordinate advantage.
+
+## 6. Differentiable Point-to-Cube Rendering
+
+The renderer assigns every point to the eight neighboring RAE cells with normalized trilinear weights and deposits its 64-bin Doppler probability mass:
+
+```text
+C_hat(d,r,a,e) = sum_i c_i w_i(r,a,e | u_i) q_i(d).
+```
+
+Boundary weights are renormalized, so valid point mass is conserved. Gradients propagate to sub-bin offsets, Doppler logits, and confidence.
+
+The complete cycle objective is
+
+```text
+L_cycle = L_local-spectrum-KL
+        + 0.25 L_Doppler-marginal
+        + 0.25 L_spatial-energy
+        + L_confidence-floor.
+```
+
+- `L_local-spectrum-KL` compares spectra only at rendered, energetic Cube cells.
+- `L_Doppler-marginal` compares frame-level Doppler mass.
+- `L_spatial-energy` compares normalized log energy against the strongest 10,000 target cells.
+- `L_confidence-floor` penalizes mean confidence below `0.1`.
+
+Success cannot be inferred from the floor alone. G3 separately requires relative confidence and covered-cell retention of at least 90%, no significant ECE degradation, and an acceptable sub-bin offset saturation fraction.
+
+The matched G3 arms are:
+
+```text
+C0: no cycle
+C1: local spectrum KL
+C2: C1 + Doppler marginal
+C3: C2 + spatial energy.
+```
+
+## 7. Current-Observation Temporal Refinement
+
+The temporal model always receives the current Cube. A previous predicted point set is only an auxiliary prior.
+
+For previous point `i`, residual Doppler and the dynamic gate are
+
+```text
+v_res_i = wrap(v_hat_i - v_static_i)
+g_i = 1[abs(v_res_i) > 1.0 m/s].
+```
+
+The point is first advected radially and then transformed into the current frame:
+
+```text
+p_adv_i = p_i + g_i v_res_i Delta_t r_hat_i
+p_prior_i = T_(t<-t-1) p_adv_i.
+```
+
+Static or low-residual points receive only ego motion. Prior point features contain normalized XYZ, confidence, circular Doppler sine/cosine, spectral entropy, and the dynamic gate.
+
+Three matched fusion families are implemented:
+
+1. **Concat:** rasterize energy, circular moments, entropy, and gate into five RAE channels, project, concatenate, and fuse with the current Cube feature.
+2. **Local cross-attention:** each current query attends to its eight nearest prior tokens with relative XYZ encoding.
+3. **Draft refinement:** the nearest warped point is a draft; a learned 3D gate interpolates between prior and learned offsets.
+
+The cross-frame radial residual is
+
+```text
+e_rad_i = abs((||p_j,t|| - ||p_i,t-1^ego||)
+              - 0.5(v_res_i,t-1 + v_res_j,t) Delta_t).
+```
+
+Confidence and a Gaussian function of match distance weight this loss. Temporal training uses 20 epochs: the temporal head is isolated for five epochs, joint fine-tuning starts at epoch six, and scheduled sampling increases linearly from 0 to 0.4. Recurrent predictions are detached. Teacher history comes from the frozen single-frame parent, never from LiDAR ground truth.
+
+## 8. Training Objectives and Staging
+
+Single-frame geometry:
+
+```text
+L_G1 = L_occ.
+```
+
+Doppler generation:
+
+```text
+L_G2 = L_occ + L_dop + 0.1 L_geo.
+```
+
+Cycle training:
+
+```text
+L_G3 = L_occ + L_dop + 0.1 L_geo + L_cycle_variant.
+```
+
+Temporal training:
+
+```text
+L_G4 = L_occ + L_dop + 0.1 L_geo
+     + I_C3 L_cycle + 0.1 L_radial.
+```
+
+Modules are released only after their parent gate closes. All main comparisons use three fixed seeds and scene-first paired bootstrap. The untouched test split is released only after the temporal family is frozen.
+
+## 9. Evidence Boundaries
+
+- G0 passed and validates the data/geometry pipeline, not model quality.
+- Full-RAED geometry gain remains pending G1 comparison.
+- Doppler distribution gain remains pending G2.
+- Cube-cycle value remains pending G3.
+- Temporal value remains pending verified G4 data and G4 evaluation.
+- The analytic static mixture failed and is not a contribution.
+- TruckScenes Doppler-warp and scheduled-sampling results motivate the temporal design but are not K-Radar Cube-to-dense evidence.
