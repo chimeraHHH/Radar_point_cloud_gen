@@ -71,6 +71,19 @@ def circular_error(
     return np.remainder(observed - prediction + period / 2.0, period) - period / 2.0
 
 
+def filter_background_by_snr_quantile(
+    cfar: np.ndarray, background: np.ndarray, quantile: float
+) -> tuple[np.ndarray, float | None]:
+    if not 0.0 <= quantile < 1.0:
+        raise ValueError("Background SNR quantile must be in [0, 1)")
+    if background.shape != (cfar.shape[0],) or not background.any():
+        raise ValueError("Background mask is empty or malformed")
+    if quantile == 0.0:
+        return background.copy(), None
+    threshold = float(np.quantile(cfar[background, 5], quantile))
+    return background & (cfar[:, 5] >= threshold), threshold
+
+
 def summarize_frames(frames: list[dict]) -> dict:
     if not frames:
         raise ValueError("Cannot summarize an empty partition")
@@ -123,12 +136,16 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--box-margin-m", type=float, default=1.0)
     parser.add_argument("--minimum-range-m", type=float, default=3.0)
+    parser.add_argument("--background-snr-quantile", type=float, default=0.0)
     parser.add_argument("--minimum-selection-margin-mps", type=float, default=0.05)
     parser.add_argument("--required-frames", type=int, default=100)
     parser.add_argument("--available-only", action="store_true")
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
+
+    if not 0.0 <= args.background_snr_quantile < 1.0:
+        raise ValueError("--background-snr-quantile must be in [0, 1)")
 
     if args.output.exists() and not args.overwrite:
         raise FileExistsError(f"Output already exists: {args.output}")
@@ -171,11 +188,16 @@ def main() -> None:
             )
             boxes = parse_boxes(label_path)
             radius = np.linalg.norm(cfar[:, :3], axis=1)
-            background = outside_boxes(
+            unfiltered_background = outside_boxes(
                 cfar[:, :3], boxes, margin_m=args.box_margin_m
             ) & (radius >= args.minimum_range_m)
-            if not background.any():
+            if not unfiltered_background.any():
                 raise ValueError("No background CFAR points remain after masking")
+            background, snr_threshold = filter_background_by_snr_quantile(
+                cfar, unfiltered_background, args.background_snr_quantile
+            )
+            if not background.any():
+                raise ValueError("No background CFAR points remain after SNR filtering")
             observed = cfar[background, 3]
             forward_projection = (
                 ego_speed * cfar[background, 0] / np.maximum(radius[background], 1e-6)
@@ -206,7 +228,9 @@ def main() -> None:
                     "ego_speed_mps": ego_speed,
                     "cfar_count": int(cfar.shape[0]),
                     "box_count": len(boxes),
+                    "unfiltered_background_count": int(unfiltered_background.sum()),
                     "background_count": int(background.sum()),
+                    "background_snr_threshold": snr_threshold,
                     "hypotheses": hypothesis_report,
                     "preferred_hypothesis": preferred,
                     "_errors": stored_errors,
@@ -251,6 +275,7 @@ def main() -> None:
             "background_definition": "CFAR points outside all labeled 3D boxes",
             "box_margin_m": args.box_margin_m,
             "minimum_range_m": args.minimum_range_m,
+            "background_snr_quantile": args.background_snr_quantile,
             "minimum_selection_margin_mps": args.minimum_selection_margin_mps,
             "selection_partition": "train",
             "evaluation_partition": "validation",

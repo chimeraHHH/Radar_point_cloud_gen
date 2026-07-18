@@ -54,6 +54,23 @@ Freeze the train winner only if its frame-median circular error beats the
 runner-up by at least `0.05 m/s`, then evaluate that frozen choice on validation.
 No validation frame participates in selecting the sign or compensation mode.
 
+The first formal all-background calibration is retained as negative evidence if
+the frozen train winner does not beat the circular-random baseline on
+validation. One bounded recovery is then allowed before E5 is removed: rerun
+the identical audit with per-frame background SNR quantiles
+`0.0`, `0.5`, `0.75`, and `0.9`. Among candidates that preserve all 100 frames
+and meet the same `0.05 m/s` train margin, select the candidate with the lowest
+train selected-hypothesis frame-median error; ties prefer the lower quantile.
+Only after this train-only rule freezes a candidate is its validation result
+read. The random baseline, box mask, range cutoff, hypotheses, and validation
+gate remain unchanged.
+
+If the selected SNR candidate still fails validation, E5 is omitted and the
+failure is reported. E3 and E4 continue because scalar-versus-distribution
+evidence does not depend on a valid analytic static convention. A failed E5
+recovery cannot be used to weaken the E4 gate or to claim physics-mixture
+success.
+
 For a point with radial unit vector `r_hat` and platform velocity `v_ego`, the
 uncompensated static radial velocity is
 

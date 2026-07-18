@@ -129,4 +129,9 @@ size and CRC with zero errors. A 45-frame contiguous-prefix CUDA audit passed
 all 11 interim checks. The first 100-frame formal audit completed with zero
 frame errors but failed the selected-deskew and observable-nonempty checks. The
 repaired G0 run freezes no deskew from train-only evidence and applies the
-literal positive-count nonempty check; G0 remains open until that rerun passes.
+literal positive-count nonempty check. That rerun completed 100/100 frames with
+zero errors and passed all 11 checks: mean observable fraction `0.2210`,
+cross-frame standard deviation `0.1033`, correct-minus-mirrored margin `0.4187`,
+and exact CFAR round-trip fraction `1.0`. G0 is therefore closed with `none` as
+the only selected LiDAR time reference. The separate static-Doppler convention
+audit remains a G2 dependency and is not part of this geometry-data gate.
