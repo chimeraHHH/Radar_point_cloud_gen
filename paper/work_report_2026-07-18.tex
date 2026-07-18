@@ -1,0 +1,584 @@
+\documentclass[11pt,a4paper,fontset=none]{ctexart}
+
+\setCJKmainfont{Songti SC}
+\setCJKsansfont{Songti SC}
+\setCJKmonofont{Songti SC}
+
+\usepackage[margin=2.25cm]{geometry}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{booktabs,longtable,tabularx,array,multirow}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+\usepackage{float}
+
+\definecolor{FlowBlue}{HTML}{1F4E79}
+\definecolor{FlowGreen}{HTML}{287A52}
+\definecolor{FlowOrange}{HTML}{B85C20}
+\definecolor{FlowGray}{HTML}{5B6573}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=FlowBlue,
+  urlcolor=FlowBlue,
+  citecolor=FlowBlue,
+  pdfauthor={Radar Cube-to-Dense Project},
+  pdftitle={4D Radar Cube to Physically Consistent Dense Point Cloud: Work Report 2026-07-18}
+}
+
+\setlist[itemize]{leftmargin=1.7em,itemsep=0.25em,topsep=0.35em}
+\setlist[enumerate]{leftmargin=1.9em,itemsep=0.25em,topsep=0.35em}
+\renewcommand{\arraystretch}{1.18}
+\setlength{\emergencystretch}{3em}
+\newcommand{\statusdone}{\textcolor{FlowGreen}{\textbf{已完成}}}
+\newcommand{\statusrun}{\textcolor{FlowOrange}{\textbf{运行中}}}
+\newcommand{\statuswait}{\textcolor{FlowGray}{\textbf{待执行}}}
+\newcommand{\statusblock}{\textcolor{red!70!black}{\textbf{受阻}}}
+\newcommand{\code}[1]{\texttt{#1}}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{4D Radar Cube-to-Dense}
+\fancyhead[R]{工作报告 2026-07-18}
+\fancyfoot[C]{\thepage}
+\setlength{\headheight}{14pt}
+
+\title{\bfseries 从 4D Radar Cube 生成物理一致的稠密点云\\[0.4em]
+\large 神经网络结构与阶段工作报告}
+\author{Radar Cube-to-Dense 项目组}
+\date{2026 年 7 月 18 日}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+\begin{minipage}{0.94\textwidth}
+\small
+\textbf{报告口径。}本文依据当前代码、冻结实验协议、数据审计产物和 H200 运行队列整理。
+首轮正式跨场景 G0 已完成 \textbf{100/100 帧且无帧错误}，但 11 项检查中 2 项失败，故 \textbf{G0 gate 未通过}；本报告已纳入失败原因与修复重跑决策，不将 G1--G4 写成已经通过。
+旧版点云时序实验仅作为设计依据，不能替代当前 RAED Cube 管线的正式结果。
+\end{minipage}
+\end{center}
+
+\tableofcontents
+\newpage
+
+\section{执行摘要}
+
+当前项目已从早期“上一帧稀疏雷达点预测下一帧雷达点”的时序生成路线，收敛为更清晰、也更接近顶会评审标准的主问题：
+\begin{quote}
+给定\textbf{当前帧完整 4D Radar Cube}，生成固定数量的雷达可观测稠密点，且每个点同时具有三维坐标、64-bin Doppler 分布（及其标量统计）和置信度；再通过可微 point-to-Cube 重投影约束生成结果与原始测量一致。历史点云只作为第二阶段时序先验，当前 Cube 始终是主观测。
+\end{quote}
+
+截至 2026-07-18，项目已经完成以下实质工作：
+\begin{itemize}
+  \item 完整实现单帧主干：\code{CubeOccupancyNet}、\code{CubeDopplerNet}、\code{CubeCycleNet}；
+  \item 完整实现时序扩展：门控 Doppler-warp、先验栅格化、Concat、Cross-Attention 和 Draft Refinement 三种融合；
+  \item 完整实现 occupancy、Doppler 分布、静态物理、Cube-cycle 和跨帧径向一致性损失；
+  \item 冻结 G0--G4、P5 的数据、训练、指标和统计决策协议，避免看结果后修改门槛；
+  \item 完成 K-Radar 100 帧跨场景数据下载、CRC 校验和首轮 H200 CUDA 审计；审计无帧错误，但 falsify 了 start-time deskew 假设，并暴露 nonempty 检查的实现语义偏差；
+  \item 将代码与运行环境迁移到 H200 节点，并增加 GPU 型号守卫，确保任务只落在 H200，不使用 RTX PRO 5000。
+\end{itemize}
+
+当前最关键的事实边界是：\textbf{架构和实验系统已经基本齐备，但 G0 尚未通过，新 Cube-to-dense 主线也尚未产生可用于论文主表的 G1--G4 正式结果。}当前工作重点不是继续堆模块，而是先完成修复后的 G0，再让后续预注册门按依赖顺序执行。
+
+\section{研究问题与输出定义}
+
+\subsection{输入表征}
+
+代码中的规范输入为
+\begin{equation}
+  \mathbf{C}_t \in \mathbb{R}_{\ge 0}^{D\times R\times A\times E}
+  = \mathbb{R}_{\ge 0}^{64\times256\times107\times37},
+\end{equation}
+其中 $D,R,A,E$ 分别表示 Doppler、range、azimuth 和 elevation。原始 MATLAB 文件的磁盘布局为
+$(64,256,37,107)$，严格加载器转置为 $(D,R,A,E)$，随后在 CUDA 上转为 \code{float32}。这种处理保留完整 Doppler 轴，避免在输入端把速度谱压缩成普通三维强度体。
+
+功率预处理为
+\begin{equation}
+  \widetilde{C}=\operatorname{clip}\left(
+  \frac{\log_{10}(C+1)-\mu_{\mathrm{train}}}{s_{\mathrm{train}}},-4,4
+  \right),
+\end{equation}
+其中 $\mu_{\mathrm{train}},s_{\mathrm{train}}$ 只由完整训练分区统计，代码会核对 manifest、scene split、帧列表和 SHA-256，拒绝部分统计或验证集泄漏。
+
+\subsection{输出表征}
+
+单帧模型输出固定 $N=10{,}000$ 个点：
+\begin{equation}
+  \mathcal{P}_t=\left\{
+  \mathbf{p}_i=(x_i,y_i,z_i),\quad
+  q_i(d),\quad
+  \hat v_{r,i},\quad
+  c_i
+  \right\}_{i=1}^{N},
+\end{equation}
+其中 $q_i(d)$ 是 64-bin 环形 Doppler 概率分布，$\hat v_{r,i}$ 是其环形均值，$c_i$ 是由 occupancy logit 解码得到的点置信度。目标不是复制全部 LiDAR 表面，而是逼近由 Cube 可见性约束的 \emph{radar-observable dense target}。
+
+这一输出定义与传统单帧雷达超分辨率的关键差异不只是点数更多，而是将\textbf{位置、径向速度分布与可观测置信度}放在同一生成对象中，并要求它们能够共同解释原始 Cube。
+
+\section{神经网络总体结构}
+
+\subsection{端到端信息流}
+
+当前网络可以概括为以下六步：
+\begin{enumerate}
+  \item 对完整 RAED Cube 做训练集归一化，并采用 RAE-Max、RAE-Moments 或 Full-RAED 编码；
+  \item 使用三维残差 U-Net 在 RAE 网格上提取空间对齐特征；
+  \item 从 occupancy logits 中选取 10,000 个互异 RAE 单元，得到离散几何与置信度；
+  \item 在选中位置查询特征，预测连续 RAE 偏移和逐点 Doppler 分布；
+  \item 将连续 RAE 坐标转换为 Cartesian XYZ，并将点云软渲染回 RAED Cube；
+  \item 时序阶段将上一帧预测做门控 Doppler-warp，作为当前 Cube 解码器的辅助先验。
+\end{enumerate}
+
+\begin{center}
+\setlength{\fboxsep}{8pt}
+\fbox{\begin{minipage}{0.92\textwidth}
+\centering
+\textbf{当前帧完整 RAED Cube}
+$\rightarrow$ Doppler 编码
+$\rightarrow$ 3D RAE U-Net
+$\rightarrow$ occupancy / confidence\\
+$\rightarrow$ 10,000 个位置查询
+$\rightarrow$ 连续坐标 + Doppler 分布
+$\rightarrow$ 稠密 $XYZ+v_r+c$\\
+$\rightarrow$ 可微 soft splat 回 RAED Cube
+$\rightarrow$ 双向一致性约束
+\end{minipage}}
+\end{center}
+
+\subsection{模块 A：Cube 编码与 3D RAE 主干}
+
+\code{CubeOccupancyNet} 提供三种严格匹配的输入模式：
+\begin{table}[H]
+\centering
+\caption{Cube 输入编码对照}
+\begin{tabularx}{\textwidth}{>{\bfseries}l l X}
+\toprule
+模式 & 输入通道 & 定义与实验作用 \\
+\midrule
+RAE-Max & 1 & 沿 Doppler 维取最大归一化功率，作为不保留完整速度谱的基线。\\
+RAE-Moments & 3 & 峰值功率、Doppler 均值、Doppler 标准差，检验低阶速度矩是否已足够。\\
+Full-RAED & 64 & 将全部 Doppler bins 作为 3D Conv 的输入通道，是论文主模型。\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+三种输入首先通过 $1\times1\times1$ 卷积投影到 $b=8$ 个通道，因此 E1/E2 的后续空间主干完全一致。主干是两层下采样的轻量三维 U-Net：
+\begin{align}
+  F_0 &= \operatorname{Res3D}_{b}(\operatorname{Proj}(\widetilde C)),\\
+  F_1 &= \operatorname{Res3D}_{2b}(\operatorname{Conv3D}_{s=2}(F_0)),\\
+  Z &= \operatorname{Res3D}_{4b}(\operatorname{Conv3D}_{s=2}(F_1)),\\
+  \widehat F_1 &= \operatorname{Res3D}_{2b}([\operatorname{Up}(Z),F_1]),\\
+  F &= \operatorname{Res3D}_{b}([\operatorname{Up}(\widehat F_1),F_0]).
+\end{align}
+每个残差块使用两层 $3\times3\times3$ Conv、GroupNorm、SiLU 和可选 $1\times1\times1$ skip projection；上采样采用 trilinear interpolation。最终 $1\times1\times1$ head 输出
+$\mathbf{O}\in\mathbb{R}^{256\times107\times37}$ 的 occupancy logits。
+
+该设计刻意保持简单：G1 要回答的是“完整 Doppler 频谱是否改善几何”，而不是比较不同规模的 backbone。Full-RAED 与 RAE-Max 的参数增量受协议约束，不得超过 1\%。
+
+\subsection{模块 B：占用解码与稠密几何}
+
+训练目标由缓存的 radar-observable LiDAR 点构造。落在同一 RAE cell 的目标置信度取最大值，形成软 occupancy $Y_{r,a,e}\in[0,1]$。推理时对 occupancy 概率取全局 top-$N$，并将每个单元只解码一次，因此固定输出 10,000 个互异 RAE cell center，不会通过重复点虚增密度。
+
+G1 的结构化对照为：
+\begin{itemize}
+  \item E0：官方 Cube CFAR 稀疏点；
+  \item E1：RAE-Max + matched 3D occupancy U-Net；
+  \item E2：Full-RAED + 同一 occupancy U-Net。
+\end{itemize}
+E2 只有在 Doppler 敏感几何端点上以配对置信区间显著优于 E1，且总体 Chamfer 不退化超过 2\%，才允许进入 G2。
+
+\subsection{模块 C：逐点 Doppler 头}
+
+\code{CubeDopplerNet} 复用 Full-RAED U-Net，并在被选中的 RAE 位置提取 $b$ 维特征。特征经过 Linear--SiLU 投影后，支持三种输出头：
+
+\paragraph{Scalar head（E3）。}
+预测单一速度值，按 Doppler 周期回绕到有效测量区间。为与分布方法公平比较，评估时将标量变成固定一 bin 宽度的 wrapped Gaussian。
+
+\paragraph{Distribution head（E4）。}
+输出 64 维 logits：
+\begin{equation}
+  q_i(d)=\operatorname{softmax}(\mathbf{W}_{d}\mathbf{f}_i),
+  \qquad
+  \hat v_{r,i}=\operatorname{CircMean}\bigl(q_i,\mathbf{v}_{D}\bigr).
+\end{equation}
+环形均值、误差和 Wasserstein 距离均显式处理 Doppler alias period，避免把频谱两端误认为相距很远。
+
+\paragraph{Physics-distribution head（E5）。}
+网络额外预测静态概率 $s_i$，将解析静态分布与学习分布混合：
+\begin{equation}
+  q_i(v)=s_i q_i^{\mathrm{static}}(v\mid \mathbf{p}_i,\mathbf{v}_{ego})
+  +(1-s_i)q_i^{\mathrm{dynamic}}(v\mid \mathbf{C}_t,\mathbf{p}_i).
+\end{equation}
+解析中心允许三种预注册传感器约定：$-\mathbf{v}_{ego}\cdot\hat{\mathbf r}$、
+$+\mathbf{v}_{ego}\cdot\hat{\mathbf r}$ 或 zero-centered。最终约定必须由训练集静态 CFAR 审计冻结。当前 K-Radar 直接证据支持 zero-centered compensated Cube，因此反事实 ego-speed 测试应表现为近似不变，而不是强行产生斜率。
+
+\subsection{模块 D：连续点参数化与 Cube-cycle}
+
+\code{CubeCycleNet} 为每个选中 cell 预测三维连续偏移：
+\begin{equation}
+  \Delta\mathbf{u}_i=0.5\tanh\bigl(h_{\mathrm{offset}}(\mathbf f_i)\bigr),
+  \qquad
+  \mathbf{u}_i=(r_i,a_i,e_i)+\Delta\mathbf{u}_i,
+\end{equation}
+其中每一维偏移都限制在 $[-0.5,0.5]$ bin。连续 RAE 坐标通过轴插值转换为 XYZ：
+\begin{equation}
+\mathbf p_i=
+\begin{bmatrix}
+\rho_i\cos\epsilon_i\cos\alpha_i\\
+\rho_i\cos\epsilon_i\sin\alpha_i\\
+\rho_i\sin\epsilon_i
+\end{bmatrix}.
+\end{equation}
+
+可微渲染器把每个点分配到八个相邻 RAE cell，并保留其 64-bin Doppler 概率质量：
+\begin{equation}
+  \widehat C(d,r,a,e)=\sum_i c_i\,w_i(r,a,e\mid\mathbf u_i)\,q_i(d).
+\end{equation}
+边界处的 trilinear 权重重新归一化，所以每个有效点贡献的总质量等于 $c_i$。梯度可回传到连续偏移、Doppler logits 和置信度。
+
+G3 使用四个结构匹配的 arms：C0 无 cycle，C1 仅 local spectrum KL，C2 再加全局 Doppler marginal KL，C3 再加稀疏 spatial-energy loss。C0 同样训练 offset head，从而排除“只有 cycle 模型获得连续坐标梯度”的混淆因素。
+
+\subsection{模块 E：历史物理先验与时序融合}
+
+\code{CubeTemporalNet} 的输入仍包含当前完整 Cube。上一帧预测只形成先验：
+\begin{align}
+  v_i^{res} &= \operatorname{wrap}(\hat v_{r,i}-v_{i}^{static}),\\
+  g_i &= \mathbb{I}(|v_i^{res}|>1.0\ \mathrm{m/s}),\\
+  \mathbf p_i^{adv} &= \mathbf p_i + g_i v_i^{res}\Delta t\,\hat{\mathbf r}_i,\\
+  \mathbf p_i^{prior} &= \mathbf T_{t\leftarrow t-1}\mathbf p_i^{adv}.
+\end{align}
+静态或低残差点只做 ego transform，动态点才沿径向做 Doppler 位移，避免无门控积分放大杂波。
+
+每个 prior point 编码为 8 维特征：归一化 XYZ 三维、confidence 一维、Doppler circular sine/cosine、谱熵和 dynamic gate 四维。当前实现包含三种融合：
+\begin{table}[H]
+\centering
+\caption{时序融合结构}
+\begin{tabularx}{\textwidth}{>{\bfseries}l X X}
+\toprule
+模式 & 先验表示 & 与当前 Cube 的融合方式 \\
+\midrule
+Concat（T4） & 将能量、圆周矩、熵和门控栅格化为 5 通道 RAE prior & $1\times1\times1$ 投影后，与当前 Cube 特征拼接，再用残差块融合。\\
+Cross-Attention（T5） & 保留 prior point token & 当前查询点对最近 8 个 prior token 做局部多头注意力，并加入相对 XYZ 编码。\\
+Draft Refinement（T6） & 最近的物理 warp 点作为 draft & 当前 Cube 特征预测残差，并用三维 gate 在 prior offset 与 learned offset 之间插值。\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+这个结构与项目定位对齐：它不是“上一帧直接生成下一帧”的纯预测任务，也不是把历史点简单累加，而是\textbf{当前 Cube 条件下的新点生成，历史预测只提供可被当前观测纠正的物理草稿}。
+
+\section{训练目标与优化策略}
+
+\subsection{占用与几何损失}
+
+occupancy 使用分别归一化的 soft focal loss 与 Dice loss：
+\begin{equation}
+  \mathcal L_{occ}=\mathcal L_{focal}^{soft}+0.25\mathcal L_{dice}^{soft}.
+\end{equation}
+连续点阶段额外加入 confidence-weighted symmetric Chamfer：
+\begin{equation}
+  \mathcal L_{geo}=\frac{1}{N}\sum_{\hat p}\min_{p\in P^*}\|\hat p-p\|_2
+  +\frac{\sum_{p\in P^*}c_p\min_{\hat p}\|p-\hat p\|_2}{\sum_{p\in P^*}c_p},
+\end{equation}
+默认权重为 0.1。
+
+\subsection{Doppler 分布与物理损失}
+
+E4/E5 的主监督是当前 Cube 对应位置的 \code{log1p(power)} 归一化谱：
+\begin{equation}
+  \mathcal L_{dop}= -\sum_{i,d}w_i q_i^*(d)\log q_i(d),
+\end{equation}
+其中 $w_i$ 由点置信度给出。E5 再加入权重 0.25 的静态 gate BCE；软静态标签由观测谱均值到冻结静态中心的环形距离构造：不超过 1 m/s 为静态，不小于 2 m/s 为动态，中间线性插值。
+
+仓库还保留了更一般的自门控静态损失与监督式动态一致性：
+\begin{equation}
+  \mathcal L_{static}=\frac{\sum_i
+  \exp\!\left(-\frac{\operatorname{stopgrad}(r_i)^2}{2\tau^2}\right)
+  \operatorname{Huber}(r_i)}{\sum_i
+  \exp\!\left(-\frac{\operatorname{stopgrad}(r_i)^2}{2\tau^2}\right)},
+\end{equation}
+其中 $r_i=v_{r,i}-v^{static}_r(\mathbf p_i)$。detach 门控避免网络通过改变残差本身逃避损失，也不会强迫真实动态点满足静态关系。
+
+\subsection{Cube-cycle 损失}
+
+C3 的完整 cycle 为
+\begin{equation}
+  \mathcal L_{cycle}=\mathcal L_{local\text{-}KL}
+  +0.25\mathcal L_{D\text{-}marginal}
+  +0.25\mathcal L_{spatial\text{-}energy}
+  +\mathcal L_{conf\text{-}floor}.
+\end{equation}
+local KL 只在渲染覆盖且 Cube 有能量的 cell 上计算；marginal KL 比较整帧 Doppler 边缘分布；spatial-energy loss 比较渲染覆盖与目标最强 10,000 cells 的归一化对数能量。置信度均值低于 0.1 时触发 floor penalty，但正式 G3 还要求置信度、覆盖 cell 数和 ECE 同时通过反塌缩审计，单一 floor 不能构成成功证据。
+
+\subsection{时序一致性与 scheduled sampling}
+
+跨帧匹配先把上一帧点按 Doppler + ego motion 推进到当前帧，再匹配最近的当前生成点。径向约束为
+\begin{equation}
+  e_i^{rad}=\left|
+  \bigl(\|\mathbf p_{j,t}\|-\|\mathbf p^{ego}_{i,t-1}\|\bigr)
+  -\frac{v^{res}_{i,t-1}+v^{res}_{j,t}}{2}\Delta t
+  \right|,
+\end{equation}
+权重由前后点置信度与匹配距离的 Gaussian 衰减共同决定。训练总损失为
+\begin{equation}
+  \mathcal L_{temp}=\mathcal L_{occ}+\mathcal L_{dop}
+  +0.1\mathcal L_{geo}+\mathbb I_{C3}\mathcal L_{cycle}
+  +0.1\mathcal L_{radial}.
+\end{equation}
+
+G4 训练 20 epochs：前 5 epochs 只训练 temporal head，从第 6 epoch 开始联合微调；scheduled-sampling 概率从 0 线性增加到 0.4，复用的 recurrent prediction 会 detach。教师输入也只来自冻结单帧 parent 的预测，不使用 LiDAR 真值点作为历史先验。
+
+\section{数据、监督与评估协议}
+
+\subsection{数据划分与目标构造}
+
+当前使用 K-Radar 官方 full radar tesseract、OS2-64 LiDAR、标签和 odometry。53 个可获得序列按 sequence 隔离：37 个训练序列、8 个验证序列、8 个测试序列；对应 22,419、4,836、4,790 帧。官方归档缺少序列 15、16、17、19、20，代码将其显式排除，不推断缺失元数据。
+
+G0 冻结的 100 帧跨场景 cohort 覆盖全部 45 个 train/validation 序列，其中 76 帧训练、24 帧验证，test 完全不触碰。下载核验覆盖 100 个 Cube、100 个 OS2 scans、100 个 labels，共 480 个请求成员，已通过 exact set、size 和 CRC 检查。
+
+监督目标生成包括：
+\begin{itemize}
+  \item 使用 OS2 每点时间偏移与 odometry 做 GPU deskew；
+  \item 通过 Cube 能量、视场和 first-surface 规则筛选 radar-observable LiDAR；
+  \item 将目标投影到 RAE 网格，缓存 XYZ、置信度和 RAE index；
+  \item 在目标位置查询原始 64-bin Cube spectrum，形成 Doppler 分布监督。
+\end{itemize}
+八帧 sequence-1 先导审计曾显示 start-time deskew 的对齐 margin 比 no deskew 高 0.061；但 100 帧正式审计在训练分区上得到 no deskew $-0.8165$、start $-0.8424$、center $-0.8233$、end $-0.9614$，说明先导结论不能跨场景外推。修复重跑将按训练集证据冻结 no deskew，同时保留逐点时间与三种 deskew control，并把 OS2 scan-origin 约定列为限制。
+
+\subsection{阶段门设计}
+
+\begin{longtable}{>{\bfseries}p{1.3cm} p{3.2cm} p{5.3cm} p{4.1cm}}
+\caption{G0--P6 的依赖与判定目的}\\
+\toprule
+阶段 & 科学问题 & 核心对照/门槛 & 当前状态 \\
+\midrule
+\endfirsthead
+\toprule
+阶段 & 科学问题 & 核心对照/门槛 & 当前状态 \\
+\midrule
+\endhead
+G0 & 数据、坐标、同步和物理轴是否可靠 & 100 帧 CUDA 审计全部通过，CRC、CFAR round-trip、时间参考、可见性和静态 Doppler 约定一致 & \statusrun，首轮完成但 9/11，修复重跑 \\
+G1 & 完整 Doppler 谱是否改善稠密几何 & E0 CFAR、E1 RAE-Max、E2 Full-RAED；E2 在预注册 Doppler-sensitive endpoint 显著优于 E1 & \statuswait，队列等待 G0 \\
+G2 & 逐点分布是否优于标量，物理混合是否有效 & E3 scalar、E4 distribution、E5 physics mixture；谱、PCE、校准和反事实均需通过 & \statuswait，等待 G1 \\
+G3 & 生成点能否反向解释原 Cube & C0--C3 cycle ablation；local KL 改善且几何、置信度和覆盖不塌缩 & \statuswait，等待 G2 \\
+G4 & 历史物理先验能否改善当前 Cube 生成 & T0--T6；与单帧及 DoppDrive-style aggregation 对照，25-step rollout 稳定 & \statusblock，时序数据未完整 \\
+P5 & 冻结测试、泛化与下游价值 & 8 个未触碰 test 序列；物体径向速度、距离/天气/类别切片和效率 & \statuswait，等待 G3/G4 冻结 \\
+P6 & 论文写作与审稿压力测试 & 主张--证据映射、失败分析、图表和可复现包 & \statuswait，可并行准备结构，不可提前写结果结论 \\
+\bottomrule
+\end{longtable}
+
+\subsection{首轮正式 G0 结果与修复决策}
+
+首轮正式审计使用 source commit \code{253f26c9bd03e47dcb8b1b15a5eaf9d1859a92b3}，在 NVIDIA H200 NVL 上覆盖 45 个序列、76 个训练帧和 24 个验证帧。100 帧全部成功，未出现加载或 CUDA 运行错误，但 aggregate gate 为 false。
+
+\begin{table}[H]
+\centering
+\caption{首轮正式 G0 核心结果}
+\begin{tabularx}{\textwidth}{>{\bfseries}p{4.4cm} p{2.5cm} X}
+\toprule
+检查或统计 & 结果 & 解释 \\
+\midrule
+Schema / shape & PASS & 全部为规范 $(64,256,107,37)$，原始类型为 float64。\\
+OS2-label sync & PASS & 最大绝对时间差 0 ms。\\
+Odometry support & PASS & 最近支持时间差最大 0 ms。\\
+CFAR exact round-trip & PASS & 100 帧最小 exact-bin fraction 为 1.0。\\
+Correct vs mirrored azimuth & PASS & 平均 margin $+0.3981$。\\
+Doppler hypothesis vs random & PASS & 冻结假设显著优于随机环形基线。\\
+Observable stability & PASS & 平均可观测比例 $0.2087\pm0.1083$，低于预注册 std 上限 0.15。\\
+Selected deskew vs none & FAIL & start-minus-none 平均为 $-0.02456$；训练分区为 $-0.02587$。\\
+Observable target nonempty & FAIL & 实现误用了每帧比例 $>0.005$；序列 51/52 比例虽低，但仍分别保留正样本，并非空目标。\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+基于该结果，项目执行一次数据口径修复，而不是放宽科研结论：
+\begin{enumerate}
+  \item 只用 76 个训练帧选择时间参考，并冻结 \code{lidar-time-reference=none}；验证分区不参与选择。
+  \item 将 \code{observable\_target\_nonempty} 修正为每帧 \code{observable\_count > 0}。覆盖率仍完整报告，且跨帧稳定性门保持不变。
+  \item 使用新 source commit 重跑完整 100 帧并重建 target cache。修复版 G0 未通过前，G1 队列保持阻塞。
+  \item 删除“deskew 在 K-Radar 跨场景上改善对齐”的主张，只保留“逐点时间可用，但 scan-origin 约定未确定”的限制说明。
+\end{enumerate}
+
+\subsection{指标体系}
+
+当前协议不是只看 Chamfer。正式报告至少覆盖：
+\begin{itemize}
+  \item \textbf{几何：}confidence-weighted symmetric Chamfer，F-score@0.5/1/2 m，completeness，$>2$ m outlier，0--30/30--60/60--120 m 分层；
+  \item \textbf{Doppler：}local spectrum NLL/KL，circular W1，mode-bin accuracy，circular scalar MAE，CD-Doppler；
+  \item \textbf{物理与校准：}static PCE@0.25/0.5/1.0 m/s，dynamic fraction，ECE，ego-speed counterfactual；
+  \item \textbf{Cycle：}local spectrum KL，global Doppler marginal KL，spatial energy，coverage、confidence 和 offset saturation；
+  \item \textbf{时序：}matched radial error，occupancy flicker，Doppler refresh error，1/5/10/25-step rollout；
+  \item \textbf{统计：}按 scene 先聚合，再对 scenes 与 seeds 做配对 bootstrap，禁止把同一场景帧当作独立样本夸大显著性。
+\end{itemize}
+
+\section{截至 7 月 18 日的实际工作}
+
+\subsection{代码与协议完成度}
+
+\begin{table}[H]
+\centering
+\footnotesize
+\caption{实现状态与对应代码}
+\begin{tabularx}{\textwidth}{>{\bfseries}p{3.1cm} p{4.5cm} X}
+\toprule
+能力 & 主要文件 & 核验状态 \\
+\midrule
+Cube 严格加载与轴转换 & \path{code/cube_dense/kradar.py} & 规范 DRAE shape、有限值和轴尺寸检查已实现。\\
+可观测监督与 deskew & \path{observability.py}, \path{dataset.py} & CUDA-only deskew、CFAR、LiDAR target 和 occupancy cache 已实现。\\
+单帧几何主干 & \path{models/cube_occupancy.py} & 三种编码、matched U-Net、top-10k 解码已实现。\\
+Doppler 分布与物理混合 & \path{models/cube_doppler.py} & scalar/distribution/physics-distribution 三头已实现。\\
+连续点与重投影 & \path{models/cube_cycle.py}, \path{point_to_cube.py} & 三线性 soft splat、质量守恒和连续偏移已实现。\\
+时序 prior 与融合 & \path{temporal_prior.py}, \path{cube_temporal.py} & warp、栅格化、三种融合和 recurrent inference 已实现。\\
+训练与评估队列 & \path{code/scripts/queue_g*.py} & G1--G3 已部署为依赖队列；G4 会等待完整时序下载。\\
+回归测试 & \code{code/tests/} & 本地与 H200 当前均为 13 项通过。\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+当前分支为 \code{agent/cube-to-dense-g0}。报告整理前的远端 HEAD 为
+\begin{center}
+\code{14e16d5ddf82685f1c5725551eb3aba84861376c}。
+\end{center}
+其中两项与实验可信度直接相关的修复是：
+\begin{itemize}
+  \item \code{253f26c}：增加 H200 型号守卫和 CUDA device mapping 校验，修复物理 GPU 编号与 PyTorch 可见设备顺序不一致的风险；
+  \item \code{14e16d5}：下游 G1 队列等待 G0 的最终 aggregate，而不是仅判断中间 JSON 文件存在，避免部分审计被误判为完成。
+\end{itemize}
+
+\subsection{H200 环境与数据组织}
+
+计算节点的 conda 环境为
+\begin{center}
+\code{/home/wangning/miniforge3/envs/hym\_radar}。
+\end{center}
+环境使用 Python 3.10.20、PyTorch 2.12.1+cu130 和 CUDA 13.0。运行策略固定为：
+\begin{itemize}
+  \item 只允许使用两张 NVIDIA H200 NVL；
+  \item 禁止使用同节点的 RTX PRO 5000 Blackwell；
+  \item conda 环境统一使用 \code{hym\_} 前缀；
+  \item 队列启动前同时检查 \code{CUDA\_DEVICE\_ORDER=PCI\_BUS\_ID}、逻辑设备映射和真实 GPU 型号。
+\end{itemize}
+
+数据没有重复迁移。约 41 GiB 的当前数据仍位于 L40S 存储，H200 通过 SSHFS 读取：约 26 GiB 为 100 帧跨场景 cohort，约 13 GiB 为未完成的时序下载，约 2.4 GiB 为早期 G0 数据。代码则以冻结 snapshot 部署到 H200，当前存在 \code{253f26c} 与 \code{14e16d5} 两个版本目录。这样减少大规模复制，但首次读取单个约 293 MB Cube 时会受 SSHFS 吞吐影响。
+
+\subsection{当前运行状态}
+
+首轮正式 G0 已在 H200 GPU0 上完成 100/100 帧，但 gate failed；失败决策已归档，nonempty 逻辑已修正并补充回归测试。下游 G1 preflight、G1 formal、static Doppler audit、G2/G3 均不得越过失败 aggregate。修复版 G0 将使用 no-deskew target cache 和新 source commit 独立重跑。
+
+G4 尚未启动。冻结时序 cohort 需要 45 个 train/validation 序列、每序列连续 48 帧，共 2,160 帧（1,776 train + 384 validation），估算完整下载约 600.8 GiB；当前仅有约 13 GiB partial data，且 NAS 凭据不在 H200 环境中。因此 G4 的阻塞是\textbf{数据获取条件}，不是模型代码缺失。
+
+\section{与前序点云时序工作的关系}
+
+旧版 FlowRadar/DopplerConsist 在 TruckScenes 稀疏雷达点管线上已经给出两类机制证据：
+\begin{itemize}
+  \item 纯 Doppler-warp copy 在 2.5 s rollout 上的 Chamfer 为 9.26，对比 ego-only copy 的 13.34，改善 31\%；
+  \item 反事实 ego-speed 干预得到剂量响应 slope 0.696、Pearson $r=0.850$；
+  \item scheduled sampling 提升了长时距物理新鲜度，但生成式桥接仍存在几何税，说明 warp 更适合作为时序骨架，生成器负责观测刷新。
+\end{itemize}
+
+这些结果支持当前 G4 的设计选择：使用门控 Doppler-warp 建立先验、保留当前观测、用 scheduled sampling 处理 rollout distribution shift。但二者的任务、输入和数据集不同：旧管线输入是上一帧点云，新主线输入是完整 RAED Cube。因此旧数字只能证明设计动机，不能证明当前方法在 K-Radar 上通过 G1--G4。
+
+\section{当前创新点的准确表述}
+
+基于实际代码，最可防守的创新组合不是“首次预测下一帧雷达点”，而是：
+\begin{enumerate}
+  \item \textbf{完整 RAED 条件的稠密点生成。} 不在输入端丢弃 Doppler 轴，并用 matched backbone 直接检验完整谱是否给几何带来增益。
+  \item \textbf{位置、速度分布和可见置信度联合输出。} Doppler 不是附加的单一通道，而是与位置相关的环形概率分布，显式表达多峰与 aliasing。
+  \item \textbf{解析静态项与学习动态项分解。} 根据数据集真实补偿约定冻结静态中心，动态成分由 Cube 证据学习，并接受 counterfactual 检验。
+  \item \textbf{Cube-to-point 与 point-to-Cube 双向闭环。} 生成点必须能够以可微方式重构局部 Doppler 谱、全局边缘谱和空间能量，位置、速度、置信度相互制约。
+  \item \textbf{当前观测主导的时序刷新。} 历史点经门控 Doppler-warp 只形成 prior；模型仍从当前 Cube 生成新点并刷新 Doppler，而非仅聚合历史点。
+\end{enumerate}
+
+顶会表述建议为：
+\begin{quote}
+Traditional radar enhancement is usually formulated as single-frame geometric densification. We formulate dense radar reconstruction as a full-RAED-conditioned generation problem, where point geometry, circular Doppler distributions, and visibility confidence are jointly inferred and constrained by a differentiable point-to-Cube cycle. A warped historical prediction is used only as a physical prior that is corrected by the current Cube.
+\end{quote}
+
+该表述是否最终成立，取决于三个连续证据：E2 是否显著优于 E1，E4/E5 是否在分布与物理指标上优于 scalar，C3 是否在不牺牲几何和 coverage 的条件下降低 Cube discrepancy。任何一门失败，都应按协议缩小主张，而不是用旧结果或定性图补位。
+
+\section{风险、失败分支与自主决策规则}
+
+\begin{longtable}{p{3.2cm} p{5.5cm} p{6.0cm}}
+\caption{当前主要风险与处理原则}\\
+\toprule
+风险 & 可能表现 & 预注册处理 \\
+\midrule
+\endfirsthead
+\toprule
+风险 & 可能表现 & 预注册处理 \\
+\midrule
+\endhead
+Full-RAED 投影瓶颈 & E2 不优于 E1，完整谱被 $1\times1\times1$ projection 压平 & 先诊断动态/远距覆盖与投影容量；一次有边界的 redesign 后仍失败，则停止“频谱改善几何”主张。\\
+分布头只复制局部谱 & E4 NLL 好但校准、W1、CD-Doppler 或下游无收益 & 保留 Q0 非学习直接查询基线；没有超过 Q0 的有效维度时，不能把“输出分布”写成核心贡献。\\
+静态混合塌缩 & E5 全部判静态或 dynamic fraction 失真 & 强制 dynamic fraction、PCE、反事实和几何四重门；E5 失败时以 E4 进入 G3。\\
+Cycle 通过压低置信度作弊 & KL 下降但 confidence/coverage 同时下降 & 要求相对 C0 的 confidence 和 covered cells 至少保留 90\%，ECE 不得显著恶化。\\
+连续偏移饱和 & 大量 $|\Delta u|\approx0.5$ bin & 报告 saturation fraction；检查坐标标定与 renderer normalization，不直接扩大 offset 范围。\\
+时序过平滑或复制历史 & flicker 降低但当前几何、Doppler refresh 变差 & 同时比较 T0 和 T3；要求当前 Chamfer、Cube KL/PCE 和 25-step coverage 不退化。\\
+SSHFS I/O 成为瓶颈 & 首次读取单帧 Cube 需 20--30 s & 保留可恢复 cache；若训练阶段持续受限，将已校验 cohort 迁移到 H200 本地，不改变 manifest/hash。\\
+时序数据无法获取 & G4 长期无法开始 & 单帧 G1--G3 论文线继续；G4 降为未来工作或 appendix，不阻塞单帧主张验证。\\
+\bottomrule
+\end{longtable}
+
+\section{下一阶段工作计划}
+
+\subsection{近期执行顺序}
+
+\begin{enumerate}
+  \item \textbf{完成修复版 G0。} 以 no deskew 和 literal nonempty check 重跑 100/100，重新生成 target cache，核对 11 项审计、缓存完整性和 source commit。由于 target 口径改变，不能只重跑两帧。
+  \item \textbf{执行 G1 preflight 与三种子正式训练。} 先完成 train-only normalization 与单帧 overfit，再运行 E1/E2 50 epochs；根据 scene-first paired bootstrap 决定是否进入 G2。
+  \item \textbf{执行静态 Doppler 约定审计与 G2。} 固定 Q0/E3/E4/E5；优先关注 E4 相对 E3 的分布增益，以及 E5 是否出现静态塌缩。
+  \item \textbf{执行 G3。} 运行 C0--C3、renderer 守恒/梯度检查、confidence escape 和 robustness matrix；只在完整 gate 通过后声明 Cube-point 闭环成立。
+  \item \textbf{解除 G4 数据阻塞。} 获取 NAS 凭据或采用经过授权的共享存储；完成 2,160 帧 cohort、dense target cache 和 frozen parent prediction cache 后再启动 T4--T6 preflight。
+  \item \textbf{P5/P6。} 冻结模型后才下载 test cohort，完成下游 object radial velocity、泛化切片、效率、失败分类与论文主表。
+\end{enumerate}
+
+\subsection{7 月 18 日后的首要里程碑}
+
+下一个有科研意义的里程碑不是“训练开始”，而是以下二选一的明确决策：
+\begin{itemize}
+  \item \textbf{G1 pass：}Full-RAED 在至少一个预注册 Doppler-sensitive geometry endpoint 上显著优于 RAE-Max，允许把“完整 Doppler 谱帮助稠密几何”作为主线证据；
+  \item \textbf{G1 branch/stop：}若 E2 未优于 E1，先做一次受控诊断；仍失败则缩小论文主张到“稠密点的 Doppler 分布与双向物理一致性”，不继续堆时序模块掩盖单帧问题。
+\end{itemize}
+
+\section{结论}
+
+截至 2026-07-18，项目已经形成一套结构清晰、可执行且有止损规则的神经网络系统：完整 RAED Cube 经过 matched 3D RAE U-Net 生成 occupancy，再由位置条件 Doppler 头与连续 offset head 输出 10,000 个 $XYZ+$Doppler distribution$+$confidence 点；生成点通过 soft splat 重投影到 Cube，历史预测则通过门控 Doppler-warp 进入三种可比较的时序融合结构。
+
+当前最重要的进展是\textbf{研究问题、代码和证据门已经对齐，而且正式 G0 确实拦截了错误的先导外推}；当前最重要的不足是\textbf{修复版 G0 尚未通过，新 Cube-to-dense 结果仍未进入 G1--G4}。因此下一阶段应先完成 G0 重跑，再严格执行 G1，并按结果做 go/branch/stop 决策。
+
+\appendix
+\section{复现信息摘要}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{>{\bfseries}l X}
+\toprule
+项目 & 冻结信息 \\
+\midrule
+代码分支 & \code{agent/cube-to-dense-g0} \\
+报告前代码 HEAD & \code{14e16d5ddf82685f1c5725551eb3aba84861376c} \\
+H200 环境 & \code{/home/wangning/miniforge3/envs/hym\_radar} \\
+Python / Torch / CUDA & 3.10.20 / 2.12.1+cu130 / 13.0 \\
+允许 GPU & NVIDIA H200 NVL only \\
+规范 Cube shape & $(D,R,A,E)=(64,256,107,37)$ \\
+输出点数 & 10,000 \\
+正式种子 & 20260716、20260717、20260718 \\
+G0 cohort & 100 frames，76 train + 24 validation，45 scenes \\
+G4 cohort & 2,160 frames，1,776 train + 384 validation，45 windows \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{证据边界检查表}
+
+\begin{itemize}
+  \item 本报告明确记录首轮 G0 为 100/100、零帧错误但 gate failed，不以完成度替代通过状态。
+  \item 本报告未声明 G1--G4 已产生新 Cube-to-dense 正式结果。
+  \item 旧 TruckScenes rollout 数字被明确标为前序设计证据。
+  \item 数据规模、shape、split、训练超参数和损失权重均来自当前代码或冻结协议。
+  \item RTX PRO 5000 未被纳入计算资源；所有科研计算限定在 H200。
+\end{itemize}
+
+\end{document}

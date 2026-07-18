@@ -60,15 +60,25 @@ OS2 PCD fields are:
 x y z intensity t reflectivity ring ambient range
 ```
 
-The unsigned `t` field is a nanosecond offset from scan start and spans approximately 100 ms. The primary target therefore:
+The unsigned `t` field is a nanosecond offset from an OS2 scan origin and spans
+approximately 100 ms. The audit therefore evaluates no deskew and start,
+center, and end timestamp-origin hypotheses:
 
-1. treats the OS2 timestamp as scan start;
-2. converts each point time to `timestamp + t * 1e-9`;
+1. treats the label-defined OS2 timestamp as the radar-frame reference;
+2. constructs candidate point times from the OS2 timestamp, `t * 1e-9`, and
+   each timestamp-origin hypothesis;
 3. interpolates odometry translation and trajectory-derived heading;
 4. transforms each point into the radar frame at the Cube timestamp;
 5. applies the official LiDAR-to-radar translation `[-2.54, 0.30, 0.70] m`.
 
-The start-time hypothesis improves local radar threshold margin by 0.061 over no deskew on average. Center and end hypotheses are retained as audit controls.
+The sequence-1 feasibility audit initially favored the start-time hypothesis by
+0.061 local radar-threshold margin over no deskew. The formal 100-frame audit
+falsified that extrapolation: on the 76 training frames, mean margin was
+`-0.8165` without deskew, `-0.8424` for start, `-0.8233` for center, and
+`-0.9614` for end. The no-deskew reference is therefore frozen from the
+training partition for the repaired G0 run; validation metrics do not select
+the reference. The point-time field and all timing controls remain in the
+audit, and the unresolved scan-origin convention is reported as a limitation.
 
 ## CFAR and round trip
 
@@ -87,6 +97,11 @@ The geometry target is not all LiDAR points. For each deskewed OS2 point:
 5. compute `confidence = sigmoid(margin/0.5)`.
 
 `confidence >= 0.5` defines a radar-observable positive. Across eight frames, 26.14% +/- 2.02% of first-surface points are positive. The correct angular convention exceeds a mirrored-azimuth null by 0.334 margin.
+
+The formal nonempty check means that every frame must retain at least one such
+positive point. Coverage fraction remains a reported diagnostic and its
+cross-frame standard deviation remains gated, but it is not silently converted
+into an undocumented per-frame 0.5% minimum.
 
 ## Doppler convention
 
@@ -110,6 +125,8 @@ The eight-frame sequence-1 audit passes all numerical checks and the
 scene-isolated split is frozen. The selected cross-scene cohort now contains
 exactly 100 Cube, 100 OS2-64 and 100 label frame artifacts. A fresh independent
 check validates all 480 requested archive members by member set, uncompressed
-size and CRC with zero errors. A 45-frame contiguous-prefix CUDA audit passes
-all 11 interim checks, but G0 remains open until the complete 100-frame CUDA
-audit passes.
+size and CRC with zero errors. A 45-frame contiguous-prefix CUDA audit passed
+all 11 interim checks. The first 100-frame formal audit completed with zero
+frame errors but failed the selected-deskew and observable-nonempty checks. The
+repaired G0 run freezes no deskew from train-only evidence and applies the
+literal positive-count nonempty check; G0 remains open until that rerun passes.

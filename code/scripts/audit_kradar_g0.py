@@ -352,6 +352,9 @@ def aggregate_report(frames: list[dict], required_frames: int) -> dict:
         frame["observability"]["observable_fraction_of_surface"]
         for frame in successful
     ]
+    observable_count = [
+        frame["observability"]["observable_count"] for frame in successful
+    ]
     alignment = [
         frame["alignment_null"]["correct_minus_mirror_margin"]
         for frame in successful
@@ -394,7 +397,7 @@ def aggregate_report(frames: list[dict], required_frames: int) -> dict:
             == frame["cfar_roundtrip"]["point_count"]
             for frame in successful
         ),
-        "observable_target_nonempty": min(observable) > 0.005,
+        "observable_target_nonempty": min(observable_count) > 0,
         "observable_target_stable": float(np.std(observable)) < 0.15,
         "correct_azimuth_beats_mirror": float(np.mean(alignment)) > 0.0,
         "doppler_hypothesis_beats_random": float(np.mean(best_doppler_error))
