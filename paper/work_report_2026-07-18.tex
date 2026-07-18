@@ -359,7 +359,7 @@ G0 冻结的 100 帧跨场景 cohort 覆盖全部 45 个 train/validation 序列
 阶段 & 科学问题 & 核心对照/门槛 & 当前状态 \\
 \midrule
 \endhead
-G0 & 数据、坐标、同步和物理轴是否可靠 & 100 帧 CUDA 审计全部通过，CRC、CFAR round-trip、时间参考、可见性和静态 Doppler 约定一致 & \statusrun，首轮完成但 9/11，修复重跑 \\
+G0 & 数据、坐标、同步和物理轴是否可靠 & 100 帧 CUDA 审计全部通过，CRC、CFAR round-trip、时间参考、可见性和静态 Doppler 约定一致 & \statusrun，首轮完成但 9/11；修复重跑已启动 \\
 G1 & 完整 Doppler 谱是否改善稠密几何 & E0 CFAR、E1 RAE-Max、E2 Full-RAED；E2 在预注册 Doppler-sensitive endpoint 显著优于 E1 & \statuswait，队列等待 G0 \\
 G2 & 逐点分布是否优于标量，物理混合是否有效 & E3 scalar、E4 distribution、E5 physics mixture；谱、PCE、校准和反事实均需通过 & \statuswait，等待 G1 \\
 G3 & 生成点能否反向解释原 Cube & C0--C3 cycle ablation；local KL 改善且几何、置信度和覆盖不塌缩 & \statuswait，等待 G2 \\
@@ -465,7 +465,10 @@ Doppler 分布与物理混合 & \path{models/cube_doppler.py} & scalar/distribut
 
 \subsection{当前运行状态}
 
-首轮正式 G0 已在 H200 GPU0 上完成 100/100 帧，但 gate failed；失败决策已归档，nonempty 逻辑已修正并补充回归测试。下游 G1 preflight、G1 formal、static Doppler audit、G2/G3 均不得越过失败 aggregate。修复版 G0 将使用 no-deskew target cache 和新 source commit 独立重跑。
+首轮正式 G0 已在 H200 GPU0 上完成 100/100 帧，但 gate failed；失败决策已归档，nonempty 逻辑已修正并补充回归测试。H200 上的完整测试为 15 项全部通过。绑定旧 cache 的 G1 formal、static Doppler audit 和 G2/G3 等待队列已停止，防止误用首轮 target。
+
+修复版 G0 已使用 source commit
+\code{a7d06db1abcc69c20dfed381f0c2909b1a89f026} 在 H200 GPU0 启动，采用 \code{lidar-time-reference=none}、独立 output 和独立 target cache。进程已建立 H200 CUDA context；RTX PRO 5000 上的可见任务属于其他用户，不是本项目进程。
 
 G4 尚未启动。冻结时序 cohort 需要 45 个 train/validation 序列、每序列连续 48 帧，共 2,160 帧（1,776 train + 384 validation），估算完整下载约 600.8 GiB；当前仅有约 13 GiB partial data，且 NAS 凭据不在 H200 环境中。因此 G4 的阻塞是\textbf{数据获取条件}，不是模型代码缺失。
 
@@ -558,7 +561,8 @@ SSHFS I/O 成为瓶颈 & 首次读取单帧 Cube 需 20--30 s & 保留可恢复 
 项目 & 冻结信息 \\
 \midrule
 代码分支 & \code{agent/cube-to-dense-g0} \\
-报告前代码 HEAD & \code{14e16d5ddf82685f1c5725551eb3aba84861376c} \\
+报告起始代码 HEAD & \code{14e16d5ddf82685f1c5725551eb3aba84861376c} \\
+修复版 G0 source commit & \code{a7d06db1abcc69c20dfed381f0c2909b1a89f026} \\
 H200 环境 & \code{/home/wangning/miniforge3/envs/hym\_radar} \\
 Python / Torch / CUDA & 3.10.20 / 2.12.1+cu130 / 13.0 \\
 允许 GPU & NVIDIA H200 NVL only \\
@@ -579,6 +583,7 @@ G4 cohort & 2,160 frames，1,776 train + 384 validation，45 windows \\
   \item 旧 TruckScenes rollout 数字被明确标为前序设计证据。
   \item 数据规模、shape、split、训练超参数和损失权重均来自当前代码或冻结协议。
   \item RTX PRO 5000 未被纳入计算资源；所有科研计算限定在 H200。
+  \item 修复提交已在 H200 的 \code{hym\_radar} 环境完成 15 项回归测试。
 \end{itemize}
 
 \end{document}
