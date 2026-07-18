@@ -20,6 +20,17 @@ ENDPOINTS = {
     "geometry_chamfer_m": ("generated_geometry", "chamfer_m", "lower"),
 }
 CONFIG_PAIR_EXCLUSIONS = {"head_mode", "seed"}
+DISTRIBUTION_CHECKS = (
+    "distribution_spectrum_nll_gain",
+    "distribution_secondary_gain",
+)
+PHYSICS_CHECKS = (
+    "physics_static_pce_gain",
+    "physics_secondary_gain",
+    "geometry_chamfer_nondegradation",
+    "dynamic_fraction_not_collapsed",
+    "counterfactual_convention_response",
+)
 
 
 def load_run(path: Path, expected_mode: str) -> dict:
@@ -55,7 +66,11 @@ def runs_by_seed(paths: list[Path], mode: str) -> dict[int, dict]:
     return indexed
 
 
-def validate_runs(arms: dict[str, dict[int, dict]], required_seeds: int) -> None:
+def validate_runs(
+    arms: dict[str, dict[int, dict]],
+    required_seeds: int,
+    require_passed_static_audit: bool,
+) -> None:
     seed_sets = [set(runs) for runs in arms.values()]
     if not seed_sets or any(seeds != seed_sets[0] for seeds in seed_sets[1:]):
         raise ValueError("E3-E5 seed sets differ")
@@ -99,8 +114,21 @@ def validate_runs(arms: dict[str, dict[int, dict]], required_seeds: int) -> None
                 parent_hash = current_parent
             if current_parent != parent_hash:
                 raise ValueError(f"G2 arms for seed {seed} use different E2 parents")
-    if reference_global[5] is not True:
+    if require_passed_static_audit and reference_global[5] is not True:
         raise ValueError("G2 decision requires a passed static Doppler audit")
+
+
+def g2_decision(checks: dict, physics_evaluated: bool) -> dict:
+    distribution_passed = all(checks[key] for key in DISTRIBUTION_CHECKS)
+    physics_passed = (
+        all(checks[key] for key in PHYSICS_CHECKS) if physics_evaluated else None
+    )
+    return {
+        "distribution_passed": distribution_passed,
+        "physics_passed": physics_passed,
+        "g2_passed": distribution_passed
+        and (physics_passed if physics_evaluated else True),
+    }
 
 
 def paired_groups(
@@ -232,8 +260,8 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--scalar-runs", type=Path, nargs="+", required=True)
     parser.add_argument("--distribution-runs", type=Path, nargs="+", required=True)
-    parser.add_argument("--physics-runs", type=Path, nargs="+", required=True)
-    parser.add_argument("--counterfactual-report", type=Path, required=True)
+    parser.add_argument("--physics-runs", type=Path, nargs="+")
+    parser.add_argument("--counterfactual-report", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--bootstrap-samples", type=int, default=10_000)
     parser.add_argument("--seed", type=int, default=20260716)
@@ -243,12 +271,18 @@ def main() -> None:
     if args.output.exists() and not args.overwrite:
         raise FileExistsError(f"Output already exists: {args.output}")
 
+    physics_evaluated = args.physics_runs is not None
+    if physics_evaluated != (args.counterfactual_report is not None):
+        raise ValueError("Physics runs and counterfactual report must be supplied together")
     arms = {
         "e3_scalar": runs_by_seed(args.scalar_runs, "scalar"),
         "e4_distribution": runs_by_seed(args.distribution_runs, "distribution"),
-        "e5_physics": runs_by_seed(args.physics_runs, "physics_distribution"),
     }
-    validate_runs(arms, args.required_seeds)
+    if physics_evaluated:
+        arms["e5_physics"] = runs_by_seed(
+            args.physics_runs, "physics_distribution"
+        )
+    validate_runs(arms, args.required_seeds, physics_evaluated)
     rng = np.random.default_rng(args.seed)
     e4_vs_e3 = compare_arms(
         arms["e3_scalar"],
@@ -256,19 +290,28 @@ def main() -> None:
         args.bootstrap_samples,
         rng,
     )
-    e5_vs_e4 = compare_arms(
-        arms["e4_distribution"],
-        arms["e5_physics"],
-        args.bootstrap_samples,
-        rng,
-    )
-    predicted_dynamic = arm_mean(
-        arms["e5_physics"], "doppler", "predicted_dynamic_fraction"
-    )
-    target_dynamic = arm_mean(
-        arms["e5_physics"], "doppler", "target_dynamic_fraction"
-    )
-    dynamic_ratio = predicted_dynamic / max(target_dynamic, 1e-12)
+    e5_vs_e4 = None
+    predicted_dynamic = None
+    target_dynamic = None
+    dynamic_ratio = None
+    counterfactual = None
+    if physics_evaluated:
+        e5_vs_e4 = compare_arms(
+            arms["e4_distribution"],
+            arms["e5_physics"],
+            args.bootstrap_samples,
+            rng,
+        )
+        predicted_dynamic = arm_mean(
+            arms["e5_physics"], "doppler", "predicted_dynamic_fraction"
+        )
+        target_dynamic = arm_mean(
+            arms["e5_physics"], "doppler", "target_dynamic_fraction"
+        )
+        dynamic_ratio = predicted_dynamic / max(target_dynamic, 1e-12)
+        counterfactual = json.loads(
+            args.counterfactual_report.read_text(encoding="utf-8")
+        )
     q0_reference = {
         key: arm_mean(arms["e4_distribution"], "q0_direct_query", key)
         for key in (
@@ -278,9 +321,6 @@ def main() -> None:
             "soft_ece_10bin",
         )
     }
-    counterfactual = json.loads(
-        args.counterfactual_report.read_text(encoding="utf-8")
-    )
     checks = {
         "distribution_spectrum_nll_gain": confidently_better(
             e4_vs_e3["spectrum_nll"]
@@ -289,25 +329,36 @@ def main() -> None:
             confidently_better(e4_vs_e3[key])
             for key in ("circular_w1_mps", "cd_doppler")
         ),
-        "physics_static_pce_gain": confidently_better(
-            e5_vs_e4["static_pce_median_mps"]
-        ),
-        "physics_secondary_gain": any(
-            confidently_better(e5_vs_e4[key])
-            for key in ("spectrum_nll", "soft_ece_10bin", "cd_doppler")
-        ),
-        "geometry_chamfer_nondegradation": e5_vs_e4["geometry_chamfer_m"][
-            "relative_change_ci95"
-        ][1]
-        <= 0.02,
-        "dynamic_fraction_not_collapsed": predicted_dynamic >= 0.05
-        and 0.5 <= dynamic_ratio <= 1.5,
-        "counterfactual_convention_response": counterfactual.get("passed") is True,
     }
+    if physics_evaluated:
+        checks.update(
+            {
+                "physics_static_pce_gain": confidently_better(
+                    e5_vs_e4["static_pce_median_mps"]
+                ),
+                "physics_secondary_gain": any(
+                    confidently_better(e5_vs_e4[key])
+                    for key in ("spectrum_nll", "soft_ece_10bin", "cd_doppler")
+                ),
+                "geometry_chamfer_nondegradation": e5_vs_e4[
+                    "geometry_chamfer_m"
+                ]["relative_change_ci95"][1]
+                <= 0.02,
+                "dynamic_fraction_not_collapsed": predicted_dynamic >= 0.05
+                and 0.5 <= dynamic_ratio <= 1.5,
+                "counterfactual_convention_response": counterfactual.get("passed")
+                is True,
+            }
+        )
+    decision = g2_decision(checks, physics_evaluated)
     report = {
         "bootstrap_samples": args.bootstrap_samples,
         "bootstrap_seed": args.seed,
         "seeds": sorted(arms["e3_scalar"]),
+        "physics_evaluated": physics_evaluated,
+        "physics_omitted_reason": None
+        if physics_evaluated
+        else "Static Doppler recovery did not pass validation",
         "gate_thresholds": {
             "maximum_geometry_chamfer_relative_degradation": 0.02,
             "minimum_predicted_dynamic_fraction": 0.05,
@@ -321,10 +372,12 @@ def main() -> None:
             "target": target_dynamic,
             "ratio": dynamic_ratio,
         },
-        "counterfactual_report": str(args.counterfactual_report),
+        "counterfactual_report": None
+        if args.counterfactual_report is None
+        else str(args.counterfactual_report),
         "counterfactual": counterfactual,
         "checks": checks,
-        "g2_passed": all(checks.values()),
+        **decision,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")

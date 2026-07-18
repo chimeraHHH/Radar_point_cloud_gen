@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "generated_utc": "2026-07-18T11:47:18.759871+00:00",
+  "source_commit": "0c86c1ad4a2ec6db00e2ddd2346880742324202d",
+  "candidate_source_commit": "0c86c1ad4a2ec6db00e2ddd2346880742324202d",
+  "manifest_sha256": "645307a8bae351db51b55128043dae69bce5b928169d5fa25c1b9c55083de4e4",
+  "selection_partition": "train",
+  "selection_rule": "minimum train selected-hypothesis frame-median error among slices meeting the frozen train selection margin; ties prefer lower quantile",
+  "minimum_selection_margin_mps": 0.05,
+  "candidates": [
+    {
+      "path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_0c86c1ad/static_doppler_snr/audit_q0p0.json",
+      "sha256": "a62a85e3e7cadd1ac19ade618010404365c2afac34fd9d48b7468d06b8428777",
+      "background_snr_quantile": 0.0,
+      "train_selected_hypothesis": "positive_ego",
+      "train_selected_error_mps": 1.0203734805978284,
+      "train_selection_margin_mps": 0.09690584035744809,
+      "train_background_point_count": 28676,
+      "validation_frozen_error_mps": 1.0201929538730214,
+      "random_circular_median_baseline_mps": 0.9662956091527519,
+      "validation_beats_random": false,
+      "data_checks_passed": true,
+      "report_passed": false
+    },
+    {
+      "path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_0c86c1ad/static_doppler_snr/audit_q0p5.json",
+      "sha256": "c74ddc7831a89b0206687c608eab6b270672dff96f7c546cab15ba87bb814a71",
+      "background_snr_quantile": 0.5,
+      "train_selected_hypothesis": "positive_ego",
+      "train_selected_error_mps": 1.0223695707613683,
+      "train_selection_margin_mps": 0.03451620814259293,
+      "train_background_point_count": 14358,
+      "validation_frozen_error_mps": 1.0432633588448204,
+      "random_circular_median_baseline_mps": 0.9662956091527519,
+      "validation_beats_random": false,
+      "data_checks_passed": true,
+      "report_passed": false
+    },
+    {
+      "path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_0c86c1ad/static_doppler_snr/audit_q0p75.json",
+      "sha256": "0f39fe7b10d3ff9c4817d0f8e47caff3e423712fb53a6eeb91a038d4e870e5b5",
+      "background_snr_quantile": 0.75,
+      "train_selected_hypothesis": "positive_ego",
+      "train_selected_error_mps": 1.0235053233920803,
+      "train_selection_margin_mps": 0.0031837291897067743,
+      "train_background_point_count": 7200,
+      "validation_frozen_error_mps": 1.0233349219360033,
+      "random_circular_median_baseline_mps": 0.9662956091527519,
+      "validation_beats_random": false,
+      "data_checks_passed": true,
+      "report_passed": false
+    },
+    {
+      "path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_0c86c1ad/static_doppler_snr/audit_q0p9.json",
+      "sha256": "a4f8eaec9f7110c30af09191ab9aaf0e1417f9c4ae76fbe565d2f630fd5386a6",
+      "background_snr_quantile": 0.9,
+      "train_selected_hypothesis": "positive_ego",
+      "train_selected_error_mps": 1.0432361388630782,
+      "train_selection_margin_mps": 0.043846366363057054,
+      "train_background_point_count": 2900,
+      "validation_frozen_error_mps": 1.0892795693675752,
+      "random_circular_median_baseline_mps": 0.9662956091527519,
+      "validation_beats_random": false,
+      "data_checks_passed": true,
+      "report_passed": false
+    }
+  ],
+  "selected": {
+    "path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_0c86c1ad/static_doppler_snr/audit_q0p0.json",
+    "sha256": "a62a85e3e7cadd1ac19ade618010404365c2afac34fd9d48b7468d06b8428777",
+    "background_snr_quantile": 0.0,
+    "train_selected_hypothesis": "positive_ego",
+    "train_selected_error_mps": 1.0203734805978284,
+    "train_selection_margin_mps": 0.09690584035744809,
+    "train_background_point_count": 28676,
+    "validation_frozen_error_mps": 1.0201929538730214,
+    "random_circular_median_baseline_mps": 0.9662956091527519,
+    "validation_beats_random": false,
+    "data_checks_passed": true,
+    "report_passed": false
+  },
+  "checks": {
+    "exact_candidate_grid": true,
+    "candidate_provenance_matches": true,
+    "selected_by_train_only_error": true,
+    "selected_data_checks_passed": true,
+    "selected_train_margin_passed": true,
+    "selected_validation_beats_random": false,
+    "selected_report_passed": false
+  },
+  "passed": false,
+  "completed": true
+}

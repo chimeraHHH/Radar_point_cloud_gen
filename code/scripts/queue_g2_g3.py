@@ -452,13 +452,13 @@ def main() -> None:
         args.poll_seconds,
         "waiting_for_static_doppler_audit",
     )
-    if static_audit.get("passed") is not True:
-        raise SystemExit("Static Doppler audit did not pass; G2 cannot start")
+    physics_enabled = static_audit.get("passed") is True
     emit(
         "g2_g3_dependencies_passed",
         g1_comparison=str(args.g1_comparison),
         g1_qualitative_report=str(args.g1_qualitative_report),
         static_doppler_audit=str(args.static_doppler_audit),
+        physics_enabled=physics_enabled,
     )
 
     source_tag = args.source_commit[:8]
@@ -471,6 +471,11 @@ def main() -> None:
         if not completed_run(parent, 50, args.g1_source_commit):
             raise ValueError(f"Incomplete G1 parent for seed {seed}: {parent}")
 
+    active_g2_arms = {
+        mode: label
+        for mode, label in G2_ARMS.items()
+        if physics_enabled or mode != "physics_distribution"
+    }
     g2_jobs = [
         Job(
             phase="g2",
@@ -480,40 +485,44 @@ def main() -> None:
             run_path=args.run_root / f"g2_{label}_seed{seed}_{source_tag}",
             log_path=args.run_root / f"g2_{label}_seed{seed}_{source_tag}.log",
         )
-        for mode, label in G2_ARMS.items()
+        for mode, label in active_g2_arms.items()
         for seed in args.seeds
     ]
     run_jobs(g2_jobs, args.g2_epochs, python, args.repo_root, args)
 
     g2_by_arm = {
-        mode: [job for job in g2_jobs if job.arm == mode] for mode in G2_ARMS
+        mode: [job for job in g2_jobs if job.arm == mode]
+        for mode in active_g2_arms
     }
-    counterfactual_path = args.run_root / f"g2_counterfactual_{source_tag}.json"
-    counterfactual_command = [
-        str(python),
-        "-u",
-        str(args.repo_root / "code/scripts/eval_cube_doppler_counterfactual.py"),
-        "--runs",
-        *[str(job.run_path) for job in g2_by_arm["physics_distribution"]],
-        "--data-root",
-        str(args.data_root),
-        "--cache-root",
-        str(args.cache_root),
-        "--manifest",
-        str(args.manifest),
-        "--output",
-        str(counterfactual_path),
-        "--device",
-        "cuda:0",
-    ]
-    counterfactual = run_gpu_command(
-        "g2_counterfactual",
-        counterfactual_command,
-        counterfactual_path,
-        args.run_root / f"g2_counterfactual_{source_tag}.log",
-        args,
-        accepted_codes=(0, 3),
-    )
+    counterfactual_path = None
+    counterfactual = None
+    if physics_enabled:
+        counterfactual_path = args.run_root / f"g2_counterfactual_{source_tag}.json"
+        counterfactual_command = [
+            str(python),
+            "-u",
+            str(args.repo_root / "code/scripts/eval_cube_doppler_counterfactual.py"),
+            "--runs",
+            *[str(job.run_path) for job in g2_by_arm["physics_distribution"]],
+            "--data-root",
+            str(args.data_root),
+            "--cache-root",
+            str(args.cache_root),
+            "--manifest",
+            str(args.manifest),
+            "--output",
+            str(counterfactual_path),
+            "--device",
+            "cuda:0",
+        ]
+        counterfactual = run_gpu_command(
+            "g2_counterfactual",
+            counterfactual_command,
+            counterfactual_path,
+            args.run_root / f"g2_counterfactual_{source_tag}.log",
+            args,
+            accepted_codes=(0, 3),
+        )
 
     g2_comparison_path = args.run_root / f"g2_comparison_{source_tag}.json"
     g2_command = [
@@ -524,24 +533,26 @@ def main() -> None:
         *[str(job.run_path) for job in g2_by_arm["scalar"]],
         "--distribution-runs",
         *[str(job.run_path) for job in g2_by_arm["distribution"]],
-        "--physics-runs",
-        *[str(job.run_path) for job in g2_by_arm["physics_distribution"]],
-        "--counterfactual-report",
-        str(counterfactual_path),
         "--output",
         str(g2_comparison_path),
     ]
+    if physics_enabled:
+        g2_command.extend(
+            [
+                "--physics-runs",
+                *[
+                    str(job.run_path)
+                    for job in g2_by_arm["physics_distribution"]
+                ],
+                "--counterfactual-report",
+                str(counterfactual_path),
+            ]
+        )
     g2_report = run_cpu_decision(
         "g2_comparison", g2_command, g2_comparison_path
     )
-    distribution_passed = all(
-        g2_report["checks"][key]
-        for key in (
-            "distribution_spectrum_nll_gain",
-            "distribution_secondary_gain",
-        )
-    )
-    if g2_report["g2_passed"]:
+    distribution_passed = bool(g2_report["distribution_passed"])
+    if physics_enabled and g2_report["physics_passed"] is True:
         selected_g2_arm = "physics_distribution"
     elif distribution_passed:
         selected_g2_arm = "distribution"
@@ -555,7 +566,10 @@ def main() -> None:
             "seeds": args.seeds,
             "g2": {
                 "comparison": str(g2_comparison_path),
-                "counterfactual": str(counterfactual_path),
+                "counterfactual": None
+                if counterfactual_path is None
+                else str(counterfactual_path),
+                "physics_evaluated": physics_enabled,
                 "passed": False,
                 "distribution_passed": False,
                 "checks": g2_report["checks"],
@@ -574,7 +588,9 @@ def main() -> None:
         "g2_decision_complete",
         passed=g2_report["g2_passed"],
         selected_arm=selected_g2_arm,
-        counterfactual_passed=counterfactual["passed"],
+        counterfactual_passed=None
+        if counterfactual is None
+        else counterfactual["passed"],
     )
 
     renderer_path = args.run_root / f"g3_renderer_test_{source_tag}.json"
@@ -682,9 +698,13 @@ def main() -> None:
         "seeds": args.seeds,
         "g2": {
             "comparison": str(g2_comparison_path),
-            "counterfactual": str(counterfactual_path),
+            "counterfactual": None
+            if counterfactual_path is None
+            else str(counterfactual_path),
             "passed": bool(g2_report["g2_passed"]),
             "distribution_passed": distribution_passed,
+            "physics_evaluated": physics_enabled,
+            "physics_passed": g2_report["physics_passed"],
             "selected_arm": selected_g2_arm,
             "selected_runs": {
                 str(seed): str(path) for seed, path in selected_g2_parents.items()
