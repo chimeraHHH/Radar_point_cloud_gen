@@ -56,7 +56,7 @@ class CubeOccupancyNet(nn.Module):
         self.log_center = log_center
         self.log_scale = log_scale
         self.register_buffer("doppler_mps", doppler_mps.float(), persistent=True)
-        input_channels = {"rae_max": 1, "rae_moments": 3, "full_raed": 64}[mode]
+        input_channels = {"rae_max": 1, "rae_moments": 3, "full_raed": 1}[mode]
         self.project = nn.Conv3d(input_channels, base_channels, 1)
         self.enc0 = ResidualBlock3d(base_channels, base_channels)
         self.down1 = nn.Conv3d(base_channels, base_channels * 2, 3, stride=2, padding=1)
@@ -68,6 +68,12 @@ class CubeOccupancyNet(nn.Module):
         self.dec1 = ResidualBlock3d(base_channels * 6, base_channels * 2)
         self.dec0 = ResidualBlock3d(base_channels * 3, base_channels)
         self.head = nn.Conv3d(base_channels, 1, 1)
+        self.spectral_residual_projection = (
+            nn.Conv3d(64, base_channels, 1) if mode == "full_raed" else None
+        )
+        if self.spectral_residual_projection is not None:
+            nn.init.zeros_(self.spectral_residual_projection.weight)
+            nn.init.zeros_(self.spectral_residual_projection.bias)
 
     def normalized_log_power(self, cube_drae: torch.Tensor) -> torch.Tensor:
         values = (torch.log10(cube_drae.clamp_min(0.0) + 1.0) - self.log_center)
@@ -77,9 +83,9 @@ class CubeOccupancyNet(nn.Module):
         if cube_drae.ndim != 5 or cube_drae.shape[1] != 64:
             raise ValueError(f"Expected Cube shape (B,64,R,A,E), got {cube_drae.shape}")
         normalized = self.normalized_log_power(cube_drae)
-        if self.mode == "full_raed":
-            return self.project(normalized)
         peak = normalized.amax(dim=1, keepdim=True)
+        if self.mode == "full_raed":
+            return self.project(peak) + self.spectral_residual_projection(normalized)
         if self.mode == "rae_max":
             return self.project(peak)
         energy = cube_drae.clamp_min(0.0)

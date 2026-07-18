@@ -8,6 +8,8 @@
 
 > **2026-07-18 证据修订（不追溯修改原门槛）：**修复版 G0 已以 100/100 帧、11/11 检查通过；G1 preflight 已通过并正在运行三种子正式对照。独立静态 Doppler 审计在 validation 上失败且有界 SNR recovery 未恢复，因此 E5 与“解析静态先验”贡献已移除，E3/E4 继续。G4 的 2,160 帧 manifest 已通过，官方数据断点下载中；P5 test 在 G4 family 冻结前保持锁定。当前主张状态见 [claim_evidence_ledger.md](../paper/claim_evidence_ledger.md)。
 
+> **2026-07-19 G1 修订：**首轮 G1 正式对照失败。E1/E2 相对 CFAR 的 Chamfer 和 F-score 均显著改善，但 outlier 约 26.5%，未过固定 25% 门；Full-RAED 相对 RAE-Max 的 Chamfer 恶化 28.3%，远距 completeness 恶化 232.6%。只允许一次 `RAE-Max 主路径 + 零初始化完整谱残差` 的有界重跑，门槛不变；若仍失败，关闭 G1 并停止 G2/G3。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---

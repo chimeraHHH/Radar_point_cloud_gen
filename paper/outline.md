@@ -1,6 +1,6 @@
 # Paper Outline: Full-RAED Cube to Physically Consistent Dense Radar Points
 
-> Status: evidence-driven outline, updated 2026-07-18 23:15 CST
+> Status: evidence-driven outline, updated 2026-07-19 01:20 CST
 > Main task: current-frame 4D Radar Cube -> 10,000 radar-observable `XYZ + Doppler distribution + confidence` points
 > Optional extension: warped historical prediction as a prior corrected by the current Cube
 
@@ -13,7 +13,7 @@ Dense radar reconstruction should preserve the full Doppler spectrum and jointly
 | Claim | Gate | Status | Paper treatment |
 |---|---|---|---|
 | K-Radar Cube, LiDAR target, axes, timing, and observability are reliable | G0 | Passed: 100/100 frames, 11/11 checks | Methods / data protocol |
-| Full-RAED improves dense geometry over matched RAE-Max | G1 | Running: E1 3/3, E2 1/3 seeds complete | Do not state as result yet |
+| Full-RAED improves dense geometry over matched RAE-Max | G1 | First formal run failed; one bounded residual-spectrum redesign pending | Do not state as result |
 | A per-point Doppler distribution is better than a scalar head | G2 | Pending G1 | Candidate contribution |
 | Differentiable point-to-Cube cycle adds independent value without confidence collapse | G3 | Pending G2 | Central candidate contribution |
 | Current-Cube temporal refresh improves stability and accuracy | G4 | Manifest passed; data download active | Optional main text or appendix |

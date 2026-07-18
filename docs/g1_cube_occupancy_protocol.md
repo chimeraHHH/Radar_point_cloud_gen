@@ -86,6 +86,19 @@ whether the spectral projection is bottlenecked by the 1x1 projection or by
 insufficient dynamic/far-range coverage. If neither dense model beats CFAR,
 repair the target, loss, or decoder before adding Doppler heads.
 
+### 2026-07-19 bounded recovery amendment
+
+The first formal run failed: both dense arms improved Chamfer and 1 m F-score
+over CFAR, but their absolute outlier fractions were approximately 26.5%, above
+the fixed 25% gate. Full-RAED also significantly regressed versus RAE-Max,
+especially at 60-120 m. The gate and threshold remain unchanged.
+
+Exactly one representation recovery is allowed. Full-RAED retains the exact
+RAE-Max projected path and adds a zero-initialized learned residual projection
+of all 64 Doppler bins. E1 and E2 are rerun from scratch under the same new
+source commit, seeds, data, schedule, and unchanged comparison rule. If this
+recovery fails, G1 closes as failed and G2 does not start.
+
 ## Required Artifacts
 
 - normalization JSON with hashes and exact frame list;
