@@ -77,6 +77,11 @@ session; this avoids the previous repeated concurrent-login pattern while
 overlapping two sequence-local transfers. Credentials remain process-only and
 are absent from the repository and logs.
 
+The downloader now writes the global summary atomically after every completed
+or failed sequence and retries only the unfinished sequence set. A process
+restart may recheck already valid members, but member CRC checks and
+sequence-local compressed ranges prevent silent partial-file promotion.
+
 Runtime log:
 `/home/wangning/Workspace/radar_cube_dense/launch_logs/188a9a2/g4_download.log`.
 

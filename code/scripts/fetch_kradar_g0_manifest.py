@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -38,6 +39,33 @@ def sequence_members(sequence: int, records: list[dict]) -> list[str]:
     return list(dict.fromkeys(members))
 
 
+def write_summary(
+    path: Path,
+    requested: set[int],
+    completed: set[int],
+    failures: dict[int, str],
+    active: set[int],
+    round_index: int,
+) -> dict:
+    document = {
+        "requested_sequences": sorted(requested),
+        "completed_sequences": sorted(completed),
+        "failures": [
+            {"sequence": sequence, "error": failures[sequence]}
+            for sequence in sorted(failures)
+            if sequence not in completed
+        ],
+        "pending_sequences": sorted(requested - completed),
+        "active_sequences": sorted(active),
+        "retry_round": round_index,
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    temporary.replace(path)
+    return document
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--audit-manifest", type=Path, required=True)
@@ -46,11 +74,17 @@ def main() -> None:
     parser.add_argument("--proxy", default=None)
     parser.add_argument("--sequence-workers", type=int, default=3)
     parser.add_argument("--range-workers", type=int, default=3)
+    parser.add_argument("--retry-rounds", type=int, default=1)
+    parser.add_argument("--retry-delay-seconds", type=int, default=30)
     parser.add_argument("--sequences", type=int, nargs="*", default=None)
     parser.add_argument(
         "--base-url", default="https://kaistavelab.tw5.quickconnect.to"
     )
     args = parser.parse_args()
+    if args.sequence_workers < 1 or args.range_workers < 1:
+        raise ValueError("Download worker counts must be positive")
+    if args.retry_rounds < 1 or args.retry_delay_seconds < 0:
+        raise ValueError("Invalid retry schedule")
     account, password = credentials_from_environment()
     manifest = json.loads(args.audit_manifest.read_text(encoding="utf-8"))
     grouped: dict[int, list[dict]] = defaultdict(list)
@@ -67,6 +101,7 @@ def main() -> None:
             if sequence in requested
         }
     args.download_manifest_dir.mkdir(parents=True, exist_ok=True)
+    summary_path = args.download_manifest_dir / "summary.json"
 
     def fetch_sequence(sequence: int, records: list[dict]):
         with SynologySession(
@@ -84,47 +119,98 @@ def main() -> None:
                 workers=args.range_workers,
             )
 
-    completed = []
-    failures = []
-    with ThreadPoolExecutor(max_workers=args.sequence_workers) as executor:
-        futures = {
-            executor.submit(fetch_sequence, sequence, records): sequence
-            for sequence, records in sorted(grouped.items())
-        }
-        for future in as_completed(futures):
-            sequence = futures[future]
-            try:
-                records = future.result()
-            except Exception as error:
-                failures.append(
-                    {
-                        "sequence": sequence,
-                        "error": f"{type(error).__name__}: {error}",
-                    }
+    requested = set(grouped)
+    completed: set[int] = set()
+    failures: dict[int, str] = {}
+    last_round = 0
+    for round_index in range(1, args.retry_rounds + 1):
+        last_round = round_index
+        active = requested - completed
+        write_summary(
+            summary_path, requested, completed, failures, active, round_index
+        )
+        if not active:
+            break
+        print(
+            json.dumps(
+                {
+                    "event": "download_round_started",
+                    "round": round_index,
+                    "sequences": sorted(active),
+                }
+            ),
+            flush=True,
+        )
+        with ThreadPoolExecutor(max_workers=args.sequence_workers) as executor:
+            futures = {
+                executor.submit(fetch_sequence, sequence, grouped[sequence]): sequence
+                for sequence in sorted(active)
+            }
+            for future in as_completed(futures):
+                sequence = futures[future]
+                active.remove(sequence)
+                try:
+                    records = future.result()
+                except Exception as error:
+                    failures[sequence] = f"{type(error).__name__}: {error}"
+                    print(
+                        json.dumps(
+                            {
+                                "sequence": sequence,
+                                "round": round_index,
+                                "error": failures[sequence],
+                            }
+                        ),
+                        flush=True,
+                    )
+                else:
+                    completed.add(sequence)
+                    failures.pop(sequence, None)
+                    print(
+                        json.dumps(
+                            {
+                                "sequence": sequence,
+                                "round": round_index,
+                                "members": len(records),
+                                "completed": len(completed),
+                                "total": len(requested),
+                            }
+                        ),
+                        flush=True,
+                    )
+                write_summary(
+                    summary_path,
+                    requested,
+                    completed,
+                    failures,
+                    active,
+                    round_index,
                 )
-                print(json.dumps(failures[-1]), flush=True)
-                continue
-            completed.append(sequence)
+        if completed == requested:
+            break
+        if round_index < args.retry_rounds:
             print(
                 json.dumps(
                     {
-                        "sequence": sequence,
-                        "members": len(records),
-                        "completed": len(completed),
-                        "total": len(futures),
+                        "event": "download_retry_wait",
+                        "round": round_index,
+                        "pending_sequences": sorted(requested - completed),
+                        "delay_seconds": args.retry_delay_seconds,
                     }
                 ),
                 flush=True,
             )
-    summary = {
-        "requested_sequences": sorted(grouped),
-        "completed_sequences": sorted(completed),
-        "failures": sorted(failures, key=lambda item: item["sequence"]),
-    }
-    (args.download_manifest_dir / "summary.json").write_text(
-        json.dumps(summary, indent=2) + "\n", encoding="utf-8"
+            time.sleep(args.retry_delay_seconds)
+
+    write_summary(
+        summary_path,
+        requested,
+        completed,
+        failures,
+        set(),
+        last_round,
     )
-    if failures:
+    if completed != requested:
         raise SystemExit(2)
 
 
