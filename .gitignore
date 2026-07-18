@@ -10,3 +10,6 @@ docs/papers/*.pdf
 # Python 运行缓存
 __pycache__/
 *.py[cod]
+
+# LaTeX 编译中间文件
+paper/build/
