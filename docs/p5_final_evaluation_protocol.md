@@ -23,6 +23,10 @@ failed validation gate.
   target code used by G4. Test receives a separate immutable manifest, download
   verification report, dense cache report and parent-prediction cache.
 
+The test manifest builder remains sealed until it receives a completed G4 queue
+summary. It then accepts only `--partitions test`, records the G4 summary hash
+and frozen temporal family, and rejects any mixed development/test manifest.
+
 The selection rule uses no model output, object count, weather, speed or target
 quality. No test sequence may occur in a train or validation artifact.
 

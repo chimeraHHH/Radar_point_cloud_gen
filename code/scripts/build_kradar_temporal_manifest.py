@@ -71,6 +71,36 @@ def rotation_angle(rotation: np.ndarray) -> float:
     return float(np.arccos(cosine))
 
 
+def validate_test_release(
+    partitions: list[str], g4_summary_path: Path | None
+) -> dict | None:
+    includes_test = "test" in partitions
+    if includes_test and partitions != ["test"]:
+        raise ValueError("Test manifest construction must be test-only")
+    if not includes_test:
+        if g4_summary_path is not None:
+            raise ValueError("--g4-release-summary is only valid for test-only manifests")
+        return None
+    if g4_summary_path is None:
+        raise ValueError("Test-only manifest requires --g4-release-summary")
+    if not g4_summary_path.is_file():
+        raise FileNotFoundError(g4_summary_path)
+    summary = json.loads(g4_summary_path.read_text(encoding="utf-8"))
+    required = ("selected_arm", "selected_fusion_mode", "comparison")
+    if summary.get("completed") is not True or any(
+        not summary.get(field) for field in required
+    ):
+        raise ValueError("G4 summary is incomplete; test partition remains sealed")
+    return {
+        "g4_summary": str(g4_summary_path.resolve()),
+        "g4_summary_sha256": sha256(g4_summary_path),
+        "g4_source_commit": summary.get("source_commit"),
+        "g4_passed": bool(summary.get("g4_passed")),
+        "selected_arm": summary["selected_arm"],
+        "selected_fusion_mode": summary["selected_fusion_mode"],
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--split", type=Path, required=True)
@@ -82,6 +112,7 @@ def main() -> None:
     parser.add_argument(
         "--partitions", nargs="+", default=["train", "validation"]
     )
+    parser.add_argument("--g4-release-summary", type=Path)
     parser.add_argument("--minimum-delta-seconds", type=float, default=0.05)
     parser.add_argument("--maximum-delta-seconds", type=float, default=0.15)
     parser.add_argument("--source-commit", required=True)
@@ -100,6 +131,7 @@ def main() -> None:
         raise ValueError("Duplicate requested partitions")
     if not 0.0 < args.minimum_delta_seconds < args.maximum_delta_seconds:
         raise ValueError("Invalid timestamp-delta interval")
+    test_release = validate_test_release(args.partitions, args.g4_release_summary)
 
     split = json.loads(args.split.read_text(encoding="utf-8"))
     if split.get("gate_pass") is not True:
@@ -271,8 +303,18 @@ def main() -> None:
         "rotation_matrices_valid": maximum_rotation_orthogonality_error <= 1e-3
         and minimum_rotation_determinant >= 0.999,
         "zero_sequence_overlap": not any(overlaps.values()),
-        "test_partition_untouched": "test" not in args.partitions,
     }
+    if test_release is None:
+        checks["test_partition_untouched"] = "test" not in args.partitions
+    else:
+        checks.update(
+            {
+                "test_partition_only": args.partitions == ["test"],
+                "g4_selection_frozen_before_test_manifest": True,
+                "development_partitions_untouched": set(args.partitions)
+                .isdisjoint({"train", "validation"}),
+            }
+        )
     payload = {
         "protocol": "centered continuous K-Radar windows with sequence-isolated partitions",
         "source_commit": args.source_commit,
@@ -324,6 +366,8 @@ def main() -> None:
         "windows": windows,
         "frames": records,
     }
+    if test_release is not None:
+        payload["test_release"] = test_release
     if not payload["gate_pass"]:
         raise RuntimeError(f"Temporal manifest checks failed: {checks}")
     args.output.parent.mkdir(parents=True, exist_ok=True)
