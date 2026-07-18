@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+from gpu_runtime import cuda_environment, validate_gpu_candidates
+
 
 RESOURCE_FAILURE_MARKERS = (
     "out of memory",
@@ -234,8 +236,7 @@ def train_command(job: Job, python: Path, repo_root: Path, args, resume: bool) -
 
 
 def launch_job(job: Job, gpu: int, command: list[str]) -> RunningJob:
-    environment = os.environ.copy()
-    environment["CUDA_VISIBLE_DEVICES"] = str(gpu)
+    environment = cuda_environment(gpu)
     job.log_path.parent.mkdir(parents=True, exist_ok=True)
     handle = job.log_path.open("a", encoding="utf-8")
     job.attempts += 1
@@ -356,8 +357,7 @@ def run_gpu_command(
         current = command.copy()
         if resume and output.with_suffix(output.suffix + ".progress.json").exists():
             current.append("--resume")
-        environment = os.environ.copy()
-        environment["CUDA_VISIBLE_DEVICES"] = str(gpu)
+        environment = cuda_environment(gpu)
         attempts += 1
         emit(
             f"{phase}_started",
@@ -418,6 +418,7 @@ def main() -> None:
     parser.add_argument("--repo-root", type=Path, required=True)
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--gpu-candidates", type=int, nargs="+", required=True)
+    parser.add_argument("--required-gpu-name")
     parser.add_argument(
         "--seeds", type=int, nargs="+", default=[20260716, 20260717, 20260718]
     )
@@ -430,6 +431,8 @@ def main() -> None:
     parser.add_argument("--maximum-used-memory-mib", type=int, default=100)
     parser.add_argument("--maximum-resource-retries", type=int, default=3)
     args = parser.parse_args()
+
+    validate_gpu_candidates(args.gpu_candidates, args.required_gpu_name)
 
     if len(set(args.seeds)) != 3:
         raise ValueError("Formal G2/G3 requires exactly three unique seeds")

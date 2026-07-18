@@ -11,6 +11,8 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from gpu_runtime import cuda_environment, validate_gpu_candidates
+
 
 def emit(event: str, **values) -> None:
     print(
@@ -63,8 +65,7 @@ def wait_for_gpu(
 
 
 def run_logged(command: list[str], log_path: Path, gpu: int) -> None:
-    environment = os.environ.copy()
-    environment["CUDA_VISIBLE_DEVICES"] = str(gpu)
+    environment = cuda_environment(gpu)
     log_path.parent.mkdir(parents=True, exist_ok=True)
     emit("command_started", gpu=gpu, log=str(log_path), command=command)
     with log_path.open("a", encoding="utf-8") as handle:
@@ -127,10 +128,13 @@ def main() -> None:
     parser.add_argument("--repo-root", type=Path, required=True)
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--gpu-candidates", type=int, nargs="+", required=True)
+    parser.add_argument("--required-gpu-name")
     parser.add_argument("--poll-seconds", type=int, default=60)
     parser.add_argument("--maximum-used-memory-mib", type=int, default=100)
     parser.add_argument("--overfit-epochs", type=int, default=50)
     args = parser.parse_args()
+
+    validate_gpu_candidates(args.gpu_candidates, args.required_gpu_name)
 
     python = Path(os.environ.get("PYTHON", "python"))
     train_script = args.repo_root / "code/scripts/train_cube_occupancy.py"
