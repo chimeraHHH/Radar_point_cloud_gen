@@ -36,6 +36,7 @@ from models.temporal_baselines import (  # noqa: E402
 
 
 PROTOCOL = "g4_temporal_baselines_v1"
+TEST_PROTOCOL = "p5_temporal_baselines_test_v1"
 ARMS = {
     "t0_single_frame": "T0",
     "t1_ego_copy": "T1",
@@ -388,6 +389,9 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--history-frames", type=int, default=4)
     parser.add_argument("--dynamic-threshold-mps", type=float, default=1.0)
+    parser.add_argument(
+        "--partition", choices=("validation", "test"), default="validation"
+    )
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--overwrite", action="store_true")
@@ -463,12 +467,12 @@ def main() -> None:
         )
     )
     dataset = KRadarTemporalDataset(
-        args.data_root, args.cache_root, args.manifest, ("validation",)
+        args.data_root, args.cache_root, args.manifest, (args.partition,)
     )
     if len(dataset.windows) != 8 or len(dataset.frame_dataset) != 384:
-        raise ValueError("Formal G4 baseline requires 8 validation windows / 384 frames")
+        raise ValueError("Formal temporal baseline requires 8 windows / 384 frames")
     if len(dataset.pairs) != 376:
-        raise ValueError("Formal G4 baseline requires 376 validation pairs")
+        raise ValueError("Formal temporal baseline requires 376 adjacent pairs")
     pairs_by_current = {
         int(pair["current_dataset_index"]): pair for pair in dataset.pairs
     }
@@ -476,8 +480,9 @@ def main() -> None:
         raise ValueError("Duplicate current frames in G4 validation pairs")
 
     configuration = {
-        "protocol": PROTOCOL,
+        "protocol": PROTOCOL if args.partition == "validation" else TEST_PROTOCOL,
         "source_commit": args.source_commit,
+        "partition": args.partition,
         "manifest": str(args.manifest.resolve()),
         "manifest_sha256": manifest_hash,
         "scene_split_sha256": scene_split_hash,
@@ -492,9 +497,9 @@ def main() -> None:
         "history_frames": args.history_frames,
         "dynamic_threshold_mps": args.dynamic_threshold_mps,
         "static_hypothesis": parent_config["static_hypothesis"],
-        "validation_window_count": len(dataset.windows),
-        "validation_frame_count": len(dataset.frame_dataset),
-        "validation_pair_count": len(dataset.pairs),
+        "evaluation_window_count": len(dataset.windows),
+        "evaluation_frame_count": len(dataset.frame_dataset),
+        "evaluation_pair_count": len(dataset.pairs),
         "device": args.device,
         "device_name": torch.cuda.get_device_name(device),
         "torch_version": torch.__version__,
@@ -559,9 +564,9 @@ def main() -> None:
             "frames": frames,
         }
     checks = {
-        "all_validation_windows_complete": len(progress["windows"])
+        "all_evaluation_windows_complete": len(progress["windows"])
         == len(dataset.windows),
-        "all_arms_have_every_validation_frame": all(
+        "all_arms_have_every_evaluation_frame": all(
             len(report["frames"]) == 384 for report in arm_reports.values()
         ),
         "all_arms_have_every_temporal_pair": all(
@@ -577,14 +582,14 @@ def main() -> None:
             set(report["rollout"]) == {str(value) for value in ROLLOUT_HORIZONS}
             for report in arm_reports.values()
         ),
-        "validation_partition_only": all(
-            record["partition"] == "validation"
+        "evaluation_partition_only": all(
+            record["partition"] == args.partition
             for record in dataset.frame_dataset.records
         ),
     }
     report = {
         "schema_version": 1,
-        "protocol": PROTOCOL,
+        "protocol": PROTOCOL if args.partition == "validation" else TEST_PROTOCOL,
         "generated_utc": datetime.now(timezone.utc).isoformat(),
         "configuration": configuration,
         "arms": arm_reports,

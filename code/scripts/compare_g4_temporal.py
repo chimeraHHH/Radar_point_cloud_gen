@@ -247,7 +247,9 @@ def validate_matched(
         ):
             checks["dynamic_static_and_distance_strata_present"] = False
         if (
-            baseline["config"]["validation_frame_count"] != 384
+            baseline["config"].get("evaluation_frame_count") != 384
+            or baseline["config"].get("partition") != "validation"
+            or selected["config"].get("partition") != "validation"
             or selected["config"]["strict_recurrent_rollout"] is not True
         ):
             checks["validation_only_and_test_untouched"] = False

@@ -34,6 +34,7 @@ from models.temporal_inference import predict_temporal_pair  # noqa: E402
 
 
 PROTOCOL = "g4_temporal_strict_rollout_v1"
+TEST_PROTOCOL = "p5_temporal_strict_rollout_test_v1"
 FUSION_ARMS = {
     "concat": "T4",
     "cross_attention": "T5",
@@ -386,6 +387,9 @@ def main() -> None:
     parser.add_argument("--temporal-run", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--warmup-iterations", type=int, default=3)
+    parser.add_argument(
+        "--partition", choices=("validation", "test"), default="validation"
+    )
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--overwrite", action="store_true")
@@ -429,24 +433,30 @@ def main() -> None:
     if seed not in FORMAL_SEEDS:
         raise ValueError(f"Unexpected formal G4 seed {seed}")
     if (
-        provenance["manifest_sha256"] != manifest_hash
-        or provenance["scene_split_sha256"] != scene_split_hash
+        provenance["scene_split_sha256"] != scene_split_hash
         or provenance["normalization_sha256"] != normalization_hash
+    ):
+        raise ValueError("Temporal model split or normalization provenance differs")
+    if args.partition == "validation" and (
+        provenance["manifest_sha256"] != manifest_hash
         or provenance["dense_cache_report_sha256"] != dense_report_hash
     ):
-        raise ValueError("Formal G4 model data provenance differs")
+        raise ValueError("Formal G4 validation data provenance differs")
     checkpoint_path = (args.temporal_run / "best.pt").resolve()
     checkpoint_hash = sha256(checkpoint_path)
     parent_cache = FrozenPredictionCache(
         args.parent_prediction_cache, expected_frames=len(temporal_manifest["frames"])
     )
     if (
-        sha256(parent_cache.manifest_path)
-        != provenance["parent_prediction_manifest_sha256"]
-        or parent_cache.configuration["parent_checkpoint_sha256"]
+        parent_cache.configuration["parent_checkpoint_sha256"]
         != provenance["parent_checkpoint_sha256"]
         or parent_cache.configuration["dense_cache_report_sha256"]
         != dense_report_hash
+    ):
+        raise ValueError("Temporal rollout parent cache differs")
+    if args.partition == "validation" and (
+        sha256(parent_cache.manifest_path)
+        != provenance["parent_prediction_manifest_sha256"]
     ):
         raise ValueError("Formal G4 rollout parent cache differs from training")
     point_count = int(config["point_count"])
@@ -485,7 +495,7 @@ def main() -> None:
     model.load_state_dict(checkpoint["model"], strict=True)
     model.eval()
     dataset = KRadarTemporalDataset(
-        args.data_root, args.cache_root, args.manifest, ("validation",)
+        args.data_root, args.cache_root, args.manifest, (args.partition,)
     )
     if (
         len(dataset.windows) != 8
@@ -498,14 +508,16 @@ def main() -> None:
     }
     arm_id = FUSION_ARMS[fusion_mode]
     configuration = {
-        "protocol": PROTOCOL,
+        "protocol": PROTOCOL if args.partition == "validation" else TEST_PROTOCOL,
         "evaluator_source_commit": args.source_commit,
+        "partition": args.partition,
         "model_source_commit": provenance["git_commit"],
         "fusion_mode": fusion_mode,
         "arm_id": arm_id,
         "seed": seed,
         "parent_variant": config["parent_variant"],
         "manifest_sha256": manifest_hash,
+        "training_manifest_sha256": provenance["manifest_sha256"],
         "scene_split_sha256": scene_split_hash,
         "normalization_sha256": normalization_hash,
         "dense_cache_report_sha256": dense_report_hash,
@@ -592,8 +604,8 @@ def main() -> None:
     ]
     checks = {
         "training_schedule_verified": all(training_checks.values()),
-        "all_validation_windows_complete": len(progress["windows"]) == 8,
-        "all_validation_frames_complete": len(frames) == 384,
+        "all_evaluation_windows_complete": len(progress["windows"]) == 8,
+        "all_evaluation_frames_complete": len(frames) == 384,
         "all_temporal_pairs_strictly_recurrent": sum(
             frame["temporal"] is not None for frame in frames
         )
@@ -602,14 +614,14 @@ def main() -> None:
         "all_outputs_have_exact_point_count": all(
             frame["prediction"]["point_count"] == point_count for frame in frames
         ),
-        "validation_partition_only": all(
-            record["partition"] == "validation"
+        "evaluation_partition_only": all(
+            record["partition"] == args.partition
             for record in dataset.frame_dataset.records
         ),
     }
     report = {
         "schema_version": 1,
-        "protocol": PROTOCOL,
+        "protocol": PROTOCOL if args.partition == "validation" else TEST_PROTOCOL,
         "generated_utc": datetime.now(timezone.utc).isoformat(),
         "configuration": configuration,
         "training_checks": training_checks,
