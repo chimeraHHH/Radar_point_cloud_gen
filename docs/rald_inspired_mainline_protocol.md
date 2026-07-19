@@ -58,6 +58,15 @@ Run one frame for 100 epochs with the original RaLD AE overfit thresholds. The
 only protocol differences from AE-B1 are uniform surface and positive-query
 sampling. This is a new method branch, not a second matched-baseline repair.
 
+The initial R1 run failed only the Chamfer check (`8.8966 m`) while passing
+outlier, F-score, confidence, and optimization checks. Inspection found a
+remaining upstream-fidelity mismatch: official RaLD samples positive queries
+uniformly inside occupied voxels, whereas R1 supervised exact continuous LiDAR
+locations and decoded at grid centers. One named `R1-fidelity` run is therefore
+allowed with occupied-voxel jitter and the official 625/9,375 positive/negative
+query ratio. All other R1 settings and thresholds remain frozen. If this run
+fails, R2 remains locked.
+
 ### R2: conditional latent feasibility
 
 Only after R1 passes, cache the frozen latent and overfit the full-RAED

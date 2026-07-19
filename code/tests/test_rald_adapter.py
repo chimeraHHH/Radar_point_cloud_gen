@@ -136,6 +136,38 @@ def test_occupancy_queries_contain_binary_positive_and_zero_negative_labels() ->
     assert torch.count_nonzero(labels == 0.0).item() == 5
 
 
+def test_occupied_voxel_queries_are_deterministic_and_inside_cells() -> None:
+    target, indices = targets()
+    kwargs = {
+        "target_xyz_confidence": target,
+        "target_rae_index": indices,
+        "axes": axes(),
+        "positive_count": 3,
+        "negative_count": 2,
+        "positive_sampling_mode": "uniform",
+        "positive_query_location_mode": "occupied_voxel_uniform",
+    }
+
+    first = sample_occupancy_queries(
+        **kwargs, generator=torch.Generator().manual_seed(43)
+    )
+    second = sample_occupancy_queries(
+        **kwargs, generator=torch.Generator().manual_seed(43)
+    )
+
+    torch.testing.assert_close(first[0], second[0])
+    torch.testing.assert_close(first[1], second[1])
+    assert torch.count_nonzero(first[1] == 1.0).item() == 3
+    positive = first[0][first[1] == 1.0]
+    centers = indices_to_normalized_rae(indices, axes())
+    half_cell = torch.tensor([1.0 / 3.0, 1.0 / 2.0, 1.0])
+    inside = (
+        (positive[:, None] - centers[None]).abs()
+        <= half_cell.view(1, 1, 3) + 1e-6
+    ).all(dim=2)
+    assert inside.any(dim=1).all()
+
+
 def test_occupancy_loss_preserves_positive_negative_and_kl_terms() -> None:
     logits = torch.tensor([[0.2, -0.4, 0.7]], requires_grad=True)
     labels = torch.tensor([[0.8, 0.0, 0.6]])

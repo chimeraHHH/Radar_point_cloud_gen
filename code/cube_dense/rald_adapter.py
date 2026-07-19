@@ -11,6 +11,10 @@ from cube_dense.kradar import KRadarAxes
 
 
 TARGET_SAMPLING_MODES = ("confidence", "uniform")
+POSITIVE_QUERY_LOCATION_MODES = (
+    "continuous_target",
+    "occupied_voxel_uniform",
+)
 
 
 def _axis_tensor(
@@ -200,15 +204,43 @@ def sample_occupancy_queries(
     negative_count: int,
     generator: torch.Generator,
     positive_sampling_mode: str = "confidence",
+    positive_query_location_mode: str = "continuous_target",
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    if positive_query_location_mode not in POSITIVE_QUERY_LOCATION_MODES:
+        raise ValueError(
+            f"Unsupported positive query location mode "
+            f"{positive_query_location_mode}; choose from "
+            f"{POSITIVE_QUERY_LOCATION_MODES}"
+        )
     selected = _weighted_sample_indices(
         _target_sampling_weights(target_xyz_confidence, positive_sampling_mode),
         positive_count,
         generator,
     )
-    positive = xyz_to_normalized_rae(
-        target_xyz_confidence[selected, :3], axes
-    )
+    if positive_query_location_mode == "continuous_target":
+        positive = xyz_to_normalized_rae(
+            target_xyz_confidence[selected, :3], axes
+        )
+    else:
+        positive_indices = target_rae_index[selected]
+        positive = indices_to_normalized_rae(positive_indices, axes)
+        grid_shape = torch.tensor(
+            [
+                len(axes.range_m),
+                len(axes.azimuth_rad),
+                len(axes.elevation_rad),
+            ],
+            device=positive.device,
+            dtype=positive.dtype,
+        )
+        half_cell = 1.0 / (grid_shape - 1.0)
+        jitter = torch.rand(
+            positive.shape,
+            device=positive.device,
+            dtype=positive.dtype,
+            generator=generator,
+        )
+        positive = (positive + (2.0 * jitter - 1.0) * half_cell).clamp(-1.0, 1.0)
     # RaLD reconstructs binary occupancy; target confidence only controls which
     # measured points are sampled and must not suppress occupied-cell labels.
     positive_labels = torch.ones(

@@ -1,0 +1,40 @@
+{
+  "protocol": "RaLD-inspired physical mainline R1 point-AE feasibility",
+  "run": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_36e627c_rald_physics/r1_ae_uniform",
+  "source_commit": "36e627c117dfdb66063a06d97b849cdc1476e326",
+  "required_epoch": 100,
+  "sampling": {
+    "surface": "uniform",
+    "positive_query": "uniform",
+    "positive_location": "continuous_target",
+    "positive_count": 1024,
+    "negative_count": 1024
+  },
+  "thresholds": {
+    "maximum_chamfer_m": 5.0,
+    "maximum_outlier_fraction_2m": 0.5,
+    "minimum_fscore_1p0m": 0.2,
+    "minimum_mean_output_confidence": 0.05,
+    "minimum_train_loss_reduction_fraction": 0.3
+  },
+  "metrics": {
+    "chamfer_m": 8.896587371826172,
+    "outlier_fraction_2m": 0.295199990272522,
+    "fscore_1p0m": 0.39688214659690857,
+    "mean_output_confidence": 0.08746311813592911,
+    "initial_train_loss": 0.7749647498130798,
+    "final_train_loss": 0.2336185872554779,
+    "train_loss_reduction_fraction": 0.6985429500995674
+  },
+  "checks": {
+    "full_required_epoch": true,
+    "one_frame_configuration": true,
+    "no_external_pretraining": true,
+    "chamfer": false,
+    "outlier": true,
+    "fscore": true,
+    "confidence": true,
+    "loss_reduction": true
+  },
+  "passed": false
+}

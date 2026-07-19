@@ -1,0 +1,47 @@
+{
+  "protocol": "RaLD-inspired physical mainline R0",
+  "source_commit": "36e627c117dfdb66063a06d97b849cdc1476e326",
+  "upstream_rald_commit": "ffec4b41241391734b1eda5c093de843c909eb8e",
+  "device": "NVIDIA H200 NVL",
+  "cube": {
+    "path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/1/radar_tesseract/tesseract_00232.mat",
+    "shape": [
+      1,
+      64,
+      256,
+      107,
+      37
+    ]
+  },
+  "full_raed_tokens": {
+    "shape": [
+      1,
+      336,
+      512
+    ],
+    "active_doppler_gradient_bins": 64,
+    "peak_cuda_memory_bytes": 4240678400
+  },
+  "edm": {
+    "shape": [
+      1,
+      512,
+      32
+    ],
+    "parameter_count": 175924320,
+    "peak_cuda_memory_bytes": 2364305920
+  },
+  "physical_head": {
+    "parameter_count": 595012,
+    "spectrum_initialization_max_abs_error": 9.313225746154785e-09
+  },
+  "checks": {
+    "native_token_shape": true,
+    "all_doppler_bins_receive_gradient": true,
+    "edm_latent_shape": true,
+    "physical_spectrum_identity": true,
+    "zero_initial_offset": true,
+    "neutral_initial_confidence": true
+  },
+  "passed": true
+}
