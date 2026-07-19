@@ -60,7 +60,7 @@ At inference, global top-k decoding selects 10,000 distinct RAE cells. Every cel
 
 ### 3.1 RaLD-Inspired Anchor Latent Refinement
 
-The occupancy grid remains responsible for long-range anchor allocation. We
+The selected occupancy grid remains responsible for long-range anchor allocation. We
 borrow RaLD's mixed set-latent mechanism after this parent rather than replacing
 the complete geometry decoder. For normalized anchor coordinates `u_i` and
 parent features `f_i`, Fourier coordinate embeddings and projected features form
@@ -94,6 +94,13 @@ corrections. The independent RaLD point VAE was rejected by the K-Radar
 long-range Chamfer gate, so this anchor hybrid is evaluated as a separately
 gated candidate and cannot be treated as an established contribution before
 RH1/RH2 pass.
+
+This separation also isolates early and late spectral fusion. G1 tests whether
+injecting Full-RAED features inside the occupancy backbone improves geometry.
+If that hypothesis fails while RAE-Max still passes the frozen geometry gate,
+the separately named G1R/RH branch keeps the RAE-Max allocator frozen and
+introduces Full-RAED information only through RaLD radar-token cross-attention.
+No G1 result is relabeled by this recovery.
 
 ## 4. Point-Conditioned Doppler Prediction
 

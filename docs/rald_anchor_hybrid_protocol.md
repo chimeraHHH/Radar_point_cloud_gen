@@ -10,8 +10,11 @@ instead of replacing it.
 
 ## Architecture
 
-1. The frozen frustum-occupancy parent produces top-10k RAE anchor cells and
-   per-anchor spatial features.
+1. A formally selected frozen frustum-occupancy parent produces top-10k RAE
+   anchor cells and per-anchor spatial features. If G1 passes, this is the
+   Full-RAED arm. If G1 fails but RAE-Max independently passes the frozen CFAR
+   geometry gate, RAE-Max may be used only in the separately named G1R/RH
+   late-fusion recovery.
 2. Each anchor combines Fourier RAE coordinates with its parent feature.
 3. A RaLD Full-RAED hierarchy projects all 64 Doppler bins into 336 spatial
    radar-condition tokens.
@@ -56,6 +59,11 @@ gradient on step one and nonzero set-latent and radar-token gradients on step
 two, bounded offset saturation, no confidence collapse, and geometry no worse
 than the parent while Doppler NLL improves over direct Cube query.
 
+Parent selection is automatic and immutable after the formal G1 comparison.
+Using RAE-Max after a Full-RAED early-fusion failure does not change the G1
+decision: it tests the distinct hypothesis that RaLD late fusion can preserve a
+strong geometry allocator while injecting complete spectral context.
+
 ### RH2: development ablation
 
 Run only after the current G1 family is formally decided. Compare the selected
@@ -66,5 +74,6 @@ reported as the original G1 recovery.
 ## Evidence boundary
 
 The hybrid does not reopen the failed independent RaLD AE or authorize its
-latent-cache/EDM chain. It also does not unlock G2/G3 before the frozen parent
-gate closes.
+latent-cache/EDM chain. It also does not unlock the original G2/G3 chain after a
+failed G1. G1R/RH has its own RH1/RH2 gates and must be reported as a separate
+late-fusion recovery branch.

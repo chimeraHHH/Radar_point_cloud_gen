@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-07-19",
+  "source_commit": "d69be57cc0ec63fa5aa29d29134afd9e4cb9fec1",
+  "protocol": "G1R/RH late-fusion recovery",
+  "selection_rule": {
+    "formal_g1_passes": "use Full-RAED occupancy parent",
+    "formal_g1_fails_but_rae_max_beats_cfar": "use RAE-Max occupancy parent and label as independent late-fusion recovery",
+    "no_geometry_arm_beats_cfar": "do not run RH1/RH2"
+  },
+  "invariants": {
+    "formal_g1_thresholds_unchanged": true,
+    "geometry_parent_frozen": true,
+    "full_64_bin_cube_tokens_always_enabled": true,
+    "independent_rald_point_vae_reopened": false
+  },
+  "h200_test": {
+    "test_count": 105,
+    "passed": 105,
+    "failed": 0,
+    "elapsed_seconds": 2.12
+  },
+  "queues": {
+    "rh1_root": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_d69be57_rald_anchor",
+    "rh2_root": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_d69be57_rald_anchor_rh2",
+    "gpu_candidates": [0, 2],
+    "required_gpu_name": "NVIDIA H200 NVL",
+    "current_status": "waiting_for_formal_g1_comparison"
+  },
+  "paper_gain_claim_allowed": false
+}

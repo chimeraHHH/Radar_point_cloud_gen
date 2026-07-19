@@ -101,6 +101,11 @@ occupancy parent 的长量程 anchors，并在 query decoder 后新增局部 Cub
 残差头，联合输出连续位置、64-bin Doppler distribution 与 confidence，再通过
 point-to-RAED cycle 约束。主方法禁用 RaLD 的 CFAR query helper。
 
+父模型选择不改写 G1：若 G1 正式通过，使用 Full-RAED occupancy parent；若 G1
+失败但 RAE-Max 独立通过固定 CFAR 几何门，仅允许在新命名 `G1R/RH` late-fusion
+分支中冻结 RAE-Max anchors，再通过 RaLD Full-RAED tokens 注入频谱上下文。若
+两个几何臂均未通过原门槛，RH1/RH2 不运行，等待独立 G1B 正式候选。
+
 独立 RaLD point VAE 在 K-Radar 长量程 one-frame 门控中未通过 Chamfer，故不
 直接替换几何父模型。当前采用 `RaLD-anchor-hybrid`：frustum occupancy 负责
 长量程 anchor，RaLD mixed latent 与 query cross-attention 负责全局集合建模和
@@ -513,7 +518,7 @@ Full-RAED Cube Encoder
 ### 止损规则
 
 - **G0 失败**：数据不支持完整 Cube、同步 LiDAR 或可靠 Doppler 标定，立即缩小命题，不投入大规模训练。
-- **G1 失败**：Cube-to-XYZ 无法超过 CFAR 或合理生成基线，先解决几何，不进入 Doppler 联合训练。
+- **G1 失败**：原 G2/G3 链停止；若 RAE-Max 仍独立通过固定 CFAR 几何门，可运行新命名 G1R/RH late-fusion recovery，否则只进入独立 G1B，禁止放宽原门槛。
 - **G2 失败**：Doppler head 不优于简单回归，重新检查频谱查询和标签定义。
 - **G3 失败**：Cube cycle 没有独立贡献，停止“顶会创新已成立”的表述，重设计闭环或转为应用型工作。
 - **G4 失败**：时序模块降为 appendix，不拖累单帧主线。
