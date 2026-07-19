@@ -111,3 +111,15 @@ Environment: new hym_rald, H200 only
 ```
 
 该基线不解锁 G2/G3，也不改变当前 G1 门槛。它是论文最终几何主表的独立 baseline 工作包。
+
+## 8. 实现状态
+
+- `code/models/rald_matched.py` 已实现纯 PyTorch 的 mixed-query point VAE、
+  K-Radar native-grid 3D radar token encoder、24-layer latent EDM 和 18-step
+  sampler；默认保持官方 `512 x 32` latent 规模，但不承诺 checkpoint 兼容。
+- `code/cube_dense/rald_adapter.py` 已实现连续 RAE 坐标、train-only RAE-Sum
+  输入口径、confidence-weighted target sampling、严格 empty query 和全网格
+  chunked top-10k 解码。
+- 缩小配置与适配不变量在 H200 服务器环境完成 72 项全量单元测试。正式默认
+  规模的显存 verifier、一帧 overfit、AE/EDM no-go 尚未运行，不能据此报告
+  RaLD-style 几何结果。
