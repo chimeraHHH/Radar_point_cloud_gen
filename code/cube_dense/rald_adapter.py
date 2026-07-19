@@ -187,7 +187,11 @@ def sample_occupancy_queries(
     positive = xyz_to_normalized_rae(
         target_xyz_confidence[selected, :3], axes
     )
-    positive_labels = target_xyz_confidence[selected, 3].float().clamp(0.0, 1.0)
+    # RaLD reconstructs binary occupancy; target confidence only controls which
+    # measured points are sampled and must not suppress occupied-cell labels.
+    positive_labels = torch.ones(
+        positive_count, device=positive.device, dtype=positive.dtype
+    )
     shape = (
         len(axes.range_m),
         len(axes.azimuth_rad),

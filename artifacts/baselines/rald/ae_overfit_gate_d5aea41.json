@@ -1,0 +1,33 @@
+{
+  "protocol": "matched RaLD AE one-frame overfit gate",
+  "run": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_d5aea41_rald/ae_overfit",
+  "source_commit": "d5aea417312ddc5a72a49fc157d5ad2853b2c08f",
+  "required_epoch": 100,
+  "thresholds": {
+    "maximum_chamfer_m": 5.0,
+    "maximum_outlier_fraction_2m": 0.5,
+    "minimum_fscore_1p0m": 0.2,
+    "minimum_mean_output_confidence": 0.05,
+    "minimum_train_loss_reduction_fraction": 0.3
+  },
+  "metrics": {
+    "chamfer_m": 11.204339981079102,
+    "outlier_fraction_2m": 0.755899965763092,
+    "fscore_1p0m": 0.10083705186843872,
+    "mean_output_confidence": 0.053022436797618866,
+    "initial_train_loss": 0.7775590419769287,
+    "final_train_loss": 0.2156205177307129,
+    "train_loss_reduction_fraction": 0.7226956332698519
+  },
+  "checks": {
+    "full_required_epoch": true,
+    "one_frame_configuration": true,
+    "no_external_pretraining": true,
+    "chamfer": false,
+    "outlier": false,
+    "fscore": false,
+    "confidence": true,
+    "loss_reduction": true
+  },
+  "passed": false
+}

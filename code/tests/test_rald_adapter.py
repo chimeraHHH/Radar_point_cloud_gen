@@ -94,7 +94,7 @@ def test_empty_query_sampling_is_not_biased_to_low_flat_indices() -> None:
     assert 3_500 < flat.float().mean().item() < 6_500
 
 
-def test_occupancy_queries_contain_soft_positive_and_zero_negative_labels() -> None:
+def test_occupancy_queries_contain_binary_positive_and_zero_negative_labels() -> None:
     target, indices = targets()
 
     queries, labels = sample_occupancy_queries(
@@ -109,6 +109,7 @@ def test_occupancy_queries_contain_soft_positive_and_zero_negative_labels() -> N
     assert queries.shape == (9, 3)
     assert labels.shape == (9,)
     assert torch.count_nonzero(labels).item() == 4
+    assert torch.count_nonzero(labels == 1.0).item() == 4
     assert torch.count_nonzero(labels == 0.0).item() == 5
 
 
