@@ -79,6 +79,7 @@ def test_small_edm_builder_preserves_ae_latent_shape() -> None:
         output_point_count=10,
         query_chunk_size=8,
         eval_every=1,
+        checkpoint_every=1,
         max_eval_frames=1,
         train_limit=1,
         validation_limit=1,

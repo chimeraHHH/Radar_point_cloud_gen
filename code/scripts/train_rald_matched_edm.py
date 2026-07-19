@@ -25,6 +25,10 @@ from cube_dense.rald_adapter import (  # noqa: E402
     decode_grid_topk,
     rae_sum_condition,
 )
+from cube_dense.training_io import (  # noqa: E402
+    checkpoint_due,
+    truncate_resume_artifacts,
+)
 from eval.dense_geometry import (  # noqa: E402
     aggregate_geometry_reports,
     geometry_report,
@@ -57,6 +61,7 @@ class TrainConfig:
     output_point_count: int
     query_chunk_size: int
     eval_every: int
+    checkpoint_every: int
     max_eval_frames: int
     train_limit: int | None
     validation_limit: int | None
@@ -293,6 +298,7 @@ def main() -> None:
     parser.add_argument("--output-point-count", type=int, default=10_000)
     parser.add_argument("--query-chunk-size", type=int, default=8_192)
     parser.add_argument("--eval-every", type=int, default=10)
+    parser.add_argument("--checkpoint-every", type=int, default=5)
     parser.add_argument("--max-eval-frames", type=int, default=4)
     parser.add_argument("--train-limit", type=int, default=None)
     parser.add_argument("--validation-limit", type=int, default=None)
@@ -362,6 +368,7 @@ def main() -> None:
         output_point_count=args.output_point_count,
         query_chunk_size=args.query_chunk_size,
         eval_every=args.eval_every,
+        checkpoint_every=args.checkpoint_every,
         max_eval_frames=args.max_eval_frames,
         train_limit=args.train_limit,
         validation_limit=args.validation_limit,
@@ -455,11 +462,7 @@ def main() -> None:
         last_epoch = int(last["epoch"])
         start_epoch = last_epoch + 1
         best_chamfer, _ = best_recorded_chamfer(args.output, last_epoch)
-        records = [
-            json.loads(line)
-            for line in log_path.read_text(encoding="utf-8").splitlines()
-            if line.strip()
-        ]
+        records = truncate_resume_artifacts(args.output, last_epoch)
         prior_elapsed_seconds = float(records[-1]["elapsed_seconds"])
     print(
         json.dumps(
@@ -526,16 +529,19 @@ def main() -> None:
             is_best = chamfer < best_chamfer
         else:
             is_best = False
-        save_checkpoint(
-            args.output / "last.pt",
-            model,
-            optimizer,
-            scheduler,
-            epoch,
-            config,
-            provenance,
-            record,
-        )
+        if checkpoint_due(
+            epoch, config.epochs, config.checkpoint_every, should_evaluate
+        ):
+            save_checkpoint(
+                args.output / "last.pt",
+                model,
+                optimizer,
+                scheduler,
+                epoch,
+                config,
+                provenance,
+                record,
+            )
         if is_best:
             best_chamfer = chamfer
             save_checkpoint(
