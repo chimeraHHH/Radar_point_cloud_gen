@@ -50,6 +50,43 @@ def ego_warp_rald_prediction(
     )
 
 
+def raw_doppler_warp_rald_prediction(
+    state: RaLDPointPrediction,
+    current_from_previous: torch.Tensor,
+    delta_seconds: torch.Tensor | float,
+    doppler_mps: torch.Tensor,
+    doppler_lower_mps: torch.Tensor,
+    doppler_period_mps: torch.Tensor,
+    range_m: torch.Tensor,
+    azimuth_rad: torch.Tensor,
+    elevation_rad: torch.Tensor,
+) -> RaLDPointPrediction:
+    """Sensitivity-only warp that integrates uncorrected radial Doppler."""
+
+    prior = gated_doppler_warp(
+        state.xyz_m,
+        state.probability,
+        state.confidence,
+        current_from_previous,
+        delta_seconds,
+        doppler_mps,
+        doppler_lower_mps,
+        doppler_period_mps,
+        range_m,
+        azimuth_rad,
+        elevation_rad,
+        previous_static_center_mps=torch.zeros_like(state.confidence),
+        dynamic_threshold_mps=0.0,
+        apply_doppler_displacement=True,
+    )
+    return RaLDPointPrediction(
+        xyz_m=prior.xyz_m,
+        coordinates_rae=prior.coordinates_rae,
+        probability=prior.probability,
+        confidence=prior.confidence,
+    )
+
+
 def analytic_static_center(
     xyz_m: torch.Tensor,
     ego_speed_mps: torch.Tensor | float,

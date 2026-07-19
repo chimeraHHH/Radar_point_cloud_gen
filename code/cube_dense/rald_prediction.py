@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -39,12 +40,24 @@ class FrozenRaLDPredictionCache:
                 f"{expected_frames} frames"
             )
         self.configuration = manifest["configuration"]
+        self.point_count = int(self.configuration["point_count"])
+        if self.point_count <= 0:
+            raise ValueError("Frozen RaLD prediction point count must be positive")
         self.records = {
             (int(frame["sequence"]), int(frame["radar_index"])): frame
             for frame in manifest["frames"]
         }
         if len(self.records) != len(manifest["frames"]):
             raise ValueError("Duplicate RaLD prediction frame keys")
+        self._verified_paths: set[Path] = set()
+
+    @staticmethod
+    def _sha256(path: Path) -> str:
+        digest = hashlib.sha256()
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
 
     def path(self, sequence: int, radar_index: int) -> Path:
         try:
@@ -56,6 +69,17 @@ class FrozenRaLDPredictionCache:
         path = Path(record["prediction"])
         if not path.is_file():
             raise FileNotFoundError(path)
+        expected_hash = record.get("prediction_sha256")
+        if (
+            path not in self._verified_paths
+            and (
+                not isinstance(expected_hash, str)
+                or len(expected_hash) != 64
+                or self._sha256(path) != expected_hash
+            )
+        ):
+            raise ValueError(f"Frozen RaLD prediction hash differs: {path}")
+        self._verified_paths.add(path)
         return path
 
     def load(
@@ -65,21 +89,42 @@ class FrozenRaLDPredictionCache:
         device: torch.device,
     ) -> RaLDPointPrediction:
         path = self.path(sequence, radar_index)
-        with np.load(path) as cache:
+        with np.load(path, allow_pickle=False) as cache:
+            required = {"xyz_m", "coordinates_rae", "doppler_probability", "confidence"}
+            if not required.issubset(cache.files):
+                raise ValueError(f"Frozen RaLD prediction schema differs: {path}")
+            arrays = {name: np.asarray(cache[name]) for name in required}
+            expected_shapes = {
+                "xyz_m": (self.point_count, 3),
+                "coordinates_rae": (self.point_count, 3),
+                "doppler_probability": (self.point_count, 64),
+                "confidence": (self.point_count,),
+            }
+            if any(arrays[name].shape != shape for name, shape in expected_shapes.items()):
+                raise ValueError(f"Frozen RaLD prediction shapes differ: {path}")
+            if any(not np.isfinite(array).all() for array in arrays.values()):
+                raise ValueError(f"Frozen RaLD prediction contains non-finite values: {path}")
+            if (
+                np.any(arrays["doppler_probability"] < 0.0)
+                or np.any(arrays["doppler_probability"].sum(axis=1) <= 0.0)
+            ):
+                raise ValueError(f"Frozen RaLD prediction probability is invalid: {path}")
+            if np.any(arrays["confidence"] < 0.0) or np.any(arrays["confidence"] > 1.0):
+                raise ValueError(f"Frozen RaLD prediction confidence is invalid: {path}")
             probability = torch.from_numpy(
-                cache["doppler_probability"].astype(np.float32)
+                arrays["doppler_probability"].astype(np.float32)
             ).to(device)
             probability = probability / probability.sum(
                 dim=1, keepdim=True
             ).clamp_min(1e-8)
             return RaLDPointPrediction(
-                xyz_m=torch.from_numpy(cache["xyz_m"].astype(np.float32)).to(device),
+                xyz_m=torch.from_numpy(arrays["xyz_m"].astype(np.float32)).to(device),
                 coordinates_rae=torch.from_numpy(
-                    cache["coordinates_rae"].astype(np.float32)
+                    arrays["coordinates_rae"].astype(np.float32)
                 ).to(device),
                 probability=probability,
                 confidence=torch.from_numpy(
-                    cache["confidence"].astype(np.float32)
+                    arrays["confidence"].astype(np.float32)
                 ).to(device),
             )
 

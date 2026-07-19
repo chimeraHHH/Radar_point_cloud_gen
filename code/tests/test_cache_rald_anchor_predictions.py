@@ -15,6 +15,7 @@ from cache_rald_anchor_predictions import (
     write_prediction,
 )
 from g1b_contract import FROZEN_G1B_SEEDS
+from cube_dense.rald_prediction import FrozenRaLDPredictionCache
 
 
 def write_json(path: Path, document: dict) -> None:
@@ -259,3 +260,40 @@ def test_cached_frame_hash_and_probability_validation(tmp_path: Path) -> None:
     )
     with pytest.raises(ValueError, match="do not sum to one"):
         validate_prediction(prediction, metadata, point_count)
+
+
+def test_frozen_prediction_consumer_rechecks_hash_and_schema(tmp_path: Path) -> None:
+    point_count = 4
+    prediction = tmp_path / "prediction.npz"
+    np.savez_compressed(
+        prediction,
+        xyz_m=np.zeros((point_count, 3), dtype=np.float32),
+        coordinates_rae=np.zeros((point_count, 3), dtype=np.float32),
+        doppler_probability=np.full((point_count, 64), 1.0 / 64.0, dtype=np.float32),
+        confidence=np.full(point_count, 0.5, dtype=np.float32),
+    )
+    cache_root = tmp_path / "cache"
+    cache_root.mkdir()
+    write_json(
+        cache_root / "manifest.json",
+        {
+            "completed": True,
+            "configuration": {"point_count": point_count},
+            "frames": [
+                {
+                    "sequence": 1,
+                    "radar_index": 2,
+                    "prediction": str(prediction),
+                    "prediction_sha256": sha256(prediction),
+                }
+            ],
+        },
+    )
+    consumer = FrozenRaLDPredictionCache(cache_root, expected_frames=1)
+    loaded = consumer.load(1, 2, torch.device("cpu"))
+    assert loaded.probability.shape == (point_count, 64)
+
+    prediction.write_bytes(prediction.read_bytes() + b"tampered")
+    fresh_consumer = FrozenRaLDPredictionCache(cache_root, expected_frames=1)
+    with pytest.raises(ValueError, match="hash differs"):
+        fresh_consumer.load(1, 2, torch.device("cpu"))

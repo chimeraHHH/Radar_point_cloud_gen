@@ -145,6 +145,8 @@ def main() -> None:
     args = parser.parse_args()
     if not torch.cuda.is_available() or not args.device.startswith("cuda"):
         raise RuntimeError("Strict G4R rollout requires CUDA")
+    if args.warmup_iterations < 0:
+        raise ValueError("G4R rollout warmup iterations must be non-negative")
     if args.overwrite and args.resume:
         raise ValueError("--overwrite and --resume are mutually exclusive")
     if args.output.exists() and any(args.output.iterdir()):
@@ -219,18 +221,25 @@ def main() -> None:
         "scene_split_sha256": scene_split_hash,
         "normalization_sha256": normalization_hash,
         "dense_cache_report_sha256": dense_hash,
+        "parent_prediction_manifest_path": str(parent_cache.manifest_path),
         "parent_prediction_manifest_sha256": sha256(
             parent_cache.manifest_path
         ),
+        "g3r_comparison_path": parent_cache.configuration["g3r_comparison"],
         "g3r_comparison_sha256": parent_cache.configuration[
             "g3r_comparison_sha256"
         ],
+        "g3r_config_path": parent_cache.configuration["g3r_config"],
         "g3r_config_sha256": parent_cache.configuration["g3r_config_sha256"],
+        "g3r_checkpoint_path": parent_cache.configuration["g3r_checkpoint"],
         "g3r_checkpoint_sha256": parent_cache.configuration[
             "g3r_checkpoint_sha256"
         ],
+        "temporal_config_path": str((args.temporal_run / "config.json").resolve()),
         "temporal_config_sha256": sha256(args.temporal_run / "config.json"),
+        "temporal_checkpoint_path": str(checkpoint_path),
         "temporal_checkpoint_sha256": sha256(checkpoint_path),
+        "preflight_selection_path": str(args.preflight_selection.resolve()),
         "preflight_selection_sha256": sha256(args.preflight_selection),
         "model_source_commit": provenance["git_commit"],
         "seed": int(config["seed"]),
@@ -238,6 +247,7 @@ def main() -> None:
         "fusion_mode": config["fusion_mode"],
         "partition": "validation",
         "strict_recurrent_rollout": True,
+        "warmup_iterations": args.warmup_iterations,
     }
 
     dataset = KRadarTemporalDataset(
@@ -259,6 +269,9 @@ def main() -> None:
     doppler_step = torch.median(torch.diff(doppler))
     frames = []
     inference_times = []
+    warmup_runs = 0
+    warmup_complete = args.warmup_iterations == 0
+    torch.cuda.reset_peak_memory_stats(device)
     for window in dataset.windows:
         previous = None
         for rollout_step, dataset_index in enumerate(window["dataset_indices"]):
@@ -272,6 +285,15 @@ def main() -> None:
                 record = cached_record(parent_cache, sequence, radar_index)
             else:
                 prior = prior_from_state(previous, pair, model)
+                if not warmup_complete:
+                    for _ in range(args.warmup_iterations):
+                        with torch.autocast("cuda", dtype=torch.bfloat16):
+                            warmup_output = model(cube, prior)
+                        del warmup_output
+                        warmup_runs += 1
+                    torch.cuda.synchronize(device)
+                    torch.cuda.reset_peak_memory_stats(device)
+                    warmup_complete = True
                 torch.cuda.synchronize(device)
                 started = time.perf_counter()
                 with torch.autocast("cuda", dtype=torch.bfloat16):
@@ -366,6 +388,9 @@ def main() -> None:
         "rollout": rollout,
         "frames": frames,
         "efficiency": {
+            "warmup_iterations_requested": args.warmup_iterations,
+            "warmup_iterations_completed": warmup_runs,
+            "warmup_excluded_from_timing": warmup_complete,
             "mean_inference_seconds": float(np.mean(inference_times)),
             "median_inference_seconds": float(np.median(inference_times)),
             "peak_allocated_bytes": int(torch.cuda.max_memory_allocated(device)),

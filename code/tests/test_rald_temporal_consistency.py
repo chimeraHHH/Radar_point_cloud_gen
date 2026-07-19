@@ -1,7 +1,46 @@
 import torch
+from types import SimpleNamespace
 
 from eval.temporal_cube import ego_aligned_consistency_report
 from losses.temporal_consistency import ego_aligned_match, ego_aligned_match_loss
+from scripts.train_rald_anchor_temporal import (
+    recurrent_pair_groups,
+    select_recurrent_evaluation_pairs,
+)
+
+
+def test_recurrent_evaluation_uses_contiguous_window_chains() -> None:
+    dataset = SimpleNamespace(
+        pairs=[
+            {"window_id": "b", "current_frame_in_window": 2},
+            {"window_id": "a", "current_frame_in_window": 1},
+            {"window_id": "b", "current_frame_in_window": 1},
+            {"window_id": "a", "current_frame_in_window": 2},
+            {"window_id": "a", "current_frame_in_window": 4},
+        ]
+    )
+
+    assert recurrent_pair_groups(dataset, [0, 1, 2, 3, 4]) == [
+        [1, 3],
+        [4],
+        [2, 0],
+    ]
+
+
+def test_recurrent_selection_keeps_two_contiguous_scene_chains() -> None:
+    dataset = SimpleNamespace(
+        pairs=[
+            {"window_id": window, "current_frame_in_window": position}
+            for window in ("a", "b", "c")
+            for position in range(1, 9)
+        ]
+    )
+
+    selected = select_recurrent_evaluation_pairs(dataset, ["c", "a", "b"], 10)
+    groups = recurrent_pair_groups(dataset, selected)
+
+    assert [len(group) for group in groups] == [5, 5]
+    assert {dataset.pairs[group[0]]["window_id"] for group in groups} == {"a", "b"}
 
 
 def test_ego_aligned_match_uses_pose_without_doppler_convention() -> None:

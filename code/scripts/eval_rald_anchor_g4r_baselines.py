@@ -30,13 +30,18 @@ from eval.rald_temporal import (  # noqa: E402
 )
 from models.temporal_baselines import (  # noqa: E402
     ego_warp_rald_prediction,
+    raw_doppler_warp_rald_prediction,
     rald_history_aggregate,
 )
 from scripts.g1b_contract import sha256  # noqa: E402
 
 
 PROTOCOL = "rald_anchor_g4r_baselines_v1"
-ARMS = ("t0_single_frame", "history_aggregation")
+ARMS = (
+    "t0_single_frame",
+    "history_aggregation",
+    "raw_doppler_displacement_sensitivity",
+)
 ROLLOUT_HORIZONS = (1, 5, 10, 25)
 
 
@@ -47,11 +52,13 @@ def atomic_json(path: Path, document: dict) -> None:
     temporary.replace(path)
 
 
-def prediction_path(output: Path, sequence: int, radar_index: int) -> Path:
+def prediction_path(
+    output: Path, arm: str, sequence: int, radar_index: int
+) -> Path:
     return (
         output
         / "predictions"
-        / "history_aggregation"
+        / arm
         / f"seq{sequence:02d}_radar_{radar_index:05d}.npz"
     )
 
@@ -62,6 +69,7 @@ def write_prediction(
     sequence: int,
     radar_index: int,
     source_commit: str,
+    arm: str,
 ) -> dict:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
@@ -69,7 +77,7 @@ def write_prediction(
         np.savez(
             handle,
             prediction_schema_version=np.asarray(1, dtype=np.int16),
-            arm=np.asarray("history_aggregation"),
+            arm=np.asarray(arm),
             sequence=np.asarray(sequence, dtype=np.int16),
             radar_index=np.asarray(radar_index, dtype=np.int32),
             source_commit=np.asarray(source_commit),
@@ -222,13 +230,17 @@ def main() -> None:
         "scene_split_sha256": scene_split_hash,
         "normalization_sha256": normalization_hash,
         "dense_cache_report_sha256": dense_hash,
+        "parent_prediction_manifest_path": str(parent_cache.manifest_path),
         "parent_prediction_manifest_sha256": sha256(
             parent_cache.manifest_path
         ),
+        "g3r_comparison_path": parent_cache.configuration["g3r_comparison"],
         "g3r_comparison_sha256": parent_cache.configuration[
             "g3r_comparison_sha256"
         ],
+        "g3r_config_path": parent_cache.configuration["g3r_config"],
         "g3r_config_sha256": parent_cache.configuration["g3r_config_sha256"],
+        "g3r_checkpoint_path": parent_cache.configuration["g3r_checkpoint"],
         "g3r_checkpoint_sha256": parent_cache.configuration[
             "g3r_checkpoint_sha256"
         ],
@@ -236,6 +248,7 @@ def main() -> None:
         "point_count": point_count,
         "partition": "validation",
         "history_frames": args.history_frames,
+        "raw_doppler_displacement_is_sensitivity_only": True,
     }
 
     dataset = KRadarTemporalDataset(
@@ -263,6 +276,7 @@ def main() -> None:
     for window in dataset.windows:
         previous_outputs = {}
         history_sources = []
+        raw_doppler_sources = []
         for rollout_step, dataset_index in enumerate(window["dataset_indices"]):
             item = dataset.frame_dataset[dataset_index]
             sequence = int(item["sequence"])
@@ -271,8 +285,11 @@ def main() -> None:
             pair = None if rollout_step == 0 else pairs_by_current[dataset_index]
             if pair is None:
                 history = t0
+                raw_doppler = t0
                 aggregation = None
+                raw_aggregation = None
                 history_sources = [t0]
+                raw_doppler_sources = [t0]
             else:
                 transform = torch.as_tensor(
                     pair["current_from_previous"],
@@ -297,23 +314,44 @@ def main() -> None:
                 )
                 aggregation = asdict(diagnostics)
                 history_sources = ([t0] + warped)[: args.history_frames]
+                raw_warped = [
+                    raw_doppler_warp_rald_prediction(
+                        state,
+                        transform,
+                        pair["delta_seconds"],
+                        doppler,
+                        doppler[0],
+                        period,
+                        ranges,
+                        azimuth,
+                        elevation,
+                    )
+                    for state in raw_doppler_sources
+                ]
+                raw_doppler, raw_diagnostics = rald_history_aggregate(
+                    t0, raw_warped, point_count
+                )
+                raw_aggregation = asdict(raw_diagnostics)
+                raw_doppler_sources = ([t0] + raw_warped)[: args.history_frames]
             cube = item["cube_drae"].unsqueeze(0).to(device)
             target = item["target_xyz_confidence"].to(device)
             target_index = item["target_rae_index"].to(device)
             states = {
                 "t0_single_frame": t0,
                 "history_aggregation": history,
+                "raw_doppler_displacement_sensitivity": raw_doppler,
             }
             for arm, state in states.items():
                 if arm == "t0_single_frame" or rollout_step == 0:
                     record = cached_record(parent_cache, sequence, radar_index)
                 else:
                     record = write_prediction(
-                        prediction_path(args.output, sequence, radar_index),
+                        prediction_path(args.output, arm, sequence, radar_index),
                         state,
                         sequence,
                         radar_index,
                         args.source_commit,
+                        arm,
                     )
                 frame = method_frame(
                     arm,
@@ -328,7 +366,13 @@ def main() -> None:
                     record,
                     window["window_id"],
                     rollout_step,
-                    aggregation if arm == "history_aggregation" else None,
+                    (
+                        aggregation
+                        if arm == "history_aggregation"
+                        else raw_aggregation
+                        if arm == "raw_doppler_displacement_sensitivity"
+                        else None
+                    ),
                 )
                 frames_by_arm[arm].append(frame)
                 previous_outputs[arm] = state

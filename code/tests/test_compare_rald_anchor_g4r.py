@@ -1,6 +1,38 @@
 import pytest
 
-from scripts.compare_rald_anchor_g4r import gate_decision
+from scripts.compare_rald_anchor_g4r import (
+    COMMON_ARTIFACT_FIELDS,
+    COMMON_SHA256_FIELDS,
+    TEMPORAL_ARTIFACT_FIELDS,
+    TEMPORAL_SHA256_FIELDS,
+    configuration_hashes_complete,
+    gate_decision,
+    sha256,
+)
+
+
+def test_temporal_provenance_hashes_live_artifacts(tmp_path) -> None:
+    configuration = {
+        "point_count": 10_000,
+        "partition": "validation",
+        "source_commit": "a" * 40,
+        "model_source_commit": "a" * 40,
+        "fusion_mode": "latent",
+        "strict_recurrent_rollout": True,
+    }
+    for index, (path_field, hash_field) in enumerate(
+        COMMON_ARTIFACT_FIELDS + TEMPORAL_ARTIFACT_FIELDS
+    ):
+        artifact = tmp_path / f"artifact-{index}"
+        artifact.write_bytes(f"artifact-{index}".encode())
+        configuration[path_field] = str(artifact)
+        configuration[hash_field] = sha256(artifact)
+    for hash_field in COMMON_SHA256_FIELDS + TEMPORAL_SHA256_FIELDS:
+        configuration.setdefault(hash_field, "b" * 64)
+
+    assert configuration_hashes_complete(configuration, temporal=True)
+    (tmp_path / "artifact-0").write_bytes(b"changed")
+    assert not configuration_hashes_complete(configuration, temporal=True)
 
 
 def endpoint(

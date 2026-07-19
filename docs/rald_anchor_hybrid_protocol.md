@@ -116,7 +116,17 @@ second Doppler or geometry metric class while retaining geometry, confidence,
 coverage, calibration, and bounded offsets. Renderer tests and the complete
 clean/noisy/shifted/calibration robustness matrix are mandatory.
 
-### G4R: RaLD-native temporal conditioning
+### G3L: RaLD-faithful physical latent diffusion
+
+G3R uses RaLD-inspired deterministic set features, not RaLD's central
+`512 x 32` Gaussian latent and radar-conditioned EDM. After G3R passes, G3L
+therefore trains a physical point-state VAE on the frozen parent anchors, then a
+24-layer Full-RAED-conditioned EDM with the official 18-step sampler. The
+decoder still predicts final-position geometry, 64-bin Doppler distribution,
+and confidence only at parent anchors. The complete preregistration is in
+[`rald_g3l_protocol.md`](rald_g3l_protocol.md).
+
+### G4R: RaLD-structured deterministic temporal conditioning
 
 Run only after G3R passes and binds the exact selected `full` checkpoints for
 all three seeds. The current Cube remains the primary observation. The previous
@@ -139,8 +149,9 @@ Every temporal gate starts at zero and must exactly reproduce its selected G3R
 checkpoint before training. All arms preserve the frozen occupancy allocator,
 RaLD static/dynamic mixed latents, latent Transformer, query cross-attention,
 and current-Cube spectrum query at the final continuous point position. This is
-therefore a representation-level RaLD ablation, not a separate temporal
-backbone attached after point generation.
+therefore a representation-level RaLD ablation, not a faithful RaLD
+latent-diffusion generator. If G3L passes, the main temporal successor is G4L,
+where history conditions the EDM; G4R remains the deterministic control.
 
 Perform one-seed five-epoch preflight for all three arms, select one family with
 the frozen development rule, then train three seeds for 20 epochs with a
@@ -152,9 +163,9 @@ and at least 90% rollout confidence and coverage at step 25.
 
 ## Evidence boundary
 
-The hybrid does not reopen the failed independent RaLD AE or authorize its
-latent-cache/EDM chain. G4R borrows RaLD-native representation levels but not
-the rejected standalone point-latent generator. It also does not unlock the
+The hybrid does not reopen the failed independent RaLD occupancy AE. G3L is a
+new anchor-supported physical VAE/EDM route with its own gates. G4R borrows
+RaLD representation levels but is not itself latent diffusion. It also does not unlock the
 original G2/G3/G4 chain after a failed G1. RH/G2R/G3R/G4R form a separately
 named late-fusion branch with their own source, checkpoint, data, and decision
 hashes.

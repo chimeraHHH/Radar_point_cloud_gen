@@ -110,6 +110,67 @@ def pairs_by_window(dataset: KRadarTemporalDataset) -> dict[str, list[dict]]:
     return dict(grouped)
 
 
+def recurrent_pair_groups(
+    dataset: KRadarTemporalDataset, pair_indices: list[int]
+) -> list[list[int]]:
+    """Group selected pairs into contiguous recurrent chains within each window."""
+
+    requested = set(pair_indices)
+    if len(requested) != len(pair_indices):
+        raise ValueError("Duplicate recurrent evaluation pair indices")
+    grouped: dict[str, list[int]] = defaultdict(list)
+    for pair_index in pair_indices:
+        pair = dataset.pairs[pair_index]
+        grouped[pair["window_id"]].append(pair_index)
+    chains = []
+    for window_id in sorted(grouped):
+        ordered = sorted(
+            grouped[window_id],
+            key=lambda index: dataset.pairs[index]["current_frame_in_window"],
+        )
+        chain = []
+        previous_position = None
+        for pair_index in ordered:
+            position = int(dataset.pairs[pair_index]["current_frame_in_window"])
+            if previous_position is not None and position != previous_position + 1:
+                chains.append(chain)
+                chain = []
+            chain.append(pair_index)
+            previous_position = position
+        if chain:
+            chains.append(chain)
+    if sum(map(len, chains)) != len(pair_indices):
+        raise RuntimeError("Recurrent evaluation grouping lost pairs")
+    return chains
+
+
+def select_recurrent_evaluation_pairs(
+    dataset: KRadarTemporalDataset,
+    window_names: list[str],
+    maximum_pairs: int,
+) -> list[int]:
+    """Select contiguous chains from two windows for recursive checkpoint ranking."""
+
+    if maximum_pairs <= 0:
+        raise ValueError("Recurrent evaluation requires a positive pair budget")
+    selected_windows = sorted(set(window_names))[:2]
+    if not selected_windows:
+        raise ValueError("Recurrent evaluation has no selected windows")
+    by_window: dict[str, list[int]] = defaultdict(list)
+    for pair_index, pair in enumerate(dataset.pairs):
+        if pair["window_id"] in selected_windows:
+            by_window[pair["window_id"]].append(pair_index)
+    quota = (maximum_pairs + len(selected_windows) - 1) // len(selected_windows)
+    selected = []
+    for window_id in selected_windows:
+        ordered = sorted(
+            by_window[window_id],
+            key=lambda index: dataset.pairs[index]["current_frame_in_window"],
+        )
+        selected.extend(ordered[:quota])
+    return selected[:maximum_pairs]
+
+
 def scheduled_probability(config: TrainConfig, epoch: int) -> float:
     if epoch <= config.temporal_warmup_epochs:
         return 0.0
@@ -225,87 +286,107 @@ def evaluate(
         device=device,
         dtype=torch.float32,
     )
-    for pair_index in pair_indices:
-        pair = dataset.pairs[pair_index]
-        previous = teacher_state(teacher_cache, dataset, pair, device)
-        item, cube, target, target_index = move_current(dataset, pair, device)
-        prior = temporal_prior(previous, pair, model)
-        with torch.autocast("cuda", dtype=torch.bfloat16):
-            output = model(cube, prior)
-        generated_xyz = output["xyz_m"][0].float()
-        target_xyz = target[:, :3].float()
-        geometry = geometry_report(
-            generated_xyz, target_xyz, target_weight=target[:, 3]
-        )
-        _, matched_index = nearest_target_assignment(generated_xyz, target_xyz)
-        target_spectrum = query_cube_spectrum(cube, target_index)[matched_index]
-        doppler = doppler_distribution_report(
-            output["doppler_probability"][0].float(),
-            target_spectrum,
-            doppler_axis,
-            doppler_axis[0],
-            doppler_step * doppler_axis.numel(),
-            doppler_step,
-            confidence=output["anchor_parent_confidence"][0].float(),
-        )
-        prediction_distance, _ = nearest_target_assignment(
-            generated_xyz, target_xyz
-        )
-        _, existence_target = existence_confidence_loss(
-            output["confidence"][0].float(), prediction_distance
-        )
-        rendered = soft_splat_raed(
-            output["coordinates_rae"][0].float(),
-            output["doppler_probability"][0].float(),
-            output["confidence"][0].float(),
-        )
-        cycle = cube_cycle_report(
-            rendered,
-            cube[0].float(),
-            output["confidence"][0].float(),
-            existence_target=existence_target,
-        )
-        transform = torch.as_tensor(
-            pair["current_from_previous"],
-            dtype=previous.xyz_m.dtype,
-            device=device,
-        ).reshape(4, 4)
-        match = ego_aligned_match(
-            previous.xyz_m,
-            previous.confidence,
-            generated_xyz,
-            output["confidence"][0].float(),
-            transform,
-        )
-        temporal = ego_aligned_consistency_report(
-            match,
-            previous.confidence,
-            generated_xyz,
-            output["confidence"][0].float(),
-            model.range_m,
-            model.azimuth_rad,
-            model.elevation_rad,
-        )
-        geometry_reports.append(geometry)
-        doppler_reports.append(doppler)
-        cycle_reports.append(cycle)
-        temporal_reports.append(temporal)
-        frames.append(
-            {
-                "window_id": pair["window_id"],
-                "sequence": int(pair["sequence"]),
-                "radar_index": int(item["radar_index"]),
-                "generated_geometry": geometry,
-                "doppler": doppler,
-                "cycle": cycle,
-                "temporal": temporal,
-            }
-        )
-        del previous, item, cube, target, target_index, prior, output
-        del rendered, match
-        torch.cuda.empty_cache()
+    recurrent_count = 0
+    teacher_seed_count = 0
+    recurrent_chain_lengths = []
+    for chain in recurrent_pair_groups(dataset, pair_indices):
+        recurrent_state = None
+        recurrent_chain_lengths.append(len(chain))
+        for pair_index in chain:
+            pair = dataset.pairs[pair_index]
+            if recurrent_state is None:
+                previous = teacher_state(teacher_cache, dataset, pair, device)
+                teacher_seed_count += 1
+                prior_source = "teacher_seed"
+            else:
+                previous = recurrent_state
+                recurrent_count += 1
+                prior_source = "recurrent_prediction"
+            item, cube, target, target_index = move_current(dataset, pair, device)
+            prior = temporal_prior(previous, pair, model)
+            with torch.autocast("cuda", dtype=torch.bfloat16):
+                output = model(cube, prior)
+            generated_xyz = output["xyz_m"][0].float()
+            target_xyz = target[:, :3].float()
+            geometry = geometry_report(
+                generated_xyz, target_xyz, target_weight=target[:, 3]
+            )
+            _, matched_index = nearest_target_assignment(generated_xyz, target_xyz)
+            target_spectrum = query_cube_spectrum(cube, target_index)[matched_index]
+            doppler = doppler_distribution_report(
+                output["doppler_probability"][0].float(),
+                target_spectrum,
+                doppler_axis,
+                doppler_axis[0],
+                doppler_step * doppler_axis.numel(),
+                doppler_step,
+                confidence=output["anchor_parent_confidence"][0].float(),
+            )
+            prediction_distance, _ = nearest_target_assignment(
+                generated_xyz, target_xyz
+            )
+            _, existence_target = existence_confidence_loss(
+                output["confidence"][0].float(), prediction_distance
+            )
+            rendered = soft_splat_raed(
+                output["coordinates_rae"][0].float(),
+                output["doppler_probability"][0].float(),
+                output["confidence"][0].float(),
+            )
+            cycle = cube_cycle_report(
+                rendered,
+                cube[0].float(),
+                output["confidence"][0].float(),
+                existence_target=existence_target,
+            )
+            transform = torch.as_tensor(
+                pair["current_from_previous"],
+                dtype=previous.xyz_m.dtype,
+                device=device,
+            ).reshape(4, 4)
+            match = ego_aligned_match(
+                previous.xyz_m,
+                previous.confidence,
+                generated_xyz,
+                output["confidence"][0].float(),
+                transform,
+            )
+            temporal = ego_aligned_consistency_report(
+                match,
+                previous.confidence,
+                generated_xyz,
+                output["confidence"][0].float(),
+                model.range_m,
+                model.azimuth_rad,
+                model.elevation_rad,
+            )
+            geometry_reports.append(geometry)
+            doppler_reports.append(doppler)
+            cycle_reports.append(cycle)
+            temporal_reports.append(temporal)
+            frames.append(
+                {
+                    "window_id": pair["window_id"],
+                    "sequence": int(pair["sequence"]),
+                    "radar_index": int(item["radar_index"]),
+                    "prior_source": prior_source,
+                    "generated_geometry": geometry,
+                    "doppler": doppler,
+                    "cycle": cycle,
+                    "temporal": temporal,
+                }
+            )
+            recurrent_state = rald_prediction_from_output(output).detached()
+            del previous, item, cube, target, target_index, prior, output
+            del rendered, match
+            torch.cuda.empty_cache()
     return {
         "pair_count": len(pair_indices),
+        "evaluation_mode": "strict_recurrent_with_teacher_seed_per_chain",
+        "teacher_seed_count": teacher_seed_count,
+        "recurrent_prediction_count": recurrent_count,
+        "recurrent_chain_lengths": recurrent_chain_lengths,
+        "maximum_recurrent_chain_length": max(recurrent_chain_lengths),
         "generated_geometry": aggregate_geometry_reports(geometry_reports),
         "doppler": aggregate_doppler_reports(doppler_reports),
         "cycle": aggregate_cycle_reports(cycle_reports),
@@ -560,13 +641,11 @@ def main() -> None:
         for index, pair in enumerate(validation_dataset.pairs)
         if pair["window_id"] in validation_names
     ]
-    evaluation_pair_indices = [
-        validation_pair_indices[index]
-        for index in selected_positions(
-            len(validation_pair_indices),
-            min(config.max_eval_pairs, len(validation_pair_indices)),
-        )
-    ]
+    evaluation_pair_indices = select_recurrent_evaluation_pairs(
+        validation_dataset,
+        validation_names,
+        min(config.max_eval_pairs, len(validation_pair_indices)),
+    )
 
     identity_pair = validation_dataset.pairs[evaluation_pair_indices[0]]
     identity_state = teacher_state(
@@ -772,10 +851,17 @@ def main() -> None:
         "protocol": PROTOCOL,
         "best_epoch": int(best["epoch"]),
         "selection_metric": (
-            "ego_aligned_match + 0.25 * chamfer + 0.25 * local_spectrum_kl"
+            "strict recurrent ego_aligned_match + 0.25 * chamfer + "
+            "0.25 * local_spectrum_kl"
+        ),
+        "checkpoint_selection_mode": (
+            "strict_recurrent_with_teacher_seed_per_contiguous_chain"
         ),
         "selection_value": selection_score(final_metrics),
         "checkpoint_selection_value": best_score,
+        "config_sha256": sha256(args.output / "config.json"),
+        "best_checkpoint_sha256": sha256(args.output / "best.pt"),
+        "last_checkpoint_sha256": sha256(args.output / "last.pt"),
         "validation": final_metrics,
         "completed": True,
     }

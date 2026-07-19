@@ -22,6 +22,10 @@ class KRadarTemporalDataset(Dataset):
         manifest = json.loads(temporal_manifest.read_text(encoding="utf-8"))
         if manifest.get("gate_pass") is not True:
             raise ValueError("Temporal manifest did not pass its data gate")
+        if manifest.get("checks", {}).get("radar_frame_ego_transforms_present") is not True:
+            raise ValueError(
+                "Temporal manifest lacks calibrated radar-frame ego transforms"
+            )
         if len(set(partitions)) != len(partitions):
             raise ValueError("Duplicate temporal partitions")
         self.frame_dataset = KRadarCubeDataset(
@@ -95,7 +99,7 @@ class KRadarTemporalDataset(Dataset):
                         ],
                         "delta_seconds": float(delta_seconds),
                         "current_from_previous": current[
-                            "current_lidar64_from_previous_lidar64"
+                            "current_radar_from_previous_radar"
                         ],
                     }
                 )

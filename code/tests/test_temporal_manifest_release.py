@@ -6,6 +6,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import numpy as np
+
 
 SCRIPT = (
     Path(__file__).resolve().parents[1]
@@ -19,6 +21,37 @@ SPEC.loader.exec_module(MODULE)
 
 
 class TemporalManifestReleaseTest(unittest.TestCase):
+    def test_lidar_motion_is_conjugated_into_radar_frame(self) -> None:
+        radar_from_lidar = np.eye(4)
+        radar_from_lidar[:3, 3] = [1.5, -0.25, 0.7]
+        current_lidar_from_previous = np.eye(4)
+        angle = np.deg2rad(30.0)
+        current_lidar_from_previous[:2, :2] = [
+            [np.cos(angle), -np.sin(angle)],
+            [np.sin(angle), np.cos(angle)],
+        ]
+        current_lidar_from_previous[:3, 3] = [2.0, 1.0, 0.1]
+
+        actual = MODULE.conjugate_lidar_motion_to_radar(
+            current_lidar_from_previous, radar_from_lidar
+        )
+        expected = (
+            radar_from_lidar
+            @ current_lidar_from_previous
+            @ np.linalg.inv(radar_from_lidar)
+        )
+
+        np.testing.assert_allclose(actual, expected)
+        self.assertFalse(np.allclose(actual, current_lidar_from_previous))
+
+    def test_identity_lidar_motion_remains_identity_in_radar_frame(self) -> None:
+        radar_from_lidar = np.eye(4)
+        radar_from_lidar[:3, 3] = [0.5, 0.1, 0.7]
+        actual = MODULE.conjugate_lidar_motion_to_radar(
+            np.eye(4), radar_from_lidar
+        )
+        np.testing.assert_allclose(actual, np.eye(4))
+
     def test_development_manifest_needs_no_release(self) -> None:
         self.assertIsNone(
             MODULE.validate_test_release(["train", "validation"], None)

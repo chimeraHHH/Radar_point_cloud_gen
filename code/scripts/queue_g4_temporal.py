@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -83,14 +84,46 @@ def json_complete(path: Path, source_commit: str, field: str) -> bool:
     return document.get(field) is True and report_source(document) == source_commit
 
 
-def training_complete(run_path: Path, epochs: int, source_commit: str) -> bool:
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def training_complete(
+    run_path: Path,
+    epochs: int,
+    source_commit: str,
+    expected_config: dict | None = None,
+) -> bool:
     config_path = run_path / "config.json"
     metrics_path = run_path / "best_validation_metrics.json"
     log_path = run_path / "train_log.jsonl"
-    if not all(path.is_file() for path in (config_path, metrics_path, log_path)):
+    best_path = run_path / "best.pt"
+    last_path = run_path / "last.pt"
+    required = (config_path, metrics_path, log_path, best_path, last_path)
+    if not all(path.is_file() for path in required):
         return False
     document = json.loads(config_path.read_text(encoding="utf-8"))
     if document["provenance"]["git_commit"] != source_commit:
+        return False
+    config = document.get("config", {})
+    if int(config.get("epochs", -1)) != epochs:
+        return False
+    if expected_config is not None and any(
+        config.get(key) != value for key, value in expected_config.items()
+    ):
+        return False
+    metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+    if metrics.get("completed") is False:
+        return False
+    if metrics.get("config_sha256") not in (None, sha256(config_path)):
+        return False
+    if metrics.get("best_checkpoint_sha256") not in (None, sha256(best_path)):
+        return False
+    if metrics.get("last_checkpoint_sha256") not in (None, sha256(last_path)):
         return False
     records = [
         json.loads(line)
@@ -108,6 +141,7 @@ class GPUJob:
     marker: Path
     completion_field: str | None = "completed"
     training_epochs: int | None = None
+    expected_config: dict | None = None
     resume_evidence: Path | None = None
     attempts: int = 0
 
@@ -122,7 +156,12 @@ class RunningJob:
 
 def job_complete(job: GPUJob, source_commit: str) -> bool:
     if job.training_epochs is not None:
-        return training_complete(job.marker, job.training_epochs, source_commit)
+        return training_complete(
+            job.marker,
+            job.training_epochs,
+            source_commit,
+            job.expected_config,
+        )
     if job.completion_field is None:
         return job.marker.is_file()
     return json_complete(job.marker, source_commit, job.completion_field)

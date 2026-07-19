@@ -16,7 +16,11 @@ COMPARISON_PROTOCOL = "rald_anchor_g4r_comparison_v1"
 BASELINE_PROTOCOL = "rald_anchor_g4r_baselines_v1"
 TEMPORAL_PROTOCOL = "rald_anchor_g4r_strict_rollout_v1"
 FORMAL_SEEDS = {20260716, 20260717, 20260718}
-BASELINE_ARMS = {"t0_single_frame", "history_aggregation"}
+BASELINE_ARMS = {
+    "t0_single_frame",
+    "history_aggregation",
+    "raw_doppler_displacement_sensitivity",
+}
 ENDPOINTS = {
     "ego_aligned_matched_distance_m": (
         ("temporal", "ego_aligned_matched_distance_mean_m"),
@@ -55,6 +59,17 @@ TEMPORAL_SHA256_FIELDS = (
     "temporal_config_sha256",
     "temporal_checkpoint_sha256",
     "preflight_selection_sha256",
+)
+COMMON_ARTIFACT_FIELDS = (
+    ("parent_prediction_manifest_path", "parent_prediction_manifest_sha256"),
+    ("g3r_comparison_path", "g3r_comparison_sha256"),
+    ("g3r_config_path", "g3r_config_sha256"),
+    ("g3r_checkpoint_path", "g3r_checkpoint_sha256"),
+)
+TEMPORAL_ARTIFACT_FIELDS = (
+    ("temporal_config_path", "temporal_config_sha256"),
+    ("temporal_checkpoint_path", "temporal_checkpoint_sha256"),
+    ("preflight_selection_path", "preflight_selection_sha256"),
 )
 GLOBAL_DATA_FIELDS = (
     "manifest_sha256",
@@ -155,6 +170,10 @@ def load_baseline(path: Path) -> dict:
             arms["history_aggregation"]["frames"],
             f"{path}:history_aggregation",
         ),
+        "raw_doppler": frame_index(
+            arms["raw_doppler_displacement_sensitivity"]["frames"],
+            f"{path}:raw_doppler_displacement_sensitivity",
+        ),
     }
 
 
@@ -222,13 +241,25 @@ def configuration_hashes_complete(configuration: dict, temporal: bool) -> bool:
         required_scalars = (
             required_scalars
             and is_git_commit(configuration.get("model_source_commit"))
+            and configuration.get("model_source_commit")
+            == configuration.get("source_commit")
             and isinstance(configuration.get("fusion_mode"), str)
             and bool(configuration["fusion_mode"])
             and configuration.get("strict_recurrent_rollout") is True
         )
-    return required_scalars and all(
+    hashes_complete = all(
         is_sha256(configuration.get(field)) for field in sha_fields
     )
+    artifact_fields = COMMON_ARTIFACT_FIELDS + (
+        TEMPORAL_ARTIFACT_FIELDS if temporal else ()
+    )
+    artifacts_complete = all(
+        isinstance(configuration.get(path_field), str)
+        and Path(configuration[path_field]).is_file()
+        and sha256(Path(configuration[path_field])) == configuration.get(hash_field)
+        for path_field, hash_field in artifact_fields
+    )
+    return required_scalars and hashes_complete and artifacts_complete
 
 
 def validate_matched_reports(
@@ -243,6 +274,7 @@ def validate_matched_reports(
         "same_seed_g3r_parent": True,
         "same_selected_temporal_family": True,
         "same_temporal_training_source": True,
+        "same_preflight_selection": True,
         "strict_recurrent_rollout": True,
         "step0_matches_t0": True,
         "all_endpoint_frames_present": True,
@@ -255,6 +287,7 @@ def validate_matched_reports(
     reference_global = None
     reference_fusion = None
     reference_model_source = None
+    reference_preflight = None
     for seed in sorted(FORMAL_SEEDS):
         baseline = baselines[seed]
         selected = temporal[seed]
@@ -263,6 +296,7 @@ def validate_matched_reports(
         identities = set(baseline["t0"])
         if (
             set(baseline["history"]) != identities
+            or set(baseline["raw_doppler"]) != identities
             or set(selected["frames"]) != identities
         ):
             checks["identical_frame_identities"] = False
@@ -303,6 +337,11 @@ def validate_matched_reports(
             reference_model_source = model_source
         elif model_source != reference_model_source:
             checks["same_temporal_training_source"] = False
+        preflight = selected_configuration.get("preflight_selection_sha256")
+        if reference_preflight is None:
+            reference_preflight = preflight
+        elif preflight != reference_preflight:
+            checks["same_preflight_selection"] = False
         if selected_configuration.get("strict_recurrent_rollout") is not True:
             checks["strict_recurrent_rollout"] = False
 
@@ -327,7 +366,12 @@ def validate_matched_reports(
                 checks["step0_matches_t0"] = False
 
         for endpoint_path, _ in ENDPOINTS.values():
-            for frames in (baseline["t0"], baseline["history"], selected["frames"]):
+            for frames in (
+                baseline["t0"],
+                baseline["history"],
+                baseline["raw_doppler"],
+                selected["frames"],
+            ):
                 if not metric_covers_expected_frames(frames, endpoint_path):
                     checks["all_endpoint_frames_present"] = False
 
@@ -358,6 +402,7 @@ def validate_matched_reports(
             and configuration_hashes_complete(selected_configuration, temporal=True)
             and prediction_hashes_complete(baseline["t0"])
             and prediction_hashes_complete(baseline["history"])
+            and prediction_hashes_complete(baseline["raw_doppler"])
             and prediction_hashes_complete(selected["frames"])
         ):
             checks["complete_hash_provenance"] = False
@@ -569,6 +614,9 @@ def main() -> None:
     versus_history = compare_arm(
         baselines, temporal, "history", args.bootstrap_samples, rng
     )
+    versus_raw_doppler = compare_arm(
+        baselines, temporal, "raw_doppler", args.bootstrap_samples, rng
+    )
     step25_versus_t0 = compare_arm(
         baselines, temporal, "t0", args.bootstrap_samples, rng, horizon=25
     )
@@ -604,6 +652,7 @@ def main() -> None:
         "comparisons": {
             "selected_vs_t0": versus_t0,
             "selected_vs_history_aggregation": versus_history,
+            "selected_vs_raw_doppler_displacement_sensitivity": versus_raw_doppler,
             "selected_vs_t0_step25": step25_versus_t0,
         },
         "decision": decision,

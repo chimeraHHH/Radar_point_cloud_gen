@@ -12,7 +12,7 @@
 
 > **2026-07-19 基线修订：**官方 RaLD checkpoint 因 ColoRadar 域、强度-only 条件和无逐点 Doppler/confidence 输出，不作为 K-Radar 主表公平基线。完整规模的 K-Radar matched 重实现通过了结构与梯度验证，但单帧 AE 在一次预注册 hard-occupancy 修复后仍未通过 Chamfer 门（`9.1444 m` vs `<=5.0 m`），因此独立 point-VAE/latent-EDM 训练链 no-go，不进入主表；RaLD 的 radar-token hierarchy、mixed set latents、latent Transformer 和 query decoder 转入后置 anchor-refinement 主线。
 
-> **2026-07-19 RaLD 主线借鉴修订：**matched baseline no-go 不等于放弃 RaLD。当前已实现并在 H200 通过 `RaLD-anchor-hybrid` RH0：完整 64-bin RAED 编码为 336 radar tokens，现有 occupancy top-10k 作为长量程 anchors，RaLD 的 512 mixed latents 与 query cross-attention 负责连续位置、Doppler distribution 和 confidence 精修。独立 point VAE 因长量程 Chamfer 门失败已关闭，避免机械复制短距 ColoRadar 配置。
+> **2026-07-19 RaLD 主线借鉴修订：**matched baseline no-go 不等于放弃 RaLD。RH/G2R/G3R 已借鉴 336 radar tokens、static/dynamic mixed queries、latent Transformer 与 query cross-attention，但它们仍是 deterministic `512 x model_dim` refiner。新增 G3L 独立门进一步采用 RaLD 核心的 `512 x 32` physical VAE、24-layer Full-RAED-conditioned EDM 与 18-step sampler；通过的 occupancy top-10k 仅作为长量程 radar-guided query initialization。失败的全空间 occupancy AE 不被重开。
 
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
@@ -406,13 +406,17 @@ Cube cycle 必须在 Doppler 频谱匹配、PCE、几何或下游任务中至少
 family 依次通过 G1B、RH、G2R/G3R 并冻结后，才可重建 `G4R` 时序队列；已下载
 的时序数据与固定 split 可继续复用。
 
+G3R 通过后必须先执行 [`rald_g3l_protocol.md`](rald_g3l_protocol.md)。若 G3L
+通过，RaLD-faithful 时序主线命名为 G4L，并在 EDM condition 中加入历史物理
+point-state tokens；现有 token/latent/query G4R 作为 deterministic control。
+
 **任务**
 
 - 从通过 G3R 的三种子 `full` checkpoint 原样初始化，并用零门控证明每个
   temporal arm 在 step 0 精确复现单帧 RaLD 输出；
 - 以 ego pose-only warp 作为主先验，不重新引入已否决的解析静态 Doppler
   约定；原始 Doppler 位移仅作为 sensitivity baseline；
-- 比较三个 RaLD-native 注入位置：336 radar-token hierarchy、dynamic mixed
+- 比较三个 RaLD-structured deterministic 注入位置：336 radar-token hierarchy、dynamic mixed
   latents 和 decoded anchor queries；
 - 保留当前 Full-RAED Cube、RaLD static/dynamic mixed latents、latent
   Transformer、query cross-attention 与 final-position Cube spectrum query；
@@ -590,8 +594,11 @@ independently gated geometry parent
 - [x] 关闭 G1 comparison；按冻结结果终止原 G2/G3，并归档终局负结果。
 - [ ] 完成独立 G1B Stage A/B；若通过，完成 RaLD-anchor RH1/RH2。
 - [ ] 在冻结 RH family 上建立并完成 G2R/G3R，不复用原 G2/G3 结论。
-- [x] 建立 RaLD-native G4R 的预测缓存、token/latent/query 训练、基线、
+- [x] 建立 RaLD-structured G4R 的预测缓存、token/latent/query 训练、基线、
   preflight、rollout、比较与总队列；严格等待 G3R checkpoint family。
+- [x] 实现 G3L 的 `512 x 32` physical posterior、anchor-only 24-layer decoder、
+  Full-RAED-conditioned 24-layer EDM、18-step sampler 与组件测试。
+- [ ] 完成 G3L VAE/EDM 训练器、三种子 gate 与 G4L 条件扩散时序链。
 - [ ] 完成 G4R 45/45 序列下载、CRC、时序训练与 family freeze。
 - [ ] 释放 P5 test 并完成 P6 论文证据包。
 

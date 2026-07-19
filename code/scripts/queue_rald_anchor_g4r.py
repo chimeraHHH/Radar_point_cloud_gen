@@ -26,6 +26,50 @@ from rald_gate_contract import validate_g3r_selected_runs
 FUSION_MODES = ("token", "latent", "query")
 
 
+def validate_formal_temporal_manifest(
+    document: dict,
+    source_commit: str,
+    required_frames: int = 2160,
+) -> set[int]:
+    selection = document.get("selection", {})
+    summary = document.get("summary", {})
+    windows = document.get("windows", [])
+    frames = document.get("frames", [])
+    checks = document.get("checks", {})
+    if document.get("gate_pass") is not True:
+        raise ValueError("Formal G4R temporal manifest failed its data gate")
+    if document.get("source_commit") != source_commit:
+        raise ValueError("Formal G4R temporal manifest source differs")
+    if (
+        selection.get("window_length") != 48
+        or selection.get("windows_per_sequence") != 1
+    ):
+        raise ValueError("Formal G4R requires one 48-frame window per sequence")
+    if (
+        summary.get("frame_count") != required_frames
+        or summary.get("window_count") != 45
+        or summary.get("sequence_count") != 45
+        or len(frames) != required_frames
+        or len(windows) != 45
+    ):
+        raise ValueError("Formal G4R temporal cohort dimensions differ")
+    if checks.get("radar_frame_ego_transforms_present") is not True:
+        raise ValueError("Formal G4R manifest lacks radar-frame ego transforms")
+    sequences = {int(window["sequence"]) for window in windows}
+    if len(sequences) != 45 or any(int(window.get("frame_count", -1)) != 48 for window in windows):
+        raise ValueError("Formal G4R window structure differs")
+    positions: dict[str, list[int]] = {}
+    for frame in frames:
+        positions.setdefault(frame["window_id"], []).append(int(frame["frame_in_window"]))
+        if len(frame.get("current_radar_from_previous_radar", [])) != 16:
+            raise ValueError("Formal G4R frame lacks a radar-frame ego transform")
+    if set(positions) != {window["window_id"] for window in windows} or any(
+        sorted(values) != list(range(48)) for values in positions.values()
+    ):
+        raise ValueError("Formal G4R frames are not contiguous 48-step windows")
+    return sequences
+
+
 def train_command(
     python: Path,
     args,
@@ -118,11 +162,9 @@ def main() -> None:
     tag = args.source_commit[:8]
 
     temporal_manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
-    expected_sequences = {
-        int(frame["sequence"]) for frame in temporal_manifest["frames"]
-    }
-    if len(expected_sequences) != 45:
-        raise ValueError("Formal G4R manifest requires exactly 45 sequences")
+    expected_sequences = validate_formal_temporal_manifest(
+        temporal_manifest, args.source_commit, args.required_frames
+    )
     download_summary = wait_for_download_completion(
         args.download_manifest_dir / "summary.json",
         expected_sequences,
@@ -326,6 +368,15 @@ def main() -> None:
             marker=output,
             completion_field=None,
             training_epochs=5,
+            expected_config={
+                "fusion_mode": mode,
+                "epochs": 5,
+                "temporal_warmup_epochs": 5,
+                "seed": preflight_seed,
+                "scheduled_sampling_maximum": 0.4,
+                "eval_every": 5,
+                "max_eval_pairs": 32,
+            },
             resume_evidence=output / "last.pt",
         )
         for mode, output in preflight_paths.items()
@@ -384,6 +435,15 @@ def main() -> None:
             marker=formal_paths[seed],
             completion_field=None,
             training_epochs=20,
+            expected_config={
+                "fusion_mode": selected_mode,
+                "epochs": 20,
+                "temporal_warmup_epochs": 5,
+                "seed": seed,
+                "scheduled_sampling_maximum": 0.4,
+                "eval_every": 5,
+                "max_eval_pairs": 32,
+            },
             resume_evidence=formal_paths[seed] / "last.pt",
         )
         for seed in args.seeds

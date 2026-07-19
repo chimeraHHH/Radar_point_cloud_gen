@@ -7,10 +7,17 @@ import argparse
 import csv
 import hashlib
 import json
+import sys
 from collections import Counter
 from pathlib import Path
 
 import numpy as np
+
+CODE_ROOT = Path(__file__).resolve().parents[1]
+if str(CODE_ROOT) not in sys.path:
+    sys.path.insert(0, str(CODE_ROOT))
+
+from cube_dense.kradar import load_calibration  # noqa: E402
 
 
 def sha256(path: Path) -> str:
@@ -41,6 +48,32 @@ def homogeneous_pose(flat_pose: np.ndarray) -> np.ndarray:
     pose = np.eye(4, dtype=np.float64)
     pose[:3] = flat_pose.reshape(3, 4)
     return pose
+
+
+def radar_from_lidar64(path: Path) -> np.ndarray:
+    """Return the calibrated homogeneous point transform used by dense targets."""
+
+    calibration = load_calibration(path)
+    transform = np.eye(4, dtype=np.float64)
+    transform[:3, 3] = calibration.translation_xyz_m
+    return transform
+
+
+def conjugate_lidar_motion_to_radar(
+    current_lidar64_from_previous_lidar64: np.ndarray,
+    radar_from_lidar64_transform: np.ndarray,
+) -> np.ndarray:
+    """Express LiDAR odometry as current-radar from previous-radar motion."""
+
+    if current_lidar64_from_previous_lidar64.shape != (4, 4):
+        raise ValueError("LiDAR motion must be a 4x4 homogeneous transform")
+    if radar_from_lidar64_transform.shape != (4, 4):
+        raise ValueError("Radar/LiDAR calibration must be a 4x4 transform")
+    return (
+        radar_from_lidar64_transform
+        @ current_lidar64_from_previous_lidar64
+        @ np.linalg.inv(radar_from_lidar64_transform)
+    )
 
 
 def centered_window_starts(
@@ -166,12 +199,20 @@ def main() -> None:
             raise ValueError(f"Sequence {sequence} radar indices are not increasing")
 
         time_path = args.metadata_root / str(sequence) / "time_info" / "os2-64.txt"
+        calibration_path = (
+            args.metadata_root
+            / str(sequence)
+            / "info_calib"
+            / "calib_radar_lidar.txt"
+        )
         odometry_path = args.odometry_root / f"gt_{sequence:02d}.txt"
         times = read_sensor_times(time_path)
         flat_poses = np.loadtxt(odometry_path)
+        radar_from_lidar = radar_from_lidar64(calibration_path)
         input_file_hashes[str(sequence)] = {
             "os2_time_sha256": sha256(time_path),
             "odometry_sha256": sha256(odometry_path),
+            "radar_lidar_calibration_sha256": sha256(calibration_path),
         }
         if flat_poses.ndim == 1:
             flat_poses = flat_poses[None]
@@ -238,6 +279,9 @@ def main() -> None:
                         frame_in_window - 1
                     ]
                     delta_from_previous = float(delta_seconds[frame_in_window - 1])
+                radar_previous_to_current = conjugate_lidar_motion_to_radar(
+                    previous_to_current, radar_from_lidar
+                )
                 records.append(
                     {
                         "sequence": sequence,
@@ -254,6 +298,10 @@ def main() -> None:
                         "world_from_lidar64": pose.reshape(-1).tolist(),
                         "current_lidar64_from_previous_lidar64": (
                             previous_to_current.reshape(-1).tolist()
+                        ),
+                        "radar_from_lidar64": radar_from_lidar.reshape(-1).tolist(),
+                        "current_radar_from_previous_radar": (
+                            radar_previous_to_current.reshape(-1).tolist()
                         ),
                         "delta_seconds_from_previous": delta_from_previous,
                     }
@@ -302,6 +350,11 @@ def main() -> None:
         ),
         "rotation_matrices_valid": maximum_rotation_orthogonality_error <= 1e-3
         and minimum_rotation_determinant >= 0.999,
+        "radar_frame_ego_transforms_present": all(
+            len(record.get("current_radar_from_previous_radar", [])) == 16
+            and len(record.get("radar_from_lidar64", [])) == 16
+            for record in records
+        ),
         "zero_sequence_overlap": not any(overlaps.values()),
     }
     if test_release is None:
@@ -316,7 +369,10 @@ def main() -> None:
             }
         )
     payload = {
-        "protocol": "centered continuous K-Radar windows with sequence-isolated partitions",
+        "protocol": (
+            "centered continuous K-Radar windows with calibrated radar-frame "
+            "ego transforms and sequence-isolated partitions"
+        ),
         "source_commit": args.source_commit,
         "source_split": str(args.split),
         "source_split_sha256": sha256(args.split),

@@ -104,6 +104,24 @@ closed. The independent G1B route instead selects a physically compressed
 geometry allocator, freezes it, and introduces all 64 Doppler bins through
 RaLD radar-token cross-attention. No G1 result is relabeled by this branch.
 
+### 3.2 RaLD-Faithful Physical Latent Diffusion Candidate
+
+The anchor refiner above is deterministic and does not instantiate RaLD's
+central latent-diffusion mechanism. G3L therefore encodes an unordered target
+point-state set into a `512 x 32` Gaussian posterior. Each target token contains
+normalized RAE, its complete 64-bin Doppler distribution, circular moments, and
+confidence. A 24-layer latent Transformer decodes only the frozen parent
+anchors, which act as radar-guided query initialization rather than a dense
+free-space occupancy scan.
+
+After this physical VAE passes, its encoder and decoder are frozen and a
+24-layer EDM Transformer models the latent distribution conditioned on the
+current Full-RAED tokens. Formal inference uses the RaLD 18-step Heun sampler.
+The decoded query features still use the final-position Cube spectrum and the
+same geometry, Doppler, confidence, and cycle heads. This branch is separately
+gated; until G3L passes, the method is described as RaLD-inspired anchor
+refinement rather than latent diffusion.
+
 ## 4. Point-Conditioned Doppler Prediction
 
 RaLD query features and the Cube spectrum at each final continuous RAE location
@@ -215,7 +233,9 @@ The temporal model always receives the current Cube. A previous predicted point 
 The previous implementation fused history into a separate `CubeCycleNet` and
 depended on an analytic static-Doppler convention. That route is closed because
 it cannot load the selected RaLD checkpoint and the static convention failed
-validation. G4R injects the historical prior at three RaLD-native locations.
+validation. G4R injects the historical prior at three RaLD-structured
+deterministic locations. If G3L passes, G4L additionally conditions the EDM on
+the ego-aligned historical physical point state.
 
 The preregistered main prior first uses only the unambiguous ego transform:
 
@@ -273,6 +293,13 @@ Cycle training:
 L_G3R = L_G2R + 0.1 L_cycle_variant.
 ```
 
+RaLD physical latent diffusion:
+
+```text
+L_G3L-VAE = L_G3R + beta_KL L_KL,
+L_G3L-EDM = E_sigma[w(sigma) ||D(z + sigma epsilon, sigma, R) - z||_2^2].
+```
+
 Temporal training:
 
 ```text
@@ -287,6 +314,7 @@ Modules are released only after their parent gate closes. All main comparisons u
 - The original G1 failed; independent G1B geometry selection is pending.
 - Doppler distribution gain remains pending G2R after RH passes.
 - Cube-cycle value remains pending G3R.
+- RaLD-faithful `512 x 32` physical VAE/EDM value remains pending G3L.
 - Temporal value remains pending verified data and G4R evaluation.
 - The analytic static mixture failed and is not a contribution.
 - TruckScenes Doppler-warp and scheduled-sampling results motivate the temporal design but are not K-Radar Cube-to-dense evidence.
