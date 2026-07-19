@@ -1,5 +1,11 @@
 # A 模块相关论文与开源代码调研
 
+> **后续证据更新：**本调研提出的 `RaLD-style-RAESum-matched` 候选已完成
+> 官方规模实现、结构/梯度验证和一次预注册 hard-occupancy 修复，但仍未通过
+> 单帧 AE Chamfer 门（`9.1444 m` vs `<= 5.0 m`）。因此“进入最终几何主表”
+> 的早期建议已被否决；不继续训练 latent EDM。最终决定见
+> [`rald_matched_baseline_decision_2026-07-19.md`](rald_matched_baseline_decision_2026-07-19.md)。
+
 > 日期：2026-07-19
 > 范围：4D Radar Cube 编码、Cube-to-dense 点云、Doppler 表征、可微 point-to-Cube、时序雷达增密
 > 目的：核定 A 模块的 prior-art 边界，并给出可执行、可证伪、许可证清晰的借鉴路径
@@ -236,7 +242,7 @@ p_i(d) = softmax(z_i(d))
 
 - 不修改正在运行的 G1 恢复。
 - 将 DenserRadar 设为 A 模块最直接 related work 和必要对照。
-- 将 `RaLD-style-RAESum-matched` 列为最终几何主表的独立 baseline；不直接迁移官方 checkpoint，不阻塞或解锁 G2/G3。
+- 原建议将 `RaLD-style-RAESum-matched` 列为独立几何 baseline；该建议已被后续 AE-B1 no-go 否决，不再进入主表或训练 EDM，且始终不阻塞或解锁 G2/G3。
 - 将本报告作为 2026-07-02 竞品扫描的修订版，不删除旧文档，保留决策历史。
 
 ### G1 结束后

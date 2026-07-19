@@ -1,5 +1,11 @@
 # RaLD 代码审计与 K-Radar 适配决策
 
+> **执行后更新：**下述 matched 适配方案已经实现并通过官方规模结构验证，但
+> 单帧 AE 在原始门控和一次 hard-occupancy 有界修复后均未通过 Chamfer 门。
+> 因此本文件末尾的 `GO` 已由后续证据改判为训练链 `NO-GO`，不再训练 EDM，
+> 也不进入 K-Radar 定量主表。详见
+> [`rald_matched_baseline_decision_2026-07-19.md`](rald_matched_baseline_decision_2026-07-19.md)。
+
 > 日期：2026-07-19  
 > 上游仓库：[MetaIoT-WHU/RaLD](https://github.com/MetaIoT-WHU/RaLD)  
 > 审计 commit：`ffec4b41241391734b1eda5c093de843c909eb8e`，H200 上工作树干净  
@@ -110,12 +116,13 @@ overfit 成功，判定脚本为 `code/scripts/verify_rald_ae_overfit.py`。
 
 ```text
 Official RaLD checkpoint on K-Radar: NO-GO for the fair main baseline
-RaLD-style-RAESum-matched from scratch: GO after the active G1 decision
+RaLD-style-RAESum-matched from scratch: SUPERSEDED GO; final NO-GO after AE-B1
 CFAR helper: disabled in the main row; optional upper-bound row only
 Environment: new hym_rald, H200 only
 ```
 
-该基线不解锁 G2/G3，也不改变当前 G1 门槛。它是论文最终几何主表的独立 baseline 工作包。
+该基线不解锁 G2/G3，也不改变当前 G1 门槛。它原计划作为独立 baseline
+工作包，但后续 no-go 已终止其训练链和主表资格。
 
 ## 8. 实现状态
 
@@ -130,11 +137,13 @@ Environment: new hym_rald, H200 only
   frozen latent cache、radar-conditioned EDM 的完整训练链；cache 与训练器均
   绑定 manifest、split、normalization、checkpoint hash，并记录
   `external_pretraining=false`、`cfar_query_helper=false`。
-- 缩小配置与适配不变量在 H200 服务器环境完成 81 项全量单元测试。默认
+- 缩小配置与适配不变量在 H200 服务器环境最终完成 88 项全量单元测试。默认
   `512 x 32` latent、24-layer 配置的 CUDA verifier 也已通过：AE 为
   108,028,481 参数、峰值 1.16 GB；EDM 为 175,897,360 参数、336 个
   native-grid radar token、峰值 4.85 GB。零初始化 EDM 输出层首步梯度非零，
   第二步梯度可回传到 radar encoder。证据见
   `artifacts/baselines/rald/verifier_full_f9217bb.json`。
-- 一帧 overfit、AE/EDM no-go 尚未运行，以上 verifier 只能证明结构、梯度和
-  默认规模可执行，不能据此报告 RaLD-style 几何结果。
+- 原始一帧 AE overfit 和唯一允许的 hard-occupancy 修复均已运行。B1 的
+  outlier、F-score、confidence 和 loss-reduction 通过，但 Chamfer 为
+  `9.1444 m`，未达到 `<= 5.0 m`；因此 EDM 未运行，不能报告
+  RaLD-style 主表结果。

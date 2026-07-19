@@ -218,7 +218,7 @@ L = L_geo
 ### 5.2 必须包含的基线
 
 - CFAR 或数据集官方点云提取结果；
-- RaLD 风格 `radar spectrum -> dense XYZ` 重实现或官方实现；
+- RaLD 相关工作与 matched no-go 证据；官方 checkpoint 不做不公平迁移，matched AE 不继续 EDM 或进入定量主表；
 - SDDiff / RPDNet 等可获得的雷达稠密化基线；
 - 标量 Doppler 回归基线；
 - DoppDrive 式多帧聚合；
@@ -463,7 +463,7 @@ Cube cycle 必须在 Doppler 频谱匹配、PCE、几何或下游任务中至少
 
 ### 主表
 
-1. **Table 1**：与 CFAR、RaLD 类、SDDiff 类方法的几何和 Doppler 主结果。
+1. **Table 1**：与 CFAR 及通过独立可运行门控的 SDDiff/RPDNet 类方法比较几何和 Doppler；RaLD 仅在相关工作和 matched no-go 中说明。
 2. **Table 2**：Full-RAED、scalar/distribution Doppler head 与 cycle 的完整消融；E5 仅作失败分支记录。
 3. **Table 3**：时序扩展与 DoppDrive/ego-only/single-frame 对比。
 4. **Table 4**：下游任务、效率和泛化。
