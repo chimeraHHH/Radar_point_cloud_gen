@@ -25,13 +25,18 @@ instead of replacing it.
    latent tokens.
 5. A latent self-attention stack models global point-set context.
 6. Anchor queries cross-attend back to the latent set.
-7. The zero-initialized physical query head predicts bounded RAE offsets,
-   residual circular Doppler distributions over the local measured Cube
-   spectrum, and confidence.
+7. The zero-initialized physical query head first predicts bounded RAE offsets.
+   The Cube spectrum is then queried again at the final continuous position,
+   and the same RaLD query feature predicts a scalar or residual circular
+   Doppler distribution plus confidence. Geometry and velocity therefore refer
+   to the same generated point location.
 
-This hybrid borrows RaLD's radar-token hierarchy, mixed set-latent bottleneck,
-and implicit query decoder while retaining the current model's verified
-long-range geometry allocation.
+This hybrid borrows RaLD's radar-token hierarchy, static/dynamic mixed
+set-latent bottleneck, latent Transformer, and implicit query decoder while
+retaining the current model's verified long-range geometry allocation. These
+RaLD components are trainable and are not used only as labels or frozen
+features. The new physical head, final-position Cube query, confidence output,
+and differentiable point-to-RAED cycle are project-specific extensions.
 
 ## Gates
 
@@ -82,9 +87,38 @@ When original G1 fails, RH2 does not wait for or unlock the original G2/G3
 summary. It records that dependency as unavailable by protocol and remains an
 independent late-fusion comparison.
 
+RH2 uses `distribution + full-cycle` only to decide whether the complete RaLD
+late-fusion architecture is viable. Its checkpoint is not a G2R/G3R
+initialization because doing so would contaminate the no-cycle control.
+
+### G2R: RaLD physical-state representation
+
+Run only after G1B, RH1, and RH2 pass. Train matched `scalar` and
+`distribution` RaLD-anchor arms from the same per-seed random initialization,
+with cycle disabled. Freeze the geometry parent but train the Full-RAED token
+encoder, mixed latents, latent Transformer, query decoder, and physical head.
+Use three fixed seeds, 30 epochs, and a five-epoch physical-head warmup.
+
+The unlearned reference is the 64-bin Cube spectrum queried at each arm's final
+continuous point position. G2R requires a confident distribution-over-scalar
+NLL gain, a circular-W1 or CD-Doppler gain, at most 2% Chamfer degradation,
+anti-collapse checks, and at least one confident gain over the same-position
+direct Cube query. The rejected static-ego convention and its PCE gate are not
+reintroduced.
+
+### G3R: RaLD Cube-cycle contribution
+
+For each seed, fork `none`, `local_peak`, `marginal`, and `full` from the exact
+passing G2R distribution checkpoint. All four arms use the same 20-epoch
+budget, data order, optimizer, base losses, and trainable parameter set; only
+the cycle variant differs. The full arm must improve local spectrum KL and a
+second Doppler or geometry metric class while retaining geometry, confidence,
+coverage, calibration, and bounded offsets. Renderer tests and the complete
+clean/noisy/shifted/calibration robustness matrix are mandatory.
+
 ## Evidence boundary
 
 The hybrid does not reopen the failed independent RaLD AE or authorize its
 latent-cache/EDM chain. It also does not unlock the original G2/G3 chain after a
-failed G1. G1R/RH has its own RH1/RH2 gates and must be reported as a separate
-late-fusion recovery branch.
+failed G1. RH/G2R/G3R form a separately named late-fusion branch with their own
+source, checkpoint, data, and decision hashes.

@@ -1,5 +1,6 @@
 import torch
 
+from models.cube_doppler import query_cube_spectrum
 from models.cube_occupancy import CubeOccupancyNet
 from models.rald_anchor import (
     FrozenParentRaLDRefiner,
@@ -68,6 +69,65 @@ def test_refiner_initialization_preserves_parent_anchor_state() -> None:
     assert all(not parameter.requires_grad for parameter in model.parent.parameters())
     model.train()
     assert model.parent.training is False
+
+
+def test_scalar_doppler_head_produces_wrapped_unimodal_distribution() -> None:
+    parent = CubeOccupancyNet(
+        "rae_max", torch.linspace(-8.0, 8.0, 64), base_channels=4
+    )
+    model = FrozenParentRaLDRefiner(
+        parent,
+        torch.linspace(0.0, 120.0, 256),
+        torch.linspace(-1.0, 1.0, 107),
+        torch.linspace(-0.3, 0.3, 37),
+        point_count=11,
+        latent_count=8,
+        model_dim=32,
+        depth=1,
+        heads=4,
+        head_dim=8,
+        doppler_head_mode="scalar",
+    ).eval()
+    cube = torch.rand(1, 64, 8, 8, 8)
+
+    with torch.inference_mode():
+        output = model(cube)
+
+    assert output["doppler_scalar_bin"].shape == (1, 11)
+    assert torch.all(output["doppler_scalar_bin"] >= 0.0)
+    assert torch.all(output["doppler_scalar_bin"] < 64.0)
+    torch.testing.assert_close(
+        output["doppler_probability"].sum(dim=-1), torch.ones(1, 11)
+    )
+
+
+def test_distribution_head_queries_cube_at_final_continuous_position() -> None:
+    parent = CubeOccupancyNet(
+        "rae_max", torch.linspace(-8.0, 8.0, 64), base_channels=4
+    )
+    model = FrozenParentRaLDRefiner(
+        parent,
+        torch.linspace(0.0, 120.0, 256),
+        torch.linspace(-1.0, 1.0, 107),
+        torch.linspace(-0.3, 0.3, 37),
+        point_count=7,
+        latent_count=8,
+        model_dim=32,
+        depth=1,
+        heads=4,
+        head_dim=8,
+    ).eval()
+    model.refiner.physical_head.offset.bias.data.fill_(1.0)
+    cube = torch.rand(1, 64, 8, 8, 8)
+
+    with torch.inference_mode():
+        output = model(cube)
+        expected = query_cube_spectrum(cube, output["coordinates_rae"][0])
+
+    torch.testing.assert_close(output["point_cube_spectrum"][0], expected)
+    torch.testing.assert_close(
+        output["doppler_probability"], output["point_cube_spectrum"]
+    )
 
 
 def test_second_step_propagates_beyond_zero_initialized_physical_head() -> None:

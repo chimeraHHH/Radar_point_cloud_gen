@@ -10,7 +10,7 @@
 
 > **2026-07-19 G1 终局：**三种子有界恢复仍失败。RAE-Max 的 Chamfer 为 `2.9306 m`，但 outlier `25.697%` 略高于固定 `25%` 门；Full-RAED 相对 RAE-Max 的 Chamfer 恶化 `5.86%`，95% CI 为 `+0.78%` 到 `+14.69%`。原始 G1 与 G2/G3 正式关闭，C1 早融合主张否决。只继续独立 G1B 物理压缩频谱候选；若其三种子 Stage B 通过，才可作为新命名 RaLD-anchor late-fusion 分支的冻结几何父模型。
 
-> **2026-07-19 基线修订：**官方 RaLD checkpoint 因 ColoRadar 域、强度-only 条件和无逐点 Doppler/confidence 输出，不作为 K-Radar 主表公平基线。完整规模的 K-Radar matched 重实现通过了结构与梯度验证，但单帧 AE 在一次预注册 hard-occupancy 修复后仍未通过 Chamfer 门（`9.1444 m` vs `<=5.0 m`），因此该训练链 no-go，不继续 latent EDM；RaLD 仅保留为相关工作和隐式 occupancy 架构参考。
+> **2026-07-19 基线修订：**官方 RaLD checkpoint 因 ColoRadar 域、强度-only 条件和无逐点 Doppler/confidence 输出，不作为 K-Radar 主表公平基线。完整规模的 K-Radar matched 重实现通过了结构与梯度验证，但单帧 AE 在一次预注册 hard-occupancy 修复后仍未通过 Chamfer 门（`9.1444 m` vs `<=5.0 m`），因此独立 point-VAE/latent-EDM 训练链 no-go，不进入主表；RaLD 的 radar-token hierarchy、mixed set latents、latent Transformer 和 query decoder 转入后置 anchor-refinement 主线。
 
 > **2026-07-19 RaLD 主线借鉴修订：**matched baseline no-go 不等于放弃 RaLD。当前已实现并在 H200 通过 `RaLD-anchor-hybrid` RH0：完整 64-bin RAED 编码为 336 radar tokens，现有 occupancy top-10k 作为长量程 anchors，RaLD 的 512 mixed latents 与 query cross-attention 负责连续位置、Doppler distribution 和 confidence 精修。独立 point VAE 因长量程 Chamfer 门失败已关闭，避免机械复制短距 ColoRadar 配置。
 
@@ -131,7 +131,7 @@ v_hat_i = Σ_v v · q_i(v)
 
 模型同时预测 `confidence_i`，对多峰、弱反射和不可观测位置显式表达不确定性。优先使用速度分布 NLL 或交叉熵，而不是只做标量 L1 回归。
 
-### 3.4 模块 D：解析静态项与动态残差
+### 3.4 模块 D：解析静态项与动态残差（已关闭候选）
 
 静态背景满足：
 
@@ -146,7 +146,9 @@ v_plat(p) = v_ego + ω × (p + t_s)
 v_r = v_r^static + v_r^dynamic
 ```
 
-静态点由解析项约束，动态残差由 Doppler 频谱、目标运动和上下文学习。继续复用当前仓库的自门控静态损失、动态软约束和反事实 ego-speed 测试，但必须增加“全静态塌缩”监控。
+该分解依赖稳定的静态 Doppler 符号和自车运动约定。validation 审计未通过，
+因此当前 RH/G2R/G3R 不启用解析静态损失、static PCE 门或 ego-speed
+counterfactual；后续只有在独立标定协议通过后才能作为新候选重开。
 
 ### 3.5 模块 E：可微 point-to-Cube 重投影
 
@@ -191,8 +193,6 @@ L_temp = |Δrange - v_bar_r Δt|
 ```text
 L = L_geo
   + λ_spec L_doppler-spectrum
-  + λ_static L_static
-  + λ_dyn L_dynamic
   + λ_cycle L_cube-cycle
   + λ_temp L_temporal
 ```
@@ -349,6 +349,12 @@ RaLD-anchor RH 使用新的命名、父模型选择和证据链。
 `G2R`：在同一冻结 RaLD-anchor family 内比较 scalar、distribution 与 direct
 Cube spectrum query，不能复用未运行的原 G2 编号或结论。
 
+G2R 中 RaLD 不是冻结特征提取器：Full-RAED token encoder、static/dynamic mixed
+latents、latent Transformer 与 query decoder 全部参与优化。两个学习臂均关闭
+cycle，从相同种子初始化；先做 5 epoch physical-head warmup，再做 25 epoch joint
+training。direct query 必须在生成点最终连续 RAE 位置计算，避免位置不一致的伪
+对照。
+
 **任务**
 
 - 实现位置条件 Doppler spectrum query；
@@ -372,6 +378,10 @@ Cube spectrum query，不能复用未运行的原 G2 编号或结论。
 
 原 G3 队列未获授权。若 `G2R` 通过，则以同一冻结 family 建立 `G3R`，重新运行
 no-cycle、local-peak、marginal 与 full-cycle 消融，并保留原 anti-collapse 门槛。
+
+四个 G3R 臂必须从每个种子对应的 G2R distribution `best.pt` 同时分叉，禁止从
+已经接受 full-cycle 训练的 RH2 checkpoint 初始化。每臂固定 20 epoch，唯一允许
+变化的训练配置是 cycle variant。
 
 **任务**
 

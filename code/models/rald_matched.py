@@ -414,14 +414,21 @@ class FullRAEDRadarTokenEncoder(nn.Module):
 class RaLDPhysicalQueryHead(nn.Module):
     """Extend RaLD query features with Cube-supported point physics."""
 
+    DOPPLER_HEAD_MODES = ("scalar", "distribution")
+    MAXIMUM_SCALAR_RESIDUAL_BINS = 8.0
+
     def __init__(
         self,
         query_dim: int = 512,
         spectrum_bins: int = 64,
         hidden_dim: int = 512,
+        doppler_head_mode: str = "distribution",
     ) -> None:
         super().__init__()
+        if doppler_head_mode not in self.DOPPLER_HEAD_MODES:
+            raise ValueError(f"Unsupported RaLD Doppler head {doppler_head_mode}")
         self.spectrum_bins = spectrum_bins
+        self.doppler_head_mode = doppler_head_mode
         self.spectrum_projection = nn.Linear(spectrum_bins, query_dim)
         self.fusion = nn.Sequential(
             nn.LayerNorm(query_dim * 2),
@@ -429,17 +436,19 @@ class RaLDPhysicalQueryHead(nn.Module):
             nn.SiLU(),
         )
         self.offset = nn.Linear(hidden_dim, 3)
-        self.doppler_residual = nn.Linear(hidden_dim, spectrum_bins)
+        self.doppler_residual = nn.Linear(
+            hidden_dim, 1 if doppler_head_mode == "scalar" else spectrum_bins
+        )
         self.confidence = nn.Linear(hidden_dim, 1)
         for layer in (self.offset, self.doppler_residual, self.confidence):
             nn.init.zeros_(layer.weight)
             nn.init.zeros_(layer.bias)
 
-    def forward(
+    def normalized_spectrum(
         self,
         query_features: torch.Tensor,
         local_cube_spectrum: torch.Tensor,
-    ) -> dict[str, torch.Tensor]:
+    ) -> torch.Tensor:
         if query_features.ndim != 3:
             raise ValueError(
                 f"Expected query features (B,N,C), got {query_features.shape}"
@@ -453,17 +462,73 @@ class RaLDPhysicalQueryHead(nn.Module):
                 "Local Cube spectrum shape must match query batch and point count"
             )
         spectrum = local_cube_spectrum.to(query_features).clamp_min(0.0)
-        spectrum = spectrum / spectrum.sum(dim=-1, keepdim=True).clamp_min(1e-8)
-        fused = self.fusion(
+        return spectrum / spectrum.sum(dim=-1, keepdim=True).clamp_min(1e-8)
+
+    def fused_features(
+        self, query_features: torch.Tensor, spectrum: torch.Tensor
+    ) -> torch.Tensor:
+        return self.fusion(
             torch.cat((query_features, self.spectrum_projection(spectrum)), dim=-1)
         )
-        doppler_logits = spectrum.clamp_min(1e-8).log()
-        doppler_logits = doppler_logits + self.doppler_residual(fused)
+
+    def attributes_from_fused(
+        self, fused: torch.Tensor, spectrum: torch.Tensor
+    ) -> dict[str, torch.Tensor]:
+        """Predict physical attributes from features tied to one Cube query."""
+
+        if self.doppler_head_mode == "scalar":
+            bins = torch.arange(
+                self.spectrum_bins, device=spectrum.device, dtype=spectrum.dtype
+            )
+            phase = bins * (2.0 * math.pi / self.spectrum_bins)
+            sine = (spectrum * phase.sin()).sum(dim=-1)
+            cosine = (spectrum * phase.cos()).sum(dim=-1)
+            scalar_bin = torch.remainder(
+                torch.atan2(sine, cosine) * (self.spectrum_bins / (2.0 * math.pi)),
+                self.spectrum_bins,
+            )
+            scalar_bin = torch.remainder(
+                scalar_bin
+                + self.MAXIMUM_SCALAR_RESIDUAL_BINS
+                * torch.tanh(self.doppler_residual(fused).squeeze(-1)),
+                self.spectrum_bins,
+            )
+            delta = torch.remainder(
+                bins[None, None] - scalar_bin[..., None] + self.spectrum_bins / 2,
+                self.spectrum_bins,
+            ) - self.spectrum_bins / 2
+            doppler_logits = -0.5 * delta.square()
+        else:
+            scalar_bin = None
+            doppler_logits = spectrum.clamp_min(1e-8).log()
+            doppler_logits = doppler_logits + self.doppler_residual(fused)
+        probability = torch.softmax(doppler_logits, dim=-1)
+        return {
+            "doppler_logits": doppler_logits,
+            "doppler_probability": probability,
+            "confidence_logit": self.confidence(fused).squeeze(-1),
+            **({} if scalar_bin is None else {"doppler_scalar_bin": scalar_bin}),
+        }
+
+    def physical_attributes(
+        self,
+        query_features: torch.Tensor,
+        local_cube_spectrum: torch.Tensor,
+    ) -> dict[str, torch.Tensor]:
+        spectrum = self.normalized_spectrum(query_features, local_cube_spectrum)
+        fused = self.fused_features(query_features, spectrum)
+        return self.attributes_from_fused(fused, spectrum)
+
+    def forward(
+        self,
+        query_features: torch.Tensor,
+        local_cube_spectrum: torch.Tensor,
+    ) -> dict[str, torch.Tensor]:
+        spectrum = self.normalized_spectrum(query_features, local_cube_spectrum)
+        fused = self.fused_features(query_features, spectrum)
         return {
             "offset_bins": 0.5 * torch.tanh(self.offset(fused)),
-            "doppler_logits": doppler_logits,
-            "doppler_probability": torch.softmax(doppler_logits, dim=-1),
-            "confidence_logit": self.confidence(fused).squeeze(-1),
+            **self.attributes_from_fused(fused, spectrum),
         }
 
 
@@ -480,6 +545,7 @@ class RaLDAnchorLatentRefiner(nn.Module):
         head_dim: int = 64,
         spectrum_bins: int = 64,
         radar_token_dim: int | None = None,
+        doppler_head_mode: str = "distribution",
     ) -> None:
         super().__init__()
         self.latent_count = latent_count
@@ -518,6 +584,7 @@ class RaLDAnchorLatentRefiner(nn.Module):
             query_dim=model_dim,
             spectrum_bins=spectrum_bins,
             hidden_dim=model_dim,
+            doppler_head_mode=doppler_head_mode,
         )
 
     def encode_anchors(

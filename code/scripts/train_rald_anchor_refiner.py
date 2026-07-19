@@ -23,6 +23,7 @@ from eval.cube_cycle import aggregate_cycle_reports, cube_cycle_report  # noqa: 
 from eval.dense_geometry import aggregate_geometry_reports, geometry_report  # noqa: E402
 from eval.doppler_distribution import (  # noqa: E402
     aggregate_doppler_reports,
+    cd_doppler_report,
     doppler_distribution_report,
 )
 from losses.cube_cycle import existence_confidence_loss  # noqa: E402
@@ -30,6 +31,7 @@ from losses.rald_anchor import (  # noqa: E402
     anchor_refinement_loss,
     nearest_target_assignment,
 )
+from losses.doppler_distribution import circular_scalar_target  # noqa: E402
 from models.cube_doppler import query_cube_spectrum  # noqa: E402
 from models.cube_occupancy import CubeOccupancyNet, parameter_count  # noqa: E402
 from models.point_to_cube import soft_splat_raed  # noqa: E402
@@ -46,6 +48,7 @@ from scripts.train_cube_doppler import move_frame, selected_indices, sha256  # n
 class TrainConfig:
     parent_mode: str
     parent_route: str
+    doppler_head_mode: str
     epochs: int
     learning_rate: float
     weight_decay: float
@@ -69,6 +72,9 @@ class TrainConfig:
     head_dim: int
     radar_base_channels: int
     radar_spectral_channels: int
+    physical_head_warmup_epochs: int
+    initial_refiner_run: str | None
+    initial_refiner_source_commit: str | None
 
 
 def gradient_norm(parameters) -> float:
@@ -101,6 +107,19 @@ def gradient_audit(model: FrozenParentRaLDRefiner) -> dict[str, float]:
     }
 
 
+def set_refinement_training_phase(
+    model: FrozenParentRaLDRefiner, *, physical_head_only: bool
+) -> None:
+    physical_ids = {
+        id(parameter) for parameter in model.refiner.physical_head.parameters()
+    }
+    for parameter in model.refiner.parameters():
+        parameter.requires_grad_(not physical_head_only or id(parameter) in physical_ids)
+    if model.radar_encoder is not None:
+        for parameter in model.radar_encoder.parameters():
+            parameter.requires_grad_(not physical_head_only)
+
+
 def matched_spectrum(
     cube: torch.Tensor,
     source_xyz: torch.Tensor,
@@ -123,7 +142,11 @@ def evaluate(
     parent_geometry = []
     refined_geometry = []
     direct_doppler = []
+    refined_cube_query_doppler = []
     refined_doppler = []
+    direct_cd_doppler = []
+    refined_cube_query_cd_doppler = []
+    refined_cd_doppler = []
     cycle_reports = []
     frames = []
     for index in frame_indices:
@@ -148,6 +171,7 @@ def evaluate(
         refined_target = matched_spectrum(
             cube, generated_xyz, target_xyz, target_index
         )
+        refined_cube_probability = output["point_cube_spectrum"][0].float()
         direct_report = doppler_distribution_report(
             output["anchor_cube_spectrum"][0].float(),
             direct_target,
@@ -182,6 +206,79 @@ def evaluate(
             ),
             confidence=output["anchor_parent_confidence"][0].float(),
         )
+        refined_cube_query_report = doppler_distribution_report(
+            refined_cube_probability,
+            refined_target,
+            torch.as_tensor(axes.doppler_mps, device=device, dtype=torch.float32),
+            torch.as_tensor(axes.doppler_mps[0], device=device, dtype=torch.float32),
+            torch.as_tensor(
+                np.median(np.diff(axes.doppler_mps)) * len(axes.doppler_mps),
+                device=device,
+                dtype=torch.float32,
+            ),
+            torch.as_tensor(
+                np.median(np.diff(axes.doppler_mps)),
+                device=device,
+                dtype=torch.float32,
+            ),
+            confidence=output["anchor_parent_confidence"][0].float(),
+        )
+        doppler_axis = torch.as_tensor(
+            axes.doppler_mps, device=device, dtype=torch.float32
+        )
+        doppler_lower = torch.as_tensor(
+            axes.doppler_mps[0], device=device, dtype=torch.float32
+        )
+        doppler_period = torch.as_tensor(
+            np.median(np.diff(axes.doppler_mps)) * len(axes.doppler_mps),
+            device=device,
+            dtype=torch.float32,
+        )
+        target_velocity = circular_scalar_target(
+            query_cube_spectrum(cube, target_index),
+            doppler_axis,
+            doppler_lower,
+            doppler_period,
+        )
+        direct_velocity = circular_scalar_target(
+            output["anchor_cube_spectrum"][0].float(),
+            doppler_axis,
+            doppler_lower,
+            doppler_period,
+        )
+        refined_cube_query_velocity = circular_scalar_target(
+            refined_cube_probability,
+            doppler_axis,
+            doppler_lower,
+            doppler_period,
+        )
+        refined_velocity = circular_scalar_target(
+            output["doppler_probability"][0].float(),
+            doppler_axis,
+            doppler_lower,
+            doppler_period,
+        )
+        direct_cd_report = cd_doppler_report(
+            parent_xyz,
+            direct_velocity,
+            target_xyz,
+            target_velocity,
+            target_weight=target[:, 3],
+        )
+        refined_cube_query_cd_report = cd_doppler_report(
+            generated_xyz,
+            refined_cube_query_velocity,
+            target_xyz,
+            target_velocity,
+            target_weight=target[:, 3],
+        )
+        refined_cd_report = cd_doppler_report(
+            generated_xyz,
+            refined_velocity,
+            target_xyz,
+            target_velocity,
+            target_weight=target[:, 3],
+        )
         prediction_distance, _ = nearest_target_assignment(
             generated_xyz, target_xyz
         )
@@ -207,7 +304,11 @@ def evaluate(
         parent_geometry.append(parent_report)
         refined_geometry.append(refined_report)
         direct_doppler.append(direct_report)
+        refined_cube_query_doppler.append(refined_cube_query_report)
         refined_doppler.append(refined_report_doppler)
+        direct_cd_doppler.append(direct_cd_report)
+        refined_cube_query_cd_doppler.append(refined_cube_query_cd_report)
+        refined_cd_doppler.append(refined_cd_report)
         cycle_reports.append(cycle)
         frames.append(
             {
@@ -216,7 +317,11 @@ def evaluate(
                 "parent_geometry": parent_report,
                 "refined_geometry": refined_report,
                 "direct_cube_doppler": direct_report,
+                "refined_cube_query_doppler": refined_cube_query_report,
                 "refined_doppler": refined_report_doppler,
+                "direct_cube_cd_doppler": direct_cd_report,
+                "refined_cube_query_cd_doppler": refined_cube_query_cd_report,
+                "refined_cd_doppler": refined_cd_report,
                 "cycle": cycle,
             }
         )
@@ -227,7 +332,15 @@ def evaluate(
         "parent_geometry": aggregate_geometry_reports(parent_geometry),
         "refined_geometry": aggregate_geometry_reports(refined_geometry),
         "direct_cube_doppler": aggregate_doppler_reports(direct_doppler),
+        "refined_cube_query_doppler": aggregate_doppler_reports(
+            refined_cube_query_doppler
+        ),
         "refined_doppler": aggregate_doppler_reports(refined_doppler),
+        "direct_cube_cd_doppler": aggregate_doppler_reports(direct_cd_doppler),
+        "refined_cube_query_cd_doppler": aggregate_doppler_reports(
+            refined_cube_query_cd_doppler
+        ),
+        "refined_cd_doppler": aggregate_doppler_reports(refined_cd_doppler),
         "refined_cycle": aggregate_cycle_reports(cycle_reports),
         "frames": frames,
     }
@@ -344,13 +457,20 @@ def main() -> None:
     parser.add_argument("--weight-decay", type=float, default=1e-4)
     parser.add_argument("--seed", type=int, default=20260716)
     parser.add_argument("--point-count", type=int, default=10_000)
+    parser.add_argument(
+        "--doppler-head-mode",
+        choices=("scalar", "distribution"),
+        default="distribution",
+    )
     parser.add_argument("--geometry-weight", type=float, default=1.0)
     parser.add_argument("--doppler-weight", type=float, default=1.0)
     parser.add_argument("--existence-weight", type=float, default=0.1)
     parser.add_argument("--cycle-weight", type=float, default=0.1)
     parser.add_argument("--offset-weight", type=float, default=0.01)
     parser.add_argument(
-        "--cycle-variant", choices=("local_peak", "marginal", "full"), default="full"
+        "--cycle-variant",
+        choices=("none", "local_peak", "marginal", "full"),
+        default="full",
     )
     parser.add_argument("--eval-every", type=int, default=5)
     parser.add_argument("--max-eval-frames", type=int, default=8)
@@ -364,11 +484,22 @@ def main() -> None:
     parser.add_argument("--head-dim", type=int, default=64)
     parser.add_argument("--radar-base-channels", type=int, default=64)
     parser.add_argument("--radar-spectral-channels", type=int, default=16)
+    parser.add_argument("--physical-head-warmup-epochs", type=int, default=0)
+    parser.add_argument("--initial-refiner-run", type=Path, default=None)
+    parser.add_argument("--initial-refiner-source-commit", default=None)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
+    if (args.initial_refiner_run is None) != (
+        args.initial_refiner_source_commit is None
+    ):
+        raise ValueError(
+            "Initial RaLD run and its source commit must be supplied together"
+        )
+    if not 0 <= args.physical_head_warmup_epochs < args.epochs:
+        raise ValueError("Physical-head warmup must be in [0, epochs)")
 
     if not torch.cuda.is_available() or not args.device.startswith("cuda"):
         raise RuntimeError("RaLD anchor refinement requires CUDA")
@@ -440,6 +571,7 @@ def main() -> None:
     config = TrainConfig(
         parent_mode=selected_parent_mode,
         parent_route=selected_parent_route,
+        doppler_head_mode=args.doppler_head_mode,
         epochs=args.epochs,
         learning_rate=args.learning_rate,
         weight_decay=args.weight_decay,
@@ -463,6 +595,11 @@ def main() -> None:
         head_dim=args.head_dim,
         radar_base_channels=args.radar_base_channels,
         radar_spectral_channels=args.radar_spectral_channels,
+        physical_head_warmup_epochs=args.physical_head_warmup_epochs,
+        initial_refiner_run=(
+            None if args.initial_refiner_run is None else str(args.initial_refiner_run)
+        ),
+        initial_refiner_source_commit=args.initial_refiner_source_commit,
     )
     random.seed(config.seed)
     np.random.seed(config.seed)
@@ -512,7 +649,54 @@ def main() -> None:
         head_dim=config.head_dim,
         radar_encoder=radar_encoder,
         radar_token_dim=config.model_dim,
+        doppler_head_mode=config.doppler_head_mode,
     ).to(device)
+    initial_refiner_checkpoint = None
+    initial_refiner_config = None
+    if args.initial_refiner_run is not None:
+        initial_refiner_config_path = args.initial_refiner_run / "config.json"
+        initial_refiner_checkpoint_path = args.initial_refiner_run / "best.pt"
+        if (
+            not initial_refiner_config_path.is_file()
+            or not initial_refiner_checkpoint_path.is_file()
+        ):
+            raise FileNotFoundError("Initial RaLD refiner run is incomplete")
+        initial_refiner_config = json.loads(
+            initial_refiner_config_path.read_text(encoding="utf-8")
+        )
+        initial_config = initial_refiner_config["config"]
+        initial_provenance = initial_refiner_config["provenance"]
+        if initial_provenance["git_commit"] != args.initial_refiner_source_commit:
+            raise ValueError("Initial RaLD refiner source commit differs")
+        if initial_config["seed"] != config.seed:
+            raise ValueError("Initial RaLD refiner seed differs")
+        if initial_config["parent_mode"] != config.parent_mode:
+            raise ValueError("Initial RaLD refiner parent mode differs")
+        if initial_config["parent_route"] != config.parent_route:
+            raise ValueError("Initial RaLD refiner parent route differs")
+        if initial_config["doppler_head_mode"] != config.doppler_head_mode:
+            raise ValueError("Initial RaLD Doppler head differs")
+        if initial_config["cycle_variant"] != "none":
+            raise ValueError("Initial RaLD refiner must be cycle-free")
+        if initial_config.get("initial_refiner_run") is not None:
+            raise ValueError("Initial RaLD refiner cannot itself be warm-started")
+        if (
+            initial_provenance["parent_g1_checkpoint_sha256"]
+            != sha256(parent_path)
+        ):
+            raise ValueError("Initial RaLD refiner used a different geometry parent")
+        if any(
+            initial_provenance[key] != value
+            for key, value in artifact_hashes.items()
+        ):
+            raise ValueError("Initial RaLD refiner used different data artifacts")
+        initial_refiner_checkpoint = torch.load(
+            initial_refiner_checkpoint_path, map_location=device, weights_only=False
+        )
+        model.refiner.load_state_dict(initial_refiner_checkpoint["refiner"], strict=True)
+        model.radar_encoder.load_state_dict(
+            initial_refiner_checkpoint["radar_encoder"], strict=True
+        )
     optimizer = torch.optim.AdamW(
         model.refinement_parameters(),
         lr=config.learning_rate,
@@ -553,6 +737,27 @@ def main() -> None:
         "parent_parameter_count": parameter_count(parent),
         "refiner_parameter_count": parameter_count(model.refiner),
         "radar_encoder_parameter_count": parameter_count(model.radar_encoder),
+        "initial_refiner_config": (
+            None
+            if args.initial_refiner_run is None
+            else str(args.initial_refiner_run / "config.json")
+        ),
+        "initial_refiner_config_sha256": (
+            None
+            if args.initial_refiner_run is None
+            else sha256(args.initial_refiner_run / "config.json")
+        ),
+        "initial_refiner_checkpoint": (
+            None
+            if args.initial_refiner_run is None
+            else str(args.initial_refiner_run / "best.pt")
+        ),
+        "initial_refiner_checkpoint_sha256": (
+            None
+            if args.initial_refiner_run is None
+            else sha256(args.initial_refiner_run / "best.pt")
+        ),
+        "initial_refiner_source_commit": args.initial_refiner_source_commit,
         "device": torch.cuda.get_device_name(device),
         "torch_version": torch.__version__,
     }
@@ -626,6 +831,10 @@ def main() -> None:
     log_path = args.output / "train_log.jsonl"
     optimization_step = max(0, start_epoch - 1) * len(train_indices)
     for epoch in range(start_epoch, config.epochs + 1):
+        physical_head_only = epoch <= config.physical_head_warmup_epochs
+        set_refinement_training_phase(
+            model, physical_head_only=physical_head_only
+        )
         model.train()
         order = train_indices.copy()
         random.Random(config.seed + epoch).shuffle(order)
@@ -674,6 +883,9 @@ def main() -> None:
                 name: float(np.mean(values)) for name, values in component_values.items()
             },
             "learning_rate": optimizer.param_groups[0]["lr"],
+            "training_phase": (
+                "physical_head_warmup" if physical_head_only else "joint"
+            ),
             "gradient_steps": gradient_steps,
             "elapsed_seconds": round(prior_elapsed + time.monotonic() - started, 3),
         }

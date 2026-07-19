@@ -102,6 +102,7 @@ class FrozenParentRaLDRefiner(nn.Module):
         head_dim: int = 64,
         radar_encoder: nn.Module | None = None,
         radar_token_dim: int | None = None,
+        doppler_head_mode: str = "distribution",
     ) -> None:
         super().__init__()
         if range_m.shape != (256,):
@@ -125,6 +126,7 @@ class FrozenParentRaLDRefiner(nn.Module):
             head_dim=head_dim,
             spectrum_bins=64,
             radar_token_dim=radar_token_dim,
+            doppler_head_mode=doppler_head_mode,
         )
         self.register_buffer("range_m", range_m.float(), persistent=True)
         self.register_buffer("azimuth_rad", azimuth_rad.float(), persistent=True)
@@ -158,6 +160,22 @@ class FrozenParentRaLDRefiner(nn.Module):
         coordinates = anchors.indices_rae.to(refined["offset_bins"])
         coordinates = coordinates + refined["offset_bins"]
         batch_size, point_count, _ = coordinates.shape
+        batch_index = torch.arange(batch_size, device=coordinates.device)
+        batch_index = batch_index[:, None].expand(-1, point_count)
+        final_query = torch.cat(
+            (
+                batch_index.reshape(-1, 1).to(coordinates),
+                coordinates.reshape(-1, 3),
+            ),
+            dim=1,
+        )
+        point_cube_spectrum = query_cube_spectrum(cube_drae, final_query)
+        point_cube_spectrum = point_cube_spectrum.reshape(batch_size, point_count, 64)
+        refined.update(
+            self.refiner.physical_head.physical_attributes(
+                refined["query_features"], point_cube_spectrum
+            )
+        )
         xyz = continuous_rae_to_xyz(
             coordinates.reshape(-1, 3),
             self.range_m,
@@ -186,6 +204,7 @@ class FrozenParentRaLDRefiner(nn.Module):
             "anchor_parent_logits": anchors.parent_logits,
             "anchor_parent_confidence": anchors.parent_confidence,
             "anchor_cube_spectrum": anchors.local_cube_spectrum,
+            "point_cube_spectrum": point_cube_spectrum,
             "radar_token_count": coordinates.new_tensor(
                 0 if radar_tokens is None else radar_tokens.shape[1], dtype=torch.long
             ),
