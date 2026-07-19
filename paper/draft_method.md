@@ -70,11 +70,13 @@ anchor tokens:
 a_i = Fourier(u_i) + W_f f_i.
 ```
 
-Static and input-dependent latent queries cross-attend to the complete anchor
-set, followed by latent self-attention:
+The complete RAED Cube is encoded by the RaLD radar hierarchy into 336 spatial
+condition tokens `R`; unlike upstream RaLD, all 64 Doppler bins participate.
+Static and input-dependent latent queries cross-attend to both the complete
+anchor set and `R`, followed by latent self-attention:
 
 ```text
-z_dyn = z_dyn^0 + CrossAttn(z_dyn^0, {a_i}),
+z_dyn = z_dyn^0 + CrossAttn(z_dyn^0, {a_i}) + CrossAttn(z_dyn^0, R),
 Z = Transformer(W_z(z_static + z_dyn)).
 ```
 
@@ -86,13 +88,12 @@ a residual 64-bin Doppler distribution over the local measured Cube spectrum:
 q_i = Softmax(log(q_cube_i + eps) + Delta l_i).
 ```
 
-Thus the initial hybrid exactly preserves anchor positions and measured Doppler,
-while learning global point-set corrections. The complete RAED Cube is also
-encoded with the RaLD radar-token hierarchy into 336 spatial condition tokens;
-unlike upstream RaLD, all 64 Doppler bins participate. The independent RaLD
-point VAE was rejected by the K-Radar long-range Chamfer gate, so this anchor
-hybrid is evaluated as a separately gated candidate and cannot be treated as an
-established contribution before RH1/RH2 pass.
+Thus the initial hybrid exactly preserves anchor positions, parent confidence,
+and measured Doppler while learning globally radar-conditioned point-set
+corrections. The independent RaLD point VAE was rejected by the K-Radar
+long-range Chamfer gate, so this anchor hybrid is evaluated as a separately
+gated candidate and cannot be treated as an established contribution before
+RH1/RH2 pass.
 
 ## 4. Point-Conditioned Doppler Prediction
 
