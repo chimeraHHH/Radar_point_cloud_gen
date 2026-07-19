@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "generated_utc": "2026-07-19T07:47:24.190018+00:00",
+  "source_commit": "f9217bb3bcd10a5fcec4504fee9aca91a8bccd4b",
+  "device": "NVIDIA H200 NVL",
+  "small": false,
+  "autoencoder": {
+    "parameters": 108028481,
+    "posterior_shape": [
+      1,
+      512,
+      32
+    ],
+    "query_logit_shape": [
+      1,
+      2048
+    ],
+    "loss": 0.009102264419198036,
+    "gradient_norm": 3.279975175857544,
+    "peak_cuda_memory_bytes": 1159914496
+  },
+  "edm": {
+    "parameters": 175897360,
+    "radar_token_shape": [
+      1,
+      336,
+      512
+    ],
+    "denoised_shape": [
+      1,
+      512,
+      32
+    ],
+    "first_loss": 0.9929510354995728,
+    "second_loss": 0.9899385571479797,
+    "first_step_output_gradient_norm": 0.3712616562843323,
+    "second_step_radar_gradient_norm": 1.8965210983878933e-05,
+    "peak_cuda_memory_bytes": 4849344512
+  },
+  "checks": {
+    "h200_identity": true,
+    "ae_shape": true,
+    "ae_gradient_finite_nonzero": true,
+    "radar_token_shape": true,
+    "edm_shape": true,
+    "zero_output_receives_gradient": true,
+    "radar_condition_receives_second_step_gradient": true
+  },
+  "passed": true
+}

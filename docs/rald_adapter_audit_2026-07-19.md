@@ -125,6 +125,11 @@ Environment: new hym_rald, H200 only
   frozen latent cache、radar-conditioned EDM 的完整训练链；cache 与训练器均
   绑定 manifest、split、normalization、checkpoint hash，并记录
   `external_pretraining=false`、`cfar_query_helper=false`。
-- 缩小配置与适配不变量在 H200 服务器环境完成 81 项全量单元测试。正式默认
-  规模的显存 verifier、一帧 overfit、AE/EDM no-go 尚未运行，不能据此报告
-  RaLD-style 几何结果。
+- 缩小配置与适配不变量在 H200 服务器环境完成 81 项全量单元测试。默认
+  `512 x 32` latent、24-layer 配置的 CUDA verifier 也已通过：AE 为
+  108,028,481 参数、峰值 1.16 GB；EDM 为 175,897,360 参数、336 个
+  native-grid radar token、峰值 4.85 GB。零初始化 EDM 输出层首步梯度非零，
+  第二步梯度可回传到 radar encoder。证据见
+  `artifacts/baselines/rald/verifier_full_f9217bb.json`。
+- 一帧 overfit、AE/EDM no-go 尚未运行，以上 verifier 只能证明结构、梯度和
+  默认规模可执行，不能据此报告 RaLD-style 几何结果。
