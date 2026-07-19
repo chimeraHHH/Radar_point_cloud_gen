@@ -1,6 +1,6 @@
 # Claim-Evidence Ledger
 
-> Updated: 2026-07-19 17:03 CST
+> Updated: 2026-07-19 17:33 CST
 > Rule: a claim is paper-eligible only when its frozen gate is complete and the authoritative artifact is recorded here.
 
 ## Claim Matrix
@@ -14,7 +14,7 @@
 | C4 | A warped historical prediction improves temporal consistency while the current Cube refreshes geometry and Doppler. | T0/T3/T4-T6, current-frame accuracy, radial error, flicker, refresh, 25-step rollout, three seeds. | Manifest 10/10; 2,160-frame data download has completed 12/45 sequences and is actively writing sequences 18/21. H200 temporal-prior verifier passes after final-position query alignment. | Pending | “We study a current-observation temporal extension.” |
 | C5 | The frozen model improves object radial-velocity estimation and generalizes across operating slices. | G4 family frozen; untouched P5 test, downstream report, scene-first uncertainty, slices. | Test manifest intentionally absent. | Pending | No result claim. |
 | C6 | The system has practical H200 latency and memory. | Matched CUDA benchmark on frozen models and fixed point count. | Queue implemented, not released. | Pending | No efficiency claim. |
-| C7 | RaLD mixed set latents improve anchor-level geometry and physical attributes without losing long-range coverage. | RH1 one-frame gradient/anti-collapse gate, then RH2 development comparison against the frozen occupancy parent. | RH0 passed on H200: 10k anchors -> `512 x 512` latents -> 10k outputs, 28.7M parameters and 1.35 GB peak memory. No trained comparison exists. | Pending | “We implement a RaLD-inspired anchor-latent refinement candidate.” |
+| C7 | RaLD mixed set latents improve anchor-level geometry and physical attributes without losing long-range coverage. | RH1 one-frame gradient/anti-collapse gate, then RH2 development comparison against the frozen occupancy parent. | RH0 passed on H200. The implemented candidate now connects all 64 Cube Doppler bins through 336 RaLD radar tokens and 10k anchors into 512 mixed latents; the frozen parent is excluded from gradients. H200 repository suite: 104/104. RH0.5/RH1/RH2 are queued but no trained comparison exists. | Pending | “We implement a Full-RAED-conditioned RaLD anchor-latent refinement candidate.” |
 
 ## Rejected or Restricted Claims
 
@@ -39,7 +39,7 @@
 | G4 data | `artifacts/g4/g4_temporal_manifest_a7d06db1.json`; download summary | Manifest passed; download pending |
 | G4 | Server: `formal_206ffeb_g4/g4_queue_summary_206ffeba.json`; queue log `launch_logs/206ffeb/g4_gate.log` | Hard-gated on G2/G3 summary and 45/45 verified sequences; no training started |
 | P5 | Server: `launch_logs/206ffeb/p5_queue.log` and `p5_download_gate.log`; both wait for `formal_206ffeb_g4/g4_queue_summary_206ffeba.json` | Test locked until G4 family freeze |
-| RaLD hybrid | `artifacts/baselines/rald/anchor_hybrid_rh0_a1c862a.json`; protocol `docs/rald_anchor_hybrid_protocol.md` | RH0 passed; RH1/RH2 locked on the frozen geometry parent |
+| RaLD hybrid | `artifacts/baselines/rald/anchor_hybrid_rh0_a1c862a.json`; `artifacts/baselines/rald/anchor_hybrid_training_chain_2468acd.json`; protocol `docs/rald_anchor_hybrid_protocol.md` | RH0 passed; full radar-token/anchor training chain verified; RH0.5/RH1/RH2 remain result-pending behind formal gates |
 
 ## Figure and Table Evidence Contracts
 

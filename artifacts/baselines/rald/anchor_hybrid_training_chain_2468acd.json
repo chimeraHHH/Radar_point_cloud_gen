@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-07-19",
+  "source_commit": "2468acdcffd89d250503618849b6334066d10764",
+  "status": "implementation_verified_scientific_gates_pending",
+  "architecture": {
+    "geometry_parent": "frozen Full-RAED frustum occupancy top-10000 anchors",
+    "radar_condition": "all 64 Doppler bins encoded as 336 RaLD spatial tokens",
+    "set_model": "512 static/dynamic mixed latents with anchor and radar cross-attention",
+    "query_output": [
+      "bounded continuous RAE offset",
+      "64-bin local-Cube residual Doppler distribution",
+      "parent-confidence residual"
+    ]
+  },
+  "h200_test": {
+    "device_policy": "physical H200 indices 0/2 only",
+    "test_count": 104,
+    "passed": 104,
+    "failed": 0,
+    "elapsed_seconds": 2.13
+  },
+  "server_queues": {
+    "rh1": {
+      "source_commit": "deaddd147e5b4f5094733d0597df8d0fadbe256d",
+      "run_root": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_deaddd1_rald_anchor",
+      "summary": "rh1_queue_summary_deaddd14.json",
+      "status": "waiting_for_formal_g1"
+    },
+    "rh2": {
+      "source_commit": "2468acdcffd89d250503618849b6334066d10764",
+      "run_root": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_2468acd_rald_anchor_rh2",
+      "summary": "rh2_queue_summary_2468acdc.json",
+      "status": "waiting_for_rh1_and_core_g2_g3"
+    }
+  },
+  "evidence_boundary": {
+    "native_rh05_passed": false,
+    "rh1_passed": false,
+    "rh2_passed": false,
+    "paper_gain_claim_allowed": false
+  }
+}

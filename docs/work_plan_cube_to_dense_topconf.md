@@ -541,6 +541,7 @@ Full-RAED Cube Encoder
 - [x] 定义 radar-observable LiDAR target 和 confidence mask。
 - [x] 建立 `RAE-Max -> dense XYZ` 最小基线。
 - [x] 实现 Full-RAED Encoder，并启动 E1/E2 三种子正式对照。
+- [x] 将 RaLD Full-RAED radar tokens、mixed set latents 与 occupancy anchors 接成可训练 RH 链，并建立 RH0.5/RH1/RH2 硬门控队列。
 - [ ] 关闭 G1 comparison，并按冻结结果释放或终止 G2/G3。
 - [ ] 完成 G4 45/45 序列下载、CRC、时序训练与 family freeze。
 - [ ] 释放 P5 test 并完成 P6 论文证据包。
