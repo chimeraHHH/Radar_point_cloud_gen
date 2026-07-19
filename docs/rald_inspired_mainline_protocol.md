@@ -67,6 +67,19 @@ allowed with occupied-voxel jitter and the official 625/9,375 positive/negative
 query ratio. All other R1 settings and thresholds remain frozen. If this run
 fails, R2 remains locked.
 
+`R1-fidelity` also failed only Chamfer (`10.9985 m`) and exposed the expected
+short-range-domain mismatch: the upstream `0.1 / 1.0` positive/negative loss
+weights produce high-precision but low-coverage occupancy on K-Radar. One final
+`R1-KRadar` adaptation is allowed before abandoning the independent point VAE:
+retain uniform surface sampling, occupied-voxel jitter, the 625/9,375 query
+ratio, and all model/optimizer settings, but set positive and negative occupancy
+weights to `1.0 / 1.0`. The original R1 gate remains unchanged.
+
+If `R1-KRadar` fails, the independent point-VAE path closes and R2 does not run.
+The already verified Full-RAED radar-token encoder, latent Transformer/EDM, and
+physical query head may still be fused with the deterministic frustum-occupancy
+parent under a separately named hybrid protocol.
+
 ### R2: conditional latent feasibility
 
 Only after R1 passes, cache the frozen latent and overfit the full-RAED
