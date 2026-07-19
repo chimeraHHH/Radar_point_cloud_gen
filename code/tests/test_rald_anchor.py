@@ -97,6 +97,6 @@ def test_second_step_propagates_beyond_zero_initialized_physical_head() -> None:
     second = model(cube)
     second["confidence_logit"].sum().backward()
 
-    gradient = model.refiner.decoder_attention.fn.to_q.weight.grad
+    gradient = model.refiner.decoder_attention.attention.query.weight.grad
     assert gradient is not None
     assert torch.count_nonzero(gradient).item() > 0
