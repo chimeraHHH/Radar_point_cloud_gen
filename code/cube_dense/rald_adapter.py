@@ -160,6 +160,10 @@ def sample_empty_indices(
             device=occupied_indices.device,
             generator=generator,
         ).unique()
+        candidate_order = torch.randperm(
+            candidates.numel(), device=candidates.device, generator=generator
+        )
+        candidates = candidates[candidate_order]
         candidates = candidates[~blocked[candidates]][:remaining]
         if not candidates.numel():
             continue

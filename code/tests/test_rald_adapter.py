@@ -81,6 +81,19 @@ def test_sampling_is_deterministic_and_empty_queries_exclude_targets() -> None:
     assert all(tuple(values) not in occupied for values in empty.tolist())
 
 
+def test_empty_query_sampling_is_not_biased_to_low_flat_indices() -> None:
+    shape = (100, 10, 10)
+    empty = sample_empty_indices(
+        torch.tensor([[50, 5, 5]]),
+        shape,
+        1_000,
+        torch.Generator().manual_seed(39),
+    )
+    flat = empty[:, 0] * shape[1] * shape[2] + empty[:, 1] * shape[2] + empty[:, 2]
+
+    assert 3_500 < flat.float().mean().item() < 6_500
+
+
 def test_occupancy_queries_contain_soft_positive_and_zero_negative_labels() -> None:
     target, indices = targets()
 
