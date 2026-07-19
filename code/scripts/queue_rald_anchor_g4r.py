@@ -54,6 +54,8 @@ def train_command(
         str(args.dense_cache_report),
         "--g3r-summary",
         str(args.g3r_summary),
+        "--g3r-source-commit",
+        args.g3r_source_commit,
         "--parent-run",
         str(parent),
         "--parent-prediction-cache",
@@ -91,6 +93,7 @@ def main() -> None:
     parser.add_argument("--odometry-root", type=Path, required=True)
     parser.add_argument("--g0-report", type=Path, required=True)
     parser.add_argument("--g3r-summary", type=Path, required=True)
+    parser.add_argument("--g3r-source-commit", required=True)
     parser.add_argument("--dense-cache-report", type=Path, required=True)
     parser.add_argument("--run-root", type=Path, required=True)
     parser.add_argument("--repo-root", type=Path, required=True)
@@ -166,7 +169,7 @@ def main() -> None:
         args.g3r_summary, args.poll_seconds, "waiting_for_g3r"
     )
     selected_runs = validate_g3r_selected_runs(
-        g3r, args.source_commit, tuple(args.seeds)
+        g3r, args.g3r_source_commit, tuple(args.seeds)
     )
     emit(
         "g4r_dependencies_passed",
@@ -239,7 +242,7 @@ def main() -> None:
                     "--g3r-summary",
                     str(args.g3r_summary),
                     "--g3r-source-commit",
-                    args.source_commit,
+                    args.g3r_source_commit,
                     "--cache-source-commit",
                     args.source_commit,
                     "--seed",
@@ -467,6 +470,7 @@ def main() -> None:
         "source_commit": args.source_commit,
         "g3r_summary": str(args.g3r_summary),
         "g3r_summary_sha256": sha256(args.g3r_summary),
+        "g3r_source_commit": args.g3r_source_commit,
         "selected_fusion_mode": selected_mode,
         "preflight_selection": str(selection_path),
         "preflight_selection_sha256": sha256(selection_path),

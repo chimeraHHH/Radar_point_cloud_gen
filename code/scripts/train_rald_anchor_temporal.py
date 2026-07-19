@@ -392,6 +392,7 @@ def main() -> None:
     parser.add_argument("--normalization-stats", type=Path, required=True)
     parser.add_argument("--dense-cache-report", type=Path, required=True)
     parser.add_argument("--g3r-summary", type=Path, required=True)
+    parser.add_argument("--g3r-source-commit", required=True)
     parser.add_argument("--parent-run", type=Path, required=True)
     parser.add_argument("--parent-prediction-cache", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
@@ -429,7 +430,7 @@ def main() -> None:
 
     g3r_summary = json.loads(args.g3r_summary.read_text(encoding="utf-8"))
     selected_runs = validate_g3r_selected_runs(
-        g3r_summary, args.source_commit
+        g3r_summary, args.g3r_source_commit
     )
     if args.parent_run.resolve() != selected_runs[args.seed]:
         raise ValueError("G4R parent differs from the selected G3R seed run")
@@ -588,6 +589,7 @@ def main() -> None:
         "dense_cache_report_sha256": dense_hash,
         "g3r_summary": str(args.g3r_summary.resolve()),
         "g3r_summary_sha256": sha256(args.g3r_summary),
+        "g3r_source_commit": args.g3r_source_commit,
         "g3r_comparison_sha256": g3r_summary["g3r_comparison_sha256"],
         "g3r_config_sha256": sha256(run["config_path"]),
         "g3r_checkpoint_sha256": sha256(run["checkpoint_path"]),
