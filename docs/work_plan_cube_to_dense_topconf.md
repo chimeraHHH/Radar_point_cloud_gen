@@ -10,6 +10,8 @@
 
 > **2026-07-19 G1 修订：**首轮 G1 正式对照失败。E1/E2 相对 CFAR 的 Chamfer 和 F-score 均显著改善，但 outlier 约 26.5%，未过固定 25% 门；Full-RAED 相对 RAE-Max 的 Chamfer 恶化 28.3%，远距 completeness 恶化 232.6%。只允许一次 `RAE-Max 主路径 + 零初始化完整谱残差` 的有界重跑，门槛不变；若仍失败，关闭 G1 并停止 G2/G3。
 
+> **2026-07-19 基线修订：**官方 RaLD checkpoint 因 ColoRadar 域、强度-only 条件和无逐点 Doppler/confidence 输出，不作为 K-Radar 主表公平基线。完整规模的 K-Radar matched 重实现通过了结构与梯度验证，但单帧 AE 在一次预注册 hard-occupancy 修复后仍未通过 Chamfer 门（`9.1444 m` vs `<=5.0 m`），因此该训练链 no-go，不继续 latent EDM；RaLD 仅保留为相关工作和隐式 occupancy 架构参考。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---

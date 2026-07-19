@@ -1,6 +1,6 @@
 # Claim-Evidence Ledger
 
-> Updated: 2026-07-19 01:35 CST
+> Updated: 2026-07-19 16:16 CST
 > Rule: a claim is paper-eligible only when its frozen gate is complete and the authoritative artifact is recorded here.
 
 ## Claim Matrix
@@ -8,10 +8,10 @@
 | ID | Candidate claim | Required evidence | Current evidence | Status | Allowed wording now |
 |---|---|---|---|---|---|
 | C0 | The K-Radar Cube-to-dense data path has reliable axes, synchronization, timing choice, and radar-observable targets. | G0 100-frame audit, all checks, no frame errors, frozen hashes. | `artifacts/g0/g0_repair_100_pass_2026-07-18.md`; 100/100, 11/11. | Passed | “The development cohort passed the preregistered data audit.” |
-| C1 | Preserving the full 64-bin Doppler spectrum improves dense geometry over a matched Doppler-collapsed encoder. | E2 vs E1, three seeds, scene-first paired CI; Doppler-sensitive endpoint improves and overall Chamfer does not regress beyond tolerance. | First formal G1 failed: E2 Chamfer +28.3% and far completeness +232.6% vs E1. One zero-initialized residual-spectrum redesign is deployed at `0e5fe84`; H200 preflight is queued behind unrelated compute. | Recovery pending | “We test whether the full Doppler spectrum improves geometry.” |
+| C1 | Preserving the full 64-bin Doppler spectrum improves dense geometry over a matched Doppler-collapsed encoder. | E2 vs E1, three seeds, scene-first paired CI; Doppler-sensitive endpoint improves and overall Chamfer does not regress beyond tolerance. | First formal G1 failed: E2 Chamfer +28.3% and far completeness +232.6% vs E1. The frozen `0e5fe84` recovery has completed both reference arms and Full-RAED seeds 20260716/17; seed 20260718 is running on H200 and no comparison exists yet. | Recovery pending | “We test whether the full Doppler spectrum improves geometry.” |
 | C2 | Per-point circular Doppler distributions are more useful and faithful than scalar regression. | E4 vs E3 on NLL/KL, circular W1, calibration, PCE, CD-Doppler, and geometry tolerance. | `28d69a0` G2/G3 queue waits for the recovery G1 comparison and exits without training unless G1 passes; final-position trilinear spectrum supervision is now enforced. | Pending | “We parameterize Doppler as a circular distribution.” |
 | C3 | Generated points can explain the measured Cube through a differentiable cycle without confidence or coverage collapse. | C0-C3 ablation; cycle metric gain plus independent geometry/physical/downstream gain; confidence, coverage, ECE, and saturation pass. | H200 tests pass for target-defined support, continuous query gradients, existence-confidence NLL, renderer invariants, and GPU identity; formal G3 not run. | Pending | “We introduce a differentiable point-to-Cube cycle and evaluate anti-collapse criteria.” |
-| C4 | A warped historical prediction improves temporal consistency while the current Cube refreshes geometry and Doppler. | T0/T3/T4-T6, current-frame accuracy, radial error, flicker, refresh, 25-step rollout, three seeds. | Manifest 10/10; 2,160-frame data download active at 11/45 sequences. H200 temporal-prior verifier passes after final-position query alignment. | Pending | “We study a current-observation temporal extension.” |
+| C4 | A warped historical prediction improves temporal consistency while the current Cube refreshes geometry and Doppler. | T0/T3/T4-T6, current-frame accuracy, radial error, flicker, refresh, 25-step rollout, three seeds. | Manifest 10/10; 2,160-frame data download has completed 12/45 sequences and is actively writing sequences 18/21. H200 temporal-prior verifier passes after final-position query alignment. | Pending | “We study a current-observation temporal extension.” |
 | C5 | The frozen model improves object radial-velocity estimation and generalizes across operating slices. | G4 family frozen; untouched P5 test, downstream report, scene-first uncertainty, slices. | Test manifest intentionally absent. | Pending | No result claim. |
 | C6 | The system has practical H200 latency and memory. | Matched CUDA benchmark on frozen models and fixed point count. | Queue implemented, not released. | Pending | No efficiency claim. |
 
@@ -25,6 +25,7 @@
 | R4 | “TruckScenes FlowRadar results validate the K-Radar Cube model.” | Different input, target, data, and architecture. | Use only as temporal design motivation. |
 | R5 | “The method is the first radar densification model.” | Existing Cube/spectrum-to-point generation work. | Claim only the verified combination and complete a submission-time literature rescan. |
 | R6 | “G4 is successful because temporal output is smoother.” | Static or copied clouds can reduce flicker. | Require current-frame geometry, Doppler refresh, coverage, and rollout stability jointly. |
+| R7 | “The official or matched RaLD checkpoint is a competitive K-Radar main baseline.” | The official checkpoint is ColoRadar/intensity-only and not protocol-matched. The from-scratch matched AE failed its frozen one-frame Chamfer gate after one bounded repair (`9.1444 m` vs `<= 5.0 m`). | Cite RaLD as related work and architecture motivation. Preserve the matched run as a no-go; do not train its EDM or report it as a headline quantitative baseline. |
 
 ## Gate-to-Artifact Map
 
@@ -32,11 +33,11 @@
 |---|---|---|
 | G0 | `artifacts/g0/g0_repair_100_pass_2026-07-18.md` | Passed |
 | Static audit | `artifacts/g2/static_doppler_failure_recovery_2026-07-18.md` | Failed; E5 removed |
-| G1 | `artifacts/g1/g1_formal_failure_decision_2026-07-19.md`; first comparison in `formal_a7d06db`; recovery expected at server `formal_0e5fe84_g1_recovery/g1_comparison_0e5fe843.json` | First run failed; one bounded recovery queued on H200 |
+| G1 | `artifacts/g1/g1_formal_failure_decision_2026-07-19.md`; first comparison in `formal_a7d06db`; recovery expected at server `formal_0e5fe84_g1_recovery/g1_comparison_0e5fe843.json` | First run failed; bounded recovery seed 20260718 is active and comparison remains absent |
 | G2/G3 | Server: `formal_28d69a0_g2_g3/g2_g3_queue_summary_28d69a05.json`; G1 parent comparison and runs remain resolved from `formal_0e5fe84_g1_recovery/` | Hard-gated on recovery G1; E5 remains omitted |
 | G4 data | `artifacts/g4/g4_temporal_manifest_a7d06db1.json`; download summary | Manifest passed; download pending |
-| G4 | Expected server queue will be rebound to the frozen `0e5fe84` G2/G3 summary after that gate closes; no current formal queue is authoritative | Data download active; training pending G2/G3 |
-| P5 | Expected server queue will be rebound only after G4 family freeze | Test locked |
+| G4 | Server: `formal_206ffeb_g4/g4_queue_summary_206ffeba.json`; queue log `launch_logs/206ffeb/g4_gate.log` | Hard-gated on G2/G3 summary and 45/45 verified sequences; no training started |
+| P5 | Server: `launch_logs/206ffeb/p5_queue.log` and `p5_download_gate.log`; both wait for `formal_206ffeb_g4/g4_queue_summary_206ffeba.json` | Test locked until G4 family freeze |
 
 ## Figure and Table Evidence Contracts
 
