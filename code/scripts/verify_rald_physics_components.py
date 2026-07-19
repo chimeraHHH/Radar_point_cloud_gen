@@ -16,6 +16,7 @@ from cube_dense.kradar import load_tesseract  # noqa: E402
 from models.cube_occupancy import parameter_count  # noqa: E402
 from models.rald_matched import (  # noqa: E402
     FullRAEDRadarTokenEncoder,
+    RaLDAnchorLatentRefiner,
     RaLDEDMPreconditioner,
     RaLDPhysicalQueryHead,
 )
@@ -99,6 +100,19 @@ def main() -> None:
         .max()
         .item()
     )
+
+    hybrid = RaLDAnchorLatentRefiner(anchor_feature_dim=8).to(device)
+    anchor_coordinates = torch.rand(1, 10_000, 3, device=device) * 2.0 - 1.0
+    anchor_features = torch.randn(1, 10_000, 8, device=device)
+    anchor_spectrum = torch.rand(1, 10_000, 64, device=device)
+    torch.cuda.reset_peak_memory_stats(device)
+    with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16):
+        hybrid_output = hybrid(
+            anchor_coordinates,
+            anchor_features,
+            anchor_spectrum,
+        )
+    hybrid_peak_memory = torch.cuda.max_memory_allocated(device)
     checks = {
         "native_token_shape": token_shape == [1, 336, 512],
         "all_doppler_bins_receive_gradient": active_doppler_bins == 64,
@@ -110,6 +124,10 @@ def main() -> None:
         "neutral_initial_confidence": bool(
             torch.count_nonzero(physical["confidence_logit"]).item() == 0
         ),
+        "hybrid_latent_shape": list(hybrid_output["latent"].shape)
+        == [1, 512, 512],
+        "hybrid_point_shape": list(hybrid_output["offset_bins"].shape)
+        == [1, 10_000, 3],
     }
     report = {
         "protocol": "RaLD-inspired physical mainline R0",
@@ -133,6 +151,13 @@ def main() -> None:
         "physical_head": {
             "parameter_count": parameter_count(head),
             "spectrum_initialization_max_abs_error": spectrum_initialization_error,
+        },
+        "anchor_hybrid": {
+            "anchor_count": 10_000,
+            "latent_shape": list(hybrid_output["latent"].shape),
+            "offset_shape": list(hybrid_output["offset_bins"].shape),
+            "parameter_count": parameter_count(hybrid),
+            "peak_cuda_memory_bytes": hybrid_peak_memory,
         },
         "checks": checks,
         "passed": all(checks.values()),
