@@ -37,7 +37,13 @@ class ResidualBlock3d(nn.Module):
 class CubeOccupancyNet(nn.Module):
     """Predict RAE occupancy with matched spatial backbones across Cube encodings."""
 
-    MODES = ("rae_max", "rae_moments", "full_raed")
+    MODES = (
+        "rae_max",
+        "rae_moments",
+        "rae_circular_harmonics",
+        "full_raed",
+        "full_raed_rank2",
+    )
 
     def __init__(
         self,
@@ -56,7 +62,13 @@ class CubeOccupancyNet(nn.Module):
         self.log_center = log_center
         self.log_scale = log_scale
         self.register_buffer("doppler_mps", doppler_mps.float(), persistent=True)
-        input_channels = {"rae_max": 1, "rae_moments": 3, "full_raed": 1}[mode]
+        input_channels = {
+            "rae_max": 1,
+            "rae_moments": 3,
+            "rae_circular_harmonics": 5,
+            "full_raed": 1,
+            "full_raed_rank2": 1,
+        }[mode]
         self.project = nn.Conv3d(input_channels, base_channels, 1)
         self.enc0 = ResidualBlock3d(base_channels, base_channels)
         self.down1 = nn.Conv3d(base_channels, base_channels * 2, 3, stride=2, padding=1)
@@ -74,6 +86,17 @@ class CubeOccupancyNet(nn.Module):
         if self.spectral_residual_projection is not None:
             nn.init.zeros_(self.spectral_residual_projection.weight)
             nn.init.zeros_(self.spectral_residual_projection.bias)
+        self.spectral_rank_projection = (
+            nn.Sequential(
+                nn.Conv3d(64, 2, 1, bias=False),
+                nn.Conv3d(2, base_channels, 1),
+            )
+            if mode == "full_raed_rank2"
+            else None
+        )
+        if self.spectral_rank_projection is not None:
+            nn.init.zeros_(self.spectral_rank_projection[-1].weight)
+            nn.init.zeros_(self.spectral_rank_projection[-1].bias)
 
     def normalized_log_power(self, cube_drae: torch.Tensor) -> torch.Tensor:
         values = (torch.log10(cube_drae.clamp_min(0.0) + 1.0) - self.log_center)
@@ -86,6 +109,8 @@ class CubeOccupancyNet(nn.Module):
         peak = normalized.amax(dim=1, keepdim=True)
         if self.mode == "full_raed":
             return self.project(peak) + self.spectral_residual_projection(normalized)
+        if self.mode == "full_raed_rank2":
+            return self.project(peak) + self.spectral_rank_projection(normalized)
         if self.mode == "rae_max":
             return self.project(peak)
         energy = cube_drae.clamp_min(0.0)
@@ -96,10 +121,32 @@ class CubeOccupancyNet(nn.Module):
             dim=1, keepdim=True
         )
         velocity_scale = self.doppler_mps.abs().max().clamp_min(1e-6)
-        moments = torch.cat(
-            (peak, mean / velocity_scale, variance.sqrt() / velocity_scale), dim=1
-        )
-        return self.project(moments)
+        if self.mode == "rae_moments":
+            moments = torch.cat(
+                (peak, mean / velocity_scale, variance.sqrt() / velocity_scale),
+                dim=1,
+            )
+            return self.project(moments)
+        angle = torch.linspace(
+            0.0,
+            2.0 * torch.pi * (63.0 / 64.0),
+            64,
+            dtype=probability.dtype,
+            device=probability.device,
+        ).view(1, -1, 1, 1, 1)
+        harmonics = [peak]
+        for order in (1.0, 2.0):
+            harmonics.extend(
+                (
+                    (probability * torch.cos(order * angle)).sum(
+                        dim=1, keepdim=True
+                    ),
+                    (probability * torch.sin(order * angle)).sum(
+                        dim=1, keepdim=True
+                    ),
+                )
+            )
+        return self.project(torch.cat(harmonics, dim=1))
 
     def forward(self, cube_drae: torch.Tensor) -> torch.Tensor:
         level0 = self.enc0(self.encode_cube(cube_drae))

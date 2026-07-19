@@ -44,3 +44,47 @@ def test_full_raed_residual_receives_gradient_at_initialization() -> None:
     assert residual is not None
     assert residual.weight.grad is not None
     assert torch.count_nonzero(residual.weight.grad).item() > 0
+
+
+def test_rank2_full_raed_starts_as_exact_rae_max_function() -> None:
+    rae_max = make_model("rae_max")
+    rank2 = make_model("full_raed_rank2")
+    cube = torch.rand(1, 64, 8, 8, 8)
+
+    with torch.inference_mode():
+        expected = rae_max(cube)
+        actual = rank2(cube)
+
+    torch.testing.assert_close(actual, expected, rtol=0.0, atol=0.0)
+
+
+def test_rank2_residual_is_bounded_and_receives_output_gradient() -> None:
+    rae_max = make_model("rae_max")
+    rank2 = make_model("full_raed_rank2")
+    cube = torch.rand(1, 64, 8, 8, 8)
+
+    rank2(cube).square().mean().backward()
+
+    residual = rank2.spectral_rank_projection
+    assert residual is not None
+    assert torch.count_nonzero(residual[-1].weight).item() == 0
+    assert residual[-1].weight.grad is not None
+    assert torch.count_nonzero(residual[-1].weight.grad).item() > 0
+    relative_increase = (
+        parameter_count(rank2) - parameter_count(rae_max)
+    ) / parameter_count(rae_max)
+    assert relative_increase <= 0.01
+
+
+def test_circular_harmonics_distinguish_matched_linear_moments() -> None:
+    model = make_model("rae_circular_harmonics")
+    first = torch.zeros(1, 64, 1, 1, 1)
+    second = torch.zeros_like(first)
+    first[:, [24, 40]] = 1.0
+    second[:, [16, 48]] = 1.0 / 6.0
+    second[:, 32] = 1.0
+
+    first_encoded = model.encode_cube(first)
+    second_encoded = model.encode_cube(second)
+
+    assert not torch.allclose(first_encoded, second_encoded)
