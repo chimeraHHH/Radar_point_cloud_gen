@@ -213,7 +213,7 @@ p_i(d) = softmax(z_i(d))
 
 ### 9.1 可以直接纳入或局部移植
 
-- **RaLD，Apache-2.0：**数据预处理、frustum point autoencoder、order-invariant latent、CFAR-guided query initialization。
+- **RaLD，Apache-2.0：**可借鉴 frustum point autoencoder、order-invariant latent、radar-conditioned EDM 和 implicit occupancy decoder；主基线必须在 K-Radar 从头训练并禁用 CFAR query helper，详见 [`rald_adapter_audit_2026-07-19.md`](rald_adapter_audit_2026-07-19.md)。
 - **Radar-Diffusion，MIT：**ColoRadar 对齐、预处理、consistency sampling 和评估流程。
 - **DART，MIT：**log/sqrt measurement loss 形式和雷达渲染测试思路。
 - **PyTorch3D，BSD-3-Clause：**trilinear splat 语义与参考测试。
@@ -236,7 +236,7 @@ p_i(d) = softmax(z_i(d))
 
 - 不修改正在运行的 G1 恢复。
 - 将 DenserRadar 设为 A 模块最直接 related work 和必要对照。
-- 将 RaLD 官方实现列为 G2/G3 前必须完成的 baseline 接入候选。
+- 将 `RaLD-style-RAESum-matched` 列为最终几何主表的独立 baseline；不直接迁移官方 checkpoint，不阻塞或解锁 G2/G3。
 - 将本报告作为 2026-07-02 竞品扫描的修订版，不删除旧文档，保留决策历史。
 
 ### G1 结束后
