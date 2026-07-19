@@ -1,6 +1,6 @@
 # Paper Outline: Full-RAED Cube to Physically Consistent Dense Radar Points
 
-> Status: evidence-driven outline, updated 2026-07-19 01:20 CST
+> Status: evidence-driven outline, updated 2026-07-19 16:20 CST
 > Main task: current-frame 4D Radar Cube -> 10,000 radar-observable `XYZ + Doppler distribution + confidence` points
 > Optional extension: warped historical prediction as a prior corrected by the current Cube
 
@@ -13,10 +13,11 @@ Dense radar reconstruction should preserve the full Doppler spectrum and jointly
 | Claim | Gate | Status | Paper treatment |
 |---|---|---|---|
 | K-Radar Cube, LiDAR target, axes, timing, and observability are reliable | G0 | Passed: 100/100 frames, 11/11 checks | Methods / data protocol |
-| Full-RAED improves dense geometry over matched RAE-Max | G1 | First formal run failed; one bounded residual-spectrum redesign pending | Do not state as result |
+| Full-RAED improves dense geometry over matched RAE-Max | G1 | First formal run failed; bounded recovery has two Full-RAED seeds complete and the third running | Do not state as result |
 | A per-point Doppler distribution is better than a scalar head | G2 | Pending G1 | Candidate contribution |
 | Differentiable point-to-Cube cycle adds independent value without confidence collapse | G3 | Pending G2 | Central candidate contribution |
-| Current-Cube temporal refresh improves stability and accuracy | G4 | Manifest passed; data download active | Optional main text or appendix |
+| Current-Cube temporal refresh improves stability and accuracy | G4 | Manifest passed; 12/45 development sequences complete and download active | Optional main text or appendix |
+| RaLD is a protocol-matched quantitative baseline | Baseline gate | Official checkpoint is domain/output mismatched; matched AE failed the frozen one-frame Chamfer gate after one repair | Related work and no-go record only |
 | Analytic static-Doppler mixture is valid on this cohort | Static audit | Failed validation and bounded recovery | Negative result; E5 removed |
 | Frozen test, downstream velocity, slices, and efficiency | P5 | Test remains untouched | Final evidence only |
 
@@ -52,6 +53,12 @@ Contributions must be selected from the claim ledger after gates close. Do not i
 4. Differentiable rendering and cycle consistency for set-to-grid and grid-to-set reconstruction.
 
 Required boundary: DoppDrive-style aggregation reuses historical points; this work generates a new current-frame set conditioned on the current Cube.
+
+RaLD is an architecture and task-positioning reference, not a headline numeric
+baseline in the current protocol. Its official checkpoint is trained on
+ColoRadar with an intensity-only condition and geometry-only output. The
+from-scratch K-Radar matched AE did not pass its frozen one-frame geometry gate,
+so its latent diffusion stage was not trained.
 
 ### 3. Problem Formulation and Data Protocol
 
@@ -159,7 +166,7 @@ Required boundary: DoppDrive-style aggregation reuses historical points; this wo
 
 ## Stop and Branch Rules
 
-- G1 fails after one bounded diagnosis: remove “full spectrum improves geometry”; continue only with defensible Doppler/cycle claims.
+- G1 recovery fails: close the current Full-RAED parent and stop its G2/G3 queue. The separately preregistered G1B spectrum screen may run, but it cannot silently replace the parent or release later gates without a new explicit decision.
 - G2 fails: Doppler distribution is not a contribution; investigate supervision before G3.
 - G3 fails: do not claim a strong bidirectional method; reposition as a dense reconstruction baseline or redesign the renderer.
 - G4 fails: temporal branch moves to appendix and does not weaken the single-frame paper.
