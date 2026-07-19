@@ -148,7 +148,9 @@ class CubeOccupancyNet(nn.Module):
             )
         return self.project(torch.cat(harmonics, dim=1))
 
-    def forward(self, cube_drae: torch.Tensor) -> torch.Tensor:
+    def spatial_features(self, cube_drae: torch.Tensor) -> torch.Tensor:
+        """Return the full-resolution decoder features used by the occupancy head."""
+
         level0 = self.enc0(self.encode_cube(cube_drae))
         level1 = self.enc1(self.down1(level0))
         latent = self.bottleneck(self.down2(level1))
@@ -159,7 +161,10 @@ class CubeOccupancyNet(nn.Module):
         up0 = F.interpolate(
             up1, size=level0.shape[2:], mode="trilinear", align_corners=False
         )
-        return self.head(self.dec0(torch.cat((up0, level0), dim=1))).squeeze(1)
+        return self.dec0(torch.cat((up0, level0), dim=1))
+
+    def forward(self, cube_drae: torch.Tensor) -> torch.Tensor:
+        return self.head(self.spatial_features(cube_drae)).squeeze(1)
 
 
 def parameter_count(model: nn.Module) -> int:

@@ -25,6 +25,15 @@ def test_full_raed_starts_as_exact_rae_max_function() -> None:
     torch.testing.assert_close(full_logits, rae_logits, rtol=0.0, atol=0.0)
 
 
+def test_spatial_features_are_the_features_consumed_by_the_head() -> None:
+    model = make_model("full_raed")
+    cube = torch.rand(1, 64, 8, 8, 8)
+
+    features = model.spatial_features(cube)
+
+    torch.testing.assert_close(model(cube), model.head(features).squeeze(1))
+
+
 def test_full_raed_residual_is_zero_initialized_and_bounded_in_size() -> None:
     rae_max = make_model("rae_max")
     full_raed = make_model("full_raed")
