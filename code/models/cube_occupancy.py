@@ -164,3 +164,58 @@ class CubeOccupancyNet(nn.Module):
 
 def parameter_count(model: nn.Module) -> int:
     return sum(parameter.numel() for parameter in model.parameters())
+
+
+def _tensor_rms(values: list[torch.Tensor]) -> float | None:
+    if not values:
+        return None
+    squared_sum = sum(value.detach().float().square().sum() for value in values)
+    element_count = sum(value.numel() for value in values)
+    return float((squared_sum / element_count).sqrt().item())
+
+
+def spectral_branch_tensors(
+    model: CubeOccupancyNet, *, gradients: bool = False
+) -> list[torch.Tensor]:
+    """Return only the Doppler-specific branch values or gradients."""
+    if model.mode in {"rae_moments", "rae_circular_harmonics"}:
+        values = model.project.weight.grad if gradients else model.project.weight
+        return [] if values is None else [values[:, 1:]]
+    module = (
+        model.spectral_residual_projection
+        if model.mode == "full_raed"
+        else model.spectral_rank_projection
+        if model.mode == "full_raed_rank2"
+        else None
+    )
+    if module is None:
+        return []
+    values = []
+    for parameter in module.parameters():
+        value = parameter.grad if gradients else parameter
+        if value is not None:
+            values.append(value)
+    return values
+
+
+def spectral_diagnostics(model: CubeOccupancyNet) -> dict[str, float | None]:
+    branch_values = spectral_branch_tensors(model)
+    branch_rms = _tensor_rms(branch_values)
+    trunk_rms = _tensor_rms([model.project.weight[:, :1]])
+    return {
+        "spectral_branch_weight_rms": branch_rms,
+        "trunk_input_weight_rms": trunk_rms,
+        "spectral_to_trunk_weight_rms_ratio": (
+            None
+            if branch_rms is None or trunk_rms is None or trunk_rms == 0.0
+            else branch_rms / trunk_rms
+        ),
+    }
+
+
+def spectral_gradient_norm(model: CubeOccupancyNet) -> float | None:
+    gradients = spectral_branch_tensors(model, gradients=True)
+    if not gradients:
+        return None
+    squared_sum = sum(value.detach().float().square().sum() for value in gradients)
+    return float(squared_sum.sqrt().item())

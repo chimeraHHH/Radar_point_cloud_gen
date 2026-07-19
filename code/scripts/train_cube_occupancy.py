@@ -27,7 +27,12 @@ from eval.dense_geometry import (  # noqa: E402
     occupancy_to_points,
 )
 from losses.occupancy import occupancy_loss  # noqa: E402
-from models.cube_occupancy import CubeOccupancyNet, parameter_count  # noqa: E402
+from models.cube_occupancy import (  # noqa: E402
+    CubeOccupancyNet,
+    parameter_count,
+    spectral_diagnostics,
+    spectral_gradient_norm,
+)
 
 
 @dataclass(frozen=True)
@@ -417,6 +422,12 @@ def main() -> None:
     )
     log_path = args.output / "train_log.jsonl"
     started = time.monotonic()
+    first_step_spectral_gradient_norm = None
+    first_step_spectral_gradient_recorded = start_epoch > 1
+    if args.resume and log_records:
+        first_step_spectral_gradient_norm = log_records[0].get(
+            "spectral_diagnostics", {}
+        ).get("first_step_gradient_norm")
     for epoch in range(start_epoch, config.epochs + 1):
         model.train()
         order = train_indices.copy()
@@ -430,6 +441,9 @@ def main() -> None:
                 logits = model(cube)
                 loss, _ = occupancy_loss(logits, occupancy)
             loss.backward()
+            if not first_step_spectral_gradient_recorded:
+                first_step_spectral_gradient_norm = spectral_gradient_norm(model)
+                first_step_spectral_gradient_recorded = True
             torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
             optimizer.step()
             epoch_losses.append(float(loss.detach().item()))
@@ -442,6 +456,10 @@ def main() -> None:
             "elapsed_seconds": round(
                 prior_elapsed_seconds + time.monotonic() - started, 3
             ),
+            "spectral_diagnostics": {
+                **spectral_diagnostics(model),
+                "first_step_gradient_norm": first_step_spectral_gradient_norm,
+            },
         }
         should_evaluate = epoch == 1 or epoch % config.eval_every == 0
         if should_evaluate:

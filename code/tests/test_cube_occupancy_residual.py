@@ -1,6 +1,11 @@
 import torch
 
-from models.cube_occupancy import CubeOccupancyNet, parameter_count
+from models.cube_occupancy import (
+    CubeOccupancyNet,
+    parameter_count,
+    spectral_diagnostics,
+    spectral_gradient_norm,
+)
 
 
 def make_model(mode: str, seed: int = 17) -> CubeOccupancyNet:
@@ -88,3 +93,24 @@ def test_circular_harmonics_distinguish_matched_linear_moments() -> None:
     second_encoded = model.encode_cube(second)
 
     assert not torch.allclose(first_encoded, second_encoded)
+
+
+def test_spectral_diagnostics_separate_branch_from_peak_channel() -> None:
+    model = make_model("rae_circular_harmonics")
+    cube = torch.rand(1, 64, 8, 8, 8)
+
+    model(cube).square().mean().backward()
+    diagnostics = spectral_diagnostics(model)
+
+    assert diagnostics["spectral_branch_weight_rms"] is not None
+    assert diagnostics["trunk_input_weight_rms"] is not None
+    assert diagnostics["spectral_to_trunk_weight_rms_ratio"] is not None
+    assert spectral_gradient_norm(model) is not None
+    assert spectral_gradient_norm(model) > 0.0
+
+
+def test_rae_max_has_no_spectral_branch_diagnostics() -> None:
+    diagnostics = spectral_diagnostics(make_model("rae_max"))
+
+    assert diagnostics["spectral_branch_weight_rms"] is None
+    assert diagnostics["spectral_to_trunk_weight_rms_ratio"] is None
