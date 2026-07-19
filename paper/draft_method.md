@@ -81,11 +81,13 @@ Z = Transformer(W_z(z_static + z_dyn)).
 ```
 
 Each anchor then queries `Z` to obtain a globally contextualized point feature.
-A zero-initialized physical head predicts a bounded RAE offset, confidence, and
-a residual 64-bin Doppler distribution over the local measured Cube spectrum:
+A zero-initialized physical head first predicts a bounded RAE offset. The Cube
+is queried again at the final continuous position, and the same RaLD query
+feature predicts confidence plus a residual 64-bin Doppler distribution:
 
 ```text
-q_i = Softmax(log(q_cube_i + eps) + Delta l_i).
+u_i = u_anchor_i + 0.5 tanh(Delta u_i),
+q_i = Softmax(log(q_cube(u_i) + eps) + Delta l_i).
 ```
 
 Thus the initial hybrid exactly preserves anchor positions, parent confidence,
@@ -93,39 +95,49 @@ and measured Doppler while learning globally radar-conditioned point-set
 corrections. The independent RaLD point VAE was rejected by the K-Radar
 long-range Chamfer gate, so this anchor hybrid is evaluated as a separately
 gated candidate and cannot be treated as an established contribution before
-RH1/RH2 pass.
+RH1/RH2 pass. The current independent route additionally requires a passing
+G1B geometry parent; the failed original G1 is never relabeled.
 
-This separation also isolates early and late spectral fusion. G1 tests whether
-injecting Full-RAED features inside the occupancy backbone improves geometry.
-If that hypothesis fails while RAE-Max still passes the frozen geometry gate,
-the separately named G1R/RH branch keeps the RAE-Max allocator frozen and
-introduces Full-RAED information only through RaLD radar-token cross-attention.
-No G1 result is relabeled by this recovery.
+This separation also isolates early and late spectral fusion. The original G1
+showed that Full-RAED early fusion degraded Chamfer relative to RAE-Max and is
+closed. The independent G1B route instead selects a physically compressed
+geometry allocator, freezes it, and introduces all 64 Doppler bins through
+RaLD radar-token cross-attention. No G1 result is relabeled by this branch.
 
 ## 4. Point-Conditioned Doppler Prediction
 
-Features are gathered at selected RAE locations and passed through a Linear-SiLU projection.
+RaLD query features and the Cube spectrum at each final continuous RAE location
+are passed to matched physical heads.
 
 ### 4.1 Scalar Head
 
-The scalar baseline predicts one Doppler value and wraps it to the sensor alias interval. For distributional metrics, it is converted to a fixed-width wrapped Gaussian.
+The scalar baseline starts from the circular mean of the local Cube spectrum,
+predicts a bounded circular residual, and wraps the result to the sensor alias
+interval. For distributional metrics, it is converted to a fixed one-bin-width
+wrapped Gaussian.
 
 ### 4.2 Distribution Head
 
-The distribution head predicts 64 logits:
+The distribution head predicts 64 residual logits over the measured spectrum:
 
 ```text
-q_i(d) = softmax(W_d f_i),
+q_i(d) = softmax(log(q_cube(u_i,d) + eps) + W_d f_i),
 v_hat_i = CircMean(q_i, v_D).
 ```
 
-Training uses the normalized `log1p(power)` spectrum queried from the current Cube at the target location:
+Training uses the normalized `log1p(power)` spectrum queried from the current
+Cube at radar-observable target locations matched to each generated point:
 
 ```text
 L_dop = - sum_i sum_d w_i q_i*(d) log q_i(d),
 ```
 
-where `w_i` is target visibility confidence. Circular mean, scalar error, and Wasserstein distance explicitly respect the Doppler alias period.
+where `w_i` is the frozen geometry-parent confidence, preventing learned
+confidence from hiding Doppler errors. Circular mean, scalar error, and
+Wasserstein distance explicitly respect the Doppler alias period. G2R trains
+matched scalar and distribution RaLD arms with cycle disabled and compares the
+learned distribution against the unmodified Cube spectrum at the same final
+point position.
 
 ### 4.3 Rejected Analytic Static Mixture
 
@@ -154,7 +166,10 @@ p_i = [rho_i cos(eps_i) cos(alpha_i),
        rho_i sin(eps_i)].
 ```
 
-A confidence-weighted symmetric Chamfer term is applied with weight `0.1`. All G3 arms train the same offset head, so cycle arms do not receive an unmatched continuous-coordinate advantage.
+A confidence-weighted symmetric Chamfer term is applied with weight `0.1`.
+All G3R arms start from the exact same passing cycle-free G2R checkpoint and
+train the same offset head, so cycle arms receive neither an unmatched
+continuous-coordinate advantage nor cycle-contaminated pretraining.
 
 ## 6. Differentiable Point-to-Cube Rendering
 
@@ -180,9 +195,11 @@ L_cycle = L_local-spectrum-KL
 - `L_spatial-energy` compares normalized log energy against the strongest 10,000 target cells.
 - `L_confidence-floor` penalizes mean confidence below `0.1`.
 
-Success cannot be inferred from the floor alone. G3 separately requires relative confidence and covered-cell retention of at least 90%, no significant ECE degradation, and an acceptable sub-bin offset saturation fraction.
+Success cannot be inferred from the floor alone. G3R separately requires
+relative confidence and covered-cell retention of at least 90%, no significant
+ECE degradation, and an acceptable sub-bin offset saturation fraction.
 
-The matched G3 arms are:
+The matched G3R arms are:
 
 ```text
 C0: no cycle
@@ -195,62 +212,71 @@ C3: C2 + spatial energy.
 
 The temporal model always receives the current Cube. A previous predicted point set is only an auxiliary prior.
 
-For previous point `i`, residual Doppler and the dynamic gate are
+The previous implementation fused history into a separate `CubeCycleNet` and
+depended on an analytic static-Doppler convention. That route is closed because
+it cannot load the selected RaLD checkpoint and the static convention failed
+validation. G4R injects the historical prior at three RaLD-native locations.
+
+The preregistered main prior first uses only the unambiguous ego transform:
 
 ```text
-v_res_i = wrap(v_hat_i - v_static_i)
-g_i = 1[abs(v_res_i) > 1.0 m/s].
+p_prior_i = T_(t<-t-1) p_i.
 ```
 
-The point is first advected radially and then transformed into the current frame:
+The complete historical Doppler distribution remains an input feature. A raw
+Doppler displacement candidate is evaluated only as a sensitivity baseline:
 
 ```text
-p_adv_i = p_i + g_i v_res_i Delta_t r_hat_i
-p_prior_i = T_(t<-t-1) p_adv_i.
+p_prior,dopp_i = T_(t<-t-1)(p_i + v_hat_i Delta_t r_hat_i).
 ```
 
-Static or low-residual points receive only ego motion. Prior point features contain normalized XYZ, confidence, circular Doppler sine/cosine, spectral entropy, and the dynamic gate.
+This avoids reviving the rejected analytic static prior. Historical point
+features contain normalized XYZ, confidence, circular Doppler sine/cosine, and
+spectral entropy.
 
-Three matched fusion families are implemented:
+Three matched G4R fusion families are defined:
 
-1. **Concat:** rasterize energy, circular moments, entropy, and gate into five RAE channels, project, concatenate, and fuse with the current Cube feature.
-2. **Local cross-attention:** each current query attends to its eight nearest prior tokens with relative XYZ encoding.
-3. **Draft refinement:** the nearest warped point is a draft; a learned 3D gate interpolates between prior and learned offsets.
+1. **TR4 token fusion:** rasterize prior confidence and Doppler moments; a
+   zero-gated hierarchy injects them into the 336 current Full-RAED tokens.
+2. **TR5 latent fusion:** prior points become set tokens; only RaLD dynamic
+   mixed latents cross-attend to them before the latent Transformer.
+3. **TR6 query refinement:** each decoded anchor query receives its nearest
+   warped prior feature and relative position before predicting final geometry
+   and Doppler.
 
-The cross-frame radial residual is
+All arms retain the current Cube, final-position spectrum query, and G3R cycle.
+Temporal matching is measured in the ego-aligned frame without a static-PCE or
+analytic dynamic-fraction gate.
 
-```text
-e_rad_i = abs((||p_j,t|| - ||p_i,t-1^ego||)
-              - 0.5(v_res_i,t-1 + v_res_j,t) Delta_t).
-```
-
-Confidence and a Gaussian function of match distance weight this loss. Temporal training uses 20 epochs: the temporal head is isolated for five epochs, joint fine-tuning starts at epoch six, and scheduled sampling increases linearly from 0 to 0.4. Recurrent predictions are detached. Teacher history comes from the frozen single-frame parent, never from LiDAR ground truth.
+Temporal training uses 20 epochs: the zero-gated RaLD temporal adapter is
+isolated for five epochs, joint fine-tuning starts at epoch six, and scheduled
+sampling increases linearly from 0 to 0.4. Recurrent predictions are detached.
+Teacher history comes from the frozen selected G3R parent, never from LiDAR.
 
 ## 8. Training Objectives and Staging
 
 Single-frame geometry:
 
 ```text
-L_G1 = L_occ.
+L_G1B = L_occ.
 ```
 
 Doppler generation:
 
 ```text
-L_G2 = L_occ + L_dop + 0.1 L_geo.
+L_G2R = L_geo + L_dop + 0.1 L_conf + 0.01 L_offset.
 ```
 
 Cycle training:
 
 ```text
-L_G3 = L_occ + L_dop + 0.1 L_geo + L_cycle_variant.
+L_G3R = L_G2R + 0.1 L_cycle_variant.
 ```
 
 Temporal training:
 
 ```text
-L_G4 = L_occ + L_dop + 0.1 L_geo
-     + I_C3 L_cycle + 0.1 L_radial.
+L_G4R = L_G3R + 0.1 L_temporal-match.
 ```
 
 Modules are released only after their parent gate closes. All main comparisons use three fixed seeds and scene-first paired bootstrap. The untouched test split is released only after the temporal family is frozen.
@@ -258,10 +284,12 @@ Modules are released only after their parent gate closes. All main comparisons u
 ## 9. Evidence Boundaries
 
 - G0 passed and validates the data/geometry pipeline, not model quality.
-- Full-RAED geometry gain remains pending G1 comparison.
-- Doppler distribution gain remains pending G2.
-- Cube-cycle value remains pending G3.
-- Temporal value remains pending verified G4 data and G4 evaluation.
+- The original G1 failed; independent G1B geometry selection is pending.
+- Doppler distribution gain remains pending G2R after RH passes.
+- Cube-cycle value remains pending G3R.
+- Temporal value remains pending verified data and G4R evaluation.
 - The analytic static mixture failed and is not a contribution.
 - TruckScenes Doppler-warp and scheduled-sampling results motivate the temporal design but are not K-Radar Cube-to-dense evidence.
-- The RaLD-anchor hybrid passed component-scale RH0 only; its training gain remains pending RH1/RH2.
+- The RaLD-anchor hybrid passed component-scale RH0 only; its training gain
+  remains pending G1B, RH1, and RH2. G2R/G3R code exists but has no eligible
+  result yet.

@@ -167,6 +167,78 @@ def gated_doppler_warp(
     )
 
 
+def ego_pose_warp(
+    previous_xyz_m: torch.Tensor,
+    previous_probability: torch.Tensor,
+    previous_confidence: torch.Tensor,
+    current_from_previous: torch.Tensor,
+    doppler_mps: torch.Tensor,
+    doppler_lower_mps: torch.Tensor,
+    doppler_period_mps: torch.Tensor,
+    range_m: torch.Tensor,
+    azimuth_rad: torch.Tensor,
+    elevation_rad: torch.Tensor,
+) -> WarpedPrior:
+    """Align history by calibrated ego pose without a static-Doppler convention."""
+
+    point_count = previous_xyz_m.shape[0]
+    if previous_probability.ndim != 2 or previous_probability.shape[0] != point_count:
+        raise ValueError("Previous Doppler distributions do not match points")
+    if previous_confidence.shape != (point_count,):
+        raise ValueError("Previous confidence does not match points")
+    scalar = circular_mean(
+        previous_probability,
+        doppler_mps,
+        doppler_lower_mps,
+        doppler_period_mps,
+    )
+    warped_xyz = transform_points(previous_xyz_m, current_from_previous)
+    coordinates, valid = xyz_to_continuous_rae(
+        warped_xyz, range_m, azimuth_rad, elevation_rad
+    )
+    return WarpedPrior(
+        xyz_m=warped_xyz,
+        coordinates_rae=coordinates,
+        valid=valid,
+        dynamic_gate=torch.zeros_like(scalar, dtype=torch.bool),
+        residual_doppler_mps=scalar,
+        probability=previous_probability,
+        confidence=previous_confidence,
+    )
+
+
+def prior_distribution_features(
+    prior: WarpedPrior,
+    doppler_mps: torch.Tensor,
+    doppler_lower_mps: torch.Tensor,
+    doppler_period_mps: torch.Tensor,
+    epsilon: float = 1e-8,
+) -> torch.Tensor:
+    """Convention-free circular moments, entropy, and scalar Doppler feature."""
+
+    probability = prior.probability / prior.probability.sum(
+        dim=1, keepdim=True
+    ).clamp_min(epsilon)
+    angle = 2.0 * torch.pi * (
+        doppler_mps - doppler_lower_mps
+    ) / doppler_period_mps
+    sine = (probability * torch.sin(angle)[None]).sum(dim=1)
+    cosine = (probability * torch.cos(angle)[None]).sum(dim=1)
+    entropy = -(
+        probability * probability.clamp_min(epsilon).log()
+    ).sum(dim=1) / torch.log(
+        probability.new_tensor(probability.shape[1], dtype=torch.float32)
+    )
+    scalar = circular_mean(
+        probability,
+        doppler_mps,
+        doppler_lower_mps,
+        doppler_period_mps,
+    )
+    scalar_scale = doppler_period_mps.to(scalar).abs().clamp_min(epsilon) / 2.0
+    return torch.stack((sine, cosine, entropy, scalar / scalar_scale), dim=1)
+
+
 def prior_point_features(
     prior: WarpedPrior,
     doppler_mps: torch.Tensor,
@@ -217,3 +289,27 @@ def rasterize_temporal_prior(
     )
     energy = torch.log1p(splat.weight_rae)[None]
     return torch.cat((energy, splat.feature_crae), dim=0)
+
+
+def rasterize_distribution_prior(
+    prior: WarpedPrior,
+    doppler_mps: torch.Tensor,
+    doppler_lower_mps: torch.Tensor,
+    doppler_period_mps: torch.Tensor,
+    spatial_shape: tuple[int, int, int] = (256, 107, 37),
+) -> torch.Tensor:
+    """Rasterize convention-free history into energy and four Doppler channels."""
+
+    valid = prior.valid & torch.isfinite(prior.coordinates_rae).all(dim=1)
+    if not valid.any():
+        return prior.xyz_m.new_zeros((5, *spatial_shape))
+    features = prior_distribution_features(
+        prior, doppler_mps, doppler_lower_mps, doppler_period_mps
+    )
+    splat = soft_splat_features(
+        prior.coordinates_rae[valid],
+        features[valid],
+        prior.confidence[valid],
+        spatial_shape=spatial_shape,
+    )
+    return torch.cat((torch.log1p(splat.weight_rae)[None], splat.feature_crae), dim=0)

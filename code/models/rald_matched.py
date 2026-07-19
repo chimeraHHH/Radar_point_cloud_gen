@@ -587,11 +587,10 @@ class RaLDAnchorLatentRefiner(nn.Module):
             doppler_head_mode=doppler_head_mode,
         )
 
-    def encode_anchors(
+    def anchor_tokens(
         self,
         anchor_normalized_rae: torch.Tensor,
         anchor_features: torch.Tensor,
-        radar_tokens: torch.Tensor | None = None,
     ) -> torch.Tensor:
         if anchor_normalized_rae.ndim != 3 or anchor_normalized_rae.shape[-1] != 3:
             raise ValueError(
@@ -600,9 +599,31 @@ class RaLDAnchorLatentRefiner(nn.Module):
             )
         if anchor_features.shape[:2] != anchor_normalized_rae.shape[:2]:
             raise ValueError("Anchor coordinates and features must align")
+        return self.point_embedding(anchor_normalized_rae) + self.anchor_projection(
+            anchor_features
+        )
+
+    def transform_latents(self, latent: torch.Tensor) -> torch.Tensor:
+        latent = self.query_projection(latent)
+        for attention, feed_forward in self.layers:
+            latent = latent + attention(latent)
+            latent = latent + feed_forward(latent)
+        return latent
+
+    def decode_queries(
+        self, anchor_normalized_rae: torch.Tensor, latent: torch.Tensor
+    ) -> torch.Tensor:
+        queries = self.point_embedding(anchor_normalized_rae)
+        return self.decoder_attention(queries, latent)
+
+    def encode_anchors(
+        self,
+        anchor_normalized_rae: torch.Tensor,
+        anchor_features: torch.Tensor,
+        radar_tokens: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        anchor_tokens = self.anchor_tokens(anchor_normalized_rae, anchor_features)
         batch = anchor_normalized_rae.shape[0]
-        anchor_tokens = self.point_embedding(anchor_normalized_rae)
-        anchor_tokens = anchor_tokens + self.anchor_projection(anchor_features)
         static = self.static_latents.weight.unsqueeze(0).expand(batch, -1, -1)
         dynamic = self.dynamic_latents.weight.unsqueeze(0).expand(batch, -1, -1)
         dynamic = dynamic + self.dynamic_attention(dynamic, anchor_tokens)
@@ -615,11 +636,7 @@ class RaLDAnchorLatentRefiner(nn.Module):
             if radar_tokens.shape[0] != batch:
                 raise ValueError("Radar-token batch does not match anchor batch")
             dynamic = dynamic + self.radar_attention(dynamic, radar_tokens)
-        latent = self.query_projection(static + dynamic)
-        for attention, feed_forward in self.layers:
-            latent = latent + attention(latent)
-            latent = latent + feed_forward(latent)
-        return latent
+        return self.transform_latents(static + dynamic)
 
     def forward(
         self,
@@ -631,8 +648,7 @@ class RaLDAnchorLatentRefiner(nn.Module):
         latent = self.encode_anchors(
             anchor_normalized_rae, anchor_features, radar_tokens=radar_tokens
         )
-        queries = self.point_embedding(anchor_normalized_rae)
-        query_features = self.decoder_attention(queries, latent)
+        query_features = self.decode_queries(anchor_normalized_rae, latent)
         output = self.physical_head(query_features, local_cube_spectrum)
         output["latent"] = latent
         output["query_features"] = query_features

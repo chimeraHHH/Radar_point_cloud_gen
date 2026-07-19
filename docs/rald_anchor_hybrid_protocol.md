@@ -116,9 +116,45 @@ second Doppler or geometry metric class while retaining geometry, confidence,
 coverage, calibration, and bounded offsets. Renderer tests and the complete
 clean/noisy/shifted/calibration robustness matrix are mandatory.
 
+### G4R: RaLD-native temporal conditioning
+
+Run only after G3R passes and binds the exact selected `full` checkpoints for
+all three seeds. The current Cube remains the primary observation. The previous
+RaLD prediction is aligned by the calibrated ego transform and carries its
+complete circular Doppler distribution and confidence as auxiliary evidence.
+The preregistered main prior does not convert Doppler to displacement and does
+not use the rejected analytic static-Doppler convention.
+
+Three zero-gated arms probe the same representation levels used by RaLD:
+
+1. `TR4-token` rasterizes historical energy and circular Doppler moments and
+   passes them through a matched 336-token RaLD radar hierarchy before adding
+   them to the current Full-RAED condition tokens.
+2. `TR5-latent` projects historical points to set tokens and lets only the RaLD
+   dynamic mixed latents cross-attend to them before the latent Transformer.
+3. `TR6-query` attaches the nearest warped prior and relative XYZ to each RaLD
+   decoded anchor query before the physical head.
+
+Every temporal gate starts at zero and must exactly reproduce its selected G3R
+checkpoint before training. All arms preserve the frozen occupancy allocator,
+RaLD static/dynamic mixed latents, latent Transformer, query cross-attention,
+and current-Cube spectrum query at the final continuous point position. This is
+therefore a representation-level RaLD ablation, not a separate temporal
+backbone attached after point generation.
+
+Perform one-seed five-epoch preflight for all three arms, select one family with
+the frozen development rule, then train three seeds for 20 epochs with a
+five-epoch temporal-adapter warmup and scheduled sampling. G4R must improve
+ego-aligned matching/flicker over the selected single-frame G3R parent and
+current-frame geometry plus local circular KL/W1 over history aggregation,
+while retaining current-frame Chamfer within 2%, local Doppler error within 5%,
+and at least 90% rollout confidence and coverage at step 25.
+
 ## Evidence boundary
 
 The hybrid does not reopen the failed independent RaLD AE or authorize its
-latent-cache/EDM chain. It also does not unlock the original G2/G3 chain after a
-failed G1. RH/G2R/G3R form a separately named late-fusion branch with their own
-source, checkpoint, data, and decision hashes.
+latent-cache/EDM chain. G4R borrows RaLD-native representation levels but not
+the rejected standalone point-latent generator. It also does not unlock the
+original G2/G3/G4 chain after a failed G1. RH/G2R/G3R/G4R form a separately
+named late-fusion branch with their own source, checkpoint, data, and decision
+hashes.

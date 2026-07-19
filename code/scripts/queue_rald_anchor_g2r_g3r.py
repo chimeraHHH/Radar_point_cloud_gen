@@ -586,6 +586,18 @@ def main() -> None:
         args,
     )
     passed = g3r.get("decision", {}).get("g3r_passed") is True
+    selected_arm = "full" if passed else None
+    selected_runs = (
+        g3r.get("runs", {}).get("full", {}) if passed else {}
+    )
+    selected_run_hashes = (
+        g3r.get("run_hashes", {}).get("full", {}) if passed else {}
+    )
+    if passed and (
+        set(selected_runs) != {str(seed) for seed in args.seeds}
+        or set(selected_run_hashes) != {str(seed) for seed in args.seeds}
+    ):
+        raise ValueError("Passing G3R report lacks the complete selected run matrix")
     atomic_json(
         summary_path,
         {
@@ -604,6 +616,9 @@ def main() -> None:
             "g3r_comparison_sha256": sha256(g3r_path),
             "g2r_decision": g2r.get("decision"),
             "g3r_decision": g3r.get("decision"),
+            "selected_arm": selected_arm,
+            "selected_runs": selected_runs,
+            "selected_run_hashes": selected_run_hashes,
         },
     )
     emit("rald_gate_chain_finished", summary=str(summary_path), passed=passed)
