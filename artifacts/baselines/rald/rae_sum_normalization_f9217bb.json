@@ -1,0 +1,346 @@
+{
+  "schema_version": 1,
+  "representation": "log10_sum_doppler_power_plus_one",
+  "generated_utc": "2026-07-19T07:51:37.762548+00:00",
+  "source_commit": "f9217bb3bcd10a5fcec4504fee9aca91a8bccd4b",
+  "manifest_sha256": "645307a8bae351db51b55128043dae69bce5b928169d5fa25c1b9c55083de4e4",
+  "scene_split_sha256": "61596bd50ce0bdab633c9ff0ec5ab5148c2c78a10dfc06a71d0d6f0a6c9427cc",
+  "partitions": [
+    "train"
+  ],
+  "frame_limit": null,
+  "frame_count": 76,
+  "frames": [
+    {
+      "sequence": 1,
+      "radar_index": 232
+    },
+    {
+      "sequence": 1,
+      "radar_index": 430
+    },
+    {
+      "sequence": 2,
+      "radar_index": 185
+    },
+    {
+      "sequence": 2,
+      "radar_index": 338
+    },
+    {
+      "sequence": 3,
+      "radar_index": 230
+    },
+    {
+      "sequence": 3,
+      "radar_index": 428
+    },
+    {
+      "sequence": 4,
+      "radar_index": 238
+    },
+    {
+      "sequence": 4,
+      "radar_index": 433
+    },
+    {
+      "sequence": 5,
+      "radar_index": 231
+    },
+    {
+      "sequence": 5,
+      "radar_index": 429
+    },
+    {
+      "sequence": 7,
+      "radar_index": 232
+    },
+    {
+      "sequence": 7,
+      "radar_index": 430
+    },
+    {
+      "sequence": 8,
+      "radar_index": 221
+    },
+    {
+      "sequence": 8,
+      "radar_index": 409
+    },
+    {
+      "sequence": 9,
+      "radar_index": 232
+    },
+    {
+      "sequence": 9,
+      "radar_index": 440
+    },
+    {
+      "sequence": 9,
+      "radar_index": 648
+    },
+    {
+      "sequence": 11,
+      "radar_index": 332
+    },
+    {
+      "sequence": 11,
+      "radar_index": 631
+    },
+    {
+      "sequence": 11,
+      "radar_index": 930
+    },
+    {
+      "sequence": 14,
+      "radar_index": 232
+    },
+    {
+      "sequence": 14,
+      "radar_index": 430
+    },
+    {
+      "sequence": 18,
+      "radar_index": 234
+    },
+    {
+      "sequence": 18,
+      "radar_index": 431
+    },
+    {
+      "sequence": 21,
+      "radar_index": 204
+    },
+    {
+      "sequence": 21,
+      "radar_index": 402
+    },
+    {
+      "sequence": 22,
+      "radar_index": 202
+    },
+    {
+      "sequence": 22,
+      "radar_index": 401
+    },
+    {
+      "sequence": 24,
+      "radar_index": 203
+    },
+    {
+      "sequence": 24,
+      "radar_index": 402
+    },
+    {
+      "sequence": 25,
+      "radar_index": 200
+    },
+    {
+      "sequence": 25,
+      "radar_index": 398
+    },
+    {
+      "sequence": 26,
+      "radar_index": 205
+    },
+    {
+      "sequence": 26,
+      "radar_index": 403
+    },
+    {
+      "sequence": 27,
+      "radar_index": 204
+    },
+    {
+      "sequence": 27,
+      "radar_index": 403
+    },
+    {
+      "sequence": 28,
+      "radar_index": 203
+    },
+    {
+      "sequence": 28,
+      "radar_index": 401
+    },
+    {
+      "sequence": 29,
+      "radar_index": 200
+    },
+    {
+      "sequence": 29,
+      "radar_index": 399
+    },
+    {
+      "sequence": 31,
+      "radar_index": 206
+    },
+    {
+      "sequence": 31,
+      "radar_index": 405
+    },
+    {
+      "sequence": 32,
+      "radar_index": 205
+    },
+    {
+      "sequence": 32,
+      "radar_index": 403
+    },
+    {
+      "sequence": 33,
+      "radar_index": 205
+    },
+    {
+      "sequence": 33,
+      "radar_index": 404
+    },
+    {
+      "sequence": 35,
+      "radar_index": 205
+    },
+    {
+      "sequence": 35,
+      "radar_index": 403
+    },
+    {
+      "sequence": 39,
+      "radar_index": 207
+    },
+    {
+      "sequence": 39,
+      "radar_index": 405
+    },
+    {
+      "sequence": 40,
+      "radar_index": 204
+    },
+    {
+      "sequence": 40,
+      "radar_index": 403
+    },
+    {
+      "sequence": 42,
+      "radar_index": 209
+    },
+    {
+      "sequence": 42,
+      "radar_index": 408
+    },
+    {
+      "sequence": 44,
+      "radar_index": 209
+    },
+    {
+      "sequence": 44,
+      "radar_index": 407
+    },
+    {
+      "sequence": 45,
+      "radar_index": 219
+    },
+    {
+      "sequence": 45,
+      "radar_index": 416
+    },
+    {
+      "sequence": 46,
+      "radar_index": 205
+    },
+    {
+      "sequence": 46,
+      "radar_index": 404
+    },
+    {
+      "sequence": 47,
+      "radar_index": 94
+    },
+    {
+      "sequence": 47,
+      "radar_index": 514
+    },
+    {
+      "sequence": 49,
+      "radar_index": 206
+    },
+    {
+      "sequence": 49,
+      "radar_index": 405
+    },
+    {
+      "sequence": 50,
+      "radar_index": 207
+    },
+    {
+      "sequence": 50,
+      "radar_index": 405
+    },
+    {
+      "sequence": 52,
+      "radar_index": 202
+    },
+    {
+      "sequence": 52,
+      "radar_index": 401
+    },
+    {
+      "sequence": 53,
+      "radar_index": 204
+    },
+    {
+      "sequence": 53,
+      "radar_index": 402
+    },
+    {
+      "sequence": 56,
+      "radar_index": 206
+    },
+    {
+      "sequence": 56,
+      "radar_index": 405
+    },
+    {
+      "sequence": 57,
+      "radar_index": 205
+    },
+    {
+      "sequence": 57,
+      "radar_index": 404
+    },
+    {
+      "sequence": 58,
+      "radar_index": 205
+    },
+    {
+      "sequence": 58,
+      "radar_index": 404
+    }
+  ],
+  "device": "NVIDIA H200 NVL",
+  "rae_sum_log_power": {
+    "voxel_count": 77026304,
+    "mean": 12.791336417775328,
+    "std": 0.3984203098998668,
+    "min": 11.20752239227295,
+    "max": 18.14615249633789,
+    "zero_fraction": 0.0,
+    "input_negative_fraction": 0.0,
+    "sample_count": 4980736,
+    "sample_quantiles": {
+      "0.01": 11.91220669746399,
+      "0.05": 12.34110140800476,
+      "0.5": 12.734079837799072,
+      "0.95": 13.442950248718262,
+      "0.99": 14.303808164596559
+    }
+  },
+  "normalization": {
+    "center": 12.791336417775328,
+    "scale": 0.3984203098998668,
+    "clip": [
+      -4.0,
+      4.0
+    ]
+  },
+  "peak_cuda_memory_bytes": 843978240
+}
