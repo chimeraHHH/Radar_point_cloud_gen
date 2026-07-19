@@ -590,7 +590,9 @@ independently gated geometry parent
 - [x] 关闭 G1 comparison；按冻结结果终止原 G2/G3，并归档终局负结果。
 - [ ] 完成独立 G1B Stage A/B；若通过，完成 RaLD-anchor RH1/RH2。
 - [ ] 在冻结 RH family 上建立并完成 G2R/G3R，不复用原 G2/G3 结论。
-- [ ] 完成 G4 45/45 序列下载、CRC、时序训练与 family freeze。
+- [x] 建立 RaLD-native G4R 的预测缓存、token/latent/query 训练、基线、
+  preflight、rollout、比较与总队列；严格等待 G3R checkpoint family。
+- [ ] 完成 G4R 45/45 序列下载、CRC、时序训练与 family freeze。
 - [ ] 释放 P5 test 并完成 P6 论文证据包。
 
 > 当前最高优先级是完成 **独立 G1B -> RaLD-anchor RH1/RH2** 决策；G4 只继续数据下载与校验，不在新单帧 family 冻结前训练。

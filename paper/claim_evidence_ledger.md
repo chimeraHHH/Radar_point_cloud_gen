@@ -38,7 +38,7 @@
 | G1B | Server Stage A: `formal_3fa7ae8_g1b_screen/g1b_screen_3fa7ae88.json`; Stage B is authorized only by that report | Independent branch waiting for an H200; does not reopen G1 |
 | G2/G3 | Original `formal_28d69a0_g2_g3` queue | Not unlocked and permanently closed after G1 failure; any successor must be named G2R/G3R |
 | G4 data | `artifacts/g4/g4_temporal_manifest_a7d06db1.json`; download summary | Manifest passed; download pending |
-| G4/G4R | Old server route `formal_206ffeb_g4` is closed. New expected route is a source- and hash-bound RaLD-native G4R chain after G3R. | Old queue must not train; G4R awaits passing G3R and 45/45 verified sequences |
+| G4/G4R | Old server route `formal_206ffeb_g4` is closed. The source- and hash-bound RaLD-native cache/train/preflight/baseline/rollout/compare/queue chain is implemented. | Old queue must not train; new G4R queue awaits passing G3R and 45/45 verified sequences |
 | P5 | Server: `launch_logs/206ffeb/p5_queue.log` and `p5_download_gate.log`; both wait for `formal_206ffeb_g4/g4_queue_summary_206ffeba.json` | Test locked until G4 family freeze |
 | RaLD hybrid | `artifacts/baselines/rald/anchor_hybrid_rh0_a1c862a.json`; `artifacts/baselines/rald/anchor_hybrid_training_chain_2468acd.json`; `artifacts/baselines/rald/anchor_hybrid_late_fusion_d69be57.json`; protocol `docs/rald_anchor_hybrid_protocol.md` | RH0 passed; G1B-to-RH provenance routing and independent RH/G2R/G3R chain implemented; RH0.5/RH1/RH2/G2R/G3R remain result-pending |
 

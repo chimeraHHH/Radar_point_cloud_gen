@@ -26,6 +26,56 @@ class TemporalMatch:
     ego_only_prior_xyz_m: torch.Tensor
 
 
+@dataclass(frozen=True)
+class EgoAlignedMatch:
+    match_distance_m: torch.Tensor
+    weight: torch.Tensor
+    previous_to_current_index: torch.Tensor
+    expected_prior_xyz_m: torch.Tensor
+
+
+def ego_aligned_match(
+    previous_xyz_m: torch.Tensor,
+    previous_confidence: torch.Tensor,
+    current_xyz_m: torch.Tensor,
+    current_confidence: torch.Tensor,
+    current_from_previous: torch.Tensor,
+    matching_scale_m: float = 2.0,
+) -> EgoAlignedMatch:
+    """Match ego-aligned point sets without a static or Doppler convention."""
+
+    expected = transform_points(previous_xyz_m, current_from_previous)
+    current_index, distance = nearest_point_indices(
+        expected, current_xyz_m, neighbor_count=1
+    )
+    current_index = current_index[:, 0]
+    distance = distance[:, 0]
+    weight = (
+        previous_confidence.clamp_min(0.0)
+        * current_confidence[current_index].clamp_min(0.0)
+        * torch.exp(-0.5 * (distance / matching_scale_m).square())
+    )
+    return EgoAlignedMatch(
+        match_distance_m=distance,
+        weight=weight,
+        previous_to_current_index=current_index,
+        expected_prior_xyz_m=expected,
+    )
+
+
+def ego_aligned_match_loss(
+    match: EgoAlignedMatch,
+    huber_delta_m: float = 0.5,
+) -> torch.Tensor:
+    per_point = F.huber_loss(
+        match.match_distance_m,
+        torch.zeros_like(match.match_distance_m),
+        delta=huber_delta_m,
+        reduction="none",
+    )
+    return (per_point * match.weight).sum() / match.weight.sum().clamp_min(1e-8)
+
+
 def temporal_match(
     previous_xyz_m: torch.Tensor,
     previous_probability: torch.Tensor,

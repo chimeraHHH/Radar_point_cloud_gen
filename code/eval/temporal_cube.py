@@ -5,7 +5,11 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-from losses.temporal_consistency import TemporalMatch, occupancy_flicker
+from losses.temporal_consistency import (
+    EgoAlignedMatch,
+    TemporalMatch,
+    occupancy_flicker,
+)
 
 
 def weighted_mean(values: torch.Tensor, weight: torch.Tensor) -> float:
@@ -69,6 +73,42 @@ def temporal_consistency_report(
             (error <= threshold).to(weight), weight
         )
     return report
+
+
+def ego_aligned_consistency_report(
+    match: EgoAlignedMatch,
+    previous_confidence: torch.Tensor,
+    current_xyz_m: torch.Tensor,
+    current_confidence: torch.Tensor,
+    range_m: torch.Tensor,
+    azimuth_rad: torch.Tensor,
+    elevation_rad: torch.Tensor,
+) -> dict[str, float]:
+    distance = match.match_distance_m.detach().float()
+    weight = match.weight.detach().float()
+    if float(weight.sum().item()) <= 1e-8:
+        raise ValueError("Ego-aligned report has zero correspondence weight")
+    flicker = occupancy_flicker(
+        match.expected_prior_xyz_m.detach(),
+        previous_confidence.detach().float(),
+        current_xyz_m.detach().float(),
+        current_confidence.detach().float(),
+        range_m,
+        azimuth_rad,
+        elevation_rad,
+    )
+    return {
+        "ego_aligned_matched_distance_mean_m": weighted_mean(distance, weight),
+        "ego_aligned_matched_distance_median_m": weighted_quantile(
+            distance, weight, 0.5
+        ),
+        "ego_aligned_matched_distance_q90_m": weighted_quantile(
+            distance, weight, 0.9
+        ),
+        "occupancy_flicker": float(flicker.item()),
+        "effective_match_weight": float(weight.sum().item()),
+        "point_count": int(distance.numel()),
+    }
 
 
 def aggregate_temporal_reports(
