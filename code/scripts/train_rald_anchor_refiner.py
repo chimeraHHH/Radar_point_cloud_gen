@@ -40,6 +40,7 @@ from scripts.train_cube_doppler import move_frame, selected_indices, sha256  # n
 
 @dataclass(frozen=True)
 class TrainConfig:
+    parent_mode: str
     epochs: int
     learning_rate: float
     weight_decay: float
@@ -372,8 +373,16 @@ def main() -> None:
         args.max_eval_frames = 1
 
     comparison = json.loads(args.g1_comparison.read_text(encoding="utf-8"))
-    if comparison.get("decision", {}).get("g1_passed") is not True:
-        raise RuntimeError("RH1/RH2 is locked until the formal G1 comparison passes")
+    g1_decision = comparison.get("decision", {})
+    if g1_decision.get("g1_passed") is True:
+        selected_parent_mode = "full_raed"
+    elif g1_decision.get("rae_max_beats_cfar") is True:
+        selected_parent_mode = "rae_max"
+    else:
+        raise RuntimeError(
+            "RH1/RH2 requires either a passing Full-RAED G1 or a RAE-Max "
+            "geometry parent that passed the frozen CFAR gate"
+        )
     if args.seed not in comparison.get("seeds", []):
         raise ValueError("RaLD refiner seed must be one of the formal G1 seeds")
     parent_document = json.loads(
@@ -381,8 +390,11 @@ def main() -> None:
     )
     parent_config = parent_document["config"]
     parent_provenance = parent_document["provenance"]
-    if parent_config["mode"] != "full_raed":
-        raise ValueError("RaLD anchor refinement requires the selected Full-RAED parent")
+    if parent_config["mode"] != selected_parent_mode:
+        raise ValueError(
+            f"Formal comparison selected {selected_parent_mode}, received "
+            f"{parent_config['mode']} parent"
+        )
     if int(parent_config["seed"]) != args.seed:
         raise ValueError("RaLD refiner seed must match its frozen G1 parent")
     artifact_hashes = {
@@ -394,6 +406,7 @@ def main() -> None:
         raise ValueError("RH data artifacts differ from the frozen G1 parent")
 
     config = TrainConfig(
+        parent_mode=selected_parent_mode,
         epochs=args.epochs,
         learning_rate=args.learning_rate,
         weight_decay=args.weight_decay,

@@ -40,6 +40,16 @@ def wait_for_json(path: Path, poll_seconds: int) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def select_parent(
+    decision: dict, full_parent: Path, rae_parent: Path
+) -> tuple[str, Path, str] | None:
+    if decision.get("g1_passed") is True:
+        return "full_raed", full_parent, "formal_g1_passed"
+    if decision.get("rae_max_beats_cfar") is True:
+        return "rae_max", rae_parent, "late_fusion_recovery_after_g1_failure"
+    return None
+
+
 def gpu_state(index: int) -> tuple[int, int]:
     output = subprocess.check_output(
         [
@@ -102,7 +112,8 @@ def main() -> None:
     parser.add_argument("--scene-split", type=Path, required=True)
     parser.add_argument("--normalization", type=Path, required=True)
     parser.add_argument("--g1-comparison", type=Path, required=True)
-    parser.add_argument("--parent-g1-run", type=Path, required=True)
+    parser.add_argument("--full-parent-g1-run", type=Path, required=True)
+    parser.add_argument("--rae-parent-g1-run", type=Path, required=True)
     parser.add_argument("--run-root", type=Path, required=True)
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--seed", type=int, default=20260716)
@@ -120,22 +131,27 @@ def main() -> None:
         emit("queue_summary_exists", summary=str(summary_path))
         return
     comparison = wait_for_json(args.g1_comparison, args.poll_seconds)
-    if comparison.get("decision", {}).get("g1_passed") is not True:
+    decision = comparison.get("decision", {})
+    selection = select_parent(
+        decision, args.full_parent_g1_run, args.rae_parent_g1_run
+    )
+    if selection is None:
         summary = {
-            "status": "skipped_g1_failed",
+            "status": "skipped_no_geometry_parent_passed",
             "source_commit": args.source_commit,
             "g1_comparison": str(args.g1_comparison),
-            "g1_decision": comparison.get("decision"),
+            "g1_decision": decision,
             "rh05_started": False,
             "rh1_started": False,
         }
         atomic_json(summary_path, summary)
         emit("rald_anchor_skipped", summary=summary)
         return
+    parent_mode, parent_g1_run, route = selection
     if args.seed not in comparison.get("seeds", []):
         raise ValueError("RH1 seed is absent from the formal G1 comparison")
-    parent_config = args.parent_g1_run / "config.json"
-    parent_checkpoint = args.parent_g1_run / "best.pt"
+    parent_config = parent_g1_run / "config.json"
+    parent_checkpoint = parent_g1_run / "best.pt"
     if not parent_config.is_file() or not parent_checkpoint.is_file():
         raise FileNotFoundError("Frozen G1 parent is incomplete")
 
@@ -151,7 +167,7 @@ def main() -> None:
             "--data-root",
             str(args.data_root),
             "--parent-g1-run",
-            str(args.parent_g1_run),
+            str(parent_g1_run),
             "--output",
             str(integration_path),
             "--device",
@@ -188,7 +204,10 @@ def main() -> None:
         )
         return
 
-    run_path = args.run_root / f"rh1_seed{args.seed}_{args.source_commit[:8]}"
+    run_path = (
+        args.run_root
+        / f"rh1_{parent_mode}_seed{args.seed}_{args.source_commit[:8]}"
+    )
     gate_path = run_path / "rh1_gate.json"
     if not gate_path.exists():
         gpu = wait_for_gpu(
@@ -211,7 +230,7 @@ def main() -> None:
             "--g1-comparison",
             str(args.g1_comparison),
             "--parent-g1-run",
-            str(args.parent_g1_run),
+            str(parent_g1_run),
             "--output",
             str(run_path),
             "--epochs",
@@ -245,8 +264,10 @@ def main() -> None:
     summary = {
         "status": "rh1_passed" if passed else "rh1_gate_failed",
         "source_commit": args.source_commit,
+        "route": route,
+        "parent_mode": parent_mode,
         "g1_comparison": str(args.g1_comparison),
-        "parent_g1_run": str(args.parent_g1_run),
+        "parent_g1_run": str(parent_g1_run),
         "rh05_report": str(integration_path),
         "rh1_run": str(run_path),
         "rh1_gate": gate.get("rh1_gate"),

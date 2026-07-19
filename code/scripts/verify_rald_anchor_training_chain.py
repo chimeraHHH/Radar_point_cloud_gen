@@ -45,11 +45,11 @@ def main() -> None:
         (args.parent_g1_run / "config.json").read_text(encoding="utf-8")
     )
     parent_config = parent_document["config"]
-    if parent_config["mode"] != "full_raed":
-        raise ValueError("Integration verification requires a Full-RAED parent")
+    if parent_config["mode"] not in {"rae_max", "full_raed"}:
+        raise ValueError("Integration verification requires a G1 occupancy parent")
     axes = load_axes(args.data_root / "resources")
     parent = CubeOccupancyNet(
-        "full_raed",
+        parent_config["mode"],
         torch.from_numpy(axes.doppler_mps),
         base_channels=int(parent_config["base_channels"]),
         log_center=float(parent_config["log_center"]),
@@ -164,6 +164,7 @@ def main() -> None:
             "run": str(args.parent_g1_run),
             "checkpoint": str(parent_checkpoint_path),
             "git_commit": parent_document["provenance"]["git_commit"],
+            "mode": parent_config["mode"],
             "parameter_count": parameter_count(parent),
         },
         "refiner_parameter_count": parameter_count(model.refiner),

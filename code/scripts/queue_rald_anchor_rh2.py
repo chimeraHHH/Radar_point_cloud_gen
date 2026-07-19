@@ -236,6 +236,24 @@ def main() -> None:
             },
         )
         return
+    g1 = wait_for_json(args.g1_comparison, args.poll_seconds, "waiting_for_g1")
+    decision = g1.get("decision", {})
+    if decision.get("g1_passed") is True:
+        parent_mode = "full_raed"
+    elif decision.get("rae_max_beats_cfar") is True:
+        parent_mode = "rae_max"
+    else:
+        atomic_json(
+            summary_path,
+            {
+                "status": "skipped_no_geometry_parent_passed",
+                "source_commit": args.source_commit,
+                "g1_decision": decision,
+            },
+        )
+        return
+    if rh1.get("parent_mode") != parent_mode:
+        raise ValueError("RH1 parent selection differs from the formal G1 decision")
     core = wait_for_json(
         args.core_g2_g3_summary, args.poll_seconds, "waiting_for_core_g2_g3"
     )
@@ -247,8 +265,9 @@ def main() -> None:
         Job(
             seed=seed,
             parent=args.g1_comparison.parent
-            / f"g1_full_raed_seed{seed}_{parent_tag}",
-            run=args.run_root / f"rh2_seed{seed}_{args.source_commit[:8]}",
+            / f"g1_{parent_mode}_seed{seed}_{parent_tag}",
+            run=args.run_root
+            / f"rh2_{parent_mode}_seed{seed}_{args.source_commit[:8]}",
             log=args.run_root / f"rh2_seed{seed}.log",
         )
         for seed in args.seeds
@@ -343,6 +362,7 @@ def main() -> None:
     summary = {
         "status": "rh2_passed" if passed else "rh2_gate_failed",
         "source_commit": args.source_commit,
+        "parent_mode": parent_mode,
         "runs": [str(job.run) for job in jobs],
         "comparison": str(comparison_path),
         "decision": comparison.get("decision"),
