@@ -146,15 +146,27 @@ def sample_empty_indices(
     if count <= 0:
         raise ValueError("Empty-query count must be positive")
     cell_count = math.prod(shape)
-    occupied = torch.zeros(cell_count, dtype=torch.bool, device=occupied_indices.device)
-    occupied[_flat_rae_indices(occupied_indices.long(), shape)] = True
-    available = (~occupied).nonzero(as_tuple=False).flatten()
-    if count > available.numel():
+    blocked = torch.zeros(cell_count, dtype=torch.bool, device=occupied_indices.device)
+    blocked[_flat_rae_indices(occupied_indices.long(), shape)] = True
+    if count > cell_count - int(blocked.sum().item()):
         raise ValueError("Requested more unique empty queries than available cells")
-    order = torch.randperm(
-        available.numel(), device=available.device, generator=generator
-    )[:count]
-    return _unflatten_rae_indices(available[order], shape)
+    selected = []
+    remaining = count
+    while remaining:
+        candidate_count = max(remaining * 2, 1_024)
+        candidates = torch.randint(
+            cell_count,
+            (candidate_count,),
+            device=occupied_indices.device,
+            generator=generator,
+        ).unique()
+        candidates = candidates[~blocked[candidates]][:remaining]
+        if not candidates.numel():
+            continue
+        blocked[candidates] = True
+        selected.append(candidates)
+        remaining -= candidates.numel()
+    return _unflatten_rae_indices(torch.cat(selected), shape)
 
 
 def sample_occupancy_queries(
@@ -245,6 +257,11 @@ def decode_grid_topk(
         raise ValueError("Query chunk size must be positive")
     best_logits = torch.empty(0, dtype=torch.float32, device=latent.device)
     best_flat = torch.empty(0, dtype=torch.long, device=latent.device)
+    prepared_latent = (
+        autoencoder.prepare_decoder_latent(latent)
+        if hasattr(autoencoder, "prepare_decoder_latent")
+        else latent
+    )
     for start in range(0, cell_count, query_chunk_size):
         flat = torch.arange(
             start,
@@ -253,7 +270,11 @@ def decode_grid_topk(
         )
         indices = _unflatten_rae_indices(flat, shape)
         queries = indices_to_normalized_rae(indices, axes).to(latent)
-        logits = autoencoder.decode(latent, queries.unsqueeze(0))[0].float()
+        logits = (
+            autoencoder.decode_queries(prepared_latent, queries.unsqueeze(0))[0]
+            if hasattr(autoencoder, "decode_queries")
+            else autoencoder.decode(latent, queries.unsqueeze(0))[0]
+        ).float()
         candidate_logits = torch.cat((best_logits, logits), dim=0)
         candidate_flat = torch.cat((best_flat, flat), dim=0)
         keep = min(point_count, candidate_logits.numel())

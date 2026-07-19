@@ -210,18 +210,28 @@ class RaLDPointAutoencoder(nn.Module):
         log_variance = self.log_variance(latent).clamp(-30.0, 20.0)
         return GaussianPosterior(mean, log_variance)
 
-    def decode(self, latent: torch.Tensor, queries: torch.Tensor) -> torch.Tensor:
+    def prepare_decoder_latent(self, latent: torch.Tensor) -> torch.Tensor:
         if latent.ndim != 3 or latent.shape[1] != self.latent_count:
             raise ValueError(f"Unexpected latent shape {latent.shape}")
-        if queries.ndim != 3 or queries.shape[-1] != 3:
-            raise ValueError(f"Unexpected query shape {queries.shape}")
         features = self.latent_projection(latent)
         for attention, feed_forward in self.decoder_layers:
             features = features + attention(features)
             features = features + feed_forward(features)
+        return features
+
+    def decode_queries(
+        self, prepared_latent: torch.Tensor, queries: torch.Tensor
+    ) -> torch.Tensor:
+        if prepared_latent.ndim != 3 or prepared_latent.shape[1] != self.latent_count:
+            raise ValueError(f"Unexpected prepared latent shape {prepared_latent.shape}")
+        if queries.ndim != 3 or queries.shape[-1] != 3:
+            raise ValueError(f"Unexpected query shape {queries.shape}")
         query_features = self.point_embedding(queries)
-        query_features = self.decoder_attention(query_features, features)
+        query_features = self.decoder_attention(query_features, prepared_latent)
         return self.occupancy(query_features).squeeze(-1)
+
+    def decode(self, latent: torch.Tensor, queries: torch.Tensor) -> torch.Tensor:
+        return self.decode_queries(self.prepare_decoder_latent(latent), queries)
 
     def forward(
         self,

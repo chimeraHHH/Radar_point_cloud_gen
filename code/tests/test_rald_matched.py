@@ -77,6 +77,25 @@ def test_point_autoencoder_has_finite_kl_and_decoder_gradients() -> None:
     assert torch.count_nonzero(model.occupancy.weight.grad).item() > 0
 
 
+def test_prepared_latent_matches_direct_decode() -> None:
+    model = small_autoencoder().eval()
+    latent = torch.randn(1, 8, 4)
+    queries = torch.rand(1, 13, 3) * 2.0 - 1.0
+
+    with torch.inference_mode():
+        direct = model.decode(latent, queries)
+        prepared = model.prepare_decoder_latent(latent)
+        chunked = torch.cat(
+            (
+                model.decode_queries(prepared, queries[:, :5]),
+                model.decode_queries(prepared, queries[:, 5:]),
+            ),
+            dim=1,
+        )
+
+    torch.testing.assert_close(direct, chunked, rtol=1e-6, atol=1e-6)
+
+
 def test_radar_encoder_uses_native_spatial_shape() -> None:
     encoder = RadarTokenEncoder(
         encoded_shape=(4, 4, 2),

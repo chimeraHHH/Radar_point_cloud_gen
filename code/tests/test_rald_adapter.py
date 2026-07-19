@@ -1,6 +1,9 @@
+import json
+
 import numpy as np
 import torch
 
+from cube_dense.dataset import KRadarDenseTargetDataset
 from cube_dense.kradar import KRadarAxes
 from cube_dense.rald_adapter import (
     decode_grid_topk,
@@ -110,16 +113,29 @@ def test_occupancy_loss_preserves_positive_negative_and_kl_terms() -> None:
 
 
 class QueryScoreDecoder:
-    def decode(self, latent: torch.Tensor, queries: torch.Tensor) -> torch.Tensor:
+    def __init__(self) -> None:
+        self.prepare_calls = 0
+
+    def prepare_decoder_latent(self, latent: torch.Tensor) -> torch.Tensor:
+        self.prepare_calls += 1
+        return latent
+
+    def decode_queries(
+        self, latent: torch.Tensor, queries: torch.Tensor
+    ) -> torch.Tensor:
         del latent
         return 3.0 * queries[..., 0] + queries[..., 1] - queries[..., 2]
+
+    def decode(self, latent: torch.Tensor, queries: torch.Tensor) -> torch.Tensor:
+        return self.decode_queries(latent, queries)
 
 
 def test_chunked_grid_decoder_returns_exact_global_topk() -> None:
     latent = torch.zeros(1, 2, 2)
 
+    decoder = QueryScoreDecoder()
     indices, confidence = decode_grid_topk(
-        QueryScoreDecoder(), latent, axes(), point_count=5, query_chunk_size=7
+        decoder, latent, axes(), point_count=5, query_chunk_size=7
     )
 
     all_indices = torch.cartesian_prod(
@@ -133,3 +149,37 @@ def test_chunked_grid_decoder_returns_exact_global_topk() -> None:
         tuple(row) for row in all_indices[expected].tolist()
     }
     assert confidence.shape == (5,)
+    assert decoder.prepare_calls == 1
+
+
+def test_target_only_dataset_does_not_require_cube_files(tmp_path) -> None:
+    cache_root = tmp_path / "cache"
+    cache_root.mkdir()
+    target, indices = targets()
+    np.savez(
+        cache_root / "seq01_radar_00002.npz",
+        target_xyz_confidence=target.numpy(),
+        target_rae_index=indices.numpy(),
+    )
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "frames": [
+                    {
+                        "sequence": 1,
+                        "radar_index": 2,
+                        "partition": "train",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    dataset = KRadarDenseTargetDataset(cache_root, manifest, ("train",))
+    item = dataset[0]
+
+    assert len(dataset) == 1
+    torch.testing.assert_close(item["target_xyz_confidence"], target)
+    torch.testing.assert_close(item["target_rae_index"], indices)
