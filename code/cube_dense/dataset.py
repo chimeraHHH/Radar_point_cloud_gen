@@ -111,3 +111,50 @@ class KRadarDenseTargetDataset(Dataset):
             "radar_index": radar_index,
             "partition": record["partition"],
         }
+
+
+class KRadarRaLDLatentDataset(Dataset):
+    """Read a full Cube, dense target, and frozen RaLD AE latent."""
+
+    def __init__(
+        self,
+        data_root: Path,
+        cache_root: Path,
+        latent_root: Path,
+        audit_manifest: Path,
+        partitions: tuple[str, ...],
+    ) -> None:
+        self.data_root = data_root
+        self.cache_root = cache_root
+        self.latent_root = latent_root
+        self.records = _manifest_records(audit_manifest, partitions)
+
+    def __len__(self) -> int:
+        return len(self.records)
+
+    def __getitem__(self, index: int) -> dict:
+        record = self.records[index]
+        sequence = int(record["sequence"])
+        radar_index = int(record["radar_index"])
+        cube = load_tesseract(
+            self.data_root
+            / str(sequence)
+            / "radar_tesseract"
+            / f"tesseract_{radar_index:05d}.mat"
+        ).astype(np.float32, copy=False)
+        with np.load(_cache_path(self.cache_root, sequence, radar_index)) as cache:
+            target = cache["target_xyz_confidence"].astype(np.float32)
+            target_index = cache["target_rae_index"].astype(np.int64)
+        with np.load(_cache_path(self.latent_root, sequence, radar_index)) as cache:
+            latent = cache["latent_mean"].astype(np.float32)
+            posterior_kl = np.asarray(cache["posterior_kl"], dtype=np.float32)
+        return {
+            "cube_drae": torch.from_numpy(cube),
+            "target_xyz_confidence": torch.from_numpy(target),
+            "target_rae_index": torch.from_numpy(target_index),
+            "latent_mean": torch.from_numpy(latent),
+            "posterior_kl": torch.from_numpy(posterior_kl),
+            "sequence": sequence,
+            "radar_index": radar_index,
+            "partition": record["partition"],
+        }

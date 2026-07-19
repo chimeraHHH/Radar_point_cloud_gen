@@ -120,6 +120,11 @@ Environment: new hym_rald, H200 only
 - `code/cube_dense/rald_adapter.py` 已实现连续 RAE 坐标、train-only RAE-Sum
   输入口径、confidence-weighted target sampling、严格 empty query 和全网格
   chunked top-10k 解码。
-- 缩小配置与适配不变量在 H200 服务器环境完成 72 项全量单元测试。正式默认
+- `code/scripts/train_rald_matched_ae.py`、
+  `cache_rald_matched_latents.py` 和 `train_rald_matched_edm.py` 已形成 AE、
+  frozen latent cache、radar-conditioned EDM 的完整训练链；cache 与训练器均
+  绑定 manifest、split、normalization、checkpoint hash，并记录
+  `external_pretraining=false`、`cfar_query_helper=false`。
+- 缩小配置与适配不变量在 H200 服务器环境完成 81 项全量单元测试。正式默认
   规模的显存 verifier、一帧 overfit、AE/EDM no-go 尚未运行，不能据此报告
   RaLD-style 几何结果。

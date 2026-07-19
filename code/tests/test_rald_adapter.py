@@ -3,7 +3,7 @@ import json
 import numpy as np
 import torch
 
-from cube_dense.dataset import KRadarDenseTargetDataset
+from cube_dense.dataset import KRadarDenseTargetDataset, KRadarRaLDLatentDataset
 from cube_dense.kradar import KRadarAxes
 from cube_dense.rald_adapter import (
     decode_grid_topk,
@@ -183,3 +183,49 @@ def test_target_only_dataset_does_not_require_cube_files(tmp_path) -> None:
     assert len(dataset) == 1
     torch.testing.assert_close(item["target_xyz_confidence"], target)
     torch.testing.assert_close(item["target_rae_index"], indices)
+
+
+def test_latent_dataset_joins_cube_target_and_frozen_latent(tmp_path, monkeypatch) -> None:
+    data_root = tmp_path / "data"
+    cache_root = tmp_path / "cache"
+    latent_root = tmp_path / "latent"
+    cache_root.mkdir()
+    latent_root.mkdir()
+    target, indices = targets()
+    np.savez(
+        cache_root / "seq01_radar_00002.npz",
+        target_xyz_confidence=target.numpy(),
+        target_rae_index=indices.numpy(),
+    )
+    latent = np.arange(32, dtype=np.float32).reshape(8, 4)
+    np.savez(
+        latent_root / "seq01_radar_00002.npz",
+        latent_mean=latent,
+        posterior_kl=np.float32(0.25),
+    )
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "frames": [
+                    {
+                        "sequence": 1,
+                        "radar_index": 2,
+                        "partition": "train",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    expected_cube = np.ones((64, 4, 3, 2), dtype=np.float32)
+    monkeypatch.setattr("cube_dense.dataset.load_tesseract", lambda _: expected_cube)
+
+    dataset = KRadarRaLDLatentDataset(
+        data_root, cache_root, latent_root, manifest, ("train",)
+    )
+    item = dataset[0]
+
+    torch.testing.assert_close(item["cube_drae"], torch.from_numpy(expected_cube))
+    torch.testing.assert_close(item["latent_mean"], torch.from_numpy(latent))
+    assert item["posterior_kl"].item() == 0.25
