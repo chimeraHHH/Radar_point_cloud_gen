@@ -101,6 +101,11 @@ ADC
 
 最先做的 no-go 不是完整三种子训练，而是：一帧 overfit、10-15 epoch 单种子验证、输出点数和 query 公平性检查。若单种子 Chamfer 不优于轻量 RAE-Max，或训练/推理成本超过主方法一个数量级，则保留其为 related work，不进入主表。
 
+一帧 AE overfit 在观察结果前固定以下门槛：训练损失相对首 epoch 至少下降
+30%，top-10k Chamfer 不超过 5 m，2 m outlier 不超过 50%，1 m F-score
+至少 0.2，mean output confidence 至少 0.05。BCE 降低但几何不通过不算
+overfit 成功，判定脚本为 `code/scripts/verify_rald_ae_overfit.py`。
+
 ## 7. 决策状态
 
 ```text
