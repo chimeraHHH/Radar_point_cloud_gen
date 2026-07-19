@@ -17,7 +17,7 @@ from cube_dense.kradar import load_axes, load_tesseract  # noqa: E402
 from models.cube_occupancy import CubeOccupancyNet, parameter_count  # noqa: E402
 from models.rald_anchor import FrozenParentRaLDRefiner  # noqa: E402
 from models.rald_matched import FullRAEDRadarTokenEncoder  # noqa: E402
-from scripts.train_rald_anchor_refiner import gradient_audit  # noqa: E402
+from scripts.train_rald_anchor_refiner import gradient_audit, sha256  # noqa: E402
 
 
 def main() -> None:
@@ -45,8 +45,8 @@ def main() -> None:
         (args.parent_g1_run / "config.json").read_text(encoding="utf-8")
     )
     parent_config = parent_document["config"]
-    if parent_config["mode"] not in {"rae_max", "full_raed"}:
-        raise ValueError("Integration verification requires a G1 occupancy parent")
+    if parent_config["mode"] not in CubeOccupancyNet.MODES:
+        raise ValueError("Integration verification requires an occupancy parent")
     axes = load_axes(args.data_root / "resources")
     parent = CubeOccupancyNet(
         parent_config["mode"],
@@ -163,6 +163,7 @@ def main() -> None:
         "parent": {
             "run": str(args.parent_g1_run),
             "checkpoint": str(parent_checkpoint_path),
+            "checkpoint_sha256": sha256(parent_checkpoint_path),
             "git_commit": parent_document["provenance"]["git_commit"],
             "mode": parent_config["mode"],
             "parameter_count": parameter_count(parent),

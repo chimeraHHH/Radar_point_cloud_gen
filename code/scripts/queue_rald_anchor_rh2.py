@@ -11,6 +11,12 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+from g1b_contract import (
+    FROZEN_G1B_SEEDS,
+    select_original_parent,
+    sha256,
+    validate_g1b_summary,
+)
 from gpu_runtime import cuda_environment, validate_gpu_candidates
 
 
@@ -103,14 +109,32 @@ class RunningJob:
     handle: object
 
 
-def completed(job: Job, epochs: int, source_commit: str) -> bool:
+def completed(
+    job: Job,
+    epochs: int,
+    source_commit: str,
+    parent_route: str,
+    parent_source_commit: str,
+) -> bool:
     metrics = job.run / "best_validation_metrics.json"
     config = job.run / "config.json"
     log = job.run / "train_log.jsonl"
     if not all(path.is_file() for path in (metrics, config, log)):
         return False
+    parent_checkpoint = job.parent / "best.pt"
+    if not parent_checkpoint.is_file():
+        return False
     document = json.loads(config.read_text(encoding="utf-8"))
-    if document["provenance"]["git_commit"] != source_commit:
+    provenance = document["provenance"]
+    if provenance["git_commit"] != source_commit:
+        return False
+    if document["config"].get("parent_route") != parent_route:
+        return False
+    if provenance.get("parent_g1_checkpoint") != str(parent_checkpoint):
+        return False
+    if provenance.get("parent_g1_checkpoint_sha256") != sha256(parent_checkpoint):
+        return False
+    if provenance.get("parent_g1_git_commit") != parent_source_commit:
         return False
     records = [
         json.loads(line)
@@ -121,24 +145,27 @@ def completed(job: Job, epochs: int, source_commit: str) -> bool:
 
 
 def g1b_parent_runs(
-    summary: dict, seeds: list[int], run_root: Path, source_commit: str
+    summary: dict,
+    seeds: list[int],
+    run_root: Path,
+    training_source_commit: str,
+    decision_source_commit: str,
 ) -> dict[int, Path]:
-    if summary.get("status") != "g1b_passed" or not summary.get("candidate_mode"):
-        raise ValueError("G1B did not authorize an independent geometry parent")
-    if summary.get("training_source_commit") != source_commit:
-        raise ValueError("G1B training source commit differs from the queue contract")
-    if set(seeds) - set(summary.get("seeds", [])):
-        raise ValueError("RH2 seeds are absent from the G1B Stage B decision")
-    mode = str(summary["candidate_mode"])
-    authorized = {Path(path) for path in summary.get("candidate_runs", [])}
-    parents = {
-        seed: run_root
-        / f"g1b_stage_b_{mode}_seed{seed}_{source_commit[:8]}"
-        for seed in seeds
-    }
-    if set(parents.values()) - authorized:
-        raise ValueError("G1B summary does not authorize all RH2 candidate parents")
+    if tuple(seeds) != FROZEN_G1B_SEEDS:
+        raise ValueError("RH2 requires the frozen three G1B seeds in order")
+    _, parents = validate_g1b_summary(
+        summary,
+        training_source_commit,
+        decision_source_commit,
+        run_root,
+        tuple(seeds),
+    )
     return parents
+
+
+def validate_rh1_summary_contract(summary: dict, expected: dict) -> None:
+    if any(summary.get(key) != value for key, value in expected.items()):
+        raise ValueError("RH1 summary differs from the RH2 contract")
 
 
 def train_command(job: Job, args) -> list[str]:
@@ -158,8 +185,14 @@ def train_command(job: Job, args) -> list[str]:
         str(args.normalization),
         "--g1-comparison",
         str(args.g1_comparison),
+        "--g1-source-commit",
+        args.g1_source_commit,
         "--g1b-summary",
         str(args.g1b_summary),
+        "--g1b-training-source-commit",
+        args.g1b_source_commit,
+        "--g1b-decision-source-commit",
+        args.g1b_decision_source_commit,
         "--parent-g1-run",
         str(job.parent),
         "--output",
@@ -227,6 +260,7 @@ def main() -> None:
     parser.add_argument("--g1b-summary", type=Path, required=True)
     parser.add_argument("--g1b-run-root", type=Path, required=True)
     parser.add_argument("--g1b-source-commit", required=True)
+    parser.add_argument("--g1b-decision-source-commit", required=True)
     parser.add_argument("--rh1-summary", type=Path, required=True)
     parser.add_argument("--core-g2-g3-summary", type=Path, required=True)
     parser.add_argument("--run-root", type=Path, required=True)
@@ -245,11 +279,12 @@ def main() -> None:
     args = parser.parse_args()
 
     validate_gpu_candidates(args.gpu_candidates, args.required_gpu_name)
+    if tuple(args.seeds) != FROZEN_G1B_SEEDS:
+        raise ValueError("RH2 requires exactly the frozen three seeds in order")
+    if args.rh2_epochs != 20:
+        raise ValueError("RH2 requires the frozen 20-epoch budget")
     args.run_root.mkdir(parents=True, exist_ok=True)
     summary_path = args.run_root / f"rh2_queue_summary_{args.source_commit[:8]}.json"
-    if summary_path.exists():
-        emit("rh2_summary_exists", summary=str(summary_path))
-        return
     rh1 = wait_for_json(args.rh1_summary, args.poll_seconds, "waiting_for_rh1")
     if rh1.get("status") != "rh1_passed":
         atomic_json(
@@ -266,25 +301,31 @@ def main() -> None:
     decision = g1.get("decision", {})
     parent_mode = str(rh1.get("parent_mode"))
     parent_route = str(rh1.get("route"))
-    if parent_route == "formal_g1_passed" and decision.get("g1_passed") is not True:
-        raise ValueError("RH1 Full-RAED route contradicts G1")
-    if (
-        parent_route == "late_fusion_recovery_after_g1_failure"
-        and decision.get("rae_max_beats_cfar") is not True
-    ):
-        raise ValueError("RH1 RAE-Max route contradicts G1")
+    selected_original = select_original_parent(decision)
+    g1b = None
     if parent_route == "independent_g1b_parent":
+        if selected_original is not None:
+            raise ValueError("RH1 G1B route contradicts an authorized original parent")
         g1b = wait_for_json(args.g1b_summary, args.poll_seconds, "waiting_for_g1b")
-        if (
-            g1b.get("status") != "g1b_passed"
-            or g1b.get("candidate_mode") != parent_mode
-        ):
+        parents = g1b_parent_runs(
+            g1b,
+            args.seeds,
+            args.g1b_run_root,
+            args.g1b_source_commit,
+            args.g1b_decision_source_commit,
+        )
+        if g1b.get("candidate_mode") != parent_mode:
             raise ValueError("RH1 G1B route contradicts Stage B")
-    elif parent_route not in {
-        "formal_g1_passed",
-        "late_fusion_recovery_after_g1_failure",
-    }:
-        raise ValueError("RH1 summary has an unknown parent route")
+        parent_source_commit = args.g1b_source_commit
+    else:
+        if selected_original != (parent_mode, parent_route):
+            raise ValueError("RH1 parent route contradicts the formal G1 decision")
+        parents = {
+            seed: args.g1_comparison.parent
+            / f"g1_{parent_mode}_seed{seed}_{args.g1_source_commit[:8]}"
+            for seed in args.seeds
+        }
+        parent_source_commit = args.g1_source_commit
     if parent_route == "formal_g1_passed":
         core = wait_for_json(
             args.core_g2_g3_summary, args.poll_seconds, "waiting_for_core_g2_g3"
@@ -303,16 +344,42 @@ def main() -> None:
             "source_commit": None,
         }
 
-    if parent_route == "independent_g1b_parent":
-        parents = g1b_parent_runs(
-            g1b, args.seeds, args.g1b_run_root, args.g1b_source_commit
-        )
-    else:
-        parents = {
-            seed: args.g1_comparison.parent
-            / f"g1_{parent_mode}_seed{seed}_{args.g1_source_commit[:8]}"
-            for seed in args.seeds
-        }
+    rh1_seed = FROZEN_G1B_SEEDS[0]
+    expected_g1b_hash = (
+        sha256(args.g1b_summary) if parent_route == "independent_g1b_parent" else None
+    )
+    rh1_parent = parents[rh1_seed]
+    validate_rh1_summary_contract(
+        rh1,
+        {
+            "source_commit": args.source_commit,
+            "seed": rh1_seed,
+            "route": parent_route,
+            "parent_mode": parent_mode,
+            "g1_comparison": str(args.g1_comparison),
+            "g1_comparison_sha256": sha256(args.g1_comparison),
+            "g1_source_commit": args.g1_source_commit,
+            "g1b_summary": (
+                str(args.g1b_summary)
+                if parent_route == "independent_g1b_parent"
+                else None
+            ),
+            "g1b_summary_sha256": expected_g1b_hash,
+            "g1b_training_source_commit": (
+                args.g1b_source_commit
+                if parent_route == "independent_g1b_parent"
+                else None
+            ),
+            "g1b_decision_source_commit": (
+                args.g1b_decision_source_commit
+                if parent_route == "independent_g1b_parent"
+                else None
+            ),
+            "parent_g1_run": str(rh1_parent),
+            "parent_checkpoint_sha256": sha256(rh1_parent / "best.pt"),
+            "parent_training_source_commit": parent_source_commit,
+        },
+    )
     jobs = [
         Job(
             seed=seed,
@@ -323,10 +390,33 @@ def main() -> None:
         )
         for seed in args.seeds
     ]
+    summary_contract = {
+        "source_commit": args.source_commit,
+        "parent_mode": parent_mode,
+        "parent_route": parent_route,
+        "parent_training_source_commit": parent_source_commit,
+        "g1_comparison_sha256": sha256(args.g1_comparison),
+        "g1_source_commit": args.g1_source_commit,
+        "g1b_summary_sha256": expected_g1b_hash,
+        "seeds": args.seeds,
+        "runs": [str(job.run) for job in jobs],
+    }
+    if summary_path.exists():
+        existing = json.loads(summary_path.read_text(encoding="utf-8"))
+        if any(existing.get(key) != value for key, value in summary_contract.items()):
+            raise ValueError("Existing RH2 summary differs from the queue contract")
+        emit("rh2_summary_exists", summary=str(summary_path))
+        return
     pending = [
         job
         for job in jobs
-        if not completed(job, args.rh2_epochs, args.source_commit)
+        if not completed(
+            job,
+            args.rh2_epochs,
+            args.source_commit,
+            parent_route,
+            parent_source_commit,
+        )
     ]
     running: list[RunningJob] = []
     while pending or running:
@@ -356,7 +446,11 @@ def main() -> None:
                 returncode=returncode,
             )
             if returncode != 0 or not completed(
-                item.job, args.rh2_epochs, args.source_commit
+                item.job,
+                args.rh2_epochs,
+                args.source_commit,
+                parent_route,
+                parent_source_commit,
             ):
                 if (
                     resource_failure(item.job.log)
@@ -409,14 +503,15 @@ def main() -> None:
         emit("rh2_comparison_started", command=command)
         subprocess.run(command, check=True, cwd=args.repo_root)
     comparison = json.loads(comparison_path.read_text(encoding="utf-8"))
+    if comparison.get("seeds") != sorted(args.seeds) or comparison.get("runs") != {
+        str(job.seed): str(job.run) for job in sorted(jobs, key=lambda item: item.seed)
+    }:
+        raise ValueError("RH2 comparison provenance differs from the completed runs")
     passed = comparison.get("decision", {}).get("rh2_passed") is True
     summary = {
+        **summary_contract,
         "status": "rh2_passed" if passed else "rh2_gate_failed",
-        "source_commit": args.source_commit,
-        "parent_mode": parent_mode,
-        "parent_route": parent_route,
         "core_g2_g3_dependency": core_dependency,
-        "runs": [str(job.run) for job in jobs],
         "comparison": str(comparison_path),
         "decision": comparison.get("decision"),
     }

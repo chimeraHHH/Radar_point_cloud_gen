@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 import subprocess
@@ -15,6 +14,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from scripts.g1b_contract import (  # noqa: E402
+    FROZEN_G1B_SEEDS,
+    sha256,
+)
 from scripts.gpu_runtime import validate_gpu_candidates  # noqa: E402
 from scripts.queue_g1_formal import (  # noqa: E402
     Job,
@@ -27,14 +30,6 @@ from scripts.queue_g1_formal import (  # noqa: E402
     tail_text,
     train_command,
 )
-
-
-def sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def atomic_json(path: Path, document: dict) -> None:
@@ -81,6 +76,10 @@ def main() -> None:
     args = parser.parse_args()
 
     validate_gpu_candidates(args.gpu_candidates, args.required_gpu_name)
+    if tuple(args.seeds) != FROZEN_G1B_SEEDS:
+        raise ValueError("G1B Stage B requires the frozen three seeds in order")
+    if args.epochs != 50:
+        raise ValueError("G1B Stage B requires the frozen 50-epoch budget")
     args.run_root.mkdir(parents=True, exist_ok=True)
     tag = args.source_commit[:8]
     decision_tag = args.decision_source_commit[:8]
@@ -102,6 +101,8 @@ def main() -> None:
         atomic_json(summary_path, summary)
         emit("g1b_stage_b_skipped", summary=summary)
         return
+    if candidate == "rae_max":
+        raise ValueError("G1B Stage A cannot select its own baseline")
 
     launch_decision_path = (
         args.run_root / f"g1b_stage_b_launch_decision_{decision_tag}.json"
@@ -248,11 +249,15 @@ def main() -> None:
         "decision_source_commit": args.decision_source_commit,
         "seeds": args.seeds,
         "epochs": args.epochs,
+        "screen_report": str(args.screen_report),
+        "screen_report_sha256": sha256(args.screen_report),
         "launch_decision": str(launch_decision_path),
+        "launch_decision_sha256": sha256(launch_decision_path),
         "runs": [str(job.run_path) for job in jobs],
         "baseline_runs": [str(job.run_path) for job in baseline_runs],
         "candidate_runs": [str(job.run_path) for job in candidate_runs],
         "comparison": str(comparison_path),
+        "comparison_sha256": sha256(comparison_path),
         "checks": comparison.get("checks"),
         "g2b_g3b_unlocked": False,
     }

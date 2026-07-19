@@ -35,6 +35,10 @@ from models.cube_occupancy import CubeOccupancyNet, parameter_count  # noqa: E40
 from models.point_to_cube import soft_splat_raed  # noqa: E402
 from models.rald_anchor import FrozenParentRaLDRefiner  # noqa: E402
 from models.rald_matched import FullRAEDRadarTokenEncoder  # noqa: E402
+from scripts.g1b_contract import (  # noqa: E402
+    select_original_parent,
+    validate_g1b_summary,
+)
 from scripts.train_cube_doppler import move_frame, selected_indices, sha256  # noqa: E402
 
 
@@ -329,7 +333,10 @@ def main() -> None:
     parser.add_argument("--scene-split", type=Path, required=True)
     parser.add_argument("--normalization-stats", type=Path, required=True)
     parser.add_argument("--g1-comparison", type=Path, required=True)
+    parser.add_argument("--g1-source-commit", required=True)
     parser.add_argument("--g1b-summary", type=Path, default=None)
+    parser.add_argument("--g1b-training-source-commit", default=None)
+    parser.add_argument("--g1b-decision-source-commit", default=None)
     parser.add_argument("--parent-g1-run", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--epochs", type=int, default=20)
@@ -376,18 +383,26 @@ def main() -> None:
 
     comparison = json.loads(args.g1_comparison.read_text(encoding="utf-8"))
     g1_decision = comparison.get("decision", {})
-    if g1_decision.get("g1_passed") is True:
-        selected_parent_mode = "full_raed"
-        selected_parent_route = "formal_g1_passed"
-    elif g1_decision.get("rae_max_beats_cfar") is True:
-        selected_parent_mode = "rae_max"
-        selected_parent_route = "late_fusion_recovery_after_g1_failure"
+    selected_original = select_original_parent(g1_decision)
+    g1b = None
+    if selected_original is not None:
+        selected_parent_mode, selected_parent_route = selected_original
     elif args.g1b_summary is not None and args.g1b_summary.is_file():
         g1b = json.loads(args.g1b_summary.read_text(encoding="utf-8"))
-        if g1b.get("status") != "g1b_passed" or not g1b.get("candidate_mode"):
-            raise RuntimeError("G1B did not authorize an independent geometry parent")
-        selected_parent_mode = str(g1b["candidate_mode"])
+        if (
+            args.g1b_training_source_commit is None
+            or args.g1b_decision_source_commit is None
+        ):
+            raise RuntimeError("G1B route requires both source commits")
+        selected_parent_mode, g1b_parents = validate_g1b_summary(
+            g1b,
+            args.g1b_training_source_commit,
+            args.g1b_decision_source_commit,
+            args.parent_g1_run.parent,
+        )
         selected_parent_route = "independent_g1b_parent"
+        if g1b_parents.get(args.seed) != args.parent_g1_run:
+            raise ValueError("RaLD refiner received an unauthorized G1B parent run")
     else:
         raise RuntimeError(
             "RH1/RH2 requires either a passing Full-RAED G1 or a RAE-Max "
@@ -400,6 +415,13 @@ def main() -> None:
     )
     parent_config = parent_document["config"]
     parent_provenance = parent_document["provenance"]
+    expected_parent_source = (
+        args.g1b_training_source_commit
+        if selected_parent_route == "independent_g1b_parent"
+        else args.g1_source_commit
+    )
+    if parent_provenance["git_commit"] != expected_parent_source:
+        raise ValueError("Selected parent source commit differs from the contract")
     if parent_config["mode"] != selected_parent_mode:
         raise ValueError(
             f"Selected parent route requires {selected_parent_mode}, received "
@@ -504,6 +526,7 @@ def main() -> None:
         **artifact_hashes,
         "g1_comparison": str(args.g1_comparison),
         "g1_comparison_sha256": sha256(args.g1_comparison),
+        "g1_source_commit": args.g1_source_commit,
         "g1b_summary": (
             str(args.g1b_summary)
             if selected_parent_route == "independent_g1b_parent"
@@ -511,6 +534,16 @@ def main() -> None:
         ),
         "g1b_summary_sha256": (
             sha256(args.g1b_summary)
+            if selected_parent_route == "independent_g1b_parent"
+            else None
+        ),
+        "g1b_training_source_commit": (
+            args.g1b_training_source_commit
+            if selected_parent_route == "independent_g1b_parent"
+            else None
+        ),
+        "g1b_decision_source_commit": (
+            args.g1b_decision_source_commit
             if selected_parent_route == "independent_g1b_parent"
             else None
         ),
