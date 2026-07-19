@@ -1,7 +1,7 @@
 # Method Blueprint: Full-RAED Cube to Dense Radar Points
 
 > Authority: current Cube-to-dense implementation and frozen G0-G4 protocols
-> Updated: 2026-07-18 23:15 CST
+> Updated: 2026-07-19 17:03 CST
 > Evidence rule: this file defines the method, not experimental success
 
 ## 1. Problem Formulation
@@ -57,6 +57,42 @@ L_occ = L_soft-focal + 0.25 L_soft-dice.
 ```
 
 At inference, global top-k decoding selects 10,000 distinct RAE cells. Every cell is decoded once, preventing duplicated points from creating artificial density. The occupancy probability also provides point confidence.
+
+### 3.1 RaLD-Inspired Anchor Latent Refinement
+
+The occupancy grid remains responsible for long-range anchor allocation. We
+borrow RaLD's mixed set-latent mechanism after this parent rather than replacing
+the complete geometry decoder. For normalized anchor coordinates `u_i` and
+parent features `f_i`, Fourier coordinate embeddings and projected features form
+anchor tokens:
+
+```text
+a_i = Fourier(u_i) + W_f f_i.
+```
+
+Static and input-dependent latent queries cross-attend to the complete anchor
+set, followed by latent self-attention:
+
+```text
+z_dyn = z_dyn^0 + CrossAttn(z_dyn^0, {a_i}),
+Z = Transformer(W_z(z_static + z_dyn)).
+```
+
+Each anchor then queries `Z` to obtain a globally contextualized point feature.
+A zero-initialized physical head predicts a bounded RAE offset, confidence, and
+a residual 64-bin Doppler distribution over the local measured Cube spectrum:
+
+```text
+q_i = Softmax(log(q_cube_i + eps) + Delta l_i).
+```
+
+Thus the initial hybrid exactly preserves anchor positions and measured Doppler,
+while learning global point-set corrections. The complete RAED Cube is also
+encoded with the RaLD radar-token hierarchy into 336 spatial condition tokens;
+unlike upstream RaLD, all 64 Doppler bins participate. The independent RaLD
+point VAE was rejected by the K-Radar long-range Chamfer gate, so this anchor
+hybrid is evaluated as a separately gated candidate and cannot be treated as an
+established contribution before RH1/RH2 pass.
 
 ## 4. Point-Conditioned Doppler Prediction
 
@@ -220,3 +256,4 @@ Modules are released only after their parent gate closes. All main comparisons u
 - Temporal value remains pending verified G4 data and G4 evaluation.
 - The analytic static mixture failed and is not a contribution.
 - TruckScenes Doppler-warp and scheduled-sampling results motivate the temporal design but are not K-Radar Cube-to-dense evidence.
+- The RaLD-anchor hybrid passed component-scale RH0 only; its training gain remains pending RH1/RH2.

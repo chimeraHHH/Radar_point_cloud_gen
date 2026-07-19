@@ -33,6 +33,12 @@ retaining the current model's verified long-range geometry allocation.
 - 10k anchors and 512 latent tokens fit one H200;
 - initialization preserves geometry anchors and measured Doppler spectra.
 
+Status: passed at source `a1c862a` on physical H200 GPU 2. The native Cube
+produced 336 Full-RAED tokens with gradients through all 64 Doppler bins. The
+10k-anchor hybrid produced `512 x 512` latent tokens and 10k offset outputs with
+28,730,436 parameters and 1.35 GB peak allocated CUDA memory. Evidence:
+`artifacts/baselines/rald/anchor_hybrid_rh0_a1c862a.json`.
+
 ### RH1: one-frame physical refinement
 
 Use a frozen G1 geometry parent. Train only the hybrid refiner on one train

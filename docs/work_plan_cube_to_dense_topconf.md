@@ -12,6 +12,8 @@
 
 > **2026-07-19 基线修订：**官方 RaLD checkpoint 因 ColoRadar 域、强度-only 条件和无逐点 Doppler/confidence 输出，不作为 K-Radar 主表公平基线。完整规模的 K-Radar matched 重实现通过了结构与梯度验证，但单帧 AE 在一次预注册 hard-occupancy 修复后仍未通过 Chamfer 门（`9.1444 m` vs `<=5.0 m`），因此该训练链 no-go，不继续 latent EDM；RaLD 仅保留为相关工作和隐式 occupancy 架构参考。
 
+> **2026-07-19 RaLD 主线借鉴修订：**matched baseline no-go 不等于放弃 RaLD。当前已实现并在 H200 通过 `RaLD-anchor-hybrid` RH0：完整 64-bin RAED 编码为 336 radar tokens，现有 occupancy top-10k 作为长量程 anchors，RaLD 的 512 mixed latents 与 query cross-attention 负责连续位置、Doppler distribution 和 confidence 精修。独立 point VAE 因长量程 Chamfer 门失败已关闭，避免机械复制短距 ColoRadar 配置。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---
