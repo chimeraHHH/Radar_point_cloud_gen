@@ -68,3 +68,10 @@ zero. A failed Stage B closes the physics-compressed spectrum branch.
 - three-seed paired report for the single frozen survivor;
 - explicit statement that G1B is not the original G1 recovery;
 - no G2B/G3B launch before the independent G1B decision.
+
+## Automation
+
+`code/scripts/queue_g1b_screen.py` enforces the Stage A boundary. It waits for
+the original G1 comparison, exits without training when G1 passes, and runs the
+four-arm screen only when the recorded `g1_passed` decision is false. It freezes
+at most one Stage B candidate but never launches Stage B automatically.
