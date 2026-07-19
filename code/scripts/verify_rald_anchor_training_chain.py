@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from cube_dense.kradar import load_axes, load_tesseract  # noqa: E402
 from models.cube_occupancy import CubeOccupancyNet, parameter_count  # noqa: E402
 from models.rald_anchor import FrozenParentRaLDRefiner  # noqa: E402
+from models.rald_matched import FullRAEDRadarTokenEncoder  # noqa: E402
 from scripts.train_rald_anchor_refiner import gradient_audit  # noqa: E402
 
 
@@ -59,11 +60,17 @@ def main() -> None:
         parent_checkpoint_path, map_location=device, weights_only=False
     )
     parent.load_state_dict(parent_checkpoint["model"], strict=True)
+    radar_encoder = FullRAEDRadarTokenEncoder(
+        log_center=float(parent_config["log_center"]),
+        log_scale=float(parent_config["log_scale"]),
+    )
     model = FrozenParentRaLDRefiner(
         parent,
         torch.from_numpy(axes.range_m),
         torch.from_numpy(axes.azimuth_rad),
         torch.from_numpy(axes.elevation_rad),
+        radar_encoder=radar_encoder,
+        radar_token_dim=512,
     ).to(device)
     optimizer = torch.optim.AdamW(model.refiner.parameters(), lr=1e-3)
     cube_path = (
@@ -84,6 +91,7 @@ def main() -> None:
             initial_checks = {
                 "anchor_count": int(output["xyz_m"].shape[1]),
                 "latent_shape": list(output["latent"].shape),
+                "radar_token_count": int(output["radar_token_count"].item()),
                 "position_identity": bool(
                     torch.equal(output["xyz_m"], output["anchor_xyz_m"])
                 ),
@@ -125,7 +133,7 @@ def main() -> None:
         gradients.append({"step": step, **gradient_audit(model)})
         if any(parameter.grad is not None for parameter in model.parent.parameters()):
             raise RuntimeError("Frozen parent received gradients during integration test")
-        torch.nn.utils.clip_grad_norm_(model.refiner.parameters(), 5.0)
+        torch.nn.utils.clip_grad_norm_(model.refinement_parameters(), 5.0)
         optimizer.step()
         del output, loss
         torch.cuda.empty_cache()
@@ -133,6 +141,7 @@ def main() -> None:
     checks = {
         "native_anchor_count": initial_checks["anchor_count"] == 10_000,
         "native_latent_shape": initial_checks["latent_shape"] == [1, 512, 512],
+        "native_radar_token_count": initial_checks["radar_token_count"] == 336,
         "initial_position_identity": initial_checks["position_identity"],
         "initial_spectrum_identity": initial_checks[
             "spectrum_identity_max_abs_error"
@@ -144,6 +153,7 @@ def main() -> None:
         <= 1e-5,
         "step1_physical_head_gradient": gradients[0]["physical_head"] > 0.0,
         "step2_set_latent_gradient": gradients[1]["set_latent_backbone"] > 0.0,
+        "step2_radar_encoder_gradient": gradients[1]["radar_token_encoder"] > 0.0,
     }
     report = {
         "protocol": "RaLD-anchor RH0.5 native integration; not an RH1 result",
@@ -157,6 +167,7 @@ def main() -> None:
             "parameter_count": parameter_count(parent),
         },
         "refiner_parameter_count": parameter_count(model.refiner),
+        "radar_encoder_parameter_count": parameter_count(model.radar_encoder),
         "initial": initial_checks,
         "gradient_steps": gradients,
         "peak_cuda_memory_bytes": peak_memory,

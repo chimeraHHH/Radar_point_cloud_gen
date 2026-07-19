@@ -479,6 +479,7 @@ class RaLDAnchorLatentRefiner(nn.Module):
         heads: int = 8,
         head_dim: int = 64,
         spectrum_bins: int = 64,
+        radar_token_dim: int | None = None,
     ) -> None:
         super().__init__()
         self.latent_count = latent_count
@@ -488,6 +489,13 @@ class RaLDAnchorLatentRefiner(nn.Module):
         self.dynamic_latents = nn.Embedding(latent_count, model_dim)
         self.dynamic_attention = PreNormAttention(
             model_dim, model_dim, heads=1, head_dim=model_dim
+        )
+        self.radar_attention = (
+            None
+            if radar_token_dim is None
+            else PreNormAttention(
+                model_dim, radar_token_dim, heads=1, head_dim=model_dim
+            )
         )
         self.query_projection = nn.Linear(model_dim, model_dim)
         self.layers = nn.ModuleList(
@@ -516,6 +524,7 @@ class RaLDAnchorLatentRefiner(nn.Module):
         self,
         anchor_normalized_rae: torch.Tensor,
         anchor_features: torch.Tensor,
+        radar_tokens: torch.Tensor | None = None,
     ) -> torch.Tensor:
         if anchor_normalized_rae.ndim != 3 or anchor_normalized_rae.shape[-1] != 3:
             raise ValueError(
@@ -530,6 +539,15 @@ class RaLDAnchorLatentRefiner(nn.Module):
         static = self.static_latents.weight.unsqueeze(0).expand(batch, -1, -1)
         dynamic = self.dynamic_latents.weight.unsqueeze(0).expand(batch, -1, -1)
         dynamic = dynamic + self.dynamic_attention(dynamic, anchor_tokens)
+        if self.radar_attention is None:
+            if radar_tokens is not None:
+                raise ValueError("Refiner was not configured for radar tokens")
+        else:
+            if radar_tokens is None or radar_tokens.ndim != 3:
+                raise ValueError("Configured refiner requires batched radar tokens")
+            if radar_tokens.shape[0] != batch:
+                raise ValueError("Radar-token batch does not match anchor batch")
+            dynamic = dynamic + self.radar_attention(dynamic, radar_tokens)
         latent = self.query_projection(static + dynamic)
         for attention, feed_forward in self.layers:
             latent = latent + attention(latent)
@@ -541,8 +559,11 @@ class RaLDAnchorLatentRefiner(nn.Module):
         anchor_normalized_rae: torch.Tensor,
         anchor_features: torch.Tensor,
         local_cube_spectrum: torch.Tensor,
+        radar_tokens: torch.Tensor | None = None,
     ) -> dict[str, torch.Tensor]:
-        latent = self.encode_anchors(anchor_normalized_rae, anchor_features)
+        latent = self.encode_anchors(
+            anchor_normalized_rae, anchor_features, radar_tokens=radar_tokens
+        )
         queries = self.point_embedding(anchor_normalized_rae)
         query_features = self.decoder_attention(queries, latent)
         output = self.physical_head(query_features, local_cube_spectrum)

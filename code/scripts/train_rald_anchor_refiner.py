@@ -34,6 +34,7 @@ from models.cube_doppler import query_cube_spectrum  # noqa: E402
 from models.cube_occupancy import CubeOccupancyNet, parameter_count  # noqa: E402
 from models.point_to_cube import soft_splat_raed  # noqa: E402
 from models.rald_anchor import FrozenParentRaLDRefiner  # noqa: E402
+from models.rald_matched import FullRAEDRadarTokenEncoder  # noqa: E402
 from scripts.train_cube_doppler import move_frame, selected_indices, sha256  # noqa: E402
 
 
@@ -60,6 +61,8 @@ class TrainConfig:
     depth: int
     heads: int
     head_dim: int
+    radar_base_channels: int
+    radar_spectral_channels: int
 
 
 def gradient_norm(parameters) -> float:
@@ -81,10 +84,14 @@ def gradient_audit(model: FrozenParentRaLDRefiner) -> dict[str, float]:
         for parameter in model.refiner.parameters()
         if id(parameter) not in physical_ids
     ]
+    radar = (
+        [] if model.radar_encoder is None else list(model.radar_encoder.parameters())
+    )
     return {
         "physical_head": gradient_norm(physical),
         "set_latent_backbone": gradient_norm(latent),
-        "all_refiner": gradient_norm(model.refiner.parameters()),
+        "radar_token_encoder": gradient_norm(radar),
+        "all_refinement": gradient_norm(model.refinement_parameters()),
     }
 
 
@@ -242,6 +249,11 @@ def save_checkpoint(
     torch.save(
         {
             "refiner": model.refiner.state_dict(),
+            "radar_encoder": (
+                None
+                if model.radar_encoder is None
+                else model.radar_encoder.state_dict()
+            ),
             "optimizer": optimizer.state_dict(),
             "scheduler": scheduler.state_dict(),
             "epoch": epoch,
@@ -278,6 +290,10 @@ def rh1_gate(
         "second_step_set_latent_gradient_nonzero": bool(
             len(gradient_steps) >= 2
             and gradient_steps[1]["set_latent_backbone"] > 0.0
+        ),
+        "second_step_radar_encoder_gradient_nonzero": bool(
+            len(gradient_steps) >= 2
+            and gradient_steps[1]["radar_token_encoder"] > 0.0
         ),
         "geometry_not_worse_than_parent": refined_chamfer <= parent_chamfer + 1e-6,
         "doppler_nll_improves_over_direct_cube": refined_nll < direct_nll,
@@ -336,6 +352,8 @@ def main() -> None:
     parser.add_argument("--depth", type=int, default=6)
     parser.add_argument("--heads", type=int, default=8)
     parser.add_argument("--head-dim", type=int, default=64)
+    parser.add_argument("--radar-base-channels", type=int, default=64)
+    parser.add_argument("--radar-spectral-channels", type=int, default=16)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--overwrite", action="store_true")
@@ -397,6 +415,8 @@ def main() -> None:
         depth=args.depth,
         heads=args.heads,
         head_dim=args.head_dim,
+        radar_base_channels=args.radar_base_channels,
+        radar_spectral_channels=args.radar_spectral_channels,
     )
     random.seed(config.seed)
     np.random.seed(config.seed)
@@ -426,6 +446,13 @@ def main() -> None:
     parent_path = args.parent_g1_run / "best.pt"
     parent_checkpoint = torch.load(parent_path, map_location=device, weights_only=False)
     parent.load_state_dict(parent_checkpoint["model"], strict=True)
+    radar_encoder = FullRAEDRadarTokenEncoder(
+        log_center=float(parent_config["log_center"]),
+        log_scale=float(parent_config["log_scale"]),
+        spectral_channels=config.radar_spectral_channels,
+        token_dim=config.model_dim,
+        base_channels=config.radar_base_channels,
+    )
     model = FrozenParentRaLDRefiner(
         parent,
         torch.from_numpy(axes.range_m),
@@ -437,9 +464,11 @@ def main() -> None:
         depth=config.depth,
         heads=config.heads,
         head_dim=config.head_dim,
+        radar_encoder=radar_encoder,
+        radar_token_dim=config.model_dim,
     ).to(device)
     optimizer = torch.optim.AdamW(
-        model.refiner.parameters(),
+        model.refinement_parameters(),
         lr=config.learning_rate,
         weight_decay=config.weight_decay,
     )
@@ -456,6 +485,7 @@ def main() -> None:
         "parent_g1_git_commit": parent_provenance["git_commit"],
         "parent_parameter_count": parameter_count(parent),
         "refiner_parameter_count": parameter_count(model.refiner),
+        "radar_encoder_parameter_count": parameter_count(model.radar_encoder),
         "device": torch.cuda.get_device_name(device),
         "torch_version": torch.__version__,
     }
@@ -492,6 +522,7 @@ def main() -> None:
         if last["config"] != asdict(config) or last["provenance"] != provenance:
             raise ValueError("RH checkpoint metadata differs")
         model.refiner.load_state_dict(last["refiner"], strict=True)
+        model.radar_encoder.load_state_dict(last["radar_encoder"], strict=True)
         optimizer.load_state_dict(last["optimizer"])
         scheduler.load_state_dict(last["scheduler"])
         start_epoch = int(last["epoch"]) + 1
@@ -561,7 +592,7 @@ def main() -> None:
                 gradient_steps.append(
                     {"optimization_step": optimization_step, **gradient_audit(model)}
                 )
-            torch.nn.utils.clip_grad_norm_(model.refiner.parameters(), 5.0)
+            torch.nn.utils.clip_grad_norm_(model.refinement_parameters(), 5.0)
             optimizer.step()
             losses.append(float(objective.total.detach().item()))
             for name, value in objective.components.items():
@@ -617,6 +648,7 @@ def main() -> None:
 
     best = torch.load(args.output / "best.pt", map_location=device, weights_only=False)
     model.refiner.load_state_dict(best["refiner"], strict=True)
+    model.radar_encoder.load_state_dict(best["radar_encoder"], strict=True)
     final_metrics = evaluate(model, validation_set, validation_indices, axes, device)
     report = {
         "best_epoch": int(best["epoch"]),

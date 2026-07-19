@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import chain
 
 import torch
 import torch.nn as nn
@@ -99,6 +100,8 @@ class FrozenParentRaLDRefiner(nn.Module):
         depth: int = 6,
         heads: int = 8,
         head_dim: int = 64,
+        radar_encoder: nn.Module | None = None,
+        radar_token_dim: int | None = None,
     ) -> None:
         super().__init__()
         if range_m.shape != (256,):
@@ -106,6 +109,9 @@ class FrozenParentRaLDRefiner(nn.Module):
         if azimuth_rad.shape != (107,) or elevation_rad.shape != (37,):
             raise ValueError("Expected 107 x 37 K-Radar angular bins")
         self.parent = parent
+        if (radar_encoder is None) != (radar_token_dim is None):
+            raise ValueError("Radar encoder and token dimension must be provided together")
+        self.radar_encoder = radar_encoder
         self.point_count = point_count
         for parameter in self.parent.parameters():
             parameter.requires_grad_(False)
@@ -118,6 +124,7 @@ class FrozenParentRaLDRefiner(nn.Module):
             heads=heads,
             head_dim=head_dim,
             spectrum_bins=64,
+            radar_token_dim=radar_token_dim,
         )
         self.register_buffer("range_m", range_m.float(), persistent=True)
         self.register_buffer("azimuth_rad", azimuth_rad.float(), persistent=True)
@@ -128,15 +135,25 @@ class FrozenParentRaLDRefiner(nn.Module):
         self.parent.eval()
         return self
 
+    def refinement_parameters(self):
+        groups = [self.refiner.parameters()]
+        if self.radar_encoder is not None:
+            groups.append(self.radar_encoder.parameters())
+        return chain.from_iterable(groups)
+
     def forward(self, cube_drae: torch.Tensor) -> dict[str, torch.Tensor]:
         with torch.no_grad():
             anchors = frozen_parent_anchors(
                 self.parent, cube_drae, point_count=self.point_count
             )
+        radar_tokens = (
+            None if self.radar_encoder is None else self.radar_encoder(cube_drae)
+        )
         refined = self.refiner(
             anchors.normalized_rae,
             anchors.parent_features,
             anchors.local_cube_spectrum,
+            radar_tokens=radar_tokens,
         )
         coordinates = anchors.indices_rae.to(refined["offset_bins"])
         coordinates = coordinates + refined["offset_bins"]
@@ -169,4 +186,7 @@ class FrozenParentRaLDRefiner(nn.Module):
             "anchor_parent_logits": anchors.parent_logits,
             "anchor_parent_confidence": anchors.parent_confidence,
             "anchor_cube_spectrum": anchors.local_cube_spectrum,
+            "radar_token_count": coordinates.new_tensor(
+                0 if radar_tokens is None else radar_tokens.shape[1], dtype=torch.long
+            ),
         }

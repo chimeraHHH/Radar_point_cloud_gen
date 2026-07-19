@@ -79,6 +79,31 @@ def test_anchor_refiner_is_permutation_invariant_and_equivariant() -> None:
     )
 
 
+def test_anchor_refiner_conditions_latents_on_radar_tokens() -> None:
+    model = RaLDAnchorLatentRefiner(
+        anchor_feature_dim=4,
+        latent_count=8,
+        model_dim=32,
+        depth=1,
+        heads=4,
+        head_dim=8,
+        spectrum_bins=6,
+        radar_token_dim=12,
+    ).eval()
+    coordinates = torch.rand(1, 11, 3) * 2.0 - 1.0
+    features = torch.randn(1, 11, 4)
+    spectrum = torch.rand(1, 11, 6)
+    first_tokens = torch.randn(1, 7, 12)
+    second_tokens = first_tokens.clone()
+    second_tokens[:, :, 0] += 1.0
+
+    with torch.inference_mode():
+        first = model(coordinates, features, spectrum, radar_tokens=first_tokens)
+        second = model(coordinates, features, spectrum, radar_tokens=second_tokens)
+
+    assert not torch.allclose(first["latent"], second["latent"])
+
+
 def small_autoencoder() -> RaLDPointAutoencoder:
     torch.manual_seed(17)
     return RaLDPointAutoencoder(
