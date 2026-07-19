@@ -62,7 +62,11 @@ frames, and target-frame CFAR points are never used to construct the prior.
 ## Matched Arms
 
 All learned arms use the same parent, point count, current Cube, optimizer,
-training frames, losses, and random seeds.
+training frames, losses, and random seeds. They inherit the parent's fixed
+matched/unmatched existence-confidence loss. Temporal fusion predicts the
+bounded coordinate offset first, then queries both current-Cube features and
+the observed Doppler spectrum at the final continuous position; the target
+query is detached during optimization.
 
 | ID | Method | Purpose |
 |---|---|---|

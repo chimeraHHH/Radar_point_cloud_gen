@@ -454,6 +454,10 @@ def main() -> None:
         marker=prior_report,
         completion_field="passed",
     )
+    if args.required_gpu_name:
+        prior_job.command.extend(
+            ["--required-gpu-name", args.required_gpu_name]
+        )
     run_gpu_jobs([prior_job], args)
 
     dense_job = GPUJob(

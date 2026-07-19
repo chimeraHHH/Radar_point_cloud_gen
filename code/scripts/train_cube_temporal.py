@@ -40,7 +40,7 @@ from eval.temporal_cube import (  # noqa: E402
     aggregate_temporal_reports,
     temporal_consistency_report,
 )
-from losses.cube_cycle import cube_cycle_loss  # noqa: E402
+from losses.cube_cycle import cube_cycle_loss, existence_confidence_loss  # noqa: E402
 from losses.doppler_distribution import doppler_head_loss  # noqa: E402
 from losses.occupancy import occupancy_loss  # noqa: E402
 from losses.temporal_consistency import (  # noqa: E402
@@ -79,6 +79,7 @@ class TrainConfig:
     seed: int
     point_count: int
     geometry_weight: float
+    existence_confidence_weight: float
     temporal_weight: float
     scheduled_sampling_maximum: float
     dynamic_threshold_mps: float
@@ -127,13 +128,13 @@ def continuous_chamfer_loss(
     prediction_xyz: torch.Tensor,
     target_xyz: torch.Tensor,
     target_weight: torch.Tensor,
-) -> torch.Tensor:
+) -> tuple[torch.Tensor, torch.Tensor]:
     prediction_to_target = nearest_distance(prediction_xyz, target_xyz)
     target_to_prediction = nearest_distance(target_xyz, prediction_xyz)
     weight = target_weight.to(target_to_prediction).clamp_min(0.0)
     completeness = (target_to_prediction * weight).sum()
     completeness = completeness / weight.sum().clamp_min(1e-8)
-    return prediction_to_target.mean() + completeness
+    return prediction_to_target.mean() + completeness, prediction_to_target
 
 
 def scheduled_probability(config: TrainConfig, epoch: int) -> float:
@@ -198,7 +199,8 @@ def training_loss(
         pair_output["occupancy_logits"], pair_output["occupancy"]
     )
     target_spectrum = query_cube_spectrum(
-        pair_output["cube"], pair_output["indices"]
+        pair_output["cube"],
+        pair_output["prediction"]["coordinates_rae"].float().detach(),
     )
     doppler_value, doppler_components = doppler_head_loss(
         pair_output["prediction"],
@@ -209,15 +211,19 @@ def training_loss(
         confidence=pair_output["confidence"],
     )
     target = current_item["target_xyz_confidence"].to(device)
-    geometry_value = continuous_chamfer_loss(
+    geometry_value, prediction_to_target = continuous_chamfer_loss(
         pair_output["prediction"]["xyz_m"].float(),
         target[:, :3],
         target[:, 3],
+    )
+    existence_value, _ = existence_confidence_loss(
+        pair_output["confidence"].float(), prediction_to_target
     )
     total = (
         occupancy_value
         + doppler_value
         + config.geometry_weight * geometry_value
+        + config.existence_confidence_weight * existence_value
     )
     cycle_value = total.new_zeros(())
     cycle_components = {}
@@ -260,6 +266,7 @@ def training_loss(
         "occupancy": float(occupancy_value.item()),
         "doppler": float(doppler_value.item()),
         "continuous_chamfer": float(geometry_value.item()),
+        "existence_confidence": float(existence_value.item()),
         "cycle": float(cycle_value.item()),
         "temporal_radial": float(temporal_value.item()),
         **{
@@ -295,7 +302,7 @@ def evaluate(
             model, current_item, prior_state, pair, axes, config, device
         )
         target_spectrum = query_cube_spectrum(
-            output["cube"], output["indices"]
+            output["cube"], output["prediction"]["coordinates_rae"].float()
         )
         doppler = doppler_distribution_report(
             output["prediction"]["probability"].float(),
@@ -321,8 +328,17 @@ def evaluate(
             output["prediction"]["probability"].float(),
             output["confidence"].float(),
         )
+        _, existence_target = existence_confidence_loss(
+            output["confidence"].float(),
+            nearest_distance(
+                output["prediction"]["xyz_m"].float(), target[:, :3]
+            ),
+        )
         cycle = cube_cycle_report(
-            rendered, output["cube"][0].float(), output["confidence"].float()
+            rendered,
+            output["cube"][0].float(),
+            output["confidence"].float(),
+            existence_target=existence_target,
         )
         match = temporal_match(
             prior_state.xyz_m,
@@ -367,7 +383,7 @@ def evaluate(
             }
         )
         del prior_state, current_item, output, target_spectrum, target
-        del rendered, match
+        del rendered, existence_target, match
         torch.cuda.empty_cache()
     return {
         "pair_count": len(pair_indices),
@@ -525,6 +541,9 @@ def main() -> None:
         seed=args.seed,
         point_count=int(parent_config["point_count"]),
         geometry_weight=args.geometry_weight,
+        existence_confidence_weight=float(
+            parent_config["existence_confidence_weight"]
+        ),
         temporal_weight=args.temporal_weight,
         scheduled_sampling_maximum=args.scheduled_sampling_maximum,
         dynamic_threshold_mps=args.dynamic_threshold_mps,

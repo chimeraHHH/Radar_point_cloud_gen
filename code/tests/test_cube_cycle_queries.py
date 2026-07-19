@@ -9,6 +9,7 @@ from losses.cube_cycle import (
     normalized_cube_spectrum,
 )
 from models.cube_cycle import CubeCycleNet
+from models.cube_temporal import CubeTemporalNet
 from models.cube_doppler import query_cube_spectrum
 from models.point_to_cube import soft_splat_raed, trilinear_query_features
 
@@ -61,6 +62,42 @@ def test_cycle_doppler_query_backpropagates_through_final_position() -> None:
 
     prediction = model.query_cycle(
         features, torch.tensor([[1, 1, 1]]), torch.tensor([0.0])
+    )
+
+    torch.testing.assert_close(
+        prediction["coordinates_rae"], torch.full((1, 3), 1.25)
+    )
+    prediction["probability"][0, 0].backward()
+    assert model.offset_head[-1].bias.grad is not None
+    assert model.offset_head[-1].bias.grad.abs().sum() > 0
+
+
+def test_temporal_query_without_prior_keeps_final_position_semantics() -> None:
+    torch.manual_seed(11)
+    model = CubeTemporalNet(
+        "cross_attention",
+        "distribution",
+        torch.linspace(-8.0, 8.0, 64),
+        torch.linspace(0.0, 120.0, 256),
+        torch.linspace(-1.0, 1.0, 107),
+        torch.linspace(-0.3, 0.3, 37),
+        base_channels=2,
+    )
+    with torch.no_grad():
+        for parameter in model.offset_head.parameters():
+            parameter.zero_()
+        model.offset_head[-1].bias.fill_(0.54930615)
+    features = torch.arange(1 * 2 * 4 * 4 * 4, dtype=torch.float32).reshape(
+        1, 2, 4, 4, 4
+    )
+    features.requires_grad_(True)
+
+    prediction = model.query_temporal(
+        features,
+        torch.tensor([[1, 1, 1]]),
+        torch.tensor([[1.0, 0.0, 0.0]]),
+        torch.tensor([0.0]),
+        prior=None,
     )
 
     torch.testing.assert_close(

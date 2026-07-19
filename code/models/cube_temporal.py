@@ -127,6 +127,7 @@ class CubeTemporalNet(CubeCycleNet):
         gathered, (batch, _, azimuth, elevation) = self.gathered_features(
             features, indices
         )
+        base_gathered = gathered
         offset_override = None
         valid_prior = None if prior is None else prior.valid & torch.isfinite(
             prior.xyz_m
@@ -178,9 +179,22 @@ class CubeTemporalNet(CubeCycleNet):
                 gate = torch.sigmoid(self.draft_offset_gate(gathered))
                 offset_override = gate * prior_offset + (1.0 - gate) * learned_offset
 
+        if offset_override is None:
+            offset = (
+                torch.tanh(self.offset_head(gathered))
+                * self.maximum_offset_bins
+            )
+        else:
+            offset = offset_override
+        coordinates = indices[:, -3:].to(offset) + offset
+        final_gathered = self.gathered_features_continuous(
+            features, coordinates, batch
+        )
+        if self.fusion_mode != "concat":
+            final_gathered = final_gathered + (gathered - base_gathered)
         doppler = self.query_from_projected(
-            gathered, batch, azimuth, elevation, ego_speed_mps
+            final_gathered, batch, azimuth, elevation, ego_speed_mps
         )
         return self.cycle_output_from_projected(
-            doppler, gathered, indices, offset_override_bins=offset_override
+            doppler, final_gathered, indices, offset_override_bins=offset
         )

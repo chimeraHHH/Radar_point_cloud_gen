@@ -37,6 +37,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=20260716)
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--absolute-tolerance", type=float, default=2e-4)
+    parser.add_argument("--required-gpu-name")
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
     if not torch.cuda.is_available() or not args.device.startswith("cuda"):
@@ -49,6 +50,11 @@ def main() -> None:
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
     device = torch.device(args.device)
+    device_name = torch.cuda.get_device_name(device)
+    if args.required_gpu_name and device_name != args.required_gpu_name:
+        raise RuntimeError(
+            f"Temporal verification requires {args.required_gpu_name}, got {device_name}"
+        )
     range_m = torch.linspace(1.0, 100.0, 256, device=device)
     azimuth_rad = torch.linspace(-0.8, 0.8, 107, device=device)
     elevation_rad = torch.linspace(-0.3, 0.3, 37, device=device)
@@ -389,7 +395,7 @@ def main() -> None:
         "schema_version": 1,
         "generated_utc": datetime.now(timezone.utc).isoformat(),
         "source_commit": args.source_commit,
-        "device": torch.cuda.get_device_name(device),
+        "device": device_name,
         "torch_version": torch.__version__,
         "seed": args.seed,
         "absolute_tolerance": args.absolute_tolerance,

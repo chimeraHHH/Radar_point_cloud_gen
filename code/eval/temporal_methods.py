@@ -142,8 +142,10 @@ def current_frame_report(
         cube_drae = cube_drae.unsqueeze(0)
     if cube_drae.ndim != 5 or cube_drae.shape[0] != 1:
         raise ValueError("G4 evaluation expects one current RAED Cube")
-    indices, valid = discrete_query_indices(prediction.coordinates_rae)
-    current_spectrum = query_cube_spectrum(cube_drae, indices)
+    _, valid = discrete_query_indices(prediction.coordinates_rae)
+    current_spectrum = query_cube_spectrum(
+        cube_drae, prediction.coordinates_rae[valid].float()
+    )
     current_static_center = analytic_static_center(
         prediction.xyz_m,
         ego_speed_mps,
@@ -199,7 +201,15 @@ def current_frame_report(
         prediction.probability,
         prediction.confidence,
     )
-    cycle = cube_cycle_report(rendered, cube_drae[0], prediction.confidence)
+    existence_target = (
+        nearest_distance(prediction.xyz_m, target[:, :3]) <= 1.0
+    ).float()
+    cycle = cube_cycle_report(
+        rendered,
+        cube_drae[0],
+        prediction.confidence,
+        existence_target=existence_target,
+    )
     cycle["valid_point_fraction"] = float(valid.float().mean().item())
     stratified = stratified_geometry_report(
         prediction,
