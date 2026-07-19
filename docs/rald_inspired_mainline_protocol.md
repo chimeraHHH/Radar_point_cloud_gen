@@ -80,6 +80,14 @@ The already verified Full-RAED radar-token encoder, latent Transformer/EDM, and
 physical query head may still be fused with the deterministic frustum-occupancy
 parent under a separately named hybrid protocol.
 
+`R1-KRadar` failed only Chamfer (`9.9612 m`) while passing all other checks.
+Therefore the independent point VAE and its R2 latent cache/EDM are closed. The
+approved successor is `RaLD-anchor-hybrid`: the frozen occupancy parent supplies
+long-range top-10k anchors, while RaLD mixed latents and query cross-attention
+refine continuous position and physical attributes. This preserves the useful
+RaLD generation machinery without asking its short-range implicit occupancy
+decoder to allocate the complete K-Radar geometry budget.
+
 ### R2: conditional latent feasibility
 
 Only after R1 passes, cache the frozen latent and overfit the full-RAED

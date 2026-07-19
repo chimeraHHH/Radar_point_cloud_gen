@@ -3,6 +3,7 @@ import torch
 from models.rald_matched import (
     FourierPointEmbedding,
     FullRAEDRadarTokenEncoder,
+    RaLDAnchorLatentRefiner,
     RaLDEDMPreconditioner,
     RaLDPointAutoencoder,
     RaLDPhysicalQueryHead,
@@ -45,6 +46,37 @@ def test_physical_query_head_starts_from_measured_spectrum() -> None:
     torch.testing.assert_close(output["doppler_probability"], expected)
     torch.testing.assert_close(output["offset_bins"], torch.zeros(2, 5, 3))
     torch.testing.assert_close(output["confidence_logit"], torch.zeros(2, 5))
+
+
+def test_anchor_refiner_is_permutation_invariant_and_equivariant() -> None:
+    model = RaLDAnchorLatentRefiner(
+        anchor_feature_dim=4,
+        latent_count=8,
+        model_dim=32,
+        depth=2,
+        heads=4,
+        head_dim=8,
+        spectrum_bins=6,
+    ).eval()
+    coordinates = torch.rand(1, 17, 3) * 2.0 - 1.0
+    features = torch.randn(1, 17, 4)
+    spectrum = torch.rand(1, 17, 6)
+    permutation = torch.randperm(17)
+
+    with torch.inference_mode():
+        first = model(coordinates, features, spectrum)
+        second = model(
+            coordinates[:, permutation],
+            features[:, permutation],
+            spectrum[:, permutation],
+        )
+
+    torch.testing.assert_close(first["latent"], second["latent"], atol=1e-5, rtol=1e-5)
+    inverse = torch.argsort(permutation)
+    torch.testing.assert_close(
+        first["doppler_probability"],
+        second["doppler_probability"][:, inverse],
+    )
 
 
 def small_autoencoder() -> RaLDPointAutoencoder:

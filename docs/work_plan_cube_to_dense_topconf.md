@@ -94,6 +94,12 @@ RaLD 只提供几何生成骨架。本方法在 query decoder 后新增局部 Cu
 头，联合输出连续位置、64-bin Doppler distribution 与 confidence，并通过
 point-to-RAED cycle 约束。主方法禁用 RaLD 的 CFAR query helper。
 
+独立 RaLD point VAE 在 K-Radar 长量程 one-frame 门控中未通过 Chamfer，故不
+直接替换几何父模型。当前采用 `RaLD-anchor-hybrid`：frustum occupancy 负责
+长量程 anchor，RaLD mixed latent 与 query cross-attention 负责全局集合建模和
+物理属性精修。协议见
+[`rald_anchor_hybrid_protocol.md`](rald_anchor_hybrid_protocol.md)。
+
 主要损失：
 
 ```text

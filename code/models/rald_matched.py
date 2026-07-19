@@ -467,6 +467,90 @@ class RaLDPhysicalQueryHead(nn.Module):
         }
 
 
+class RaLDAnchorLatentRefiner(nn.Module):
+    """Apply RaLD mixed latents to anchors from a deterministic geometry parent."""
+
+    def __init__(
+        self,
+        anchor_feature_dim: int,
+        latent_count: int = 512,
+        model_dim: int = 512,
+        depth: int = 6,
+        heads: int = 8,
+        head_dim: int = 64,
+        spectrum_bins: int = 64,
+    ) -> None:
+        super().__init__()
+        self.latent_count = latent_count
+        self.point_embedding = FourierPointEmbedding(model_dim)
+        self.anchor_projection = nn.Linear(anchor_feature_dim, model_dim)
+        self.static_latents = nn.Embedding(latent_count, model_dim)
+        self.dynamic_latents = nn.Embedding(latent_count, model_dim)
+        self.dynamic_attention = PreNormAttention(
+            model_dim, model_dim, heads=1, head_dim=model_dim
+        )
+        self.query_projection = nn.Linear(model_dim, model_dim)
+        self.layers = nn.ModuleList(
+            [
+                nn.ModuleList(
+                    (
+                        PreNormAttention(
+                            model_dim, heads=heads, head_dim=head_dim
+                        ),
+                        PreNormFeedForward(model_dim),
+                    )
+                )
+                for _ in range(depth)
+            ]
+        )
+        self.decoder_attention = PreNormAttention(
+            model_dim, model_dim, heads=1, head_dim=model_dim
+        )
+        self.physical_head = RaLDPhysicalQueryHead(
+            query_dim=model_dim,
+            spectrum_bins=spectrum_bins,
+            hidden_dim=model_dim,
+        )
+
+    def encode_anchors(
+        self,
+        anchor_normalized_rae: torch.Tensor,
+        anchor_features: torch.Tensor,
+    ) -> torch.Tensor:
+        if anchor_normalized_rae.ndim != 3 or anchor_normalized_rae.shape[-1] != 3:
+            raise ValueError(
+                f"Expected anchor coordinates (B,N,3), got "
+                f"{anchor_normalized_rae.shape}"
+            )
+        if anchor_features.shape[:2] != anchor_normalized_rae.shape[:2]:
+            raise ValueError("Anchor coordinates and features must align")
+        batch = anchor_normalized_rae.shape[0]
+        anchor_tokens = self.point_embedding(anchor_normalized_rae)
+        anchor_tokens = anchor_tokens + self.anchor_projection(anchor_features)
+        static = self.static_latents.weight.unsqueeze(0).expand(batch, -1, -1)
+        dynamic = self.dynamic_latents.weight.unsqueeze(0).expand(batch, -1, -1)
+        dynamic = dynamic + self.dynamic_attention(dynamic, anchor_tokens)
+        latent = self.query_projection(static + dynamic)
+        for attention, feed_forward in self.layers:
+            latent = latent + attention(latent)
+            latent = latent + feed_forward(latent)
+        return latent
+
+    def forward(
+        self,
+        anchor_normalized_rae: torch.Tensor,
+        anchor_features: torch.Tensor,
+        local_cube_spectrum: torch.Tensor,
+    ) -> dict[str, torch.Tensor]:
+        latent = self.encode_anchors(anchor_normalized_rae, anchor_features)
+        queries = self.point_embedding(anchor_normalized_rae)
+        query_features = self.decoder_attention(queries, latent)
+        output = self.physical_head(query_features, local_cube_spectrum)
+        output["latent"] = latent
+        output["query_features"] = query_features
+        return output
+
+
 class NoiseEmbedding(nn.Module):
     def __init__(self, frequency_dim: int, output_dim: int) -> None:
         super().__init__()

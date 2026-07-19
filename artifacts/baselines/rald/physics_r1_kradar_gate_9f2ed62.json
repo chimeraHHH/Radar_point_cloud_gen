@@ -1,0 +1,38 @@
+{
+  "protocol": "RaLD-inspired physical mainline R1-KRadar",
+  "run": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_9f2ed62_rald_physics/r1_kradar",
+  "source_commit": "9f2ed629e5109d0bcbbccccc7761c8ccd287857b",
+  "required_epoch": 100,
+  "sampling": {
+    "surface": "uniform",
+    "positive_query": "uniform",
+    "positive_location": "occupied_voxel_uniform",
+    "positive_count": 625,
+    "negative_count": 9375
+  },
+  "loss_weights": {
+    "positive": 1.0,
+    "negative": 1.0,
+    "kl": 0.001
+  },
+  "metrics": {
+    "chamfer_m": 9.961193084716797,
+    "outlier_fraction_2m": 0.10480000078678131,
+    "fscore_1p0m": 0.4388279318809509,
+    "mean_output_confidence": 0.9310437440872192,
+    "initial_train_loss": 1.386951208114624,
+    "final_train_loss": 0.660711944103241,
+    "train_loss_reduction_fraction": 0.523622792036505
+  },
+  "checks": {
+    "full_required_epoch": true,
+    "one_frame_configuration": true,
+    "no_external_pretraining": true,
+    "chamfer": false,
+    "outlier": true,
+    "fscore": true,
+    "confidence": true,
+    "loss_reduction": true
+  },
+  "passed": false
+}
