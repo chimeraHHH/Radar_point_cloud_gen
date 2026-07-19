@@ -10,6 +10,7 @@ from losses.cube_cycle import (
     doppler_marginal_kl,
     normalized_cube_spectrum,
     spatial_energy_loss,
+    target_peak_support,
 )
 from models.point_to_cube import SoftSplatResult
 
@@ -22,16 +23,43 @@ def tensor_correlation(first: torch.Tensor, second: torch.Tensor) -> float:
     return float(torch.corrcoef(torch.stack((first, second)))[0, 1].item())
 
 
+def binary_ece(
+    confidence: torch.Tensor,
+    target: torch.Tensor,
+    bins: int = 10,
+) -> torch.Tensor:
+    if confidence.ndim != 1 or target.shape != confidence.shape:
+        raise ValueError("Binary confidence and target must be aligned")
+    boundaries = torch.linspace(
+        0.0, 1.0, bins + 1, dtype=confidence.dtype, device=confidence.device
+    )
+    error = confidence.new_zeros(())
+    for index in range(bins):
+        upper_inclusive = index == bins - 1
+        mask = (confidence >= boundaries[index]) & (
+            confidence <= boundaries[index + 1]
+            if upper_inclusive
+            else confidence < boundaries[index + 1]
+        )
+        if mask.any():
+            error = error + mask.float().mean() * (
+                confidence[mask].mean() - target[mask].mean()
+            ).abs()
+    return error
+
+
 def cube_cycle_report(
     rendered: SoftSplatResult,
     cube_drae: torch.Tensor,
     confidence: torch.Tensor,
+    existence_target: torch.Tensor | None = None,
 ) -> dict[str, float]:
     target_probability, target_energy = normalized_cube_spectrum(cube_drae)
     local = covered_spectrum_kl(rendered, target_probability, target_energy)
     marginal = doppler_marginal_kl(rendered, target_probability, target_energy)
     spatial = spatial_energy_loss(rendered, target_energy)
     covered = rendered.covered_rae
+    target_support = target_peak_support(target_energy)
     confidence_quantiles = torch.quantile(
         confidence.float(),
         torch.tensor(
@@ -40,7 +68,7 @@ def cube_cycle_report(
             device=confidence.device,
         ),
     )
-    return {
+    report = {
         "local_spectrum_kl": float(local.item()),
         "doppler_marginal_kl": float(marginal.item()),
         "spatial_energy_loss": float(spatial.item()),
@@ -53,10 +81,33 @@ def cube_cycle_report(
         "rendered_total_energy": float(rendered.energy_drae.sum().item()),
         "covered_cell_count": int(covered.sum().item()),
         "covered_cell_fraction": float(covered.float().mean().item()),
+        "target_support_cell_count": int(target_support.sum().item()),
+        "target_support_recall": float(
+            (covered & target_support).sum().float()
+            / target_support.sum().clamp_min(1)
+        ),
         "covered_energy_correlation": tensor_correlation(
             rendered.spatial_energy_rae[covered], target_energy[covered]
         ),
     }
+    if existence_target is not None:
+        if existence_target.shape != confidence.shape:
+            raise ValueError("Existence target does not match point confidence")
+        existence_target = existence_target.to(confidence)
+        report["existence_ece_10bin"] = float(
+            binary_ece(confidence.float(), existence_target.float()).item()
+        )
+        report["existence_nll"] = float(
+            -(
+                existence_target * confidence.clamp_min(1e-8).log()
+                + (1.0 - existence_target)
+                * (1.0 - confidence).clamp_min(1e-8).log()
+            )
+            .mean()
+            .item()
+        )
+        report["existence_target_fraction"] = float(existence_target.mean().item())
+    return report
 
 
 def aggregate_cycle_reports(

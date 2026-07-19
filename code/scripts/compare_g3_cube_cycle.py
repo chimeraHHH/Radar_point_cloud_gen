@@ -21,7 +21,7 @@ ENDPOINTS = {
     "cd_doppler": ("cd_doppler", "cd_doppler", "lower"),
     "confidence_mean": ("cycle", "confidence_mean", "higher"),
     "covered_cell_count": ("cycle", "covered_cell_count", "higher"),
-    "confidence_ece": ("doppler", "soft_ece_10bin", "lower"),
+    "confidence_ece": ("cycle", "existence_ece_10bin", "lower"),
 }
 CONFIG_PAIR_EXCLUSIONS = {"variant", "seed"}
 ROBUSTNESS_PROTOCOL = "g3_cube_cycle_robustness_v1"

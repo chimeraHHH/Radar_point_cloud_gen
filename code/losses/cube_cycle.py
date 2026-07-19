@@ -26,14 +26,29 @@ def covered_spectrum_kl(
     rendered: SoftSplatResult,
     target_probability_drae: torch.Tensor,
     target_spatial_energy_rae: torch.Tensor,
+    support_mode: str = "target",
+    target_peak_count: int = 10_000,
     epsilon: float = 1e-8,
 ) -> torch.Tensor:
     if rendered.normalized_spectrum_drae.shape != target_probability_drae.shape:
         raise ValueError("Rendered and target spectrum shapes differ")
-    mask = rendered.covered_rae & (target_spatial_energy_rae > 0)
+    target_support = target_peak_support(
+        target_spatial_energy_rae, target_peak_count
+    )
+    if support_mode == "target":
+        mask = target_support
+    elif support_mode == "union":
+        mask = target_support | rendered.covered_rae
+    elif support_mode == "prediction":
+        mask = rendered.covered_rae & (target_spatial_energy_rae > 0)
+    else:
+        raise ValueError(f"Unsupported local spectrum support {support_mode}")
     if not mask.any():
         raise ValueError("No covered Cube cells for spectrum cycle loss")
-    prediction = rendered.normalized_spectrum_drae[:, mask].transpose(0, 1)
+    prediction_energy = rendered.energy_drae[:, mask].transpose(0, 1)
+    prediction = (prediction_energy + epsilon) / (
+        prediction_energy + epsilon
+    ).sum(dim=1, keepdim=True).clamp_min(epsilon)
     target = target_probability_drae[:, mask].transpose(0, 1)
     per_cell = (
         target
@@ -42,8 +57,21 @@ def covered_spectrum_kl(
             - prediction.clamp_min(epsilon).log()
         )
     ).sum(dim=1)
-    weight = rendered.spatial_energy_rae[mask].detach()
+    target_weight = target_spatial_energy_rae[mask].detach()
+    prediction_weight = rendered.spatial_energy_rae[mask].detach()
+    weight = torch.where(target_weight > 0, target_weight, prediction_weight)
     return (per_cell * weight).sum() / weight.sum().clamp_min(epsilon)
+
+
+def target_peak_support(
+    target_spatial_energy_rae: torch.Tensor,
+    target_peak_count: int = 10_000,
+) -> torch.Tensor:
+    count = min(target_peak_count, target_spatial_energy_rae.numel())
+    peak_flat = torch.topk(target_spatial_energy_rae.flatten(), count).indices
+    support = torch.zeros_like(target_spatial_energy_rae, dtype=torch.bool)
+    support.view(-1)[peak_flat] = True
+    return support & (target_spatial_energy_rae > 0)
 
 
 def doppler_marginal_kl(
@@ -69,10 +97,7 @@ def spatial_energy_loss(
     target_spatial_energy_rae: torch.Tensor,
     target_peak_count: int = 10_000,
 ) -> torch.Tensor:
-    count = min(target_peak_count, target_spatial_energy_rae.numel())
-    peak_flat = torch.topk(target_spatial_energy_rae.flatten(), count).indices
-    target_peak = torch.zeros_like(target_spatial_energy_rae, dtype=torch.bool)
-    target_peak.view(-1)[peak_flat] = True
+    target_peak = target_peak_support(target_spatial_energy_rae, target_peak_count)
     mask = rendered.covered_rae | target_peak
     if not mask.any():
         raise ValueError("No occupied cells for Cube energy cycle loss")
@@ -90,6 +115,27 @@ def confidence_floor_loss(
     if confidence.ndim != 1:
         raise ValueError("Point confidence must be one-dimensional")
     return F.relu(confidence.new_tensor(minimum_mean) - confidence.mean())
+
+
+def existence_confidence_loss(
+    confidence: torch.Tensor,
+    prediction_to_target_distance_m: torch.Tensor,
+    match_radius_m: float = 1.0,
+    epsilon: float = 1e-6,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Proper Bernoulli loss for matched and unmatched generated points."""
+
+    if confidence.ndim != 1 or confidence.shape != prediction_to_target_distance_m.shape:
+        raise ValueError("Existence confidence and match distances must be aligned")
+    if match_radius_m <= 0:
+        raise ValueError("Existence match radius must be positive")
+    target = (
+        prediction_to_target_distance_m.detach() <= match_radius_m
+    ).to(confidence)
+    loss = F.binary_cross_entropy(
+        confidence.clamp(epsilon, 1.0 - epsilon), target
+    )
+    return loss, target
 
 
 def cube_cycle_loss(

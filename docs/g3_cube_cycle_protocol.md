@@ -31,8 +31,10 @@ comparison. C1/C2 cannot replace C3 after observing results.
 
 All arms use the same base objective: occupancy loss with weight `1.0`, Doppler
 head loss with weight `1.0`, and confidence-weighted continuous-point Chamfer
-with weight `0.1`. Thus C0 also trains its offset head; the cycle arms cannot
-gain merely because only they receive a continuous-position gradient.
+with weight `0.1`. A matched/unmatched Bernoulli existence-confidence loss uses
+a fixed `1.0 m` match radius and weight `0.1` in all arms. Thus C0 also trains
+its offset head and proper point confidence; the cycle arms cannot gain merely
+because only they receive a continuous-position or confidence gradient.
 
 ## Renderer and Loss
 
@@ -49,10 +51,19 @@ conservation and nonzero gradients to offsets, Doppler logits, and confidence.
 
 The three loss terms are:
 
-1. confidence-weighted local spectrum KL at rendered cells;
+1. confidence-weighted local spectrum KL on the frozen 10,000 strongest target
+   Cube cells;
 2. global Doppler marginal KL over the full Cube;
 3. normalized spatial-energy loss over the union of rendered cells and the
    10,000 strongest target Cube cells.
+
+The prediction-covered-only local KL is retained only as a diagnostic. It is
+not used for model selection or the G3 decision because a model could reduce
+that loss by avoiding difficult target cells. Every run additionally reports
+target-support recall. Doppler supervision is queried by trilinear
+interpolation at each point's final continuous position after its bounded
+offset; the queried target is detached while the final-position feature query
+remains differentiable to the offset.
 
 Fixed weights are `1.0`, `0.25`, and `0.25`. A confidence-floor penalty of
 weight `1.0` activates below mean confidence `0.1`, but this floor alone is not

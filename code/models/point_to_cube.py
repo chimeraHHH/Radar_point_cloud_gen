@@ -22,6 +22,47 @@ class FeatureSplatResult:
     covered_rae: torch.Tensor
 
 
+def trilinear_query_features(
+    features_bcrae: torch.Tensor,
+    coordinates_rae: torch.Tensor,
+    batch_index: torch.Tensor | None = None,
+) -> torch.Tensor:
+    """Sample a spatial feature grid at continuous RAE coordinates."""
+
+    if features_bcrae.ndim != 5:
+        raise ValueError(
+            f"Expected feature grid (B,C,R,A,E), got {features_bcrae.shape}"
+        )
+    if coordinates_rae.ndim != 2 or coordinates_rae.shape[1] != 3:
+        raise ValueError(
+            f"Expected continuous (N,3) RAE coordinates, got {coordinates_rae.shape}"
+        )
+    point_count = coordinates_rae.shape[0]
+    if batch_index is None:
+        if features_bcrae.shape[0] != 1:
+            raise ValueError("Batch indices are required for multi-batch queries")
+        batch_index = torch.zeros(
+            point_count, dtype=torch.long, device=coordinates_rae.device
+        )
+    if batch_index.shape != (point_count,):
+        raise ValueError("Batch indices must contain one value per query")
+    batch_index = batch_index.long()
+    if (batch_index < 0).any() or (batch_index >= features_bcrae.shape[0]).any():
+        raise IndexError("Query batch index is out of bounds")
+
+    spatial_shape = tuple(int(size) for size in features_bcrae.shape[2:])
+    neighbors, weights = trilinear_neighbors(coordinates_rae, spatial_shape)
+    range_count, azimuth_count, elevation_count = spatial_shape
+    flat_index = (
+        neighbors[:, :, 0] * azimuth_count * elevation_count
+        + neighbors[:, :, 1] * elevation_count
+        + neighbors[:, :, 2]
+    )
+    flattened = features_bcrae.flatten(start_dim=2).transpose(1, 2)
+    sampled = flattened[batch_index[:, None], flat_index]
+    return (sampled * weights[:, :, None].to(sampled)).sum(dim=1)
+
+
 def trilinear_neighbors(
     coordinates_rae: torch.Tensor,
     spatial_shape: tuple[int, int, int],

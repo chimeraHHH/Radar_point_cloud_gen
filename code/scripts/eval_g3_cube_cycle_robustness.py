@@ -21,6 +21,7 @@ from eval.cube_cycle import aggregate_cycle_reports, cube_cycle_report  # noqa: 
 from eval.dense_geometry import (  # noqa: E402
     aggregate_geometry_reports,
     geometry_report,
+    nearest_distance,
     occupancy_to_points,
 )
 from eval.doppler_distribution import (  # noqa: E402
@@ -195,7 +196,9 @@ def evaluate_condition(
         with torch.autocast("cuda", dtype=torch.bfloat16):
             prediction = model.query_cycle(features, discrete_indices, ego_speed)
 
-        clean_target_spectrum = query_cube_spectrum(clean_cube, discrete_indices)
+        clean_target_spectrum = query_cube_spectrum(
+            clean_cube, prediction["coordinates_rae"].float()
+        )
         center = static_center(model, discrete_indices, ego_speed)
         doppler = doppler_distribution_report(
             prediction["probability"].float(),
@@ -213,8 +216,16 @@ def evaluate_condition(
             prediction["probability"].float(),
             confidence.float(),
         )
-        cycle = cube_cycle_report(rendered, clean_cube[0].float(), confidence.float())
         target = item["target_xyz_confidence"].to(device)
+        existence_target = (
+            nearest_distance(prediction["xyz_m"].float(), target[:, :3]) <= 1.0
+        ).float()
+        cycle = cube_cycle_report(
+            rendered,
+            clean_cube[0].float(),
+            confidence.float(),
+            existence_target=existence_target,
+        )
         geometry = geometry_report(
             prediction["xyz_m"].float(),
             target[:, :3],
@@ -235,7 +246,7 @@ def evaluate_condition(
         )
         del item, clean_cube, model_cube, ego_speed, occupancy_logits, features
         del calibrated_logits, confidence, discrete_indices, prediction
-        del clean_target_spectrum, center, rendered, target
+        del clean_target_spectrum, center, rendered, target, existence_target
         torch.cuda.empty_cache()
     return {
         "frame_count": len(frames),

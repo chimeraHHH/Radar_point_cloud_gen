@@ -84,10 +84,20 @@ class CubeCycleNet(CubeDopplerNet):
         gathered, (batch, _, azimuth, elevation) = self.gathered_features(
             features, indices
         )
-        result = self.query_from_projected(
-            gathered, batch, azimuth, elevation, ego_speed_mps
+        offset = torch.tanh(self.offset_head(gathered)) * self.maximum_offset_bins
+        coordinates = indices[:, -3:].to(offset) + offset
+        final_gathered = self.gathered_features_continuous(
+            features, coordinates, batch
         )
-        return self.cycle_output_from_projected(result, gathered, indices)
+        result = self.query_from_projected(
+            final_gathered, batch, azimuth, elevation, ego_speed_mps
+        )
+        return self.cycle_output_from_projected(
+            result,
+            final_gathered,
+            indices,
+            offset_override_bins=offset,
+        )
 
     def cycle_output_from_projected(
         self,
@@ -96,9 +106,14 @@ class CubeCycleNet(CubeDopplerNet):
         indices: torch.Tensor,
         offset_override_bins: torch.Tensor | None = None,
     ) -> dict[str, torch.Tensor]:
-        offset = torch.tanh(self.offset_head(gathered)) * self.maximum_offset_bins
-        if offset_override_bins is not None:
-            if offset_override_bins.shape != offset.shape:
+        if offset_override_bins is None:
+            offset = (
+                torch.tanh(self.offset_head(gathered))
+                * self.maximum_offset_bins
+            )
+        else:
+            expected_shape = (gathered.shape[0], 3)
+            if offset_override_bins.shape != expected_shape:
                 raise ValueError("Temporal offset override has the wrong shape")
             offset = offset_override_bins.clamp(
                 -self.maximum_offset_bins, self.maximum_offset_bins

@@ -31,7 +31,7 @@ from eval.doppler_distribution import (  # noqa: E402
     cd_doppler_report,
     doppler_distribution_report,
 )
-from losses.cube_cycle import cube_cycle_loss  # noqa: E402
+from losses.cube_cycle import cube_cycle_loss, existence_confidence_loss  # noqa: E402
 from losses.doppler_distribution import (  # noqa: E402
     circular_scalar_target,
     doppler_head_loss,
@@ -65,6 +65,7 @@ class TrainConfig:
     seed: int
     point_count: int
     geometry_weight: float
+    existence_confidence_weight: float
     eval_every: int
     max_eval_frames: int
     train_limit: int | None
@@ -89,13 +90,13 @@ def continuous_chamfer_loss(
     prediction_xyz: torch.Tensor,
     target_xyz: torch.Tensor,
     target_weight: torch.Tensor,
-) -> torch.Tensor:
+) -> tuple[torch.Tensor, torch.Tensor]:
     prediction_to_target = nearest_distance(prediction_xyz, target_xyz)
     target_to_prediction = nearest_distance(target_xyz, prediction_xyz)
     weight = target_weight.to(target_to_prediction).clamp_min(0.0)
     completeness = (target_to_prediction * weight).sum()
     completeness = completeness / weight.sum().clamp_min(1e-8)
-    return prediction_to_target.mean() + completeness
+    return prediction_to_target.mean() + completeness, prediction_to_target
 
 
 @torch.inference_mode()
@@ -126,7 +127,9 @@ def evaluate(
         )
         with torch.autocast("cuda", dtype=torch.bfloat16):
             prediction = model.query_cycle(features, discrete_indices, ego_speed)
-        target_spectrum = query_cube_spectrum(cube, discrete_indices)
+        target_spectrum = query_cube_spectrum(
+            cube, prediction["coordinates_rae"].float()
+        )
         center = static_center(model, discrete_indices, ego_speed)
         doppler = doppler_distribution_report(
             prediction["probability"],
@@ -144,8 +147,19 @@ def evaluate(
             prediction["probability"].float(),
             confidence.float(),
         )
-        cycle = cube_cycle_report(rendered, cube[0].float(), confidence.float())
         target = item["target_xyz_confidence"].to(device)
+        prediction_to_target = nearest_distance(
+            prediction["xyz_m"].float(), target[:, :3]
+        )
+        _, existence_target = existence_confidence_loss(
+            confidence.float(), prediction_to_target
+        )
+        cycle = cube_cycle_report(
+            rendered,
+            cube[0].float(),
+            confidence.float(),
+            existence_target=existence_target,
+        )
         target_indices = item["target_rae_index"].to(device)
         target_distribution = query_cube_spectrum(cube, target_indices)
         target_scalar = circular_scalar_target(
@@ -194,7 +208,8 @@ def evaluate(
         )
         del item, cube, occupancy, occupancy_logits, features, occupancy_value
         del confidence, discrete_indices, prediction, target_spectrum, center
-        del rendered, target, target_indices, target_distribution, target_scalar, cfar
+        del rendered, target, prediction_to_target, existence_target
+        del target_indices, target_distribution, target_scalar, cfar
         torch.cuda.empty_cache()
     return {
         "frame_count": len(frame_indices),
@@ -269,6 +284,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=20260716)
     parser.add_argument("--point-count", type=int, default=10_000)
     parser.add_argument("--geometry-weight", type=float, default=0.1)
+    parser.add_argument("--existence-confidence-weight", type=float, default=0.1)
     parser.add_argument("--eval-every", type=int, default=5)
     parser.add_argument("--max-eval-frames", type=int, default=8)
     parser.add_argument("--train-limit", type=int, default=None)
@@ -312,6 +328,7 @@ def main() -> None:
         seed=args.seed,
         point_count=args.point_count,
         geometry_weight=args.geometry_weight,
+        existence_confidence_weight=args.existence_confidence_weight,
         eval_every=args.eval_every,
         max_eval_frames=args.max_eval_frames,
         train_limit=args.train_limit,
@@ -500,9 +517,11 @@ def main() -> None:
             _, confidence, discrete_indices = occupancy_to_points(
                 occupancy_logits[0].float(), axes, point_count=config.point_count
             )
-            target_spectrum = query_cube_spectrum(cube, discrete_indices)
             with torch.autocast("cuda", dtype=torch.bfloat16):
                 prediction = model.query_cycle(features, discrete_indices, ego_speed)
+                target_spectrum = query_cube_spectrum(
+                    cube, prediction["coordinates_rae"].float().detach()
+                )
                 doppler_value, doppler_components = doppler_head_loss(
                     prediction,
                     target_spectrum,
@@ -511,13 +530,17 @@ def main() -> None:
                     model.doppler_period_mps,
                     confidence=confidence,
                 )
-            geometry_value = continuous_chamfer_loss(
+            geometry_value, prediction_to_target = continuous_chamfer_loss(
                 prediction["xyz_m"].float(), target[:, :3], target[:, 3]
+            )
+            existence_value, _ = existence_confidence_loss(
+                confidence.float(), prediction_to_target
             )
             total = (
                 occupancy_value
                 + doppler_value
                 + config.geometry_weight * geometry_value
+                + config.existence_confidence_weight * existence_value
             )
             cycle_components = {}
             if config.variant != "none":
@@ -540,13 +563,17 @@ def main() -> None:
             component_values.setdefault("occupancy", []).append(float(occupancy_value.item()))
             component_values.setdefault("doppler", []).append(float(doppler_value.item()))
             component_values.setdefault("continuous_chamfer", []).append(float(geometry_value.item()))
+            component_values.setdefault("existence_confidence", []).append(
+                float(existence_value.item())
+            )
             for name, value in doppler_components.items():
                 component_values.setdefault(f"doppler_{name}", []).append(float(value.item()))
             for name, value in cycle_components.items():
                 component_values.setdefault(f"cycle_{name}", []).append(float(value.item()))
             del item, cube, occupancy, ego_speed, target, occupancy_logits, features
             del occupancy_value, confidence, discrete_indices, target_spectrum
-            del prediction, doppler_value, geometry_value, total
+            del prediction, doppler_value, geometry_value, prediction_to_target
+            del existence_value, total
         scheduler.step()
         record = {
             "epoch": epoch,

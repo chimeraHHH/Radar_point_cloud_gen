@@ -28,6 +28,8 @@ def main() -> None:
     parser.add_argument("--spatial-shape", type=int, nargs=3, default=[16, 12, 8])
     parser.add_argument("--doppler-bins", type=int, default=64)
     parser.add_argument("--absolute-tolerance", type=float, default=1e-5)
+    parser.add_argument("--relative-tolerance", type=float, default=1e-6)
+    parser.add_argument("--required-gpu-name")
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
@@ -43,6 +45,11 @@ def main() -> None:
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
     device = torch.device(args.device)
+    device_name = torch.cuda.get_device_name(device)
+    if args.required_gpu_name and device_name != args.required_gpu_name:
+        raise RuntimeError(
+            f"Renderer verification requires {args.required_gpu_name}, got {device_name}"
+        )
     shape = tuple(args.spatial_shape)
     coordinates = torch.rand(args.point_count, 3, device=device)
     scale = torch.tensor(shape, dtype=torch.float32, device=device) - 1.0
@@ -117,10 +124,41 @@ def main() -> None:
     permutation_error = float(
         (permuted.energy_drae - rendered.energy_drae.detach()).abs().max().item()
     )
+    duplicated = soft_splat_raed(
+        coordinates.detach().repeat_interleave(2, dim=0),
+        probability.detach().repeat_interleave(2, dim=0),
+        (confidence.detach() / 2.0).repeat_interleave(2, dim=0),
+        shape,
+    )
+    duplication_error = float(
+        (duplicated.energy_drae - rendered.energy_drae.detach()).abs().max().item()
+    )
+    shifted = soft_splat_raed(
+        coordinates.detach(),
+        probability.detach().roll(3, dims=1),
+        confidence.detach(),
+        shape,
+    )
+    circular_shift_error = float(
+        (shifted.energy_drae - rendered.energy_drae.detach().roll(3, dims=0))
+        .abs()
+        .max()
+        .item()
+    )
+    conservation_tolerance = args.absolute_tolerance + args.relative_tolerance * float(
+        confidence.sum().item()
+    )
+    boundary_tolerance = args.absolute_tolerance + args.relative_tolerance * float(
+        boundary_confidence.sum().item()
+    )
     checks = {
-        "energy_conserved": conservation_error <= args.absolute_tolerance,
-        "boundary_energy_conserved": boundary_error <= args.absolute_tolerance,
+        "energy_conserved": conservation_error <= conservation_tolerance,
+        "boundary_energy_conserved": boundary_error <= boundary_tolerance,
         "point_permutation_invariant": permutation_error <= args.absolute_tolerance,
+        "point_duplication_conserves_energy": duplication_error
+        <= args.absolute_tolerance,
+        "doppler_circular_shift_equivariant": circular_shift_error
+        <= args.absolute_tolerance,
         "coordinate_gradient_finite_nonzero": np.isfinite(
             gradient_norms["coordinates"]
         )
@@ -138,16 +176,21 @@ def main() -> None:
         "schema_version": 1,
         "generated_utc": datetime.now(timezone.utc).isoformat(),
         "source_commit": args.source_commit,
-        "device": torch.cuda.get_device_name(device),
+        "device": device_name,
         "torch_version": torch.__version__,
         "seed": args.seed,
         "point_count": args.point_count,
         "spatial_shape": list(shape),
         "doppler_bins": args.doppler_bins,
         "absolute_tolerance": args.absolute_tolerance,
+        "relative_tolerance": args.relative_tolerance,
+        "conservation_tolerance": conservation_tolerance,
+        "boundary_conservation_tolerance": boundary_tolerance,
         "conservation_error": conservation_error,
         "boundary_conservation_error": boundary_error,
         "permutation_max_error": permutation_error,
+        "duplication_max_error": duplication_error,
+        "circular_shift_max_error": circular_shift_error,
         "gradient_norms": gradient_norms,
         "cycle_loss": float(loss.detach().item()),
         "cycle_components": {

@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from models.cube_occupancy import CubeOccupancyNet
+from models.point_to_cube import trilinear_query_features
 
 
 STATIC_HYPOTHESES = ("negative_ego", "positive_ego", "zero_centered")
@@ -47,16 +48,45 @@ def query_cube_spectrum(
     indices: torch.Tensor,
     smoothing: float = 1e-4,
 ) -> torch.Tensor:
-    """Query normalized log-power spectra at integer RAE locations."""
+    """Query normalized log-power spectra at integer or continuous RAE locations."""
 
     if cube_drae.ndim != 5 or cube_drae.shape[1] != 64:
         raise ValueError(f"Expected Cube shape (B,64,R,A,E), got {cube_drae.shape}")
-    batch, radius, azimuth, elevation = split_query_indices(
-        indices, cube_drae.shape[0]
-    )
-    power = cube_drae[batch, :, radius, azimuth, elevation].clamp_min(0.0)
-    evidence = torch.log1p(power) + smoothing
+    if not torch.is_floating_point(indices):
+        batch, radius, azimuth, elevation = split_query_indices(
+            indices, cube_drae.shape[0]
+        )
+        evidence = torch.log1p(
+            cube_drae[batch, :, radius, azimuth, elevation].clamp_min(0.0)
+        ) + smoothing
+        return evidence / evidence.sum(dim=1, keepdim=True).clamp_min(1e-12)
+    batch, coordinates = split_query_coordinates(indices, cube_drae.shape[0])
+    log_power = torch.log1p(cube_drae.clamp_min(0.0))
+    evidence = trilinear_query_features(log_power, coordinates, batch) + smoothing
     return evidence / evidence.sum(dim=1, keepdim=True).clamp_min(1e-12)
+
+
+def split_query_coordinates(
+    indices: torch.Tensor, batch_size: int
+) -> tuple[torch.Tensor, torch.Tensor]:
+    if indices.ndim != 2 or indices.shape[1] not in (3, 4):
+        raise ValueError(f"Expected (N,3) or (N,4) query indices, got {indices.shape}")
+    if indices.shape[1] == 3:
+        if batch_size != 1:
+            raise ValueError("Three-column indices require batch size one")
+        batch = torch.zeros(indices.shape[0], dtype=torch.long, device=indices.device)
+        coordinates = indices
+    else:
+        raw_batch = indices[:, 0]
+        if torch.is_floating_point(raw_batch) and not torch.equal(
+            raw_batch, raw_batch.round()
+        ):
+            raise ValueError("Batch query coordinates must be integers")
+        batch = raw_batch.long()
+        coordinates = indices[:, 1:]
+    if (batch < 0).any() or (batch >= batch_size).any():
+        raise IndexError("Query batch index is out of bounds")
+    return batch, coordinates
 
 
 def split_query_indices(
@@ -154,6 +184,15 @@ class CubeDopplerNet(CubeOccupancyNet):
         )
         gathered = features[batch, :, radius, azimuth, elevation]
         return self.query_projection(gathered), (batch, radius, azimuth, elevation)
+
+    def gathered_features_continuous(
+        self,
+        features: torch.Tensor,
+        coordinates_rae: torch.Tensor,
+        batch: torch.Tensor,
+    ) -> torch.Tensor:
+        gathered = trilinear_query_features(features, coordinates_rae, batch)
+        return self.query_projection(gathered)
 
     def static_center(
         self,

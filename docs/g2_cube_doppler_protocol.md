@@ -36,6 +36,11 @@ trilinear RAE interpolation before normalizing over Doppler. Convert power to a
 probability target with `log1p(power)`, nonnegative clipping, and fixed additive
 smoothing of `1e-4` before normalization.
 
+For the continuous G3 child models, the position offset is predicted first;
+both the feature query and the observed spectrum query are then evaluated at
+that final position. The observed target query is detached during optimization
+so the model cannot improve its label by moving the query coordinate.
+
 The scalar target is the circular spectral mean. Scalar errors use circular
 distance over the measured Doppler period. For distribution metrics, convert
 E3 to a fixed one-bin-width wrapped Gaussian; its width is not tuned on the

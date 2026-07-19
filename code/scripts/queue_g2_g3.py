@@ -614,6 +614,10 @@ def main() -> None:
         "--source-commit",
         args.source_commit,
     ]
+    if args.required_gpu_name:
+        renderer_command.extend(
+            ["--required-gpu-name", args.required_gpu_name]
+        )
     run_gpu_command(
         "g3_renderer_test",
         renderer_command,
