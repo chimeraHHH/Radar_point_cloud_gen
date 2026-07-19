@@ -14,7 +14,9 @@ instead of replacing it.
    anchor cells and per-anchor spatial features. If G1 passes, this is the
    Full-RAED arm. If G1 fails but RAE-Max independently passes the frozen CFAR
    geometry gate, RAE-Max may be used only in the separately named G1R/RH
-   late-fusion recovery.
+   late-fusion recovery. If neither original arm passes, RH waits for an
+   independently passing G1B Stage B candidate and records the route as
+   `independent_g1b_parent`.
 2. Each anchor combines Fourier RAE coordinates with its parent feature.
 3. A RaLD Full-RAED hierarchy projects all 64 Doppler bins into 336 spatial
    radar-condition tokens.
@@ -64,12 +66,21 @@ Using RAE-Max after a Full-RAED early-fusion failure does not change the G1
 decision: it tests the distinct hypothesis that RaLD late fusion can preserve a
 strong geometry allocator while injecting complete spectral context.
 
+The bounded G1 recovery ultimately rejected both original parent routes. RH now
+requires an independently passing G1B Stage B candidate. Its exact parent runs,
+training source commit, and summary hash are part of RH provenance; appearance
+or modification of a G1B file cannot alter a run on an original G1 route.
+
 ### RH2: development ablation
 
 Run only after the current G1 family is formally decided. Compare the selected
 parent against `+RaLD-anchor-hybrid` using the same development frames, seeds,
 and scene-first statistics. This is a newly named method branch and cannot be
 reported as the original G1 recovery.
+
+When original G1 fails, RH2 does not wait for or unlock the original G2/G3
+summary. It records that dependency as unavailable by protocol and remains an
+independent late-fusion comparison.
 
 ## Evidence boundary
 

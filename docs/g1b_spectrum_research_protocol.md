@@ -60,6 +60,11 @@ is at most 2%, the outlier fraction is at most 25%, and one preregistered
 Doppler-sensitive geometry endpoint improves with a 95% interval excluding
 zero. A failed Stage B closes the physics-compressed spectrum branch.
 
+A passing Stage B authorizes only the named `independent_g1b_parent` route into
+RaLD-anchor RH1/RH2. It does not relabel G1, and it does not unlock the original
+G2/G3 queue. RH records must reference the exact candidate run paths, training
+source commit, seeds, and Stage B summary.
+
 ## Required Evidence
 
 - exact source commit and frozen G0 artifact hashes;
@@ -75,3 +80,9 @@ zero. A failed Stage B closes the physics-compressed spectrum branch.
 the original G1 comparison, exits without training when G1 passes, and runs the
 four-arm screen only when the recorded `g1_passed` decision is false. It freezes
 at most one Stage B candidate but never launches Stage B automatically.
+
+`code/scripts/queue_g1b_stage_b.py` is a separate preregistered executor. It
+waits for the Stage A report, writes an immutable launch-decision artifact, runs
+B0 and the single frozen survivor for three seeds, and records separate baseline
+and candidate parent lists. `queue_rald_anchor_rh1.py` and
+`queue_rald_anchor_rh2.py` consume those exact paths only after `g1b_passed`.

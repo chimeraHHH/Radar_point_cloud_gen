@@ -120,6 +120,27 @@ def completed(job: Job, epochs: int, source_commit: str) -> bool:
     return bool(records) and int(records[-1]["epoch"]) == epochs
 
 
+def g1b_parent_runs(
+    summary: dict, seeds: list[int], run_root: Path, source_commit: str
+) -> dict[int, Path]:
+    if summary.get("status") != "g1b_passed" or not summary.get("candidate_mode"):
+        raise ValueError("G1B did not authorize an independent geometry parent")
+    if summary.get("training_source_commit") != source_commit:
+        raise ValueError("G1B training source commit differs from the queue contract")
+    if set(seeds) - set(summary.get("seeds", [])):
+        raise ValueError("RH2 seeds are absent from the G1B Stage B decision")
+    mode = str(summary["candidate_mode"])
+    authorized = {Path(path) for path in summary.get("candidate_runs", [])}
+    parents = {
+        seed: run_root
+        / f"g1b_stage_b_{mode}_seed{seed}_{source_commit[:8]}"
+        for seed in seeds
+    }
+    if set(parents.values()) - authorized:
+        raise ValueError("G1B summary does not authorize all RH2 candidate parents")
+    return parents
+
+
 def train_command(job: Job, args) -> list[str]:
     command = [
         str(args.python),
@@ -137,6 +158,8 @@ def train_command(job: Job, args) -> list[str]:
         str(args.normalization),
         "--g1-comparison",
         str(args.g1_comparison),
+        "--g1b-summary",
+        str(args.g1b_summary),
         "--parent-g1-run",
         str(job.parent),
         "--output",
@@ -201,6 +224,9 @@ def main() -> None:
     parser.add_argument("--normalization", type=Path, required=True)
     parser.add_argument("--g1-comparison", type=Path, required=True)
     parser.add_argument("--g1-source-commit", required=True)
+    parser.add_argument("--g1b-summary", type=Path, required=True)
+    parser.add_argument("--g1b-run-root", type=Path, required=True)
+    parser.add_argument("--g1b-source-commit", required=True)
     parser.add_argument("--rh1-summary", type=Path, required=True)
     parser.add_argument("--core-g2-g3-summary", type=Path, required=True)
     parser.add_argument("--run-root", type=Path, required=True)
@@ -238,34 +264,59 @@ def main() -> None:
         return
     g1 = wait_for_json(args.g1_comparison, args.poll_seconds, "waiting_for_g1")
     decision = g1.get("decision", {})
-    if decision.get("g1_passed") is True:
-        parent_mode = "full_raed"
-    elif decision.get("rae_max_beats_cfar") is True:
-        parent_mode = "rae_max"
-    else:
-        atomic_json(
-            summary_path,
-            {
-                "status": "skipped_no_geometry_parent_passed",
-                "source_commit": args.source_commit,
-                "g1_decision": decision,
-            },
+    parent_mode = str(rh1.get("parent_mode"))
+    parent_route = str(rh1.get("route"))
+    if parent_route == "formal_g1_passed" and decision.get("g1_passed") is not True:
+        raise ValueError("RH1 Full-RAED route contradicts G1")
+    if (
+        parent_route == "late_fusion_recovery_after_g1_failure"
+        and decision.get("rae_max_beats_cfar") is not True
+    ):
+        raise ValueError("RH1 RAE-Max route contradicts G1")
+    if parent_route == "independent_g1b_parent":
+        g1b = wait_for_json(args.g1b_summary, args.poll_seconds, "waiting_for_g1b")
+        if (
+            g1b.get("status") != "g1b_passed"
+            or g1b.get("candidate_mode") != parent_mode
+        ):
+            raise ValueError("RH1 G1B route contradicts Stage B")
+    elif parent_route not in {
+        "formal_g1_passed",
+        "late_fusion_recovery_after_g1_failure",
+    }:
+        raise ValueError("RH1 summary has an unknown parent route")
+    if parent_route == "formal_g1_passed":
+        core = wait_for_json(
+            args.core_g2_g3_summary, args.poll_seconds, "waiting_for_core_g2_g3"
         )
-        return
-    if rh1.get("parent_mode") != parent_mode:
-        raise ValueError("RH1 parent selection differs from the formal G1 decision")
-    core = wait_for_json(
-        args.core_g2_g3_summary, args.poll_seconds, "waiting_for_core_g2_g3"
-    )
-    if not isinstance(core, dict) or "source_commit" not in core:
-        raise ValueError("Core G2/G3 summary is malformed")
+        if not isinstance(core, dict) or "source_commit" not in core:
+            raise ValueError("Core G2/G3 summary is malformed")
+        core_dependency = {
+            "status": "finished",
+            "summary": str(args.core_g2_g3_summary),
+            "source_commit": core["source_commit"],
+        }
+    else:
+        core_dependency = {
+            "status": "not_unlocked_after_g1_failure",
+            "summary": None,
+            "source_commit": None,
+        }
 
-    parent_tag = args.g1_source_commit[:8]
+    if parent_route == "independent_g1b_parent":
+        parents = g1b_parent_runs(
+            g1b, args.seeds, args.g1b_run_root, args.g1b_source_commit
+        )
+    else:
+        parents = {
+            seed: args.g1_comparison.parent
+            / f"g1_{parent_mode}_seed{seed}_{args.g1_source_commit[:8]}"
+            for seed in args.seeds
+        }
     jobs = [
         Job(
             seed=seed,
-            parent=args.g1_comparison.parent
-            / f"g1_{parent_mode}_seed{seed}_{parent_tag}",
+            parent=parents[seed],
             run=args.run_root
             / f"rh2_{parent_mode}_seed{seed}_{args.source_commit[:8]}",
             log=args.run_root / f"rh2_seed{seed}.log",
@@ -363,6 +414,8 @@ def main() -> None:
         "status": "rh2_passed" if passed else "rh2_gate_failed",
         "source_commit": args.source_commit,
         "parent_mode": parent_mode,
+        "parent_route": parent_route,
+        "core_g2_g3_dependency": core_dependency,
         "runs": [str(job.run) for job in jobs],
         "comparison": str(comparison_path),
         "decision": comparison.get("decision"),

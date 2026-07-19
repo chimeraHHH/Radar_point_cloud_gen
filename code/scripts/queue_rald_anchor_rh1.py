@@ -40,6 +40,13 @@ def wait_for_json(path: Path, poll_seconds: int) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def wait_for_named_json(path: Path, poll_seconds: int, event: str) -> dict:
+    while not path.exists():
+        emit(event, missing=str(path))
+        time.sleep(poll_seconds)
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def select_parent(
     decision: dict, full_parent: Path, rae_parent: Path
 ) -> tuple[str, Path, str] | None:
@@ -48,6 +55,23 @@ def select_parent(
     if decision.get("rae_max_beats_cfar") is True:
         return "rae_max", rae_parent, "late_fusion_recovery_after_g1_failure"
     return None
+
+
+def select_g1b_parent(
+    summary: dict, seed: int, run_root: Path, source_commit: str
+) -> tuple[str, Path] | None:
+    if summary.get("status") != "g1b_passed" or not summary.get("candidate_mode"):
+        return None
+    if summary.get("training_source_commit") != source_commit:
+        raise ValueError("G1B training source commit differs from the queue contract")
+    if seed not in summary.get("seeds", []):
+        raise ValueError("RH1 seed is absent from the G1B Stage B decision")
+    mode = str(summary["candidate_mode"])
+    expected = run_root / f"g1b_stage_b_{mode}_seed{seed}_{source_commit[:8]}"
+    candidate_runs = {Path(path) for path in summary.get("candidate_runs", [])}
+    if expected not in candidate_runs:
+        raise ValueError("G1B summary does not authorize the expected candidate parent")
+    return mode, expected
 
 
 def gpu_state(index: int) -> tuple[int, int]:
@@ -114,6 +138,9 @@ def main() -> None:
     parser.add_argument("--g1-comparison", type=Path, required=True)
     parser.add_argument("--full-parent-g1-run", type=Path, required=True)
     parser.add_argument("--rae-parent-g1-run", type=Path, required=True)
+    parser.add_argument("--g1b-summary", type=Path, required=True)
+    parser.add_argument("--g1b-run-root", type=Path, required=True)
+    parser.add_argument("--g1b-source-commit", required=True)
     parser.add_argument("--run-root", type=Path, required=True)
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--seed", type=int, default=20260716)
@@ -136,18 +163,30 @@ def main() -> None:
         decision, args.full_parent_g1_run, args.rae_parent_g1_run
     )
     if selection is None:
-        summary = {
-            "status": "skipped_no_geometry_parent_passed",
-            "source_commit": args.source_commit,
-            "g1_comparison": str(args.g1_comparison),
-            "g1_decision": decision,
-            "rh05_started": False,
-            "rh1_started": False,
-        }
-        atomic_json(summary_path, summary)
-        emit("rald_anchor_skipped", summary=summary)
-        return
-    parent_mode, parent_g1_run, route = selection
+        g1b = wait_for_named_json(
+            args.g1b_summary, args.poll_seconds, "waiting_for_g1b_stage_b"
+        )
+        g1b_selection = select_g1b_parent(
+            g1b, args.seed, args.g1b_run_root, args.g1b_source_commit
+        )
+        if g1b_selection is None:
+            summary = {
+                "status": "skipped_no_geometry_parent_passed",
+                "source_commit": args.source_commit,
+                "g1_comparison": str(args.g1_comparison),
+                "g1_decision": decision,
+                "g1b_summary": str(args.g1b_summary),
+                "g1b_status": g1b.get("status"),
+                "rh05_started": False,
+                "rh1_started": False,
+            }
+            atomic_json(summary_path, summary)
+            emit("rald_anchor_skipped", summary=summary)
+            return
+        parent_mode, parent_g1_run = g1b_selection
+        route = "independent_g1b_parent"
+    else:
+        parent_mode, parent_g1_run, route = selection
     if args.seed not in comparison.get("seeds", []):
         raise ValueError("RH1 seed is absent from the formal G1 comparison")
     parent_config = parent_g1_run / "config.json"
@@ -229,6 +268,8 @@ def main() -> None:
             str(args.normalization),
             "--g1-comparison",
             str(args.g1_comparison),
+            "--g1b-summary",
+            str(args.g1b_summary),
             "--parent-g1-run",
             str(parent_g1_run),
             "--output",
@@ -267,6 +308,9 @@ def main() -> None:
         "route": route,
         "parent_mode": parent_mode,
         "g1_comparison": str(args.g1_comparison),
+        "g1b_summary": str(args.g1b_summary)
+        if route == "independent_g1b_parent"
+        else None,
         "parent_g1_run": str(parent_g1_run),
         "rh05_report": str(integration_path),
         "rh1_run": str(run_path),

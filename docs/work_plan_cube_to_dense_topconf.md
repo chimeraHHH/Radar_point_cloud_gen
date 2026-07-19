@@ -8,7 +8,7 @@
 
 > **2026-07-18 证据修订（不追溯修改原门槛）：**修复版 G0 已以 100/100 帧、11/11 检查通过；G1 preflight 已通过并正在运行三种子正式对照。独立静态 Doppler 审计在 validation 上失败且有界 SNR recovery 未恢复，因此 E5 与“解析静态先验”贡献已移除，E3/E4 继续。G4 的 2,160 帧 manifest 已通过，官方数据断点下载中；P5 test 在 G4 family 冻结前保持锁定。当前主张状态见 [claim_evidence_ledger.md](../paper/claim_evidence_ledger.md)。
 
-> **2026-07-19 G1 修订：**首轮 G1 正式对照失败。E1/E2 相对 CFAR 的 Chamfer 和 F-score 均显著改善，但 outlier 约 26.5%，未过固定 25% 门；Full-RAED 相对 RAE-Max 的 Chamfer 恶化 28.3%，远距 completeness 恶化 232.6%。只允许一次 `RAE-Max 主路径 + 零初始化完整谱残差` 的有界重跑，门槛不变；若仍失败，关闭 G1 并停止 G2/G3。
+> **2026-07-19 G1 终局：**三种子有界恢复仍失败。RAE-Max 的 Chamfer 为 `2.9306 m`，但 outlier `25.697%` 略高于固定 `25%` 门；Full-RAED 相对 RAE-Max 的 Chamfer 恶化 `5.86%`，95% CI 为 `+0.78%` 到 `+14.69%`。原始 G1 与 G2/G3 正式关闭，C1 早融合主张否决。只继续独立 G1B 物理压缩频谱候选；若其三种子 Stage B 通过，才可作为新命名 RaLD-anchor late-fusion 分支的冻结几何父模型。
 
 > **2026-07-19 基线修订：**官方 RaLD checkpoint 因 ColoRadar 域、强度-only 条件和无逐点 Doppler/confidence 输出，不作为 K-Radar 主表公平基线。完整规模的 K-Radar matched 重实现通过了结构与梯度验证，但单帧 AE 在一次预注册 hard-occupancy 修复后仍未通过 Chamfer 门（`9.1444 m` vs `<=5.0 m`），因此该训练链 no-go，不继续 latent EDM；RaLD 仅保留为相关工作和隐式 occupancy 架构参考。
 
@@ -104,7 +104,9 @@ point-to-RAED cycle 约束。主方法禁用 RaLD 的 CFAR query helper。
 父模型选择不改写 G1：若 G1 正式通过，使用 Full-RAED occupancy parent；若 G1
 失败但 RAE-Max 独立通过固定 CFAR 几何门，仅允许在新命名 `G1R/RH` late-fusion
 分支中冻结 RAE-Max anchors，再通过 RaLD Full-RAED tokens 注入频谱上下文。若
-两个几何臂均未通过原门槛，RH1/RH2 不运行，等待独立 G1B 正式候选。
+两个原始几何臂均未通过门槛时，RH1/RH2 等待独立 G1B 正式候选。G1B
+通过后只能以 `independent_g1b_parent` 接入，不能改写原始 G1，也不能解锁
+原 G2/G3。
 
 独立 RaLD point VAE 在 K-Radar 长量程 one-frame 门控中未通过 Chamfer，故不
 直接替换几何父模型。当前采用 `RaLD-anchor-hybrid`：frustum occupancy 负责
@@ -337,7 +339,15 @@ L = L_geo
 - Full-RAED 至少在一个几何指标或远距离子集上优于 RAE-Max；
 - 输出不是通过大量重复点或离群点获得虚假覆盖率。
 
+**终局状态：失败。** Full-RAED 未通过相对 RAE-Max 的几何非退化门，RAE-Max
+也未通过固定 CFAR outlier 门。后续工作不再以 G1 成功为前提；独立 G1B 与
+RaLD-anchor RH 使用新的命名、父模型选择和证据链。
+
 ### P2：Doppler 联合生成（W6-W8）
+
+原 E3-E5/G2 队列因 G1 失败已关闭。只有独立 G1B 与 RH2 都通过后，才建立
+`G2R`：在同一冻结 RaLD-anchor family 内比较 scalar、distribution 与 direct
+Cube spectrum query，不能复用未运行的原 G2 编号或结论。
 
 **任务**
 
@@ -360,6 +370,9 @@ L = L_geo
 
 ### P3：Cube-point 双向闭环（W9-W11）
 
+原 G3 队列未获授权。若 `G2R` 通过，则以同一冻结 family 建立 `G3R`，重新运行
+no-cycle、local-peak、marginal 与 full-cycle 消融，并保留原 anti-collapse 门槛。
+
 **任务**
 
 - 实现可微 RAED soft splatting renderer；
@@ -378,6 +391,10 @@ L = L_geo
 Cube cycle 必须在 Doppler 频谱匹配、PCE、几何或下游任务中至少改善两类指标，并且不能通过置信度坍缩获得。若未达到，论文退化为“RaLD + Doppler head”，不具备足够强的顶会差异化，应停止扩规模并重新设计闭环。
 
 ### P4：时序先验扩展（W12-W14）
+
+当前 G4 队列硬依赖已关闭的原 G2/G3 summary，不能直接继续。只有新的单帧
+family 依次通过 G1B、RH、G2R/G3R 并冻结后，才可重建 `G4R` 时序队列；已下载
+的时序数据与固定 split 可继续复用。
 
 **任务**
 
@@ -507,9 +524,9 @@ Cube cycle 必须在 Doppler 频谱匹配、PCE、几何或下游任务中至少
 ### 最小顶会主线
 
 ```text
-Full-RAED Cube Encoder
-  + dense XYZ generator
-  + Doppler distribution head
+independently gated geometry parent
+  + RaLD Full-RAED radar-token late fusion
+  + dense XYZ + Doppler distribution + confidence
   + differentiable Cube-point cycle
 ```
 
@@ -518,7 +535,9 @@ Full-RAED Cube Encoder
 ### 止损规则
 
 - **G0 失败**：数据不支持完整 Cube、同步 LiDAR 或可靠 Doppler 标定，立即缩小命题，不投入大规模训练。
-- **G1 失败**：原 G2/G3 链停止；若 RAE-Max 仍独立通过固定 CFAR 几何门，可运行新命名 G1R/RH late-fusion recovery，否则只进入独立 G1B，禁止放宽原门槛。
+- **G1 失败（已触发）**：原 G2/G3 链永久停止；当前只进入独立 G1B，禁止放宽原门槛或把后续分支称为 G1 recovery。
+- **G1B 失败**：关闭当前 occupancy geometry family，不运行 RH/G2R/G3R/G4R；下一路线必须重新提出独立协议。
+- **RH 失败**：RaLD-anchor late fusion 关闭，不能仅凭 RH0 结构验证形成方法主张。
 - **G2 失败**：Doppler head 不优于简单回归，重新检查频谱查询和标签定义。
 - **G3 失败**：Cube cycle 没有独立贡献，停止“顶会创新已成立”的表述，重设计闭环或转为应用型工作。
 - **G4 失败**：时序模块降为 appendix，不拖累单帧主线。
@@ -547,8 +566,10 @@ Full-RAED Cube Encoder
 - [x] 建立 `RAE-Max -> dense XYZ` 最小基线。
 - [x] 实现 Full-RAED Encoder，并启动 E1/E2 三种子正式对照。
 - [x] 将 RaLD Full-RAED radar tokens、mixed set latents 与 occupancy anchors 接成可训练 RH 链，并建立 RH0.5/RH1/RH2 硬门控队列。
-- [ ] 关闭 G1 comparison，并按冻结结果释放或终止 G2/G3。
+- [x] 关闭 G1 comparison；按冻结结果终止原 G2/G3，并归档终局负结果。
+- [ ] 完成独立 G1B Stage A/B；若通过，完成 RaLD-anchor RH1/RH2。
+- [ ] 在冻结 RH family 上建立并完成 G2R/G3R，不复用原 G2/G3 结论。
 - [ ] 完成 G4 45/45 序列下载、CRC、时序训练与 family freeze。
 - [ ] 释放 P5 test 并完成 P6 论文证据包。
 
-> 当前最高优先级是关闭 **G1 Full-RAED vs RAE-Max** 决策；G4 数据下载与 P6 证据整理并行推进。
+> 当前最高优先级是完成 **独立 G1B -> RaLD-anchor RH1/RH2** 决策；G4 只继续数据下载与校验，不在新单帧 family 冻结前训练。

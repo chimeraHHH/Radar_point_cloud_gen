@@ -1,7 +1,14 @@
 import json
 from pathlib import Path
 
-from scripts.queue_rald_anchor_rh1 import atomic_json, select_parent, wait_for_json
+import pytest
+
+from scripts.queue_rald_anchor_rh1 import (
+    atomic_json,
+    select_g1b_parent,
+    select_parent,
+    wait_for_json,
+)
 
 
 def test_queue_json_helpers_round_trip(tmp_path: Path) -> None:
@@ -31,3 +38,25 @@ def test_select_parent_preserves_g1_and_uses_rae_only_as_named_recovery(
     assert select_parent(
         {"g1_passed": False, "rae_max_beats_cfar": False}, full, rae
     ) is None
+
+
+def test_select_g1b_parent_requires_exact_authorized_run(tmp_path: Path) -> None:
+    source = "3fa7ae88f2445e5f610bd421f4b3044975267b89"
+    expected = (
+        tmp_path
+        / f"g1b_stage_b_rae_circular_harmonics_seed20260716_{source[:8]}"
+    )
+    summary = {
+        "status": "g1b_passed",
+        "candidate_mode": "rae_circular_harmonics",
+        "training_source_commit": source,
+        "seeds": [20260716, 20260717, 20260718],
+        "candidate_runs": [str(expected)],
+    }
+
+    assert select_g1b_parent(summary, 20260716, tmp_path, source) == (
+        "rae_circular_harmonics",
+        expected,
+    )
+    with pytest.raises(ValueError, match="does not authorize"):
+        select_g1b_parent({**summary, "candidate_runs": []}, 20260716, tmp_path, source)

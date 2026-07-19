@@ -1,0 +1,304 @@
+{
+  "bootstrap_samples": 10000,
+  "bootstrap_seed": 20260716,
+  "seeds": [
+    20260716,
+    20260717,
+    20260718
+  ],
+  "model_parameter_parity": {
+    "rae_max": 125769,
+    "full_raed": 126289,
+    "relative_increase": 0.004134564161279807,
+    "maximum_relative_increase": 0.01,
+    "passed": true
+  },
+  "gate_thresholds": {
+    "maximum_dense_outlier_fraction_2m": 0.25,
+    "maximum_full_raed_chamfer_relative_degradation": 0.02
+  },
+  "e2_full_raed_vs_e1_rae_max": {
+    "chamfer_m": {
+      "direction": "lower",
+      "first_mean": 2.930581327941683,
+      "second_mean": 3.1024166759517464,
+      "improvement": -0.17183534801006317,
+      "improvement_ci95": [
+        -0.36734513640403754,
+        -0.022665872880154456
+      ],
+      "relative_change": 0.058635242902729166,
+      "relative_change_ci95": [
+        0.007780030199263068,
+        0.1468628376294439
+      ],
+      "seed_count": 3,
+      "scene_count": 8,
+      "paired_frame_seed_count": 72
+    },
+    "fscore_1p0m": {
+      "direction": "higher",
+      "first_mean": 0.65211314542426,
+      "second_mean": 0.6435016079081429,
+      "improvement": -0.00861153751611709,
+      "improvement_ci95": [
+        -0.0321822984971934,
+        0.01373091569791233
+      ],
+      "relative_change": -0.013205587981997346,
+      "relative_change_ci95": [
+        -0.04923625078802833,
+        0.022410490844806907
+      ],
+      "seed_count": 3,
+      "scene_count": 8,
+      "paired_frame_seed_count": 72
+    },
+    "outlier_fraction_2m": {
+      "direction": "lower",
+      "first_mean": 0.256970826898598,
+      "second_mean": 0.26895693596452475,
+      "improvement": -0.01198610906592674,
+      "improvement_ci95": [
+        -0.04023610774634614,
+        0.013488022878300395
+      ],
+      "relative_change": 0.04664385140752382,
+      "relative_change_ci95": [
+        -0.052743554041945466,
+        0.18884493910433997
+      ],
+      "seed_count": 3,
+      "scene_count": 8,
+      "paired_frame_seed_count": 72
+    },
+    "range_60_120m_completeness_mean_distance_m": {
+      "direction": "lower",
+      "first_mean": 6.289889297551579,
+      "second_mean": 7.3789307098421775,
+      "improvement": -1.0890414122905996,
+      "improvement_ci95": [
+        -2.7456285641011267,
+        0.3007991908014648
+      ],
+      "relative_change": 0.17314158656409445,
+      "relative_change_ci95": [
+        -0.04652074687643179,
+        0.4760605340331109
+      ],
+      "seed_count": 3,
+      "scene_count": 8,
+      "paired_frame_seed_count": 65
+    },
+    "range_60_120m_fscore_1m": {
+      "direction": "higher",
+      "first_mean": 0.10504143219279487,
+      "second_mean": 0.09796011918741797,
+      "improvement": -0.007081313005376917,
+      "improvement_ci95": [
+        -0.02973084889761392,
+        0.009386519349936862
+      ],
+      "relative_change": -0.06741447500810666,
+      "relative_change_ci95": [
+        -0.27585280237831883,
+        0.102888181438724
+      ],
+      "seed_count": 3,
+      "scene_count": 8,
+      "paired_frame_seed_count": 65
+    }
+  },
+  "e1_rae_max_vs_e0_cfar": {
+    "chamfer_m": {
+      "direction": "lower",
+      "first_mean": 10.698235074679056,
+      "second_mean": 2.9305813279416824,
+      "improvement": 7.767653746737373,
+      "improvement_ci95": [
+        6.136917591426108,
+        10.038581823723183
+      ],
+      "relative_change": -0.7260687106345344,
+      "relative_change_ci95": [
+        -0.7813920133063843,
+        -0.6735611512793679
+      ],
+      "seed_count": 3,
+      "scene_count": 8,
+      "paired_frame_seed_count": 72
+    },
+    "fscore_1p0m": {
+      "direction": "higher",
+      "first_mean": 0.16424395811433593,
+      "second_mean": 0.6521131454242601,
+      "improvement": 0.48786918730992407,
+      "improvement_ci95": [
+        0.42813308985205367,
+        0.5443554319053268
+      ],
+      "relative_change": 2.970393510428563,
+      "relative_change_ci95": [
+        2.280966642089104,
+        4.238721436705597
+      ],
+      "seed_count": 3,
+      "scene_count": 8,
+      "paired_frame_seed_count": 72
+    },
+    "outlier_fraction_2m": {
+      "direction": "lower",
+      "first_mean": 0.7990897124012312,
+      "second_mean": 0.2569708268985981,
+      "improvement": 0.5421188855026331,
+      "improvement_ci95": [
+        0.4743604512044436,
+        0.5892576163466502
+      ],
+      "relative_change": -0.6784205541497819,
+      "relative_change_ci95": [
+        -0.7834418632858384,
+        -0.5555101118342183
+      ],
+      "seed_count": 3,
+      "scene_count": 8,
+      "paired_frame_seed_count": 72
+    },
+    "range_60_120m_completeness_mean_distance_m": {
+      "direction": "lower",
+      "first_mean": 5.772347206870715,
+      "second_mean": 6.314974766638544,
+      "improvement": -0.5426275597678291,
+      "improvement_ci95": [
+        -2.7824736184750996,
+        1.9315751659994322
+      ],
+      "relative_change": 0.09400466401639017,
+      "relative_change_ci95": [
+        -0.33028190492268833,
+        0.5132379393925921
+      ],
+      "seed_count": 3,
+      "scene_count": 8,
+      "paired_frame_seed_count": 66
+    },
+    "range_60_120m_fscore_1m": {
+      "direction": "higher",
+      "first_mean": 0.016947011230513453,
+      "second_mean": 0.10504143219279487,
+      "improvement": 0.08809442096228143,
+      "improvement_ci95": [
+        0.04776621304368342,
+        0.12600662995129014
+      ],
+      "relative_change": 5.198227567328541,
+      "relative_change_ci95": [
+        2.8005320805583187,
+        11.251518253219329
+      ],
+      "seed_count": 3,
+      "scene_count": 8,
+      "paired_frame_seed_count": 66
+    }
+  },
+  "e2_full_raed_vs_e0_cfar": {
+    "chamfer_m": {
+      "direction": "lower",
+      "first_mean": 10.698235074679056,
+      "second_mean": 3.1024166759517464,
+      "improvement": 7.59581839872731,
+      "improvement_ci95": [
+        6.027740774262283,
+        9.928834417089819
+      ],
+      "relative_change": -0.7100066829439324,
+      "relative_change_ci95": [
+        -0.7702325951676083,
+        -0.6602786329279399
+      ],
+      "seed_count": 3,
+      "scene_count": 8,
+      "paired_frame_seed_count": 72
+    },
+    "fscore_1p0m": {
+      "direction": "higher",
+      "first_mean": 0.16424395811433593,
+      "second_mean": 0.6435016079081429,
+      "improvement": 0.479257649793807,
+      "improvement_ci95": [
+        0.4113142271060496,
+        0.5412268725379059
+      ],
+      "relative_change": 2.9179621296034473,
+      "relative_change_ci95": [
+        2.1745884807756126,
+        4.306665903440833
+      ],
+      "seed_count": 3,
+      "scene_count": 8,
+      "paired_frame_seed_count": 72
+    },
+    "outlier_fraction_2m": {
+      "direction": "lower",
+      "first_mean": 0.7990897124012312,
+      "second_mean": 0.2689569359645248,
+      "improvement": 0.5301327764367064,
+      "improvement_ci95": [
+        0.4632071145836057,
+        0.5889510129190361
+      ],
+      "relative_change": -0.6634208502618305,
+      "relative_change_ci95": [
+        -0.773083474885739,
+        -0.5453166073525532
+      ],
+      "seed_count": 3,
+      "scene_count": 8,
+      "paired_frame_seed_count": 72
+    },
+    "range_60_120m_completeness_mean_distance_m": {
+      "direction": "lower",
+      "first_mean": 5.944008054004775,
+      "second_mean": 7.3789307098421775,
+      "improvement": -1.434922655837404,
+      "improvement_ci95": [
+        -3.4092142113380963,
+        0.5860545653642877
+      ],
+      "relative_change": 0.24140658000465248,
+      "relative_change_ci95": [
+        -0.10977841794741262,
+        0.6598702024580616
+      ],
+      "seed_count": 3,
+      "scene_count": 8,
+      "paired_frame_seed_count": 65
+    },
+    "range_60_120m_fscore_1m": {
+      "direction": "higher",
+      "first_mean": 0.016947011230513453,
+      "second_mean": 0.09796011918741797,
+      "improvement": 0.08101310795690451,
+      "improvement_ci95": [
+        0.04398126412545228,
+        0.1181771086787598
+      ],
+      "relative_change": 4.780377309896314,
+      "relative_change_ci95": [
+        2.8058338595358263,
+        9.126280727416198
+      ],
+      "seed_count": 3,
+      "scene_count": 8,
+      "paired_frame_seed_count": 65
+    }
+  },
+  "decision": {
+    "dense_beats_cfar": false,
+    "rae_max_beats_cfar": false,
+    "full_raed_beats_cfar": false,
+    "full_raed_doppler_sensitive_gain": false,
+    "full_raed_chamfer_nondegradation": false,
+    "g1_passed": false
+  }
+}

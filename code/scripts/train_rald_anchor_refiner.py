@@ -41,6 +41,7 @@ from scripts.train_cube_doppler import move_frame, selected_indices, sha256  # n
 @dataclass(frozen=True)
 class TrainConfig:
     parent_mode: str
+    parent_route: str
     epochs: int
     learning_rate: float
     weight_decay: float
@@ -328,6 +329,7 @@ def main() -> None:
     parser.add_argument("--scene-split", type=Path, required=True)
     parser.add_argument("--normalization-stats", type=Path, required=True)
     parser.add_argument("--g1-comparison", type=Path, required=True)
+    parser.add_argument("--g1b-summary", type=Path, default=None)
     parser.add_argument("--parent-g1-run", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--epochs", type=int, default=20)
@@ -376,8 +378,16 @@ def main() -> None:
     g1_decision = comparison.get("decision", {})
     if g1_decision.get("g1_passed") is True:
         selected_parent_mode = "full_raed"
+        selected_parent_route = "formal_g1_passed"
     elif g1_decision.get("rae_max_beats_cfar") is True:
         selected_parent_mode = "rae_max"
+        selected_parent_route = "late_fusion_recovery_after_g1_failure"
+    elif args.g1b_summary is not None and args.g1b_summary.is_file():
+        g1b = json.loads(args.g1b_summary.read_text(encoding="utf-8"))
+        if g1b.get("status") != "g1b_passed" or not g1b.get("candidate_mode"):
+            raise RuntimeError("G1B did not authorize an independent geometry parent")
+        selected_parent_mode = str(g1b["candidate_mode"])
+        selected_parent_route = "independent_g1b_parent"
     else:
         raise RuntimeError(
             "RH1/RH2 requires either a passing Full-RAED G1 or a RAE-Max "
@@ -392,7 +402,7 @@ def main() -> None:
     parent_provenance = parent_document["provenance"]
     if parent_config["mode"] != selected_parent_mode:
         raise ValueError(
-            f"Formal comparison selected {selected_parent_mode}, received "
+            f"Selected parent route requires {selected_parent_mode}, received "
             f"{parent_config['mode']} parent"
         )
     if int(parent_config["seed"]) != args.seed:
@@ -407,6 +417,7 @@ def main() -> None:
 
     config = TrainConfig(
         parent_mode=selected_parent_mode,
+        parent_route=selected_parent_route,
         epochs=args.epochs,
         learning_rate=args.learning_rate,
         weight_decay=args.weight_decay,
@@ -493,6 +504,16 @@ def main() -> None:
         **artifact_hashes,
         "g1_comparison": str(args.g1_comparison),
         "g1_comparison_sha256": sha256(args.g1_comparison),
+        "g1b_summary": (
+            str(args.g1b_summary)
+            if selected_parent_route == "independent_g1b_parent"
+            else None
+        ),
+        "g1b_summary_sha256": (
+            sha256(args.g1b_summary)
+            if selected_parent_route == "independent_g1b_parent"
+            else None
+        ),
         "parent_g1_checkpoint": str(parent_path),
         "parent_g1_checkpoint_sha256": sha256(parent_path),
         "parent_g1_git_commit": parent_provenance["git_commit"],
