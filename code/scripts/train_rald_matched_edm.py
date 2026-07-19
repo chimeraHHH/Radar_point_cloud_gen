@@ -36,6 +36,7 @@ from eval.dense_geometry import (  # noqa: E402
 )
 from models.cube_occupancy import parameter_count  # noqa: E402
 from models.rald_matched import (  # noqa: E402
+    FullRAEDRadarTokenEncoder,
     RaLDEDMPreconditioner,
     RaLDPointAutoencoder,
     RadarTokenEncoder,
@@ -57,6 +58,8 @@ class TrainConfig:
     radar_base_channels: int
     radar_encoded_channels: int
     radar_blocks_per_level: int
+    condition_mode: str
+    spectral_channels: int
     edm_steps: int
     output_point_count: int
     query_chunk_size: int
@@ -106,14 +109,27 @@ def build_autoencoder(config: dict) -> RaLDPointAutoencoder:
 
 
 def build_edm(config: TrainConfig, ae_config: dict) -> RaLDEDMPreconditioner:
-    radar_encoder = RadarTokenEncoder(
-        encoded_shape=(16, 7, 3),
-        encoded_channels=config.radar_encoded_channels,
-        token_dim=config.model_dim,
-        base_channels=config.radar_base_channels,
-        channel_multipliers=(1, 1, 2, 2, 4),
-        blocks_per_level=config.radar_blocks_per_level,
-    )
+    if config.condition_mode == "full_raed":
+        radar_encoder = FullRAEDRadarTokenEncoder(
+            log_center=config.normalization_center,
+            log_scale=config.normalization_scale,
+            spectral_channels=config.spectral_channels,
+            encoded_shape=(16, 7, 3),
+            encoded_channels=config.radar_encoded_channels,
+            token_dim=config.model_dim,
+            base_channels=config.radar_base_channels,
+            channel_multipliers=(1, 1, 2, 2, 4),
+            blocks_per_level=config.radar_blocks_per_level,
+        )
+    else:
+        radar_encoder = RadarTokenEncoder(
+            encoded_shape=(16, 7, 3),
+            encoded_channels=config.radar_encoded_channels,
+            token_dim=config.model_dim,
+            base_channels=config.radar_base_channels,
+            channel_multipliers=(1, 1, 2, 2, 4),
+            blocks_per_level=config.radar_blocks_per_level,
+        )
     return RaLDEDMPreconditioner(
         latent_count=int(ae_config["latent_count"]),
         latent_dim=int(ae_config["latent_dim"]),
@@ -130,11 +146,14 @@ def frame_seed(seed: int, sequence: int, radar_index: int) -> int:
 
 
 def validate_normalization(
-    path: Path, manifest_hash: str, scene_split_hash: str
+    path: Path, manifest_hash: str, scene_split_hash: str, condition_mode: str
 ) -> dict:
     document = json.loads(path.read_text(encoding="utf-8"))
-    if document.get("representation") != "log10_sum_doppler_power_plus_one":
-        raise ValueError("RaLD EDM requires RAE-Sum normalization")
+    if condition_mode == "rae_sum":
+        if document.get("representation") != "log10_sum_doppler_power_plus_one":
+            raise ValueError("RAE-Sum condition requires RAE-Sum normalization")
+    elif "log10_power_plus_one" not in document:
+        raise ValueError("Full-RAED condition requires per-Cube power normalization")
     if document["manifest_sha256"] != manifest_hash:
         raise ValueError("RAE-Sum normalization manifest mismatch")
     if document["scene_split_sha256"] != scene_split_hash:
@@ -144,6 +163,14 @@ def validate_normalization(
     if int(document["frame_count"]) != 76:
         raise ValueError("Formal RAE-Sum normalization requires 76 train frames")
     return document
+
+
+def prepare_condition(cube: torch.Tensor, config: TrainConfig) -> torch.Tensor:
+    if config.condition_mode == "full_raed":
+        return cube
+    return rae_sum_condition(
+        cube, config.normalization_center, config.normalization_scale
+    )
 
 
 def validate_latent_cache(
@@ -188,9 +215,7 @@ def evaluate(
             device, non_blocking=True
         )
         target = item["target_xyz_confidence"].to(device, non_blocking=True)
-        condition = rae_sum_condition(
-            cube, config.normalization_center, config.normalization_scale
-        )
+        condition = prepare_condition(cube, config)
         with torch.autocast("cuda", dtype=torch.bfloat16):
             generated_latent = edm_sample(
                 model,
@@ -294,6 +319,12 @@ def main() -> None:
     parser.add_argument("--radar-base-channels", type=int, default=64)
     parser.add_argument("--radar-encoded-channels", type=int, default=16)
     parser.add_argument("--radar-blocks-per-level", type=int, default=2)
+    parser.add_argument(
+        "--condition-mode",
+        choices=("rae_sum", "full_raed"),
+        default="rae_sum",
+    )
+    parser.add_argument("--spectral-channels", type=int, default=16)
     parser.add_argument("--edm-steps", type=int, default=18)
     parser.add_argument("--output-point-count", type=int, default=10_000)
     parser.add_argument("--query-chunk-size", type=int, default=8_192)
@@ -339,7 +370,10 @@ def main() -> None:
     manifest_hash = sha256(args.manifest)
     scene_split_hash = sha256(args.scene_split)
     normalization = validate_normalization(
-        args.normalization, manifest_hash, scene_split_hash
+        args.normalization,
+        manifest_hash,
+        scene_split_hash,
+        args.condition_mode,
     )
     center = float(normalization["normalization"]["center"])
     scale = float(normalization["normalization"]["scale"])
@@ -364,6 +398,8 @@ def main() -> None:
         radar_base_channels=args.radar_base_channels,
         radar_encoded_channels=args.radar_encoded_channels,
         radar_blocks_per_level=args.radar_blocks_per_level,
+        condition_mode=args.condition_mode,
+        spectral_channels=args.spectral_channels,
         edm_steps=args.edm_steps,
         output_point_count=args.output_point_count,
         query_chunk_size=args.query_chunk_size,
@@ -431,6 +467,7 @@ def main() -> None:
         "external_pretraining": False,
         "cfar_query_helper": False,
         "upstream_rald_commit": "ffec4b41241391734b1eda5c093de843c909eb8e",
+        "condition_mode": config.condition_mode,
     }
     run_document = {"config": asdict(config), "provenance": provenance}
     config_path = args.output / "config.json"
@@ -489,9 +526,7 @@ def main() -> None:
             item = train_set[dataset_index]
             cube = item["cube_drae"].unsqueeze(0).to(device, non_blocking=True)
             latent = item["latent_mean"].unsqueeze(0).to(device, non_blocking=True)
-            condition = rae_sum_condition(
-                cube, config.normalization_center, config.normalization_scale
-            )
+            condition = prepare_condition(cube, config)
             optimizer.zero_grad(set_to_none=True)
             with torch.autocast("cuda", dtype=torch.bfloat16):
                 loss = edm_loss(model, latent, condition)

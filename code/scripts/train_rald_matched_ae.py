@@ -56,6 +56,8 @@ class TrainConfig:
     positive_query_count: int
     negative_query_count: int
     positive_label_semantics: str
+    surface_sampling_mode: str
+    positive_query_sampling_mode: str
     output_point_count: int
     query_chunk_size: int
     positive_loss_weight: float
@@ -148,7 +150,11 @@ def evaluate(
             item["radar_index"],
         )
         points = sample_target_points(
-            target, axes, config.ae_point_count, generator
+            target,
+            axes,
+            config.ae_point_count,
+            generator,
+            sampling_mode=config.surface_sampling_mode,
         ).unsqueeze(0)
         queries, labels = sample_occupancy_queries(
             target,
@@ -157,6 +163,7 @@ def evaluate(
             config.positive_query_count,
             config.negative_query_count,
             generator,
+            positive_sampling_mode=config.positive_query_sampling_mode,
         )
         with torch.autocast("cuda", dtype=torch.bfloat16):
             posterior = model.encode(points)
@@ -269,6 +276,16 @@ def main() -> None:
         choices=("binary_occupancy",),
         default="binary_occupancy",
     )
+    parser.add_argument(
+        "--surface-sampling-mode",
+        choices=("confidence", "uniform"),
+        default="confidence",
+    )
+    parser.add_argument(
+        "--positive-query-sampling-mode",
+        choices=("confidence", "uniform"),
+        default="confidence",
+    )
     parser.add_argument("--output-point-count", type=int, default=10_000)
     parser.add_argument("--query-chunk-size", type=int, default=8_192)
     parser.add_argument("--positive-loss-weight", type=float, default=0.1)
@@ -325,6 +342,8 @@ def main() -> None:
         positive_query_count=args.positive_query_count,
         negative_query_count=args.negative_query_count,
         positive_label_semantics=args.positive_label_semantics,
+        surface_sampling_mode=args.surface_sampling_mode,
+        positive_query_sampling_mode=args.positive_query_sampling_mode,
         output_point_count=args.output_point_count,
         query_chunk_size=args.query_chunk_size,
         positive_loss_weight=args.positive_loss_weight,
@@ -437,7 +456,11 @@ def main() -> None:
                 item["radar_index"],
             )
             points = sample_target_points(
-                target, axes, config.ae_point_count, generator
+                target,
+                axes,
+                config.ae_point_count,
+                generator,
+                sampling_mode=config.surface_sampling_mode,
             ).unsqueeze(0)
             queries, labels = sample_occupancy_queries(
                 target,
@@ -446,6 +469,7 @@ def main() -> None:
                 config.positive_query_count,
                 config.negative_query_count,
                 generator,
+                positive_sampling_mode=config.positive_query_sampling_mode,
             )
             optimizer.zero_grad(set_to_none=True)
             with torch.autocast("cuda", dtype=torch.bfloat16):

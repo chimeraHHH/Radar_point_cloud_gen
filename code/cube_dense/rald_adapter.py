@@ -10,6 +10,9 @@ import torch
 from cube_dense.kradar import KRadarAxes
 
 
+TARGET_SAMPLING_MODES = ("confidence", "uniform")
+
+
 def _axis_tensor(
     values: np.ndarray, *, device: torch.device, dtype: torch.dtype
 ) -> torch.Tensor:
@@ -103,18 +106,34 @@ def _weighted_sample_indices(
     )
 
 
+def _target_sampling_weights(
+    target_xyz_confidence: torch.Tensor, sampling_mode: str
+) -> torch.Tensor:
+    if sampling_mode not in TARGET_SAMPLING_MODES:
+        raise ValueError(
+            f"Unsupported target sampling mode {sampling_mode}; "
+            f"choose from {TARGET_SAMPLING_MODES}"
+        )
+    if sampling_mode == "uniform":
+        return torch.ones_like(target_xyz_confidence[:, 3])
+    return target_xyz_confidence[:, 3]
+
+
 def sample_target_points(
     target_xyz_confidence: torch.Tensor,
     axes: KRadarAxes,
     count: int,
     generator: torch.Generator,
+    sampling_mode: str = "confidence",
 ) -> torch.Tensor:
     if target_xyz_confidence.ndim != 2 or target_xyz_confidence.shape[1] != 4:
         raise ValueError(
             f"Expected radar-observable target (N,4), got {target_xyz_confidence.shape}"
         )
     selected = _weighted_sample_indices(
-        target_xyz_confidence[:, 3], count, generator
+        _target_sampling_weights(target_xyz_confidence, sampling_mode),
+        count,
+        generator,
     )
     return xyz_to_normalized_rae(target_xyz_confidence[selected, :3], axes)
 
@@ -180,9 +199,12 @@ def sample_occupancy_queries(
     positive_count: int,
     negative_count: int,
     generator: torch.Generator,
+    positive_sampling_mode: str = "confidence",
 ) -> tuple[torch.Tensor, torch.Tensor]:
     selected = _weighted_sample_indices(
-        target_xyz_confidence[:, 3], positive_count, generator
+        _target_sampling_weights(target_xyz_confidence, positive_sampling_mode),
+        positive_count,
+        generator,
     )
     positive = xyz_to_normalized_rae(
         target_xyz_confidence[selected, :3], axes

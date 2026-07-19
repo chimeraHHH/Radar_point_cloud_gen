@@ -2,13 +2,15 @@
 
 ## Decision
 
-Stop the matched RaLD training chain after the preregistered B1 repair. Do not
-train the RaLD latent EDM or include a RaLD checkpoint as a quantitative main
-baseline for the K-Radar protocol.
+Stop the matched RaLD **baseline** training chain after the preregistered B1
+repair. Do not train its RAE-Sum latent EDM or include that checkpoint as a
+quantitative main baseline for the K-Radar protocol.
 
 This decision does not affect the Cube-to-dense Module A gate. RaLD remains a
-related-work and architecture reference for implicit point occupancy and latent
-diffusion.
+direct architecture source for implicit point occupancy and latent diffusion.
+The separate Full-RAED physical generator is governed by
+[`rald_inspired_mainline_protocol.md`](rald_inspired_mainline_protocol.md) and
+must not be conflated with the failed matched baseline.
 
 ## Evidence
 

@@ -1,5 +1,6 @@
 import hashlib
 import json
+from dataclasses import replace
 
 import pytest
 
@@ -10,6 +11,7 @@ from scripts.train_rald_matched_edm import (
     validate_latent_cache,
     validate_normalization,
 )
+from models.rald_matched import FullRAEDRadarTokenEncoder
 
 
 def digest(path) -> str:
@@ -32,12 +34,27 @@ def test_normalization_requires_full_train_only_rae_sum(tmp_path) -> None:
     }
     write_json(path, document)
 
-    assert validate_normalization(path, "manifest", "split") == document
+    assert validate_normalization(path, "manifest", "split", "rae_sum") == document
 
     document["partitions"] = ["train", "validation"]
     write_json(path, document)
     with pytest.raises(ValueError, match="all train frames"):
-        validate_normalization(path, "manifest", "split")
+        validate_normalization(path, "manifest", "split", "rae_sum")
+
+
+def test_full_raed_normalization_requires_cube_power_statistics(tmp_path) -> None:
+    path = tmp_path / "normalization.json"
+    document = {
+        "manifest_sha256": "manifest",
+        "scene_split_sha256": "split",
+        "partitions": ["train"],
+        "frame_limit": None,
+        "frame_count": 76,
+        "log10_power_plus_one": {"mean": 2.0},
+    }
+    write_json(path, document)
+
+    assert validate_normalization(path, "manifest", "split", "full_raed") == document
 
 
 def test_latent_cache_is_bound_to_ae_checkpoint_and_development_split(tmp_path) -> None:
@@ -75,6 +92,8 @@ def test_small_edm_builder_preserves_ae_latent_shape() -> None:
         radar_base_channels=4,
         radar_encoded_channels=4,
         radar_blocks_per_level=1,
+        condition_mode="rae_sum",
+        spectral_channels=4,
         edm_steps=3,
         output_point_count=10,
         query_chunk_size=8,
@@ -93,3 +112,9 @@ def test_small_edm_builder_preserves_ae_latent_shape() -> None:
     assert model.latent_count == 8
     assert model.latent_dim == 4
     assert frame_seed(17, 3, 41) != frame_seed(17, 3, 42)
+
+    full_raed = build_edm(
+        replace(config, condition_mode="full_raed"),
+        {"latent_count": 8, "latent_dim": 4},
+    )
+    assert isinstance(full_raed.radar_encoder, FullRAEDRadarTokenEncoder)

@@ -222,13 +222,19 @@ class RaLDPointAutoencoder(nn.Module):
     def decode_queries(
         self, prepared_latent: torch.Tensor, queries: torch.Tensor
     ) -> torch.Tensor:
+        return self.occupancy(
+            self.decode_query_features(prepared_latent, queries)
+        ).squeeze(-1)
+
+    def decode_query_features(
+        self, prepared_latent: torch.Tensor, queries: torch.Tensor
+    ) -> torch.Tensor:
         if prepared_latent.ndim != 3 or prepared_latent.shape[1] != self.latent_count:
             raise ValueError(f"Unexpected prepared latent shape {prepared_latent.shape}")
         if queries.ndim != 3 or queries.shape[-1] != 3:
             raise ValueError(f"Unexpected query shape {queries.shape}")
         query_features = self.point_embedding(queries)
-        query_features = self.decoder_attention(query_features, prepared_latent)
-        return self.occupancy(query_features).squeeze(-1)
+        return self.decoder_attention(query_features, prepared_latent)
 
     def decode(self, latent: torch.Tensor, queries: torch.Tensor) -> torch.Tensor:
         return self.decode_queries(self.prepare_decoder_latent(latent), queries)
@@ -282,9 +288,11 @@ class RaLDRadarEncoder(nn.Module):
         channel_multipliers: tuple[int, ...] = (1, 1, 2, 2, 4),
         blocks_per_level: int = 2,
         output_channels: int = 16,
+        input_channels: int = 1,
     ) -> None:
         super().__init__()
-        self.input = nn.Conv3d(1, base_channels, 3, padding=1)
+        self.input_channels = input_channels
+        self.input = nn.Conv3d(input_channels, base_channels, 3, padding=1)
         levels = []
         current = base_channels
         for level_index, multiplier in enumerate(channel_multipliers):
@@ -306,10 +314,13 @@ class RaLDRadarEncoder(nn.Module):
             nn.Conv3d(current, output_channels, 3, padding=1),
         )
 
-    def forward(self, rae_sum: torch.Tensor) -> torch.Tensor:
-        if rae_sum.ndim != 5 or rae_sum.shape[1] != 1:
-            raise ValueError(f"Expected RAE-Sum shape (B,1,R,A,E), got {rae_sum.shape}")
-        features = self.input(rae_sum)
+    def forward(self, radar_condition: torch.Tensor) -> torch.Tensor:
+        if radar_condition.ndim != 5 or radar_condition.shape[1] != self.input_channels:
+            raise ValueError(
+                f"Expected radar condition (B,{self.input_channels},R,A,E), "
+                f"got {radar_condition.shape}"
+            )
+        features = self.input(radar_condition)
         for blocks, downsample in self.levels:
             features = downsample(blocks(features))
         return self.output(features)
@@ -324,6 +335,7 @@ class RadarTokenEncoder(nn.Module):
         base_channels: int = 64,
         channel_multipliers: tuple[int, ...] = (1, 1, 2, 2, 4),
         blocks_per_level: int = 2,
+        input_channels: int = 1,
     ) -> None:
         super().__init__()
         self.encoded_shape = encoded_shape
@@ -332,14 +344,15 @@ class RadarTokenEncoder(nn.Module):
             channel_multipliers=channel_multipliers,
             blocks_per_level=blocks_per_level,
             output_channels=encoded_channels,
+            input_channels=input_channels,
         )
         self.project = nn.Linear(encoded_channels, token_dim)
         self.range_embedding = nn.Embedding(encoded_shape[0], token_dim)
         self.azimuth_embedding = nn.Embedding(encoded_shape[1], token_dim)
         self.elevation_embedding = nn.Embedding(encoded_shape[2], token_dim)
 
-    def forward(self, rae_sum: torch.Tensor) -> torch.Tensor:
-        features = self.encoder(rae_sum).permute(0, 2, 3, 4, 1)
+    def forward(self, radar_condition: torch.Tensor) -> torch.Tensor:
+        features = self.encoder(radar_condition).permute(0, 2, 3, 4, 1)
         if tuple(features.shape[1:4]) != self.encoded_shape:
             raise ValueError(
                 f"Encoded radar shape {tuple(features.shape[1:4])} does not match "
@@ -351,6 +364,107 @@ class RadarTokenEncoder(nn.Module):
         elevation_embedding = self.elevation_embedding.weight[None, None, :, :]
         tokens = tokens + range_embedding + azimuth_embedding + elevation_embedding
         return tokens.flatten(1, 3)
+
+
+class FullRAEDRadarTokenEncoder(nn.Module):
+    """RaLD radar tokens conditioned on the complete Doppler spectrum."""
+
+    def __init__(
+        self,
+        log_center: float,
+        log_scale: float,
+        spectral_channels: int = 16,
+        encoded_shape: tuple[int, int, int] = (16, 7, 3),
+        encoded_channels: int = 16,
+        token_dim: int = 512,
+        base_channels: int = 64,
+        channel_multipliers: tuple[int, ...] = (1, 1, 2, 2, 4),
+        blocks_per_level: int = 2,
+    ) -> None:
+        super().__init__()
+        if not math.isfinite(log_center) or not math.isfinite(log_scale):
+            raise ValueError("Full-RAED normalization must be finite")
+        if log_scale <= 0.0:
+            raise ValueError("Full-RAED normalization scale must be positive")
+        self.log_center = log_center
+        self.log_scale = log_scale
+        self.spectral_projection = nn.Conv3d(64, spectral_channels, 1)
+        self.token_encoder = RadarTokenEncoder(
+            encoded_shape=encoded_shape,
+            encoded_channels=encoded_channels,
+            token_dim=token_dim,
+            base_channels=base_channels,
+            channel_multipliers=channel_multipliers,
+            blocks_per_level=blocks_per_level,
+            input_channels=spectral_channels,
+        )
+
+    def forward(self, cube_drae: torch.Tensor) -> torch.Tensor:
+        if cube_drae.ndim != 5 or cube_drae.shape[1] != 64:
+            raise ValueError(
+                f"Expected Full-RAED Cube (B,64,R,A,E), got {cube_drae.shape}"
+            )
+        normalized = (
+            torch.log10(cube_drae.clamp_min(0.0) + 1.0) - self.log_center
+        ) / self.log_scale
+        spectral_features = self.spectral_projection(normalized.clamp(-4.0, 4.0))
+        return self.token_encoder(spectral_features)
+
+
+class RaLDPhysicalQueryHead(nn.Module):
+    """Extend RaLD query features with Cube-supported point physics."""
+
+    def __init__(
+        self,
+        query_dim: int = 512,
+        spectrum_bins: int = 64,
+        hidden_dim: int = 512,
+    ) -> None:
+        super().__init__()
+        self.spectrum_bins = spectrum_bins
+        self.spectrum_projection = nn.Linear(spectrum_bins, query_dim)
+        self.fusion = nn.Sequential(
+            nn.LayerNorm(query_dim * 2),
+            nn.Linear(query_dim * 2, hidden_dim),
+            nn.SiLU(),
+        )
+        self.offset = nn.Linear(hidden_dim, 3)
+        self.doppler_residual = nn.Linear(hidden_dim, spectrum_bins)
+        self.confidence = nn.Linear(hidden_dim, 1)
+        for layer in (self.offset, self.doppler_residual, self.confidence):
+            nn.init.zeros_(layer.weight)
+            nn.init.zeros_(layer.bias)
+
+    def forward(
+        self,
+        query_features: torch.Tensor,
+        local_cube_spectrum: torch.Tensor,
+    ) -> dict[str, torch.Tensor]:
+        if query_features.ndim != 3:
+            raise ValueError(
+                f"Expected query features (B,N,C), got {query_features.shape}"
+            )
+        if local_cube_spectrum.shape != (
+            query_features.shape[0],
+            query_features.shape[1],
+            self.spectrum_bins,
+        ):
+            raise ValueError(
+                "Local Cube spectrum shape must match query batch and point count"
+            )
+        spectrum = local_cube_spectrum.to(query_features).clamp_min(0.0)
+        spectrum = spectrum / spectrum.sum(dim=-1, keepdim=True).clamp_min(1e-8)
+        fused = self.fusion(
+            torch.cat((query_features, self.spectrum_projection(spectrum)), dim=-1)
+        )
+        doppler_logits = spectrum.clamp_min(1e-8).log()
+        doppler_logits = doppler_logits + self.doppler_residual(fused)
+        return {
+            "offset_bins": 0.5 * torch.tanh(self.offset(fused)),
+            "doppler_logits": doppler_logits,
+            "doppler_probability": torch.softmax(doppler_logits, dim=-1),
+            "confidence_logit": self.confidence(fused).squeeze(-1),
+        }
 
 
 class NoiseEmbedding(nn.Module):
@@ -484,8 +598,8 @@ class RaLDEDMPreconditioner(nn.Module):
             head_dim=head_dim,
         )
 
-    def encode_condition(self, rae_sum: torch.Tensor) -> torch.Tensor:
-        return self.radar_encoder(rae_sum)
+    def encode_condition(self, radar_condition: torch.Tensor) -> torch.Tensor:
+        return self.radar_encoder(radar_condition)
 
     def denoise_with_condition(
         self,
@@ -511,17 +625,17 @@ class RaLDEDMPreconditioner(nn.Module):
         self,
         noisy_latent: torch.Tensor,
         sigma: torch.Tensor,
-        rae_sum: torch.Tensor,
+        radar_condition: torch.Tensor,
     ) -> torch.Tensor:
         return self.denoise_with_condition(
-            noisy_latent, sigma, self.encode_condition(rae_sum)
+            noisy_latent, sigma, self.encode_condition(radar_condition)
         )
 
 
 def edm_loss(
     model: RaLDEDMPreconditioner,
     latent: torch.Tensor,
-    rae_sum: torch.Tensor,
+    radar_condition: torch.Tensor,
     p_mean: float = -1.2,
     p_std: float = 1.2,
 ) -> torch.Tensor:
@@ -529,7 +643,7 @@ def edm_loss(
         torch.randn(latent.shape[0], device=latent.device) * p_std + p_mean
     ).exp()
     noise = torch.randn_like(latent) * sigma[:, None, None]
-    denoised = model(latent + noise, sigma, rae_sum)
+    denoised = model(latent + noise, sigma, radar_condition)
     weight = (sigma.square() + model.sigma_data**2) / (
         sigma * model.sigma_data
     ).square()
@@ -553,7 +667,7 @@ def _seeded_noise(
 @torch.inference_mode()
 def edm_sample(
     model: RaLDEDMPreconditioner,
-    rae_sum: torch.Tensor,
+    radar_condition: torch.Tensor,
     seeds: list[int],
     steps: int = 18,
     sigma_min: float = 0.002,
@@ -562,10 +676,12 @@ def edm_sample(
 ) -> torch.Tensor:
     if steps < 2:
         raise ValueError("EDM sampling requires at least two steps")
-    condition = model.encode_condition(rae_sum)
-    shape = (rae_sum.shape[0], model.latent_count, model.latent_dim)
-    latent = _seeded_noise(shape, seeds, rae_sum.device, rae_sum.dtype)
-    indices = torch.arange(steps, device=rae_sum.device, dtype=torch.float32)
+    condition = model.encode_condition(radar_condition)
+    shape = (radar_condition.shape[0], model.latent_count, model.latent_dim)
+    latent = _seeded_noise(
+        shape, seeds, radar_condition.device, radar_condition.dtype
+    )
+    indices = torch.arange(steps, device=radar_condition.device, dtype=torch.float32)
     schedule = (
         sigma_max ** (1.0 / rho)
         + indices

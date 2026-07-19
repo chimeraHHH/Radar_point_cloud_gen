@@ -2,12 +2,49 @@ import torch
 
 from models.rald_matched import (
     FourierPointEmbedding,
+    FullRAEDRadarTokenEncoder,
     RaLDEDMPreconditioner,
     RaLDPointAutoencoder,
+    RaLDPhysicalQueryHead,
     RadarTokenEncoder,
     edm_loss,
     edm_sample,
 )
+
+
+def test_full_raed_tokens_use_complete_spectrum() -> None:
+    encoder = FullRAEDRadarTokenEncoder(
+        log_center=2.0,
+        log_scale=0.5,
+        spectral_channels=4,
+        encoded_shape=(4, 4, 2),
+        encoded_channels=3,
+        token_dim=8,
+        base_channels=4,
+        channel_multipliers=(1, 1, 1),
+        blocks_per_level=1,
+    )
+    cube = torch.rand(1, 64, 16, 16, 8, requires_grad=True)
+
+    tokens = encoder(cube)
+    tokens.square().mean().backward()
+
+    assert tokens.shape == (1, 32, 8)
+    assert encoder.spectral_projection.weight.grad is not None
+    assert torch.count_nonzero(encoder.spectral_projection.weight.grad).item() > 0
+
+
+def test_physical_query_head_starts_from_measured_spectrum() -> None:
+    head = RaLDPhysicalQueryHead(query_dim=8, spectrum_bins=6, hidden_dim=12)
+    query_features = torch.randn(2, 5, 8)
+    spectrum = torch.rand(2, 5, 6)
+    expected = spectrum / spectrum.sum(dim=-1, keepdim=True)
+
+    output = head(query_features, spectrum)
+
+    torch.testing.assert_close(output["doppler_probability"], expected)
+    torch.testing.assert_close(output["offset_bins"], torch.zeros(2, 5, 3))
+    torch.testing.assert_close(output["confidence_logit"], torch.zeros(2, 5))
 
 
 def small_autoencoder() -> RaLDPointAutoencoder:

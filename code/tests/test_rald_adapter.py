@@ -1,6 +1,7 @@
 import json
 
 import numpy as np
+import pytest
 import torch
 
 from cube_dense.dataset import KRadarDenseTargetDataset, KRadarRaLDLatentDataset
@@ -74,11 +75,33 @@ def test_sampling_is_deterministic_and_empty_queries_exclude_targets() -> None:
     second_points = sample_target_points(target, axes(), 5, second_generator)
     torch.testing.assert_close(first_points, second_points)
 
+    uniform_points = sample_target_points(
+        target,
+        axes(),
+        5,
+        torch.Generator().manual_seed(31),
+        sampling_mode="uniform",
+    )
+    assert uniform_points.shape == (5, 3)
+
     empty = sample_empty_indices(
         indices, (4, 3, 2), 12, torch.Generator().manual_seed(37)
     )
     occupied = {tuple(values) for values in indices.tolist()}
     assert all(tuple(values) not in occupied for values in empty.tolist())
+
+
+def test_unknown_target_sampling_mode_is_rejected() -> None:
+    target, _ = targets()
+
+    with pytest.raises(ValueError, match="Unsupported target sampling mode"):
+        sample_target_points(
+            target,
+            axes(),
+            3,
+            torch.Generator().manual_seed(1),
+            sampling_mode="range_magic",
+        )
 
 
 def test_empty_query_sampling_is_not_biased_to_low_flat_indices() -> None:
