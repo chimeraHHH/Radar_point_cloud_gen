@@ -68,11 +68,11 @@ def tiny_encoder() -> FullRAEDRadarTokenEncoder:
         log_center=1.0,
         log_scale=0.5,
         spectral_channels=4,
-        encoded_shape=(1, 1, 1),
+        encoded_shape=SPATIAL_SHAPE,
         encoded_channels=4,
         token_dim=MODEL_DIM,
         base_channels=4,
-        channel_multipliers=(1, 1, 1),
+        channel_multipliers=(1,),
         blocks_per_level=1,
     )
 
