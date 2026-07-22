@@ -1,0 +1,8 @@
+{
+  "status": "skipped_no_stage_a_survivor",
+  "screen_report": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_3fa7ae8_g1b_screen/g1b_screen_3fa7ae88.json",
+  "screen_decision": {
+    "stage_b_authorized": false,
+    "selected_candidate": null
+  }
+}

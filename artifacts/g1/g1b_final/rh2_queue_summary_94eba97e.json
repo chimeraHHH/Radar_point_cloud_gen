@@ -1,0 +1,6 @@
+{
+  "status": "skipped_rh1_not_passed",
+  "source_commit": "94eba97e5f5d99962481603c960f0f14c33fb1bf",
+  "rh1_summary": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_94eba97e_rald_anchor/rh1_queue_summary_94eba97e.json",
+  "rh1_status": "skipped_no_geometry_parent_passed"
+}

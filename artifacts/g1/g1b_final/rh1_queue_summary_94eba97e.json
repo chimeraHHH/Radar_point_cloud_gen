@@ -1,0 +1,17 @@
+{
+  "status": "skipped_no_geometry_parent_passed",
+  "source_commit": "94eba97e5f5d99962481603c960f0f14c33fb1bf",
+  "g1_comparison": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_0e5fe84_g1_recovery/g1_comparison_0e5fe843.json",
+  "g1_decision": {
+    "dense_beats_cfar": false,
+    "rae_max_beats_cfar": false,
+    "full_raed_beats_cfar": false,
+    "full_raed_doppler_sensitive_gain": false,
+    "full_raed_chamfer_nondegradation": false,
+    "g1_passed": false
+  },
+  "g1b_summary": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_c63b0da_g1b_stage_b/g1b_stage_b_summary_c63b0daf.json",
+  "g1b_status": "skipped_no_stage_a_survivor",
+  "rh05_started": false,
+  "rh1_started": false
+}

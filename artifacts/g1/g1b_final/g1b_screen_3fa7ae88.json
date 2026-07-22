@@ -1,0 +1,116 @@
+{
+  "protocol": "G1B Stage A one-seed no-go screen",
+  "validation": {
+    "source_commit": "3fa7ae88f2445e5f610bd421f4b3044975267b89",
+    "required_seed": 20260716,
+    "parameters": {
+      "rae_max": {
+        "count": 125769,
+        "relative_increase_over_rae_max": 0.0
+      },
+      "rae_moments": {
+        "count": 125785,
+        "relative_increase_over_rae_max": 0.00012721735880860942
+      },
+      "rae_circular_harmonics": {
+        "count": 125801,
+        "relative_increase_over_rae_max": 0.00025443471761721885
+      },
+      "full_raed_rank2": {
+        "count": 125921,
+        "relative_increase_over_rae_max": 0.0012085649086817896
+      }
+    }
+  },
+  "thresholds": {
+    "maximum_chamfer_relative_degradation": 0.02,
+    "maximum_outlier_fraction_2m_mean": 0.25
+  },
+  "rae_max_run": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_3fa7ae8_g1b_screen/g1b_rae_max_seed20260716_3fa7ae88",
+  "candidates": {
+    "rae_moments": {
+      "run": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_3fa7ae8_g1b_screen/g1b_rae_moments_seed20260716_3fa7ae88",
+      "best_epoch": 15,
+      "metrics": {
+        "chamfer_median_m": 2.4903072118759155,
+        "outlier_fraction_2m_mean": 0.28483749243120354,
+        "far_completeness_mean_distance_m": 9.742432087659836,
+        "far_fscore_1m_mean": 0.09109906428916888
+      },
+      "improvements_over_rae_max": {
+        "overall_chamfer": -0.18226349353790283,
+        "far_completeness": -2.539791313084689,
+        "far_fscore": 0.008701774106487967
+      },
+      "checks": {
+        "chamfer_nondegradation": false,
+        "outlier_at_most_25_percent": false,
+        "improves_preregistered_endpoint": true
+      },
+      "survived": false,
+      "spectral_diagnostics": {
+        "spectral_branch_weight_rms": 0.3767401874065399,
+        "trunk_input_weight_rms": 0.3606387674808502,
+        "spectral_to_trunk_weight_rms_ratio": 1.0446469469662456,
+        "first_step_gradient_norm": 0.123248390853405
+      }
+    },
+    "rae_circular_harmonics": {
+      "run": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_3fa7ae8_g1b_screen/g1b_rae_circular_harmonics_seed20260716_3fa7ae88",
+      "best_epoch": 10,
+      "metrics": {
+        "chamfer_median_m": 2.3459603786468506,
+        "outlier_fraction_2m_mean": 0.302537491855522,
+        "far_completeness_mean_distance_m": 9.3721394024112,
+        "far_fscore_1m_mean": 0.0871586030433801
+      },
+      "improvements_over_rae_max": {
+        "overall_chamfer": -0.03791666030883789,
+        "far_completeness": -2.1694986278360533,
+        "far_fscore": 0.004761312860699196
+      },
+      "checks": {
+        "chamfer_nondegradation": true,
+        "outlier_at_most_25_percent": false,
+        "improves_preregistered_endpoint": true
+      },
+      "survived": false,
+      "spectral_diagnostics": {
+        "spectral_branch_weight_rms": 0.280032753944397,
+        "trunk_input_weight_rms": 0.2566888928413391,
+        "spectral_to_trunk_weight_rms_ratio": 1.0909422330068907,
+        "first_step_gradient_norm": 0.8921700716018677
+      }
+    },
+    "full_raed_rank2": {
+      "run": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_3fa7ae8_g1b_screen/g1b_full_raed_rank2_seed20260716_3fa7ae88",
+      "best_epoch": 15,
+      "metrics": {
+        "chamfer_median_m": 2.0251283049583435,
+        "outlier_fraction_2m_mean": 0.28884999252234894,
+        "far_completeness_mean_distance_m": 7.57567110793157,
+        "far_fscore_1m_mean": 0.08073746829441833
+      },
+      "improvements_over_rae_max": {
+        "overall_chamfer": 0.2829154133796692,
+        "far_completeness": -0.3730303333564233,
+        "far_fscore": -0.0016598218882625804
+      },
+      "checks": {
+        "chamfer_nondegradation": true,
+        "outlier_at_most_25_percent": false,
+        "improves_preregistered_endpoint": true
+      },
+      "survived": false,
+      "spectral_diagnostics": {
+        "spectral_branch_weight_rms": 0.07995502650737762,
+        "trunk_input_weight_rms": 0.47632738947868347,
+        "spectral_to_trunk_weight_rms_ratio": 0.16785729368803337,
+        "first_step_gradient_norm": 0.22859394550323486
+      }
+    }
+  },
+  "survivors": [],
+  "selected_candidate": null,
+  "stage_b_authorized": false
+}
