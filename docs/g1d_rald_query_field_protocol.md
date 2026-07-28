@@ -58,27 +58,31 @@ Each frame uses exactly 10,000 arbitrary occupancy queries:
 - occupied queries are sampled from radar-observable target cells with
   confidence weighting and independent `[-0.5, 0.5]` bin jitter;
 - empty queries are sampled approximately equally from the near, middle, and
-  far range thirds;
+  far range thirds and receive the same independent `[-0.5, 0.5]` bin jitter;
 - cells inside a `3 x 3 x 3` dilation of an occupied cell are ambiguous and are
   excluded from the empty set.
 
 The fixed query split is a RaLD prior, while range stratification and the
 ambiguous region are K-Radar adaptations for its 120 m view. Validation queries
 are deterministically seeded by `(sequence, radar_index)` and are never
-resampled for checkpoint comparison.
+resampled for checkpoint comparison. Matching positive/empty jitter is a hard
+gate: the fractional coordinate rate must be at least 90% in both classes and
+differ by at most five percentage points, preventing coordinate phase from
+leaking the occupancy label.
 
-Occupancy supervision follows the released RaLD implementation:
+Occupancy supervision follows the released RaLD training implementation:
 
 ```text
-L_occ = BCEWithLogits(all 625 occupied + 9,375 empty queries).
+L_occ = 0.1 * BCE_positive + 1.0 * BCE_empty.
 ```
 
-RaLD encodes the class balance through the fixed 6.25%/93.75% query sampling
-ratio and applies one unweighted mean BCE over the concatenated labels
-(`engine_ae.py:159,211`; `engine_generation.py:141,227`). G1D must not take
-separate class means or add another positive/negative weight, because doing so
-would erase the released loss normalization and bias a constant predictor
-toward occupied space.
+RaLD takes separate class means and applies `vol_weight=0.1` to occupied
+queries and `near_weight=1.0` to empty queries
+(`engine_ae.py:48-50,79-86`;
+`configs/ae/ae_indoor_cfg_aniso_mix_view_cone.yml:54-56`). The unweighted BCE
+at `engine_ae.py:159,211` belongs only to evaluation and must not be copied as
+the training objective. G1D preserves the official class weights and reports
+both classwise BCE values, recall, and empty-space false-positive rate.
 
 ## Inference queries
 
@@ -96,10 +100,20 @@ Inference is deterministic and produces exactly 10,000 points:
    RAE residuals and confidence.
 
 The query feature contains normalized RAE, the complete normalized 64-bin local
-spectrum, absolute log energy, and normalized range. Decoding is
-chunked but mathematically identical across chunk sizes. The geometry gate
-attaches the measured final-position Cube spectrum; it does not claim learned
-Doppler generation before G2D.
+spectrum, train-only standardized absolute log energy, and normalized range.
+The raw energy is the sum of natural-log power over all 64 bins. Before the
+query MLP, it is converted to mean `log10(1+x)`, standardized by the same
+train-only center/scale as the radar encoder, and clipped to `[-4,4]`. This is
+a fixed monotonic transform, not per-frame normalization, so cross-frame
+absolute energy remains observable without overwhelming the spectrum and range
+features. Decoding is chunked but mathematically identical across chunk sizes.
+The geometry gate attaches the measured final-position Cube spectrum; it does
+not claim learned Doppler generation before G2D.
+
+The occupancy head uses the released RaLD decoder's default `nn.Linear`
+initialization. The added confidence and offset heads remain zero initialized;
+therefore the zero-offset control is exact at initialization without forcing
+the occupancy field to begin as a constant logit.
 
 ## Frozen objective
 
@@ -134,11 +148,13 @@ one seed. Confidence cannot reduce the geometry or outlier terms.
   checkpoint-selection event;
 - no architecture, query-count, loss-weight, or threshold sweep.
 
-The preflight uses two train frames and one validation frame but exercises the
+The preflight uses two train frames and two validation frames but exercises the
 formal 32,000-to-10,000 query path. It may reduce model width/depth only when the
 formal path cannot be instantiated without affecting tensor counts or source
 coverage; the full H200 structure check must still instantiate all 24
-conditioned blocks before Stage A.
+conditioned blocks before Stage A. Validation condition shuffling uses a
+deterministic derangement whose paired frames always have different sequence
+IDs; the preflight and formal comparison both reject any same-sequence pair.
 
 ## Stage A gate
 

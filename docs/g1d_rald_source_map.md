@@ -15,11 +15,11 @@ responsible for testing latent diffusion.
 
 | RaLD mechanism | Upstream source | G1D realization | Verification |
 |---|---|---|---|
-| Occupied and empty arbitrary queries | `datasets/aligned_coloradar/Coloradar_dataset.py:237-294`; `configs/generation/ge_indoor_cfg_aniso_mix_view_cone_unfreeze_enc_ints_only.yml:45-46` | Exactly 625 occupied and 9,375 reliable-empty RAE queries per frame | Per-frame count records, occupancy recall/FPR, sampler tests |
-| Query-ratio-normalized occupancy loss | `engine_ae.py:159,211`; `engine_generation.py:141,227` | One unweighted mean BCE over all 10,000 concatenated query labels | Loss equivalence and constant-logit gradient tests |
+| Occupied and empty arbitrary queries | `datasets/aligned_coloradar/Coloradar_dataset.py:237-294`; `configs/generation/ge_indoor_cfg_aniso_mix_view_cone_unfreeze_enc_ints_only.yml:45-46` | Exactly 625 occupied and 9,375 reliable-empty RAE queries per frame, with matched cell jitter for both classes | Per-frame count/fractional-coordinate records, occupancy recall/FPR, sampler tests |
+| Classwise occupancy training loss | `engine_ae.py:48-50,79-86`; `configs/ae/ae_indoor_cfg_aniso_mix_view_cone.yml:54-56` | `0.1 BCE_positive + 1.0 BCE_empty`, each BCE a class mean | Exact loss-equivalence and constant-logit gradient tests |
 | Static and input-dependent dynamic latents | `model/models_ae.py:322-387` | `Qd` cross-attends radar-proposal tokens; `Proj(Qs + Qd)` | Mixed-latent gradient gate |
 | Post-mix input cross-attention and FFN | `model/models_ae.py:392-396` | Residual proposal cross-attention followed by FFN | Module gradient gate |
-| Arbitrary spatial query decoder | `model/models_ae.py:408-424` | RAE query embeddings cross-attend the latent set and emit occupancy, confidence, and bounded offset | Query decoder gradient and arbitrary-query tests |
+| Arbitrary spatial query decoder | `model/models_ae.py:408-424` | RAE query embeddings cross-attend the latent set and emit occupancy, confidence, and bounded offset; occupancy keeps default linear initialization | Query decoder gradient and arbitrary-query tests |
 | Radar condition in every latent block | `model/models_radar_generation.py:133-169`; `model/models_radar_generation.py:215-229` | Each of 24 blocks applies self-attention, Full-RAED cross-attention, and FFN | All 24 condition blocks must have nonzero finite gradients |
 | Coarse query then local refinement | `engine_generation.py:249-310` | 32,000 radar-seeded coarse queries, fixed top 2,500, four local queries each | Exact per-frame 32k/2.5k/10k count gate |
 | Full latent-diffusion schedule reserved for later | `model/models_radar_generation.py:235-295`; `model/models_radar_generation.py:314-449` | Not used in G1D; frozen for G3L-D: EDM noise law and 18-step Heun sampler | G1D provenance labels the model deterministic |
@@ -33,7 +33,7 @@ responsible for testing latent diffusion.
 | Random 500k inference grid and optional CFAR helper | Deterministic Full-RAED energy NMS seeds | Prevent helper leakage and bound inference cost |
 | Thresholded variable-count output | Fixed 10,000-point coarse-to-refine output | Make geometry, duplicate, confidence, and downstream comparisons controlled |
 | Unqualified random empty voxels | Range-stratified empty cells outside a 3x3x3 occupied dilation | Avoid ambiguous negatives and preserve far-range supervision |
-| Intensity-only point query state | RAE coordinate, all 64 local bins, absolute integrated log energy, and normalized range | Retain local Doppler shape and absolute radar evidence |
+| Coordinate-only point query state | RAE coordinate, all 64 local bins, train-only standardized absolute integrated log energy, and normalized range | Retain local Doppler shape and absolute radar evidence while preventing a raw-energy scale imbalance |
 
 ## Claim boundary
 

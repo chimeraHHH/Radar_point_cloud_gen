@@ -1,0 +1,40 @@
+{
+  "status": "invalid_engineering_run",
+  "eligible_for_scientific_gate": false,
+  "source_commit": "8598871d0bebc876365fc564877f53e68deb3298",
+  "rald_source_commit": "ffec4b41241391734b1eda5c093de843c909eb8e",
+  "seed": 20260716,
+  "stopped_after_epoch": 13,
+  "stopped_at_utc": "2026-07-28T11:10:36Z",
+  "reasons": [
+    "The source audit had mistaken RaLD evaluation BCE for its training loss. Official RaLD training uses 0.1 times the occupied-query class mean BCE plus 1.0 times the empty-query class mean BCE at engine_ae.py lines 48-50 and 79-86, not one unweighted BCE over concatenated queries.",
+    "The G1D query-state MLP received a raw 64-bin natural-log energy sum around 1500 beside normalized spectrum and range features around unit scale. At the epoch-13 checkpoint, the median first-layer energy contribution was 2318.18 versus 0.2097 for the complete spectrum, a ratio of 11053.36.",
+    "Occupied queries had continuous cell jitter while empty queries remained at integer cell centers, so coordinate fractional phase leaked the class label and differed from inference-query coordinates.",
+    "The validation condition shuffle paired each frame with the next manifest entry; 16 of 24 pairs remained in the same sequence, violating the declared cross-scene intervention."
+  ],
+  "observed_epoch_10_diagnostic": {
+    "median_chamfer_m": 6.986073970794678,
+    "mean_outlier_fraction_2m": 0.6523208195964495,
+    "positive_recall": 0.0,
+    "empty_false_positive_rate": 0.0,
+    "positive_bce": 4.386190235614777,
+    "negative_bce": 0.013890397385694087
+  },
+  "query_evidence_diagnostic_12_frames": {
+    "integrated_log_energy_auc": 0.6535652875900269,
+    "normalized_spectrum_peak_auc": 0.7575736045837402,
+    "normalized_range_auc": 0.1605602204799652,
+    "interpretation": "The labels retain useful local Cube and range separation; the collapse cannot be attributed to wholly indistinguishable query evidence."
+  },
+  "epoch_13_projection_scale": {
+    "median_absolute_energy_input": 1578.6029052734375,
+    "median_first_linear_energy_contribution_l2": 2318.182861328125,
+    "median_first_linear_spectrum_contribution_l2": 0.2097264975309372,
+    "median_first_linear_range_contribution_l2": 0.8700432181358337,
+    "energy_to_spectrum_ratio": 11053.3623046875
+  },
+  "server_run": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_8598871_g1d_rald_query_field/g1d_seed20260716_8598871d",
+  "server_config_sha256": "cfd0673433663339f7987ce5603cf680a5e6925531a18130c9687b8cde0d9433",
+  "server_train_log_sha256": "c14973be2dd8be8e9d35f76c7908fa4c0df46a160d6aec4f25e2c447b1461781",
+  "disposition": "Keep logs and checkpoints for audit only. Do not resume, select, compare, or cite them as G1D results. G1D v2 must use the official RaLD training class weights, train-only fixed absolute-energy normalization, default occupancy-head initialization, matched positive/empty query jitter, deterministic cross-scene condition derangement, and expanded scale/gradient preflight checks."
+}

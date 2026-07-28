@@ -142,13 +142,16 @@ def test_coarse_top_selection_expands_to_fixed_count_and_training_queries() -> N
     assert int(output["final_point_count"]) == 12
 
 
-def test_zero_initialized_heads_start_as_zero_offset_control() -> None:
+def test_rald_occupancy_init_preserves_zero_offset_control() -> None:
     model = tiny_model()
     output = model(cube())
 
     torch.testing.assert_close(output["xyz_m"], output["zero_offset_xyz_m"])
-    assert torch.count_nonzero(output["occupancy_logit"]) == 0
+    assert torch.count_nonzero(model.occupancy_head.weight) > 0
+    assert torch.count_nonzero(output["occupancy_logit"]) > 0
     assert torch.count_nonzero(output["confidence_logit"]) == 0
+    assert torch.count_nonzero(model.offset_head.weight) == 0
+    assert torch.count_nonzero(model.offset_head.bias) == 0
 
 
 def test_zero_offset_control_disables_coarse_and_final_residuals() -> None:
@@ -213,6 +216,21 @@ def test_absolute_energy_intervention_changes_query_token() -> None:
         high_evidence["absolute_log_energy"]
         > low_evidence["absolute_log_energy"]
     )
+    torch.testing.assert_close(
+        low_evidence["normalized_log_energy"],
+        torch.full(
+            (1, 1, 1),
+            torch.log10(torch.tensor(2.0)).item(),
+        ),
+    )
+    torch.testing.assert_close(
+        high_evidence["normalized_log_energy"],
+        torch.full(
+            (1, 1, 1),
+            torch.log10(torch.tensor(9.0)).item(),
+        ),
+    )
+    assert float(high_evidence["normalized_log_energy"].abs().max()) <= 4.0
     assert not torch.allclose(low_evidence["tokens"], high_evidence["tokens"])
 
 

@@ -26,6 +26,8 @@ def gradients() -> list[dict]:
                 "full_raed_radar_encoder": 1.0,
                 "cube_input_channel_norms": [1.0] * 64,
                 "local_spectrum_input_column_norms": [1.0] * 64,
+                "absolute_energy_input_column_norms": [1.0],
+                "normalized_range_input_column_norms": [1.0],
                 "radar_projection_input_column_norms": [1.0] * 64,
                 "condition_block_gradient_norms": [1.0] * 24,
             },
@@ -60,6 +62,10 @@ def frame(sequence: int = 1, radar_index: int = 1) -> dict:
         "occupancy_query_count": 10_000,
         "positive_occupancy_query_count": 625,
         "empty_occupancy_query_count": 9_375,
+        "positive_fractional_coordinate_rate": 0.999,
+        "empty_fractional_coordinate_rate": 0.999,
+        "shuffled_condition_sequence": sequence + 1,
+        "normalized_log_energy_abs_max": 2.0,
         "proposal_cache_used": True,
     }
 

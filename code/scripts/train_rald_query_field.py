@@ -37,7 +37,7 @@ from models.rald_query_field import (  # noqa: E402
 from scripts.g1b_contract import FROZEN_G1B_SEEDS, sha256  # noqa: E402
 
 
-PROTOCOL = "g1d_rald_query_field_geometry_v1"
+PROTOCOL = "g1d_rald_query_field_geometry_v2"
 FORMAL_SEEDS = tuple(FROZEN_G1B_SEEDS)
 SOURCE_PATTERN = re.compile(r"[0-9a-f]{40}")
 OFFICIAL_RALD_COMMIT = "ffec4b41241391734b1eda5c093de843c909eb8e"
@@ -73,6 +73,8 @@ class TrainConfig:
     nms_kernel: tuple[int, int, int]
     offset_bounds_bins: tuple[float, float, float]
     decode_chunk_size: int
+    positive_occupancy_weight: float
+    negative_occupancy_weight: float
     geometry_weight: float
     outlier_weight: float
     existence_weight: float
@@ -169,6 +171,14 @@ def gradient_audit(
         None if local_gradient is None else local_gradient[:, :64],
         1,
     )
+    energy_column = finite_channel_norms(
+        None if local_gradient is None else local_gradient[:, 64:65],
+        1,
+    )
+    range_column = finite_channel_norms(
+        None if local_gradient is None else local_gradient[:, 65:66],
+        1,
+    )
     radar_weight = model.radar_encoder.spectral_projection.weight
     radar_columns = finite_channel_norms(radar_weight.grad, 1)
     conditioned_blocks = [
@@ -207,6 +217,8 @@ def gradient_audit(
         "full_raed_radar_encoder": gradient_norm(model.radar_encoder.parameters()),
         "cube_input_channel_norms": cube_channels,
         "local_spectrum_input_column_norms": local_columns,
+        "absolute_energy_input_column_norms": energy_column,
+        "normalized_range_input_column_norms": range_column,
         "radar_projection_input_column_norms": radar_columns,
         "condition_block_gradient_norms": conditioned_blocks,
     }
@@ -241,6 +253,23 @@ def selected_indices(length: int, limit: int | None) -> list[int]:
     if limit is None or limit >= length:
         return list(range(length))
     return np.linspace(0, length - 1, limit).round().astype(int).tolist()
+
+
+def cross_scene_condition_indices(records: list[dict]) -> list[int]:
+    """Return a deterministic derangement whose pairs use different scenes."""
+
+    count = len(records)
+    if count < 2:
+        raise ValueError("Condition shuffle requires at least two frames")
+    sequences = [int(record["sequence"]) for record in records]
+    for shift in range(1, count):
+        candidate = [(index + shift) % count for index in range(count)]
+        if all(
+            sequences[index] != sequences[other]
+            for index, other in enumerate(candidate)
+        ):
+            return candidate
+    raise ValueError("No cross-scene condition derangement exists")
 
 
 def move_frame(item: dict, device: torch.device) -> torch.Tensor:
@@ -297,9 +326,7 @@ def occupancy_report(logits: torch.Tensor, labels: torch.Tensor) -> dict[str, fl
     negative_bce = torch.nn.functional.binary_cross_entropy_with_logits(
         logits[negative], labels[negative]
     )
-    occupancy_bce = torch.nn.functional.binary_cross_entropy_with_logits(
-        logits, labels
-    )
+    occupancy_bce = 0.1 * positive_bce + negative_bce
     return {
         "positive_recall": float(prediction[positive].float().mean().item()),
         "empty_false_positive_rate": float(
@@ -359,9 +386,11 @@ def evaluate(
     shuffled_occupancy_reports = []
     shuffled_geometry_reports = []
     frames = []
+    validation_records = [dataset.records[index] for index in indices]
+    shuffled_positions = cross_scene_condition_indices(validation_records)
     for position, index in enumerate(indices):
         item = dataset[index]
-        shuffled_item = dataset[indices[(position + 1) % len(indices)]]
+        shuffled_item = dataset[indices[shuffled_positions[position]]]
         cube = move_frame(item, device)
         shuffled_cube = move_frame(shuffled_item, device)
         target = item["target_xyz_confidence"].to(device)
@@ -417,6 +446,14 @@ def evaluate(
         shuffled_occupancy_bce = shuffled_occupancy["occupancy_bce"]
         current_chamfer = generated["chamfer_m"]
         shuffled_chamfer = shuffled_geometry["chamfer_m"]
+        query_coordinates = output[
+            "training_query_input_coordinates_rae"
+        ][0].float()
+        fractional_coordinate = (
+            query_coordinates - query_coordinates.round()
+        ).abs().amax(dim=1) > 1e-6
+        positive_mask = labels.bool()
+        negative_mask = ~positive_mask
         frame = {
             "sequence": int(item["sequence"]),
             "radar_index": int(item["radar_index"]),
@@ -441,8 +478,21 @@ def evaluate(
             "empty_occupancy_query_count": int(
                 labels.numel() - labels.sum().item()
             ),
+            "positive_fractional_coordinate_rate": float(
+                fractional_coordinate[positive_mask].float().mean().item()
+            ),
+            "empty_fractional_coordinate_rate": float(
+                fractional_coordinate[negative_mask].float().mean().item()
+            ),
             "offset_abs_mean_bins": float(
                 output["offset_bins"].float().abs().mean().item()
+            ),
+            "normalized_log_energy_abs_max": float(
+                output["training_query_normalized_log_energy"]
+                .float()
+                .abs()
+                .max()
+                .item()
             ),
             "radar_token_count": int(output["radar_token_count"].item()),
             "coarse_query_count": int(output["coarse_query_count"].item()),
@@ -693,6 +743,8 @@ def main() -> None:
         nms_kernel=(5, 5, 3),
         offset_bounds_bins=(8.0, 4.0, 2.0),
         decode_chunk_size=4_096,
+        positive_occupancy_weight=0.1,
+        negative_occupancy_weight=1.0,
         geometry_weight=1.0,
         outlier_weight=0.25,
         existence_weight=0.10,
@@ -772,6 +824,9 @@ def main() -> None:
     train_indices = selected_indices(len(train_set), config.train_limit)
     validation_indices = selected_indices(
         len(validation_set), config.validation_limit
+    )
+    cross_scene_condition_indices(
+        [validation_set.records[index] for index in validation_indices]
     )
 
     start_epoch = 1
@@ -860,6 +915,8 @@ def main() -> None:
                     labels,
                     target,
                     generated_point_count=config.point_count,
+                    positive_weight=config.positive_occupancy_weight,
+                    negative_weight=config.negative_occupancy_weight,
                     geometry_weight=config.geometry_weight,
                     outlier_weight=config.outlier_weight,
                     existence_weight=config.existence_weight,

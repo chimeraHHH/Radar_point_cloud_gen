@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from itertools import product
+import math
 
 import torch
 import torch.nn as nn
@@ -307,6 +308,8 @@ class RaLDQueryField(nn.Module):
         self.depth = depth
         self.nms_kernel = nms_kernel
         self.decode_chunk_size = decode_chunk_size
+        self.log_center = float(log_center)
+        self.log_scale = float(log_scale)
         self.radar_encoded_shape = radar_encoded_shape
         self.expected_radar_token_count = int(
             radar_encoded_shape[0]
@@ -358,7 +361,7 @@ class RaLDQueryField(nn.Module):
         self.occupancy_head = nn.Linear(model_dim, 1)
         self.confidence_head = nn.Linear(model_dim, 1)
         self.offset_head = nn.Linear(model_dim, 3)
-        for head in (self.occupancy_head, self.confidence_head, self.offset_head):
+        for head in (self.confidence_head, self.offset_head):
             nn.init.zeros_(head.weight)
             nn.init.zeros_(head.bias)
 
@@ -536,7 +539,16 @@ class RaLDQueryField(nn.Module):
         ).reshape(batch_size, point_count, 1)
         normalized_range = normalized[..., :1]
         absolute_log_energy = absolute_energy
-        state = torch.cat((spectrum, absolute_log_energy, normalized_range), dim=-1)
+        mean_log10_energy = absolute_log_energy / (
+            self.SPECTRUM_BIN_COUNT * math.log(10.0)
+        )
+        normalized_log_energy = (
+            mean_log10_energy - self.log_center
+        ) / self.log_scale
+        normalized_log_energy = normalized_log_energy.clamp(-4.0, 4.0)
+        state = torch.cat(
+            (spectrum, normalized_log_energy, normalized_range), dim=-1
+        )
         if state.shape[-1] != self.SPECTRUM_BIN_COUNT + 2:
             raise AssertionError("G1D query state must contain exactly 66 values")
         token = self.coordinate_embedding(normalized)
@@ -547,6 +559,7 @@ class RaLDQueryField(nn.Module):
             "coordinates_rae": coordinates_rae,
             "local_spectrum": spectrum,
             "absolute_log_energy": absolute_log_energy,
+            "normalized_log_energy": normalized_log_energy,
             "normalized_range": normalized_range,
         }
 
@@ -630,6 +643,7 @@ class RaLDQueryField(nn.Module):
             "query_coordinates_rae": [],
             "query_cube_spectrum": [],
             "query_absolute_log_energy": [],
+            "query_normalized_log_energy": [],
         }
         for start in range(0, normalized_rae.shape[1], chunk_size):
             stop = min(start + chunk_size, normalized_rae.shape[1])
@@ -663,6 +677,9 @@ class RaLDQueryField(nn.Module):
             )
             outputs["query_absolute_log_energy"].append(
                 evidence["absolute_log_energy"]
+            )
+            outputs["query_normalized_log_energy"].append(
+                evidence["normalized_log_energy"]
             )
 
         decoded = {key: torch.cat(values, dim=1) for key, values in outputs.items()}
@@ -872,6 +889,12 @@ class RaLDQueryField(nn.Module):
             "offset_bins": final_fields["offset_bins"],
             "query_features": final_fields["query_features"],
             "query_coordinates_rae": final_fields["query_coordinates_rae"],
+            "query_absolute_log_energy": final_fields[
+                "query_absolute_log_energy"
+            ],
+            "query_normalized_log_energy": final_fields[
+                "query_normalized_log_energy"
+            ],
             "coordinates_rae": coordinates,
             "xyz_m": self._xyz(coordinates),
             "zero_offset_coordinates_rae": zero_offset_coordinates,
@@ -931,6 +954,12 @@ class RaLDQueryField(nn.Module):
                     ),
                     "training_query_offset_bins": training["offset_bins"],
                     "training_query_features": training["query_features"],
+                    "training_query_absolute_log_energy": training[
+                        "query_absolute_log_energy"
+                    ],
+                    "training_query_normalized_log_energy": training[
+                        "query_normalized_log_energy"
+                    ],
                     "training_query_coordinates_rae": training_coordinates,
                     "training_query_xyz_m": self._xyz(training_coordinates),
                     "training_query_point_cube_spectrum": self._query_spectrum(

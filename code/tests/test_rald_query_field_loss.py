@@ -69,7 +69,8 @@ def test_sampler_returns_exact_625_9375_and_unambiguous_balanced_negatives() -> 
     assert queries.range_stratum.shape == (10_000,)
     assert set(queries.range_stratum.tolist()) == {0, 1, 2}
 
-    negative = queries.coordinates_rae[queries.labels == 0].long()
+    negative_coordinates = queries.coordinates_rae[queries.labels == 0]
+    negative = negative_coordinates.round().long()
     assert not bool(
         _dilated(occupancy)[
             negative[:, 0],
@@ -93,6 +94,18 @@ def test_sampler_returns_exact_625_9375_and_unambiguous_balanced_negatives() -> 
             positive_cell[:, 2],
         ] > 0).all()
     )
+    positive_fractional = (
+        positive - positive.round()
+    ).abs().amax(dim=1) > 1e-6
+    negative_fractional = (
+        negative_coordinates - negative_coordinates.round()
+    ).abs().amax(dim=1) > 1e-6
+    assert float(positive_fractional.float().mean()) > 0.99
+    assert float(negative_fractional.float().mean()) > 0.99
+    assert abs(
+        float(positive_fractional.float().mean())
+        - float(negative_fractional.float().mean())
+    ) < 0.01
     assert bool(((positive - positive_cell).abs() <= 0.5).all())
 
 
@@ -241,15 +254,17 @@ def test_query_field_loss_splits_positive_and_negative_bce() -> None:
         result.components["occupancy_negative_bce"],
         expected_negative,
     )
-    expected_all = F.binary_cross_entropy_with_logits(logits, labels)
     torch.testing.assert_close(
         result.components["occupancy_bce"],
-        expected_all,
+        0.1 * expected_positive + expected_negative,
     )
-    torch.testing.assert_close(result.total, expected_all)
+    torch.testing.assert_close(
+        result.total,
+        0.1 * expected_positive + expected_negative,
+    )
 
 
-def test_query_field_occupancy_bce_preserves_rald_sample_ratio() -> None:
+def test_query_field_occupancy_bce_preserves_rald_class_weights() -> None:
     labels = torch.cat((torch.ones(1), torch.zeros(15)))
     logits = torch.zeros(16, requires_grad=True)
     xyz = torch.arange(16, dtype=torch.float32)[:, None].repeat(1, 3)
@@ -269,7 +284,10 @@ def test_query_field_occupancy_bce_preserves_rald_sample_ratio() -> None:
     )
     result.total.backward()
 
-    torch.testing.assert_close(result.total, torch.tensor(math.log(2.0)))
+    torch.testing.assert_close(
+        result.total,
+        torch.tensor(1.1 * math.log(2.0)),
+    )
     assert logits.grad is not None
     assert float(logits.grad.sum()) > 0.0
 

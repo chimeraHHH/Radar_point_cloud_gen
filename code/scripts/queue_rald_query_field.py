@@ -137,7 +137,7 @@ def train_command(
         command.append("--resume")
     if smoke:
         command.extend(
-            ("--smoke", "--train-limit", "2", "--validation-limit", "1")
+            ("--smoke", "--train-limit", "2", "--validation-limit", "2")
         )
     return command
 
@@ -293,12 +293,19 @@ def validate_preflight(job: Job, source_commit: str, output: Path) -> dict:
 
     checks = {
         "two_optimizer_steps": len(gradients) == 2,
+        "two_validation_frames": len(frames) == 2,
         "formal_depth_24": config.get("depth") == 24,
         "formal_model_dim_512": config.get("model_dim") == 512,
         "formal_latent_count_512": config.get("latent_count") == 512,
         "occupancy_queries_10000": config.get("occupancy_query_count") == 10_000,
         "positive_queries_625": (
             config.get("positive_query_ratio") == 0.0625
+        ),
+        "rald_positive_weight_0p1": (
+            config.get("positive_occupancy_weight") == 0.1
+        ),
+        "rald_empty_weight_1p0": (
+            config.get("negative_occupancy_weight") == 1.0
         ),
         "recorded_occupancy_queries_10000": bool(
             frames and frames[0]["occupancy_query_count"] == 10_000
@@ -308,6 +315,36 @@ def validate_preflight(job: Job, source_commit: str, output: Path) -> dict:
         ),
         "recorded_empty_queries_9375": bool(
             frames and frames[0]["empty_occupancy_query_count"] == 9_375
+        ),
+        "matched_query_fractional_coordinate_rates": bool(
+            frames
+            and all(
+                float(frame["positive_fractional_coordinate_rate"]) >= 0.90
+                and float(frame["empty_fractional_coordinate_rate"]) >= 0.90
+                and abs(
+                    float(frame["positive_fractional_coordinate_rate"])
+                    - float(frame["empty_fractional_coordinate_rate"])
+                )
+                <= 0.05
+                for frame in frames
+            )
+        ),
+        "all_condition_pairs_cross_scene": bool(
+            frames
+            and all(
+                int(frame["sequence"])
+                != int(frame["shuffled_condition_sequence"])
+                for frame in frames
+            )
+        ),
+        "normalized_query_energy_bounded": bool(
+            frames
+            and math.isfinite(
+                float(frames[0]["normalized_log_energy_abs_max"])
+            )
+            and 0.0
+            <= float(frames[0]["normalized_log_energy_abs_max"])
+            <= 4.0
         ),
         "fixed_10000_points": bool(
             frames and frames[0]["generated"]["prediction_count"] == 10_000
@@ -345,6 +382,12 @@ def validate_preflight(job: Job, source_commit: str, output: Path) -> dict:
         "all_local_spectrum_columns_gradient": positive_list(
             "local_spectrum_input_column_norms", 64
         ),
+        "absolute_energy_column_gradient": positive_list(
+            "absolute_energy_input_column_norms", 1
+        ),
+        "normalized_range_column_gradient": positive_list(
+            "normalized_range_input_column_norms", 1
+        ),
         "all_radar_projection_columns_gradient": positive_list(
             "radar_projection_input_column_norms", 64
         ),
@@ -353,7 +396,7 @@ def validate_preflight(job: Job, source_commit: str, output: Path) -> dict:
         ),
     }
     report = {
-        "protocol": "g1d_rald_query_field_preflight_v1",
+        "protocol": "g1d_rald_query_field_preflight_v2",
         "source_commit": source_commit,
         "run": str(job.run_path),
         "metrics": str(metrics_path),

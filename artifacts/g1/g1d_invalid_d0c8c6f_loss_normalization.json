@@ -16,5 +16,6 @@
   "server_run": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_d0c8c6f_g1d_rald_query_field/g1d_seed20260716_d0c8c6fb",
   "server_config_sha256": "ba49d197db7f727ac03dce681f88528550640159f2bd6d4dd0cb43169797c533",
   "server_train_log_sha256": "65f4bffff27dacd0ec2e2a5484f3a6170dd73975da226c3061e4ea8081c6c99c",
-  "disposition": "Keep logs and checkpoints for audit only. Do not resume, select, compare, or cite them as G1D results. Re-run tests, preflight, and Stage A from a new source-bound snapshot with RaLD-equivalent all-query BCE."
+  "superseded_interpretation": "A later line-level source audit showed that the all-query BCE interpretation came from RaLD evaluation code. Official RaLD training uses 0.1 times the occupied class-mean BCE plus 1.0 times the empty class-mean BCE.",
+  "disposition": "Keep logs and checkpoints for audit only. Do not resume, select, compare, or cite them as G1D results. Use the G1D v2 source-parity and scale-corrected protocol recorded after the 8598871 invalid run."
 }

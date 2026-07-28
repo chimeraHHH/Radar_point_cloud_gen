@@ -38,6 +38,8 @@ FORMAL_CONFIG = {
     "epochs": 150,
     "occupancy_query_count": 10_000,
     "positive_query_ratio": 0.0625,
+    "positive_occupancy_weight": 0.1,
+    "negative_occupancy_weight": 1.0,
     "base_seed_count": 1_000,
     "coarse_templates_per_seed": 32,
     "coarse_query_count": 32_000,
@@ -266,6 +268,12 @@ def gradient_checks(run: dict) -> dict[str, bool]:
         "second_step_all_local_spectrum_columns": _finite_positive(
             second.get("local_spectrum_input_column_norms"), 64
         ),
+        "second_step_absolute_energy_column": _finite_positive(
+            second.get("absolute_energy_input_column_norms"), 1
+        ),
+        "second_step_normalized_range_column": _finite_positive(
+            second.get("normalized_range_input_column_norms"), 1
+        ),
         "second_step_all_radar_projection_columns": _finite_positive(
             second.get("radar_projection_input_column_norms"), 64
         ),
@@ -306,6 +314,31 @@ def frame_count_checks(run: dict) -> dict[str, bool]:
     )
     checks["all_frames_used_deterministic_proposal_cache"] = bool(frames) and all(
         frame.get("proposal_cache_used") is True for frame in frames
+    )
+    checks["all_frames_matched_query_fractional_coordinate_rates"] = (
+        bool(frames)
+        and all(
+            float(frame.get("positive_fractional_coordinate_rate", -1.0))
+            >= 0.90
+            and float(frame.get("empty_fractional_coordinate_rate", -1.0))
+            >= 0.90
+            and abs(
+                float(frame["positive_fractional_coordinate_rate"])
+                - float(frame["empty_fractional_coordinate_rate"])
+            )
+            <= 0.05
+            for frame in frames
+        )
+    )
+    checks["all_condition_pairs_cross_scene"] = bool(frames) and all(
+        int(frame.get("sequence", -1))
+        != int(frame.get("shuffled_condition_sequence", -1))
+        for frame in frames
+    )
+    checks["all_frames_normalized_query_energy_bounded"] = bool(frames) and all(
+        math.isfinite(float(frame.get("normalized_log_energy_abs_max", math.nan)))
+        and 0.0 <= float(frame["normalized_log_energy_abs_max"]) <= 4.0
+        for frame in frames
     )
     return checks
 

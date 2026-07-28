@@ -10,6 +10,7 @@ from scripts.queue_rald_query_field import (
     validate_preflight,
 )
 from scripts.train_rald_query_field import PROTOCOL
+from scripts.train_rald_query_field import cross_scene_condition_indices
 
 
 SOURCE_COMMIT = "1" * 40
@@ -47,6 +48,8 @@ def preflight_gradient_steps() -> list[dict]:
                 "full_raed_radar_encoder": 1.0,
                 "cube_input_channel_norms": [1.0] * 64,
                 "local_spectrum_input_column_norms": [1.0] * 64,
+                "absolute_energy_input_column_norms": [1.0],
+                "normalized_range_input_column_norms": [1.0],
                 "radar_projection_input_column_norms": [1.0] * 64,
                 "condition_block_gradient_norms": [1.0] * 24,
             },
@@ -69,8 +72,25 @@ def write_preflight_run(tmp_path: Path) -> Job:
             "latent_count": 512,
             "occupancy_query_count": 10_000,
             "positive_query_ratio": 0.0625,
+            "positive_occupancy_weight": 0.1,
+            "negative_occupancy_weight": 1.0,
         },
         "provenance": {"git_commit": SOURCE_COMMIT},
+    }
+    frame = {
+        "generated": {"prediction_count": 10_000},
+        "radar_token_count": 336,
+        "coarse_query_count": 32_000,
+        "selected_coarse_count": 2_500,
+        "occupancy_query_count": 10_000,
+        "positive_occupancy_query_count": 625,
+        "empty_occupancy_query_count": 9_375,
+        "positive_fractional_coordinate_rate": 0.999,
+        "empty_fractional_coordinate_rate": 0.999,
+        "sequence": 1,
+        "shuffled_condition_sequence": 2,
+        "normalized_log_energy_abs_max": 2.0,
+        "proposal_cache_used": True,
     }
     metrics = {
         "completed": True,
@@ -79,16 +99,12 @@ def write_preflight_run(tmp_path: Path) -> Job:
         "gradient_steps": preflight_gradient_steps(),
         "validation": {
             "frames": [
+                frame,
                 {
-                    "generated": {"prediction_count": 10_000},
-                    "radar_token_count": 336,
-                    "coarse_query_count": 32_000,
-                    "selected_coarse_count": 2_500,
-                    "occupancy_query_count": 10_000,
-                    "positive_occupancy_query_count": 625,
-                    "empty_occupancy_query_count": 9_375,
-                    "proposal_cache_used": True,
-                }
+                    **frame,
+                    "sequence": 2,
+                    "shuffled_condition_sequence": 1,
+                },
             ]
         },
     }
@@ -109,6 +125,25 @@ def test_preflight_validates_full_rald_structure_and_counts(tmp_path: Path) -> N
 
     assert report["passed"] is True
     assert all(report["checks"].values())
+
+
+def test_condition_shuffle_is_deterministic_and_cross_scene() -> None:
+    records = [
+        {"sequence": 1},
+        {"sequence": 1},
+        {"sequence": 2},
+        {"sequence": 2},
+        {"sequence": 3},
+        {"sequence": 3},
+    ]
+
+    shuffled = cross_scene_condition_indices(records)
+
+    assert sorted(shuffled) == list(range(len(records)))
+    assert all(
+        records[index]["sequence"] != records[other]["sequence"]
+        for index, other in enumerate(shuffled)
+    )
 
 
 def test_preflight_rejects_missing_rald_condition_block_gradient(

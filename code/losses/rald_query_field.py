@@ -2,7 +2,8 @@
 
 The default objective is
 
-    1.00 * BCE over all sampled queries
+    0.10 * positive-query BCE
+  + 1.00 * empty-query BCE
   + 1.00 * geometry Chamfer
   + 0.25 * 2 m outlier hinge
   + 0.10 * confidence existence
@@ -260,10 +261,19 @@ def sample_occupancy_queries(
         )
     sampled_negative = torch.cat(sampled_negative_parts, dim=0)
     sampled_negative_stratum = torch.cat(sampled_negative_strata, dim=0)
+    negative_jitter = torch.rand(
+        (negative_count, 3),
+        dtype=coordinate_dtype,
+        device=occupancy.device,
+        generator=generator,
+    ) - 0.5
+    negative_coordinates = (
+        sampled_negative.to(coordinate_dtype) + negative_jitter
+    )
 
     positive_stratum = _range_stratum(positive_cells[:, 0], shape[0])
     coordinates = torch.cat(
-        (positive_coordinates, sampled_negative.to(coordinate_dtype)),
+        (positive_coordinates, negative_coordinates),
         dim=0,
     )
     labels = torch.cat(
@@ -397,6 +407,8 @@ def rald_query_field_loss(
     target_xyz_confidence: torch.Tensor,
     *,
     generated_point_count: int = DEFAULT_QUERY_COUNT,
+    positive_weight: float = 0.1,
+    negative_weight: float = 1.0,
     geometry_weight: float = 1.0,
     outlier_weight: float = 0.25,
     existence_weight: float = 0.10,
@@ -418,6 +430,8 @@ def rald_query_field_loss(
     ):
         raise ValueError("generated_point_count must be an integer of at least two")
     scalar_values = {
+        "positive_weight": positive_weight,
+        "negative_weight": negative_weight,
         "geometry_weight": geometry_weight,
         "outlier_weight": outlier_weight,
         "existence_weight": existence_weight,
@@ -524,9 +538,9 @@ def rald_query_field_loss(
         query_logits[negative_mask],
         labels[negative_mask],
     )
-    occupancy_bce = F.binary_cross_entropy_with_logits(
-        query_logits,
-        labels,
+    occupancy_bce = (
+        positive_weight * positive_bce
+        + negative_weight * negative_bce
     )
 
     prediction_to_target = _nearest_assignment(
