@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "protocol": "rald_wce_max_target_h200_preflight_v1",
+  "source_commit": "2b78b16f22787676abf9e7aa97ea11abdf2b0fa2",
+  "source_hashes": {
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/2b78b16/code/models/rald_wce_field.py": "616c1737305803e65fc676d1721d69e7744d92cd20ae098f48b8a21a387134ef",
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/2b78b16/code/losses/rald_wce.py": "2b4031e1ba7ff1adf3956166aa0e66b7dc9a5e97426934a1a796a741aa985847",
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/2b78b16/code/scripts/preflight_rald_wce.py": "75a84351dba26a0c83546799577e64cbc230ecb0e0aa9f6de529ac4c192bcc72",
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/2b78b16/code/models/rald_matched.py": "fccb5decc7935916ed35dcb4756cea1a4be8159d68cfe2dec9f8baeb6fa02858",
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/2b78b16/code/cube_dense/dataset.py": "bd2fa60cf72b0acf5195e14a4b6e7110f9f035430e4b0c2ed71fc64c003f6f32",
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/2b78b16/code/scripts/g1b_contract.py": "1f27682942fcd4ce60c194cd0e1d3abd2760ec811bc22a1c6eb640af6fe565a2"
+  },
+  "stage0_scope": {
+    "depth": 6,
+    "edm": false,
+    "doppler_head": false,
+    "exact_10000_selection": false,
+    "preflight_query_count": 10000,
+    "architecture_metadata": {
+      "protocol": "rald_wce_condition_exclusive_field_stage0_v1",
+      "model_family": "RaLD-WCE",
+      "stage": "R-A1 Stage 0",
+      "depth": 6,
+      "latent_count": 512,
+      "model_dim": 512,
+      "global_radar_token_count": 336,
+      "geometry_decoder_inputs": [
+        "normalized_rae_fourier_features",
+        "condition_latents"
+      ],
+      "forbidden_pre_selection_sources": [
+        "local_cube_spectrum",
+        "local_cube_energy",
+        "local_cube_neighborhood",
+        "candidate_source",
+        "proposal_score",
+        "target_geometry"
+      ],
+      "pre_selection_local_cube_access": false,
+      "candidate_coordinate_interface": "external_normalized_rae_only",
+      "low_threshold_radar_query_path_implemented": false,
+      "low_threshold_radar_role_if_added": "coordinates_only",
+      "same_query_wrong_condition_supported": true,
+      "condition_latents_are_only_cube_path": true,
+      "confidence_source": "sigmoid_occupancy_logit",
+      "geometry_stage_boundary": "continuous_field_before_exact_10000_selection",
+      "exact_10000_selection_implemented": false,
+      "doppler_head_implemented": false,
+      "edm_implemented": false
+    }
+  },
+  "data": {
+    "manifest": "/home/wangning/Workspace/radar_cube_dense/snapshots/2b78b16/artifacts/g0/g0_audit_100_manifest.json",
+    "manifest_sha256": "645307a8bae351db51b55128043dae69bce5b928169d5fa25c1b9c55083de4e4",
+    "frame_count_screened": 100,
+    "matched": {
+      "cache_file": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq14_radar_00430.npz",
+      "cache_sha256": "11f0b30dfaa41030016531dab90e3b9436b0d6e0d582f82f4ca183f9fa068820",
+      "sequence": 14,
+      "radar_index": 430,
+      "partition": "train",
+      "target_count": 18836
+    },
+    "wrong_condition": {
+      "sequence": 7,
+      "radar_index": 430,
+      "partition": "train",
+      "target_count": 18508
+    },
+    "query_targets": {
+      "positive_count": 4709,
+      "negative_count": 5291,
+      "unique_target_cell_count": 4709
+    }
+  },
+  "runtime": {
+    "device": "cuda:0",
+    "device_name": "NVIDIA H200 NVL",
+    "torch_version": "2.12.1+cu130",
+    "model_parameter_count": 48775780,
+    "elapsed_seconds": 1.5561420498415828,
+    "decode_chunk_size": 8192,
+    "alternate_decode_chunk_size": 4096,
+    "chunk_max_absolute_deltas": {
+      "occupancy_logit": 0.0,
+      "residual_bins": 0.0,
+      "confidence": 0.0,
+      "refined_normalized_rae": 0.0
+    },
+    "maximum_chunk_absolute_delta": 0.0,
+    "wrong_condition_mean_occupancy_delta": 0.002381564350798726,
+    "cuda_peak_allocated_bytes": 9438902272,
+    "cuda_peak_reserved_bytes": 10179575808
+  },
+  "loss": {
+    "total": 0.7356752157211304,
+    "components": {
+      "occupancy": 0.6974486112594604,
+      "wrong_condition_occupancy": 0.6969141960144043,
+      "wrong_condition_margin": 0.05053442716598511,
+      "positive_residual": 0.010531860403716564,
+      "confidence_brier": 0.24865566194057465
+    }
+  },
+  "gradients": {
+    "all": {
+      "gradient_tensor_count": 258,
+      "finite": true,
+      "nonzero": true
+    },
+    "condition_encoder": {
+      "gradient_tensor_count": 83,
+      "finite": true,
+      "nonzero": true
+    },
+    "full_raed_input_channels": {
+      "channel_count": 64,
+      "finite": true,
+      "nonzero_channel_count": 64,
+      "minimum_channel_sum": 6.156368275410384e-13,
+      "maximum_channel_sum": 2.492190915442949e-12
+    },
+    "geometry_decoder_attention": {
+      "gradient_tensor_count": 9,
+      "finite": true,
+      "nonzero": true
+    }
+  },
+  "checks": {
+    "largest_target_frame_selected": true,
+    "wrong_condition_is_cross_scene": true,
+    "exact_10000_preflight_queries": true,
+    "field_output_preserves_query_count": true,
+    "same_query_wrong_condition": true,
+    "condition_exclusive_contract": true,
+    "wrong_condition_changes_untrained_field": true,
+    "chunk_invariant_decode": true,
+    "finite_field": true,
+    "finite_loss": true,
+    "finite_nonzero_gradients": true,
+    "condition_encoder_receives_gradient": true,
+    "all_64_doppler_channels_receive_gradient": true,
+    "geometry_decoder_receives_gradient": true,
+    "no_test_partition_accessed": true
+  },
+  "passed": true
+}
