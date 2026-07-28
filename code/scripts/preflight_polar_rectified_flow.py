@@ -25,6 +25,7 @@ from cube_dense.polar_flow_target import (  # noqa: E402
     PolarLogitTransform,
     array_sha256,
     canonical_fixed_target,
+    continuous_fixed_target,
     fit_empirical_range_cdf,
     fixed_scrambled_sobol_unit,
     hierarchical_one_to_one_transport,
@@ -36,7 +37,7 @@ from models.cube_occupancy import parameter_count  # noqa: E402
 from models.polar_rectified_flow import PolarRectifiedFlow  # noqa: E402
 
 
-PROTOCOL = "p_rf_h200_representation_model_preflight_v1"
+PROTOCOL = "p_rf_h200_sparse_target_lifting_preflight_v2"
 SOURCE_PATTERN = re.compile(r"[0-9a-f]{40}")
 
 
@@ -164,12 +165,20 @@ def select_preflight_frame(
                 "unique_xyz_count": target_unique_count(target),
             }
         )
-    selected = max(
-        range(len(inventory)),
+    sparse_train = [
+        index
+        for index, item in enumerate(inventory)
+        if item["partition"] == "train"
+        and item["unique_xyz_count"] < P_R_F_POINT_COUNT
+    ]
+    if not sparse_train:
+        raise ValueError("P-RF preflight found no sparse training target to exercise")
+    selected = min(
+        sparse_train,
         key=lambda index: (
             inventory[index]["unique_xyz_count"],
             inventory[index]["target_count"],
-            -index,
+            index,
         ),
     )
     return selected, inventory
@@ -246,6 +255,7 @@ def main() -> None:
     verify_source_tree(repo, args.source_commit)
     device, device_name = require_h200(args.device)
     records = manifest_records(args.manifest)
+    axes = load_axes(args.data_root / "resources")
     selected_index, inventory = select_preflight_frame(
         records,
         args.cache_root,
@@ -253,13 +263,78 @@ def main() -> None:
     selected_record = records[selected_index]
     wrong_index = select_wrong_frame(records, selected_index)
     wrong_record = records[wrong_index]
-    selected_target = load_target(args.cache_root, selected_record)
-    endpoint = canonical_fixed_target(
-        selected_target,
+    endpoint = None
+    sparse_endpoint_inventory = []
+    for index, item in enumerate(inventory):
+        if item["unique_xyz_count"] >= P_R_F_POINT_COUNT:
+            continue
+        item_target = load_target(args.cache_root, records[index])
+        item_target_index = load_target_rae_index(args.cache_root, records[index])
+        item_endpoint = continuous_fixed_target(
+            item_target,
+            item_target_index,
+            range_axis_m=axes.range_m,
+            azimuth_axis_rad=axes.azimuth_rad,
+            elevation_axis_rad=axes.elevation_rad,
+            point_count=P_R_F_POINT_COUNT,
+        )
+        if item_endpoint.lifting is None:
+            raise AssertionError("Sparse P-RF target bypassed continuous lifting")
+        sparse_endpoint_inventory.append(
+            {
+                **item,
+                "endpoint_count": int(item_endpoint.xyz_m.shape[0]),
+                "endpoint_hashes": item_endpoint.hashes,
+                "lifting": item_endpoint.lifting,
+            }
+        )
+        if index == selected_index:
+            endpoint = item_endpoint
+    if endpoint is None or endpoint.rae_indices is None or endpoint.lifting is None:
+        raise AssertionError("P-RF preflight did not construct the selected sparse endpoint")
+
+    dense_reference_index = max(
+        range(len(inventory)),
+        key=lambda index: (
+            inventory[index]["unique_xyz_count"],
+            inventory[index]["target_count"],
+            -index,
+        ),
+    )
+    dense_reference_target = load_target(
+        args.cache_root,
+        records[dense_reference_index],
+    )
+    dense_reference_indices = load_target_rae_index(
+        args.cache_root,
+        records[dense_reference_index],
+    )
+    legacy_dense_endpoint = canonical_fixed_target(
+        dense_reference_target,
         point_count=P_R_F_POINT_COUNT,
     )
+    compatible_dense_endpoint = continuous_fixed_target(
+        dense_reference_target,
+        dense_reference_indices,
+        range_axis_m=axes.range_m,
+        azimuth_axis_rad=axes.azimuth_rad,
+        elevation_axis_rad=axes.elevation_rad,
+        point_count=P_R_F_POINT_COUNT,
+    )
+    legacy_dense_endpoint_unchanged = (
+        torch.equal(legacy_dense_endpoint.xyz_m, compatible_dense_endpoint.xyz_m)
+        and torch.equal(
+            legacy_dense_endpoint.confidence,
+            compatible_dense_endpoint.confidence,
+        )
+        and torch.equal(
+            legacy_dense_endpoint.source_indices,
+            compatible_dense_endpoint.source_indices,
+        )
+        and legacy_dense_endpoint.hashes == compatible_dense_endpoint.hashes
+        and compatible_dense_endpoint.lifting is None
+    )
 
-    axes = load_axes(args.data_root / "resources")
     range_bounds_m = (
         float(np.min(axes.range_m)),
         float(np.max(axes.range_m)),
@@ -295,9 +370,7 @@ def main() -> None:
             transform.decode_xyz(target_state_cpu) - endpoint.xyz_m
         ).abs().max().item()
     )
-    selected_target_rae_index = torch.from_numpy(
-        load_target_rae_index(args.cache_root, selected_record)
-    )[endpoint.source_indices]
+    selected_target_rae_index = endpoint.rae_indices
     transport_started = time.monotonic()
     transport = hierarchical_one_to_one_transport(
         source_state_cpu,
@@ -424,11 +497,45 @@ def main() -> None:
         matched_output["confidence_logit"],
         matched_output["confidence"],
     )
+    sparse_target_count = sum(
+        item["unique_xyz_count"] < P_R_F_POINT_COUNT for item in inventory
+    )
     checks = {
         "exact_10000_output": (
             tuple(matched_output["xyz_m"].shape)
             == (1, P_R_F_POINT_COUNT, 3)
         ),
+        "selected_sparse_endpoint_exact_10000": (
+            tuple(endpoint.xyz_m.shape) == (P_R_F_POINT_COUNT, 3)
+            and tuple(selected_target_rae_index.shape)
+            == (P_R_F_POINT_COUNT, 3)
+        ),
+        "all_sparse_train_validation_frames_lift_to_exact_10000": (
+            len(sparse_endpoint_inventory) == sparse_target_count
+            and all(
+                item["endpoint_count"] == P_R_F_POINT_COUNT
+                for item in sparse_endpoint_inventory
+            )
+        ),
+        "selected_lifting_exercises_sub_10000_target": (
+            endpoint.lifting["raw_unique_count"] < P_R_F_POINT_COUNT
+            and endpoint.lifting["lifted_count"] > 0
+        ),
+        "selected_lifting_certifies_5cm_euclidean_spacing": (
+            endpoint.lifting["minimum_spacing_contract_m"] == 0.05
+            and endpoint.lifting["minimum_pair_distance_m"] >= 0.05
+        ),
+        "selected_lifting_stays_in_observed_rae_cells": (
+            endpoint.lifting["used_rae_cell_count"]
+            <= endpoint.lifting["occupied_rae_cell_count"]
+        ),
+        "selected_doppler_labels_trace_to_current_cube_cells": (
+            endpoint.lifting["doppler_label_source"]
+            == "current_frame_cube_spectrum_at_endpoint_rae_index"
+            and tuple(target_doppler_distribution.shape)
+            == (P_R_F_POINT_COUNT, 64)
+        ),
+        "legacy_dense_endpoint_byte_identical": legacy_dense_endpoint_unchanged,
         "all_outputs_finite": all(tensor_is_finite(value) for value in tensor_outputs),
         "one_to_one_target_assignment": (
             torch.equal(
@@ -509,6 +616,8 @@ def main() -> None:
             "selected_cache_sha256": sha256(
                 cache_path(args.cache_root, selected_record)
             ),
+            "sparse_endpoint_inventory": sparse_endpoint_inventory,
+            "dense_compatibility_reference": inventory[dense_reference_index],
             "wrong_cube_frame": inventory[wrong_index],
             "wrong_cube_path": str(
                 cube_path(args.data_root, wrong_record).resolve()
@@ -526,6 +635,8 @@ def main() -> None:
             "source_unit_sha256": array_sha256(source_unit),
             "source_state_sha256": array_sha256(source_state_cpu),
             "target_hashes": endpoint.hashes,
+            "target_lifting": endpoint.lifting,
+            "dense_compatibility_target_hashes": legacy_dense_endpoint.hashes,
             "target_round_trip_max_error_m": target_round_trip_max_error_m,
             "transport": {
                 "block_size": transport.block_size,

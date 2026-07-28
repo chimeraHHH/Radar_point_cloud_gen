@@ -288,6 +288,11 @@ class FixedTargetEndpoint:
     confidence: torch.Tensor
     source_indices: torch.Tensor
     hashes: dict[str, str]
+    rae_indices: torch.Tensor | None = None
+    is_lifted: torch.Tensor | None = None
+    tangent_source_indices: torch.Tensor | None = None
+    tangent_offset_uv_m: torch.Tensor | None = None
+    lifting: dict[str, object] | None = None
 
 
 def canonical_fixed_target(
@@ -297,9 +302,10 @@ def canonical_fixed_target(
 ) -> FixedTargetEndpoint:
     """Select a deterministic unique endpoint without replacement.
 
-    This is a preflight target adapter, not the final continuous target-lifting
-    algorithm.  It refuses insufficient unique support rather than copying
-    points.  Evenly sampling a stable Morton order avoids input-order leakage.
+    This compatibility path refuses insufficient unique support rather than
+    copying points. Evenly sampling a stable Morton order avoids input-order
+    leakage. ``continuous_fixed_target`` calls it unchanged whenever enough
+    original unique points are available.
     """
 
     if isinstance(target_xyz_confidence, torch.Tensor):
@@ -342,6 +348,408 @@ def canonical_fixed_target(
             "xyz_sha256": array_sha256(xyz),
             "confidence_sha256": array_sha256(confidence),
             "source_indices_sha256": array_sha256(indices),
+        },
+    )
+
+
+def _strict_axis(values: np.ndarray | torch.Tensor, name: str) -> np.ndarray:
+    if isinstance(values, torch.Tensor):
+        values = values.detach().cpu().numpy()
+    axis = np.asarray(values, dtype=np.float64).reshape(-1)
+    if axis.size < 2 or not np.isfinite(axis).all():
+        raise ValueError(f"{name} must contain at least two finite values")
+    if not np.all(np.diff(axis) > 0.0):
+        raise ValueError(f"{name} must be strictly increasing")
+    return axis
+
+
+def _nearest_axis_indices(axis: np.ndarray, query: np.ndarray) -> np.ndarray:
+    right = np.searchsorted(axis, query, side="left")
+    right = np.clip(right, 0, axis.size - 1)
+    left = np.clip(right - 1, 0, axis.size - 1)
+    use_left = np.abs(query - axis[left]) <= np.abs(axis[right] - query)
+    return np.where(use_left, left, right).astype(np.int64)
+
+
+def _xyz_to_rae_indices(
+    xyz_m: np.ndarray,
+    *,
+    range_axis_m: np.ndarray,
+    azimuth_axis_rad: np.ndarray,
+    elevation_axis_rad: np.ndarray,
+) -> np.ndarray:
+    xyz = np.asarray(xyz_m, dtype=np.float64)
+    radius = np.linalg.norm(xyz, axis=1)
+    azimuth = np.arctan2(xyz[:, 1], xyz[:, 0])
+    elevation = np.arcsin(
+        np.divide(
+            xyz[:, 2],
+            radius,
+            out=np.zeros_like(radius),
+            where=radius > 0.0,
+        ).clip(-1.0, 1.0)
+    )
+    return np.column_stack(
+        (
+            _nearest_axis_indices(range_axis_m, radius),
+            _nearest_axis_indices(azimuth_axis_rad, azimuth),
+            _nearest_axis_indices(elevation_axis_rad, elevation),
+        )
+    )
+
+
+def _orient_tangent_basis(basis: np.ndarray) -> np.ndarray:
+    oriented = np.asarray(basis, dtype=np.float64).copy()
+    for dimension in range(oriented.shape[1]):
+        pivot = int(np.argmax(np.abs(oriented[:, dimension])))
+        if oriented[pivot, dimension] < 0.0:
+            oriented[:, dimension] *= -1.0
+    return oriented
+
+
+def continuous_fixed_target(
+    target_xyz_confidence: np.ndarray | torch.Tensor,
+    target_rae_index: np.ndarray | torch.Tensor,
+    *,
+    range_axis_m: np.ndarray | torch.Tensor,
+    azimuth_axis_rad: np.ndarray | torch.Tensor,
+    elevation_axis_rad: np.ndarray | torch.Tensor,
+    point_count: int = P_R_F_POINT_COUNT,
+    minimum_spacing_m: float = 0.05,
+    tangent_neighbor_count: int = 12,
+    minimum_tangent_support: int = 6,
+    tangent_neighbor_radius_m: float = 1.5,
+    maximum_patch_radius_m: float = 0.6,
+    patch_neighbor_fraction: float = 0.6,
+    maximum_planarity_ratio: float = 0.25,
+) -> FixedTargetEndpoint:
+    """Lift sparse observed target support to a fixed-cardinality endpoint.
+
+    The sparse path never opens an unobserved RAE cell. Each synthetic point is
+    a bounded offset on a locally fitted tangent plane, anchored to an observed
+    target point, and receives its Doppler label from the current-frame Cube at
+    the endpoint RAE index. A global Euclidean spacing gate certifies the 5 cm
+    capacity. If these constraints cannot supply ``point_count`` points, the
+    function fails instead of copying points or widening support.
+
+    Frames with at least ``point_count`` exact unique XYZ samples use
+    ``canonical_fixed_target`` directly, preserving the legacy endpoint bytes.
+    """
+
+    if isinstance(target_xyz_confidence, torch.Tensor):
+        target_xyz_confidence = target_xyz_confidence.detach().cpu().numpy()
+    if isinstance(target_rae_index, torch.Tensor):
+        target_rae_index = target_rae_index.detach().cpu().numpy()
+    target = np.asarray(target_xyz_confidence, dtype=np.float32)
+    target_indices = np.asarray(target_rae_index, dtype=np.int64)
+    if target.ndim != 2 or target.shape[1] != 4 or target.shape[0] == 0:
+        raise ValueError("Continuous target input must have non-empty shape (N,4)")
+    if target_indices.shape != (target.shape[0], 3):
+        raise ValueError("Continuous target RAE indices must have shape (N,3)")
+    if not np.isfinite(target).all():
+        raise ValueError("Continuous target values must be finite")
+    if point_count <= 0:
+        raise ValueError("Continuous target point count must be positive")
+    if not math.isfinite(minimum_spacing_m) or minimum_spacing_m <= 0.0:
+        raise ValueError("Continuous target spacing must be finite and positive")
+    if tangent_neighbor_count < minimum_tangent_support:
+        raise ValueError("Tangent neighbor count is smaller than minimum support")
+    if minimum_tangent_support < 3:
+        raise ValueError("Tangent fitting requires at least three support points")
+    positive_parameters = {
+        "tangent_neighbor_radius_m": tangent_neighbor_radius_m,
+        "maximum_patch_radius_m": maximum_patch_radius_m,
+        "patch_neighbor_fraction": patch_neighbor_fraction,
+        "maximum_planarity_ratio": maximum_planarity_ratio,
+    }
+    if any(not math.isfinite(value) or value <= 0.0 for value in positive_parameters.values()):
+        raise ValueError("Continuous target lifting parameters must be finite and positive")
+
+    range_axis = _strict_axis(range_axis_m, "Range axis")
+    azimuth_axis = _strict_axis(azimuth_axis_rad, "Azimuth axis")
+    elevation_axis = _strict_axis(elevation_axis_rad, "Elevation axis")
+    recomputed_indices = _xyz_to_rae_indices(
+        target[:, :3],
+        range_axis_m=range_axis,
+        azimuth_axis_rad=azimuth_axis,
+        elevation_axis_rad=elevation_axis,
+    )
+    if not np.array_equal(recomputed_indices, target_indices):
+        mismatch_count = int(np.any(recomputed_indices != target_indices, axis=1).sum())
+        raise ValueError(
+            f"Continuous target has {mismatch_count} XYZ/RAE provenance mismatches"
+        )
+
+    unique_xyz, first = np.unique(target[:, :3], axis=0, return_index=True)
+    if unique_xyz.shape[0] >= point_count:
+        return canonical_fixed_target(target, point_count=point_count)
+
+    try:
+        from scipy.spatial import cKDTree
+    except ImportError as error:
+        raise RuntimeError(
+            "Continuous target lifting requires scipy.spatial.cKDTree"
+        ) from error
+
+    first = first.astype(np.int64, copy=False)
+    unique_xyz = unique_xyz.astype(np.float64, copy=False)
+    unique_confidence = target[first, 3].astype(np.float32, copy=False)
+    unique_rae = target_indices[first]
+    occupied_cells = {tuple(index) for index in unique_rae.tolist()}
+    point_tree = cKDTree(unique_xyz)
+    neighbor_count = min(tangent_neighbor_count, unique_xyz.shape[0])
+    neighbor_distances, neighbor_indices = point_tree.query(
+        unique_xyz,
+        k=neighbor_count,
+    )
+    neighbor_distances = np.atleast_2d(neighbor_distances)
+    neighbor_indices = np.atleast_2d(neighbor_indices)
+    if unique_xyz.shape[0] == 1:
+        neighbor_distances = neighbor_distances.reshape(1, 1)
+        neighbor_indices = neighbor_indices.reshape(1, 1)
+
+    selected_xyz: list[np.ndarray] = []
+    selected_confidence: list[float] = []
+    selected_parent: list[int] = []
+    selected_rae: list[np.ndarray] = []
+    selected_lifted: list[bool] = []
+    selected_support: list[np.ndarray] = []
+    selected_offset: list[np.ndarray] = []
+    spatial_buckets: dict[tuple[int, int, int], list[int]] = {}
+    accepted_spacing_m = minimum_spacing_m + 1e-6
+    accepted_spacing_squared = accepted_spacing_m**2
+    attempted_candidates = 0
+    rejected_spacing = 0
+    rejected_unoccupied_cell = 0
+
+    def accept_candidate(
+        xyz: np.ndarray,
+        *,
+        parent_unique_index: int,
+        rae_index: np.ndarray,
+        lifted: bool,
+        support_unique_indices: np.ndarray,
+        tangent_offset_uv_m: np.ndarray,
+    ) -> bool:
+        nonlocal rejected_spacing
+        candidate = np.asarray(xyz, dtype=np.float32).astype(np.float64)
+        bucket = tuple(np.floor(candidate / accepted_spacing_m).astype(np.int64))
+        for delta_x in (-1, 0, 1):
+            for delta_y in (-1, 0, 1):
+                for delta_z in (-1, 0, 1):
+                    neighbor_bucket = (
+                        bucket[0] + delta_x,
+                        bucket[1] + delta_y,
+                        bucket[2] + delta_z,
+                    )
+                    for selected_index in spatial_buckets.get(neighbor_bucket, ()):
+                        difference = candidate - selected_xyz[selected_index]
+                        if float(difference @ difference) < accepted_spacing_squared:
+                            rejected_spacing += 1
+                            return False
+        support = np.full(tangent_neighbor_count, -1, dtype=np.int64)
+        source_support = first[support_unique_indices]
+        support[: source_support.size] = source_support
+        selected_index = len(selected_xyz)
+        selected_xyz.append(candidate)
+        selected_confidence.append(float(unique_confidence[parent_unique_index]))
+        selected_parent.append(int(first[parent_unique_index]))
+        selected_rae.append(np.asarray(rae_index, dtype=np.int64))
+        selected_lifted.append(bool(lifted))
+        selected_support.append(support)
+        selected_offset.append(np.asarray(tangent_offset_uv_m, dtype=np.float32))
+        spatial_buckets.setdefault(bucket, []).append(selected_index)
+        return True
+
+    parent_codes = morton_codes(unique_xyz)
+    parent_order = np.lexsort(
+        (
+            unique_xyz[:, 2],
+            unique_xyz[:, 1],
+            unique_xyz[:, 0],
+            parent_codes,
+        )
+    )
+    for parent in parent_order:
+        accept_candidate(
+            unique_xyz[parent],
+            parent_unique_index=int(parent),
+            rae_index=unique_rae[parent],
+            lifted=False,
+            support_unique_indices=np.asarray([parent], dtype=np.int64),
+            tangent_offset_uv_m=np.zeros(2, dtype=np.float32),
+        )
+
+    observed_selected_count = len(selected_xyz)
+    tangent_eligible_parent_count = 0
+    candidate_pitch_m = minimum_spacing_m / 2.0
+    for parent in parent_order:
+        distances = neighbor_distances[parent]
+        support_mask = distances <= tangent_neighbor_radius_m + 1e-12
+        support_indices = neighbor_indices[parent][support_mask].astype(
+            np.int64,
+            copy=False,
+        )
+        support_distances = distances[support_mask]
+        if support_indices.size < minimum_tangent_support:
+            continue
+        centered = unique_xyz[support_indices] - unique_xyz[parent]
+        scale = max(float(support_distances[-1]), np.finfo(np.float64).eps)
+        weights = np.exp(-0.5 * (support_distances / scale) ** 2)
+        covariance = (
+            (centered * weights[:, None]).T @ centered
+        ) / max(float(weights.sum()), np.finfo(np.float64).eps)
+        eigenvalues, eigenvectors = np.linalg.eigh(covariance)
+        order = np.argsort(eigenvalues)[::-1]
+        eigenvalues = eigenvalues[order]
+        eigenvectors = eigenvectors[:, order]
+        if eigenvalues[1] <= 1e-8:
+            continue
+        planarity_ratio = float(eigenvalues[2] / eigenvalues[1])
+        if planarity_ratio > maximum_planarity_ratio:
+            continue
+        tangent_basis = _orient_tangent_basis(eigenvectors[:, :2])
+        patch_radius = min(
+            maximum_patch_radius_m,
+            patch_neighbor_fraction * float(support_distances[-1]),
+        )
+        if patch_radius < candidate_pitch_m:
+            continue
+        tangent_eligible_parent_count += 1
+        lattice_radius = int(math.floor(patch_radius / candidate_pitch_m))
+        offsets = []
+        for first_offset in range(-lattice_radius, lattice_radius + 1):
+            for second_offset in range(-lattice_radius, lattice_radius + 1):
+                if first_offset == 0 and second_offset == 0:
+                    continue
+                squared_index_radius = first_offset**2 + second_offset**2
+                if (
+                    squared_index_radius * candidate_pitch_m**2
+                    <= patch_radius**2 + 1e-12
+                ):
+                    offsets.append(
+                        (squared_index_radius, first_offset, second_offset)
+                    )
+        offsets.sort()
+        for _, first_offset, second_offset in offsets:
+            attempted_candidates += 1
+            offset_uv = candidate_pitch_m * np.asarray(
+                [first_offset, second_offset],
+                dtype=np.float64,
+            )
+            candidate = (
+                unique_xyz[parent]
+                + tangent_basis[:, 0] * offset_uv[0]
+                + tangent_basis[:, 1] * offset_uv[1]
+            )
+            candidate = np.asarray(candidate, dtype=np.float32).astype(np.float64)
+            candidate_rae = _xyz_to_rae_indices(
+                candidate.reshape(1, 3),
+                range_axis_m=range_axis,
+                azimuth_axis_rad=azimuth_axis,
+                elevation_axis_rad=elevation_axis,
+            )[0]
+            if tuple(candidate_rae) not in occupied_cells:
+                rejected_unoccupied_cell += 1
+                continue
+            if accept_candidate(
+                candidate,
+                parent_unique_index=int(parent),
+                rae_index=candidate_rae,
+                lifted=True,
+                support_unique_indices=support_indices,
+                tangent_offset_uv_m=offset_uv,
+            ) and len(selected_xyz) == point_count:
+                break
+        if len(selected_xyz) == point_count:
+            break
+
+    if len(selected_xyz) < point_count:
+        raise ValueError(
+            "Continuous target certified 5 cm capacity "
+            f"{len(selected_xyz)} is below required {point_count}; "
+            "refusing to widen observed RAE support"
+        )
+
+    xyz = np.ascontiguousarray(
+        np.asarray(selected_xyz[:point_count], dtype=np.float32)
+    )
+    confidence = np.ascontiguousarray(
+        np.asarray(selected_confidence[:point_count], dtype=np.float32)
+    )
+    source_indices = np.ascontiguousarray(
+        np.asarray(selected_parent[:point_count], dtype=np.int64)
+    )
+    rae_indices = np.ascontiguousarray(
+        np.asarray(selected_rae[:point_count], dtype=np.int64)
+    )
+    lifted_mask = np.ascontiguousarray(
+        np.asarray(selected_lifted[:point_count], dtype=np.bool_)
+    )
+    tangent_sources = np.ascontiguousarray(
+        np.asarray(selected_support[:point_count], dtype=np.int64)
+    )
+    tangent_offsets = np.ascontiguousarray(
+        np.asarray(selected_offset[:point_count], dtype=np.float32)
+    )
+    final_tree = cKDTree(xyz.astype(np.float64))
+    nearest_distance = final_tree.query(xyz.astype(np.float64), k=2)[0][:, 1]
+    minimum_pair_distance_m = float(nearest_distance.min())
+    if minimum_pair_distance_m + 1e-9 < minimum_spacing_m:
+        raise AssertionError("Continuous target violated its Euclidean spacing contract")
+    if not all(tuple(index) in occupied_cells for index in rae_indices.tolist()):
+        raise AssertionError("Continuous target opened an unobserved RAE cell")
+
+    hashes = {
+        "xyz_sha256": array_sha256(xyz),
+        "confidence_sha256": array_sha256(confidence),
+        "source_indices_sha256": array_sha256(source_indices),
+        "doppler_rae_indices_sha256": array_sha256(rae_indices),
+        "lifted_mask_sha256": array_sha256(lifted_mask),
+        "tangent_source_indices_sha256": array_sha256(tangent_sources),
+        "tangent_offset_uv_m_sha256": array_sha256(tangent_offsets),
+    }
+    return FixedTargetEndpoint(
+        xyz_m=torch.from_numpy(xyz),
+        confidence=torch.from_numpy(confidence),
+        source_indices=torch.from_numpy(source_indices),
+        hashes=hashes,
+        rae_indices=torch.from_numpy(rae_indices),
+        is_lifted=torch.from_numpy(lifted_mask),
+        tangent_source_indices=torch.from_numpy(tangent_sources),
+        tangent_offset_uv_m=torch.from_numpy(tangent_offsets),
+        lifting={
+            "mode": "local_tangent_occupied_rae_lifting",
+            "raw_input_count": int(target.shape[0]),
+            "raw_unique_count": int(unique_xyz.shape[0]),
+            "observed_selected_count": observed_selected_count,
+            "lifted_count": int(lifted_mask.sum()),
+            "exact_point_count": point_count,
+            "minimum_spacing_contract_m": minimum_spacing_m,
+            "minimum_pair_distance_m": minimum_pair_distance_m,
+            "occupied_rae_cell_count": len(occupied_cells),
+            "used_rae_cell_count": len({tuple(index) for index in rae_indices.tolist()}),
+            "tangent_eligible_parent_count": tangent_eligible_parent_count,
+            "attempted_lifted_candidate_count": attempted_candidates,
+            "rejected_spacing_candidate_count": rejected_spacing,
+            "rejected_unoccupied_cell_candidate_count": rejected_unoccupied_cell,
+            "tangent_neighbor_count": tangent_neighbor_count,
+            "minimum_tangent_support": minimum_tangent_support,
+            "tangent_neighbor_radius_m": tangent_neighbor_radius_m,
+            "maximum_patch_radius_m": maximum_patch_radius_m,
+            "patch_neighbor_fraction": patch_neighbor_fraction,
+            "maximum_planarity_ratio": maximum_planarity_ratio,
+            "candidate_pitch_m": candidate_pitch_m,
+            "geometry_support_source": (
+                "observed_target_local_weighted_pca_with_occupied_rae_cell_gate"
+            ),
+            "confidence_source": "anchored_observed_target_point",
+            "doppler_label_source": (
+                "current_frame_cube_spectrum_at_endpoint_rae_index"
+            ),
+            "capacity_semantics": (
+                "certified_lower_bound_reached_exact_point_count"
+            ),
         },
     )
 

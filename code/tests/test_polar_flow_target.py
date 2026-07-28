@@ -5,6 +5,7 @@ import torch
 from cube_dense.polar_flow_target import (
     PolarLogitTransform,
     canonical_fixed_target,
+    continuous_fixed_target,
     fit_empirical_range_cdf,
     fixed_scrambled_sobol_unit,
     hierarchical_one_to_one_transport,
@@ -19,6 +20,48 @@ def transform() -> PolarLogitTransform:
         azimuth_bounds_rad=(-0.8, 0.8),
         elevation_bounds_rad=(-0.25, 0.25),
     )
+
+
+def target_axes() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    return (
+        np.linspace(1.0, 30.0, 117, dtype=np.float64),
+        np.linspace(-1.0, 1.0, 161, dtype=np.float64),
+        np.linspace(-0.4, 0.4, 81, dtype=np.float64),
+    )
+
+
+def nearest_indices(
+    xyz: np.ndarray,
+    axes: tuple[np.ndarray, np.ndarray, np.ndarray],
+) -> np.ndarray:
+    radius = np.linalg.norm(xyz, axis=1)
+    azimuth = np.arctan2(xyz[:, 1], xyz[:, 0])
+    elevation = np.arcsin(xyz[:, 2] / np.maximum(radius, 1e-8))
+    coordinates = (radius, azimuth, elevation)
+    return np.column_stack(
+        [
+            np.abs(axis[None, :] - values[:, None]).argmin(axis=1)
+            for axis, values in zip(axes, coordinates, strict=True)
+        ]
+    ).astype(np.int64)
+
+
+def planar_sparse_target() -> tuple[np.ndarray, np.ndarray]:
+    first, second = np.meshgrid(
+        np.linspace(-0.45, 0.45, 7),
+        np.linspace(-0.30, 0.30, 7),
+        indexing="ij",
+    )
+    xyz = np.column_stack(
+        (
+            np.full(first.size, 10.0),
+            first.reshape(-1),
+            second.reshape(-1),
+        )
+    ).astype(np.float32)
+    confidence = np.linspace(0.3, 0.9, xyz.shape[0], dtype=np.float32)
+    target = np.column_stack((xyz, confidence))
+    return target, nearest_indices(xyz, target_axes())
 
 
 def test_scrambled_sobol_source_is_fixed_and_open_unit() -> None:
@@ -110,6 +153,133 @@ def test_canonical_target_refuses_copy_fill() -> None:
 
     with pytest.raises(ValueError, match="without replacement"):
         canonical_fixed_target(target, point_count=16)
+
+
+def test_continuous_target_preserves_legacy_dense_endpoint() -> None:
+    generator = np.random.default_rng(31)
+    xyz = generator.normal(size=(80, 3)).astype(np.float32)
+    xyz[:, 0] += 12.0
+    target = np.column_stack(
+        (xyz, generator.uniform(size=80).astype(np.float32))
+    )
+    axes = target_axes()
+    target_index = nearest_indices(xyz, axes)
+
+    legacy = canonical_fixed_target(target, point_count=32)
+    endpoint = continuous_fixed_target(
+        target,
+        target_index,
+        range_axis_m=axes[0],
+        azimuth_axis_rad=axes[1],
+        elevation_axis_rad=axes[2],
+        point_count=32,
+    )
+
+    torch.testing.assert_close(endpoint.xyz_m, legacy.xyz_m, rtol=0.0, atol=0.0)
+    torch.testing.assert_close(
+        endpoint.confidence,
+        legacy.confidence,
+        rtol=0.0,
+        atol=0.0,
+    )
+    assert torch.equal(endpoint.source_indices, legacy.source_indices)
+    assert endpoint.hashes == legacy.hashes
+    assert endpoint.rae_indices is None
+    assert endpoint.lifting is None
+
+
+def test_continuous_target_lifts_sparse_planar_support_deterministically() -> None:
+    target, target_index = planar_sparse_target()
+    axes = target_axes()
+
+    first = continuous_fixed_target(
+        target,
+        target_index,
+        range_axis_m=axes[0],
+        azimuth_axis_rad=axes[1],
+        elevation_axis_rad=axes[2],
+        point_count=64,
+        minimum_spacing_m=0.05,
+    )
+    second = continuous_fixed_target(
+        target[::-1].copy(),
+        target_index[::-1].copy(),
+        range_axis_m=axes[0],
+        azimuth_axis_rad=axes[1],
+        elevation_axis_rad=axes[2],
+        point_count=64,
+        minimum_spacing_m=0.05,
+    )
+
+    assert first.xyz_m.shape == (64, 3)
+    assert first.rae_indices is not None
+    assert first.rae_indices.shape == (64, 3)
+    assert first.is_lifted is not None
+    assert bool(first.is_lifted.any())
+    torch.testing.assert_close(first.xyz_m, second.xyz_m, rtol=0.0, atol=0.0)
+    assert torch.equal(first.rae_indices, second.rae_indices)
+
+    distances = torch.cdist(first.xyz_m, first.xyz_m)
+    distances.fill_diagonal_(float("inf"))
+    assert float(distances.min().item()) >= 0.05 - 1e-6
+
+    occupied = {tuple(index) for index in target_index.tolist()}
+    assert all(tuple(index) in occupied for index in first.rae_indices.tolist())
+    assert first.lifting is not None
+    assert first.lifting["mode"] == "local_tangent_occupied_rae_lifting"
+    assert first.lifting["doppler_label_source"] == (
+        "current_frame_cube_spectrum_at_endpoint_rae_index"
+    )
+    assert first.lifting["exact_point_count"] == 64
+    assert first.lifting["minimum_pair_distance_m"] >= 0.05 - 1e-6
+    assert first.hashes["xyz_sha256"] == second.hashes["xyz_sha256"]
+    assert (
+        first.hashes["doppler_rae_indices_sha256"]
+        == second.hashes["doppler_rae_indices_sha256"]
+    )
+
+
+def test_continuous_target_provenance_tracks_parent_and_tangent_support() -> None:
+    target, target_index = planar_sparse_target()
+    axes = target_axes()
+    endpoint = continuous_fixed_target(
+        target,
+        target_index,
+        range_axis_m=axes[0],
+        azimuth_axis_rad=axes[1],
+        elevation_axis_rad=axes[2],
+        point_count=64,
+    )
+
+    assert endpoint.is_lifted is not None
+    assert endpoint.tangent_source_indices is not None
+    assert endpoint.tangent_offset_uv_m is not None
+    lifted = endpoint.is_lifted
+    parents = endpoint.source_indices[lifted]
+    supports = endpoint.tangent_source_indices[lifted]
+    offsets = endpoint.tangent_offset_uv_m[lifted]
+
+    assert torch.all((parents >= 0) & (parents < target.shape[0]))
+    assert torch.all(supports[:, 0] >= 0)
+    assert torch.all((supports >= -1) & (supports < target.shape[0]))
+    assert torch.all(torch.linalg.vector_norm(offsets, dim=1) <= 0.6 + 1e-6)
+    assert torch.all(torch.linalg.vector_norm(offsets, dim=1) > 0.0)
+
+
+def test_continuous_target_refuses_unsupported_capacity() -> None:
+    target = np.array([[10.0, 0.0, 0.0, 0.8]], dtype=np.float32)
+    axes = target_axes()
+    target_index = nearest_indices(target[:, :3], axes)
+
+    with pytest.raises(ValueError, match="capacity"):
+        continuous_fixed_target(
+            target,
+            target_index,
+            range_axis_m=axes[0],
+            azimuth_axis_rad=axes[1],
+            elevation_axis_rad=axes[2],
+            point_count=4,
+        )
 
 
 def test_hierarchical_transport_is_deterministic_one_to_one() -> None:
