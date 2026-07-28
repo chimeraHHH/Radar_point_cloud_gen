@@ -318,9 +318,17 @@ def main() -> None:
         log_center=log_center,
         log_scale=log_scale,
     ).to(device)
-    cube = torch.from_numpy(load_tesseract(cube_path(args.data_root, selected_record)))
+    cube = torch.from_numpy(
+        load_tesseract(cube_path(args.data_root, selected_record)).astype(
+            np.float32,
+            copy=False,
+        )
+    )
     wrong_cube = torch.from_numpy(
-        load_tesseract(cube_path(args.data_root, wrong_record))
+        load_tesseract(cube_path(args.data_root, wrong_record)).astype(
+            np.float32,
+            copy=False,
+        )
     )
     cube = cube.unsqueeze(0).to(device, non_blocking=True)
     wrong_cube = wrong_cube.unsqueeze(0).to(device, non_blocking=True)
