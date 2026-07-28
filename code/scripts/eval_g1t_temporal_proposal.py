@@ -24,6 +24,7 @@ from cube_dense.temporal_dataset import KRadarTemporalDataset  # noqa: E402
 from eval.dense_geometry import (  # noqa: E402
     aggregate_geometry_reports,
     geometry_report,
+    nearest_distance,
 )
 from eval.g1t_temporal_proposal import (  # noqa: E402
     ARM_NAMES,
@@ -43,7 +44,7 @@ from models.cube_doppler import query_cube_spectrum  # noqa: E402
 from models.temporal_baselines import analytic_static_center  # noqa: E402
 
 
-PROTOCOL = "g1t_no_train_temporal_proposal_v1"
+PROTOCOL = "g1t_no_train_temporal_proposal_v2_corrected_geometry"
 SOURCE_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 POINT_COUNT = 10_000
 HISTORY_FRAMES = 4
@@ -133,17 +134,26 @@ def range_slice_geometry(
             target_range >= near_boundary_m,
         ),
     ):
-        if not prediction_mask.any() or not target_mask.any():
+        if not target_mask.any():
             continue
-        sliced = geometry_report(
-            prediction_xyz[prediction_mask],
-            target_xyz[target_mask],
-            target_weight=target_weight[target_mask],
-            distance_bins_m=(),
-        )
-        for key, value in sliced.items():
-            if isinstance(value, (int, float)):
-                report[f"{label}_{key}"] = value
+        if prediction_mask.any():
+            sliced = geometry_report(
+                prediction_xyz[prediction_mask],
+                target_xyz[target_mask],
+                target_weight=target_weight[target_mask],
+                distance_bins_m=(),
+            )
+            for key, value in sliced.items():
+                if isinstance(value, (int, float)):
+                    report[f"{label}_{key}"] = value
+        else:
+            sliced_target = target_xyz[target_mask]
+            sliced_weight = target_weight[target_mask].clamp_min(0.0)
+            distance = nearest_distance(sliced_target, prediction_xyz)
+            denominator = sliced_weight.sum().clamp_min(1e-8)
+            report[f"{label}_completeness_mean_distance_m"] = float(
+                ((distance * sliced_weight).sum() / denominator).item()
+            )
     return report
 
 
@@ -299,7 +309,7 @@ def promotion_decision(arms: dict[str, dict]) -> dict:
         "chamfer": "geometry.chamfer_m",
         "completeness": "geometry.completeness_mean_distance_m",
         "far_completeness": (
-            "near_far_geometry.far_completeness_mean_distance_m"
+            "geometry.range_60_120m_completeness_mean_distance_m"
         ),
         "outlier": "geometry.outlier_fraction_2m",
         "duplicate": "duplicates.duplicate_fraction_0p05m",
@@ -531,6 +541,19 @@ def main() -> None:
         }
         for arm, frames in frames_by_arm.items()
     }
+    far_metric = "range_60_120m_completeness_mean_distance_m"
+    far_target_frame_count = sum(
+        far_metric in frame["geometry"]
+        for frame in frames_by_arm["t0_current"]
+    )
+    far_sample_counts = {
+        arm: int(
+            arms[arm]["aggregate"]["frame_level"]["geometry"][far_metric][
+                "sample_count"
+            ]
+        )
+        for arm in ARM_NAMES
+    }
     checks = {
         "complete_arm_matrix": set(arms) == set(ARM_NAMES),
         "same_evaluation_frames": all(
@@ -557,6 +580,13 @@ def main() -> None:
         "lidar_or_gt_selection_accessed": False,
         "test_partition_accessed": False,
         "finite_metrics": finite_document(arms),
+        "corrected_far_geometry_covers_every_target_bearing_frame": (
+            far_target_frame_count > 0
+            and all(
+                count == far_target_frame_count
+                for count in far_sample_counts.values()
+            )
+        ),
     }
     decision = promotion_decision(arms)
     document = {
@@ -565,6 +595,10 @@ def main() -> None:
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "configuration": {
             "source_commit": current_commit,
+            "dense_geometry_sha256": sha256(
+                Path(__file__).resolve().parents[1] / "eval/dense_geometry.py"
+            ),
+            "far_target_frame_censoring_fixed": True,
             "manifest": str(args.manifest.resolve()),
             "manifest_sha256": sha256(args.manifest),
             "partition": "validation",
@@ -579,6 +613,8 @@ def main() -> None:
             "learned_g1d_score": False,
             "evaluation_window_count": len(dataset.windows),
             "evaluation_frame_count": expected_evaluation_frames,
+            "far_target_frame_count": far_target_frame_count,
+            "far_metric_sample_counts": far_sample_counts,
             "device": args.device,
             "device_name": device_name,
             "torch_version": torch.__version__,

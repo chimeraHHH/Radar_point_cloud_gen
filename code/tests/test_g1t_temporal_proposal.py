@@ -10,6 +10,7 @@ from eval.g1t_temporal_proposal import (
     warp_history_source,
 )
 from models.cube_doppler import circular_mean
+from scripts.eval_g1t_temporal_proposal import range_slice_geometry
 
 
 def axes() -> tuple[torch.Tensor, ...]:
@@ -284,3 +285,14 @@ def test_t1_equals_t2_when_residual_doppler_is_zero() -> None:
         arms["t1_ego"].source_age_seconds,
         arms["t2_doppler"].source_age_seconds,
     )
+
+
+def test_range_slice_keeps_far_targets_when_prediction_has_no_far_points() -> None:
+    report = range_slice_geometry(
+        torch.tensor([[20.0, 0.0, 0.0]]),
+        torch.tensor([[80.0, 0.0, 0.0]]),
+        torch.ones(1),
+        60.0,
+    )
+
+    assert report["far_completeness_mean_distance_m"] == 60.0
