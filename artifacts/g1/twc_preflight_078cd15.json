@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "protocol": "twc_forced_temporal_synthetic_h200_preflight_v1",
+  "source_commit": "078cd1538172a224558330239615e8d9e8365ee6",
+  "source_hashes": {
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/078cd15/code/models/twc_temporal.py": "626cdae5e7ad5f26aca8638929cdcdddfcf05faa5c3b6679357d5cdc636ac181",
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/078cd15/code/losses/twc_physics.py": "a63375c145bf8efe967d7d5b0d54395785a284bf73aa79215ae51463a3ec6ae5",
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/078cd15/code/losses/wrong_condition.py": "292e43672ef6fc46ea70de4553aa5e8c000c4b15b12dbd10263ec74d3a933025",
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/078cd15/code/scripts/preflight_twc_temporal.py": "0bb1238bc0175709eecb98eb5a3c7d714088bf9f021b4f5474c965a8a6e7f0e9"
+  },
+  "seed": 20260716,
+  "runtime": {
+    "device": "cuda:0",
+    "device_name": "NVIDIA H200 NVL",
+    "torch_version": "2.12.1+cu130",
+    "elapsed_seconds": 0.40369279007427394,
+    "cuda_peak_allocated_bytes": 632871936,
+    "cuda_peak_reserved_bytes": 650117120
+  },
+  "model": {
+    "point_count": 10000,
+    "persistent_count": 7000,
+    "birth_count": 3000,
+    "parameter_count": 263497
+  },
+  "loss": {
+    "total": 3.067196846008301,
+    "wrong_condition_margin": 0.0,
+    "doppler_cross_entropy": 4.161463737487793,
+    "confidence_bce": 0.6694620847702026,
+    "inverse_radial": 1.9317142963409424,
+    "motion_cycle": 5.58059078548806e-13
+  },
+  "intervention_mean_abs_persistent_xyz_delta_m": {
+    "history_replacement": 0.12213630229234695,
+    "time_reversal": 0.40272074937820435,
+    "doppler_zero": 0.18175697326660156,
+    "doppler_sign": 0.36323949694633484,
+    "doppler_bin_roll": 0.15915578603744507
+  },
+  "gradients": {
+    "cube_nonzero_channel_count": 64,
+    "persistent_doppler_nonzero_row_count": 64,
+    "birth_doppler_nonzero_row_count": 64
+  },
+  "checks": {
+    "h200_device": true,
+    "exact_point_count": true,
+    "persistent_birth_split": true,
+    "persistent_source_ids_valid": true,
+    "birth_source_ids_are_sentinel": true,
+    "analytic_radial_displacement_present": true,
+    "tangential_projection": true,
+    "bounded_radial_correction": true,
+    "all_interventions_change_output": true,
+    "finite_loss": true,
+    "finite_nonzero_gradients": true,
+    "all_64_cube_channels_receive_gradient": true,
+    "all_64_persistent_doppler_rows_receive_gradient": true,
+    "all_64_birth_doppler_rows_receive_gradient": true,
+    "online_metadata": true,
+    "forecast_metadata": true
+  },
+  "passed": true
+}
