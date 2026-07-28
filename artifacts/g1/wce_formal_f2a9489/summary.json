@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "protocol": "g1_ra1_rald_wce_stage0_v1",
+  "source_commit": "f2a9489d40323d1ef45d85de958f4aea8126e1c8",
+  "smoke": false,
+  "best_epoch": 20,
+  "best_selection_score": 4.14521091307203,
+  "elapsed_seconds": 8182.474111770047,
+  "peak_allocated_bytes": 9142370304,
+  "peak_reserved_bytes": 9728688128,
+  "formal_long_training_was_started": true,
+  "doppler_head_implemented": false,
+  "test_partition_accessed": false
+}

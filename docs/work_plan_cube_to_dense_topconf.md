@@ -52,6 +52,8 @@
 
 > **2026-07-29 D-MHW birth radial-moment 标签 no-go：**source `e161be7` 对全部 740/160 direct-multi-horizon anchors 完成 future-LiDAR/track/ego 的 G-RM label-only 审计，future Cube 与 test 访问均为 0。坐标、符号和 provenance 契约通过，40 个动态 tracked windows 及 P5 box-center MAE=`0.1422 m/s` 也过门；但 overall valid coverage 仅 `4.487%`，三个时距分别为 `4.731/4.301/4.434%`，远低于 `75%/60%` 冻结门。未验证背景贡献约 3,391 万 invalid 点，不能事后按静态 ego motion 补标签。G-RM 的 500-update 属性训练关闭；D-MHW birth 回退为 A-NC，即只输出 `XYZ+confidence` 并标记 `doppler_valid=false`，64-bin Doppler 主张仅允许 persistent 点。
 
+> **2026-07-29 R-A1 RaLD-WCE 正式终局：**source `f2a9489` 完成冻结的 20-epoch H200 Stage-0，epoch 20 以 selection score=`4.1452` 被选中。结构门全部通过：matched/wrong 均 exact-10k、最小点距 `5.00008 cm`、无复制或 jitter 填充、峰值 reserved `9.06 GiB`。模型也建立了真实条件依赖，wrong-Cube 使 Chamfer 恶化 `12.987%`；但 mean Chamfer=`4.0090 m`、mean outlier=`31.8129%`、matched wins=`66.67%`，未通过 `2.50 m/25%/75%` 三项科学门。R-A1 关闭且不解锁 Doppler head。precision mean=`2.4550 m` 明显差于 completeness mean=`1.5540 m`，后续只允许先做 candidate/ranking、positive-capacity、residual-off、range-quota 与 cardinality 的只读诊断；同时以新命名 R-B1 range-echo 和 R-B2 Cartesian voxel-slot 做表示容量上限，未经结构门不得训练。完整记录见 `artifacts/g1/wce_formal_failure_2026-07-29.md`。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---
@@ -636,15 +638,17 @@ independently gated geometry parent
 - [x] 因无合格 geometry parent，G2R/G3R 队列按协议跳过，不复用原 G2/G3 结论。
 - [x] 完成 G1C 实现与调度修复；在任何科学训练结果产生前，经 RaLD 源码审计判定其仅适合作为 deterministic control。
 - [x] 完成 G1D H200 正式尺寸预飞；结构、查询计数、逐层条件梯度和 source-bound provenance 全部通过。
-- [ ] 按冻结协议完成独立 G1D RaLD query-field Stage A；仅在通过后运行 Stage B 和新命名 G2D/G3D。
+- [x] 按冻结协议完成独立 G1D RaLD query-field Stage A；正式终点和 D1/D2/D3 均 no-go，G1D 关闭。
 - [x] 完成 G1E-D0 retrospective proposal-support 诊断；D0 失败，source-faithful occupancy VAE/EDM 的 E1/E2 按协议关闭。
 - [x] 建立 RaLD-structured G4R 的预测缓存、token/latent/query 训练、基线、
   preflight、rollout、比较与总队列；严格等待 G3R checkpoint family。
 - [x] 实现 G3L 的 `512 x 32` physical posterior、anchor-only 24-layer decoder、
   Full-RAED-conditioned 24-layer EDM、18-step sampler 与组件测试。
 - [x] 完成 G3L VAE/EDM 训练器、固定单样本评估、condition-shuffle 与三种子 gate；因 G1B no-go 不启动旧 G3L 训练。
-- [ ] 若 G1D/G3D 通过，将 G3L 训练链绑定到 G3L-D parent，并实现 G4L-D 条件扩散时序链。
+- [x] 完成 R-A1 RaLD-WCE 20-epoch Stage-0；结构与条件依赖通过，但绝对几何 no-go，不解锁 Doppler head。
+- [ ] 完成 WCE 失败因子、RAE-Max cardinality、R-B1 range-echo 与 R-B2 voxel-slot 四组并行预飞；仅晋升通过冻结结构门的路线。
+- [ ] 若新 geometry parent 通过，将 G3L 训练链绑定到该 parent，并实现对应的 G2/G3/G4 后继链。
 - [x] 完成 G4R 45/45 序列下载（约 601 GB）；CRC、时序训练与 family freeze 继续等待 G3D。
 - [ ] 释放 P5 test 并完成 P6 论文证据包。
 
-> 当前最高优先级是完成 **独立 G1D RaLD query-field Stage A**。G4 数据已完成 45/45 序列下载，但不在新单帧 family 冻结前训练。
+> 当前最高优先级是完成 **WCE 失败因子与 R-B1/R-B2 表示预飞**，再选择一个可证伪的独立 geometry Stage-0。G4 数据已完成 45/45 序列下载，但不在新单帧 family 冻结前训练。
