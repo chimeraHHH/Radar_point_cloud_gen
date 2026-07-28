@@ -1,0 +1,1 @@
+{"epoch": 1, "learning_rate": 0.0001, "mean_train_loss": 0.5420413315296173, "update_count": 2, "elapsed_seconds": 15.652980460086837, "metrics_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/smoke_f2a9489_ra1_wce/metrics_epoch001.json", "selection_score": 5.9174715220492216, "promotion_passed": false}

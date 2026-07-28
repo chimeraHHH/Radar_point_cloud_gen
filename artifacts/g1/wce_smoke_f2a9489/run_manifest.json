@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "protocol": "g1_ra1_rald_wce_stage0_v1",
+  "scope": "R-A1 Stage 0 XYZ plus confidence only",
+  "source_commit": "f2a9489d40323d1ef45d85de958f4aea8126e1c8",
+  "official_rald_commit_audited": "ffec4b41241391734b1eda5c093de843c909eb8e",
+  "source_hashes": {
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/f2a9489/code/models/rald_wce_field.py": "616c1737305803e65fc676d1721d69e7744d92cd20ae098f48b8a21a387134ef",
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/f2a9489/code/losses/rald_wce.py": "a80f2bbe89189782b81be3066a6fe5bed1fade290ef7c1d55258abc0227508f9",
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/f2a9489/code/eval/rald_wce_stage0.py": "07dc5885d47effc6c0d41b7f2fc8f7f41c59f89a4ab1f2b73b2de44f667b8962",
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/f2a9489/code/eval/dense_geometry.py": "e1f970c1e827c7801c7c9018378603b89a7709b0b4bf261e740eab1575631e68",
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/f2a9489/code/scripts/train_rald_wce_stage0.py": "fec3d9e77b8164170cde6640bc515a4ba3a027938b754a5bc3219b60ddcfa4d2",
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/f2a9489/code/cube_dense/dataset.py": "bd2fa60cf72b0acf5195e14a4b6e7110f9f035430e4b0c2ed71fc64c003f6f32"
+  },
+  "input_hashes": {
+    "manifest": "645307a8bae351db51b55128043dae69bce5b928169d5fa25c1b9c55083de4e4",
+    "scene_split": "61596bd50ce0bdab633c9ff0ec5ab5148c2c78a10dfc06a71d0d6f0a6c9427cc",
+    "normalization": "4d0bca7d027a1a9f457c526f21a034a406ce4973e2dccee55ddd2d7019b41b77",
+    "corrected_dense_geometry": "e1f970c1e827c7801c7c9018378603b89a7709b0b4bf261e740eab1575631e68"
+  },
+  "manifest_counts": {
+    "train_frame_count": 76,
+    "validation_frame_count": 24,
+    "test_frame_count": 0
+  },
+  "config": {
+    "protocol": "g1_ra1_rald_wce_stage0_v1",
+    "seed": 20260716,
+    "smoke": true,
+    "epochs": 1,
+    "eval_every": 1,
+    "train_limit": 2,
+    "validation_limit": 2,
+    "learning_rate": 0.0001,
+    "minimum_learning_rate": 1e-06,
+    "weight_decay": 0.05,
+    "gradient_clip_norm": 10.0,
+    "occupancy_query_count": 2048,
+    "positive_query_ratio": 0.0625,
+    "latent_count": 512,
+    "model_dim": 512,
+    "depth": 6,
+    "heads": 8,
+    "head_dim": 64,
+    "decode_chunk_size": 8192,
+    "q0_range_quotas": [
+      16000,
+      9000,
+      5000
+    ],
+    "q1_anchor_quotas": [
+      1000,
+      500,
+      250
+    ],
+    "q1_samples_per_anchor": 4,
+    "output_range_quotas": [
+      8000,
+      1700,
+      300
+    ],
+    "minimum_export_distance_m": 0.05,
+    "selection_metric": "mean_chamfer + completeness_gate_excess + 2*outlier_gate_excess + far_gate_excess + 10*wrong_condition_gate_deficit",
+    "test_accessed": false,
+    "doppler_head": false
+  },
+  "inference": {
+    "q0_query_count": 30000,
+    "q0_range_quotas": {
+      "range_0_30m": 16000,
+      "range_30_60m": 9000,
+      "range_60_120m": 5000
+    },
+    "q0_source": "fixed_scrambled_sobol_physical_range_stratified",
+    "q1_anchor_count": 1750,
+    "q1_anchor_quotas": {
+      "range_0_30m": 1000,
+      "range_30_60m": 500,
+      "range_60_120m": 250
+    },
+    "q1_samples_per_anchor": 4,
+    "q1_query_count": 7000,
+    "q1_source": "matched_occupancy_dependent_local_refinement",
+    "same_query_wrong_condition": true,
+    "output_range_quotas": {
+      "range_0_30m": 8000,
+      "range_30_60m": 1700,
+      "range_60_120m": 300
+    },
+    "export_count": 10000,
+    "minimum_euclidean_distance_m": 0.05,
+    "copy_padding_jitter_duplicate": false,
+    "doppler_head": false
+  },
+  "architecture": {
+    "protocol": "rald_wce_condition_exclusive_field_stage0_v1",
+    "model_family": "RaLD-WCE",
+    "stage": "R-A1 Stage 0",
+    "depth": 6,
+    "latent_count": 512,
+    "model_dim": 512,
+    "global_radar_token_count": 336,
+    "geometry_decoder_inputs": [
+      "normalized_rae_fourier_features",
+      "condition_latents"
+    ],
+    "forbidden_pre_selection_sources": [
+      "local_cube_spectrum",
+      "local_cube_energy",
+      "local_cube_neighborhood",
+      "candidate_source",
+      "proposal_score",
+      "target_geometry"
+    ],
+    "pre_selection_local_cube_access": false,
+    "candidate_coordinate_interface": "external_normalized_rae_only",
+    "low_threshold_radar_query_path_implemented": false,
+    "low_threshold_radar_role_if_added": "coordinates_only",
+    "same_query_wrong_condition_supported": true,
+    "condition_latents_are_only_cube_path": true,
+    "confidence_source": "sigmoid_occupancy_logit",
+    "geometry_stage_boundary": "continuous_field_before_exact_10000_selection",
+    "exact_10000_selection_implemented": false,
+    "doppler_head_implemented": false,
+    "edm_implemented": false
+  },
+  "runtime": {
+    "device_argument": "cuda:0",
+    "device_name": "NVIDIA H200 NVL",
+    "torch_version": "2.12.1+cu130",
+    "parameter_count": 48775780
+  },
+  "evidence_boundary": {
+    "test_partition_accessed": false,
+    "doppler_head_implemented": false,
+    "doppler_head_evaluated": false,
+    "edm_implemented": false,
+    "long_training_started_by_preflight": false
+  }
+}

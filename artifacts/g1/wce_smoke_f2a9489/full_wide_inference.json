@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "protocol": "g1_ra1_rald_wce_full_wide_inference_smoke_v1",
+  "source_commit": "f2a9489d40323d1ef45d85de958f4aea8126e1c8",
+  "checkpoint": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/smoke_f2a9489_ra1_wce/checkpoint_epoch001.pt",
+  "checkpoint_sha256": "3d50f161616d6b5bee2390df71ca5c53e230f9df706f8894e260c9dcdd65da72",
+  "matched_frame": {
+    "sequence": 6,
+    "radar_index": 183
+  },
+  "wrong_frame": {
+    "sequence": 12,
+    "radar_index": 259
+  },
+  "config": {
+    "q0_query_count": 500000,
+    "q0_range_quotas": {
+      "range_0_30m": 166667,
+      "range_30_60m": 166667,
+      "range_60_120m": 166666
+    },
+    "q0_source": "fixed_scrambled_sobol_physical_range_stratified",
+    "q1_anchor_count": 25000,
+    "q1_anchor_quotas": {
+      "range_0_30m": 20000,
+      "range_30_60m": 4250,
+      "range_60_120m": 750
+    },
+    "q1_samples_per_anchor": 8,
+    "q1_query_count": 200000,
+    "q1_source": "matched_occupancy_dependent_local_refinement",
+    "same_query_wrong_condition": true,
+    "output_range_quotas": {
+      "range_0_30m": 8000,
+      "range_30_60m": 1700,
+      "range_60_120m": 300
+    },
+    "export_count": 10000,
+    "minimum_euclidean_distance_m": 0.05,
+    "copy_padding_jitter_duplicate": false,
+    "doppler_head": false
+  },
+  "inference": {
+    "config": {
+      "q0_query_count": 500000,
+      "q0_range_quotas": {
+        "range_0_30m": 166667,
+        "range_30_60m": 166667,
+        "range_60_120m": 166666
+      },
+      "q0_source": "fixed_scrambled_sobol_physical_range_stratified",
+      "q1_anchor_count": 25000,
+      "q1_anchor_quotas": {
+        "range_0_30m": 20000,
+        "range_30_60m": 4250,
+        "range_60_120m": 750
+      },
+      "q1_samples_per_anchor": 8,
+      "q1_query_count": 200000,
+      "q1_source": "matched_occupancy_dependent_local_refinement",
+      "same_query_wrong_condition": true,
+      "output_range_quotas": {
+        "range_0_30m": 8000,
+        "range_30_60m": 1700,
+        "range_60_120m": 300
+      },
+      "export_count": 10000,
+      "minimum_euclidean_distance_m": 0.05,
+      "copy_padding_jitter_duplicate": false,
+      "doppler_head": false
+    },
+    "q1": {
+      "anchor_count": 25000,
+      "anchor_quotas": {
+        "range_0_30m": 20000,
+        "range_30_60m": 4250,
+        "range_60_120m": 750
+      },
+      "samples_per_anchor": 8,
+      "query_count": 200000,
+      "anchor_q0_row_sha256": "2b2d3e5b48a0a33a333cadaa865ab0ab886743d69c4597981aa2db6a5bac3049",
+      "query_sha256": "41a26d986231fdbbf4a87a45365f305e505033a2726d79cc206bf2a244ccaeb1",
+      "source": "matched_condition_q0_occupancy_only"
+    },
+    "query_hashes": {
+      "q0_normalized_rae_sha256": "882ff93491e5b7e173780dba7178956d332221fed0ce96d2974eacdc0de200e2",
+      "q1_normalized_rae_sha256": "41a26d986231fdbbf4a87a45365f305e505033a2726d79cc206bf2a244ccaeb1"
+    },
+    "matched_wrong_query_hashes_identical": true,
+    "q1_derived_from": "matched_q0_occupancy_only",
+    "wrong_condition_used_for_query_construction": false,
+    "candidate_count": 700000,
+    "condition_exclusive_coordinate_decoder": true,
+    "ground_truth_accessed_for_queries_or_selection": false,
+    "stage0_output_fields": [
+      "x_m",
+      "y_m",
+      "z_m",
+      "confidence"
+    ],
+    "doppler_head_locked_post_stage0": true
+  },
+  "matched_export": {
+    "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+    "candidate_count": 700000,
+    "candidate_capacity_by_range": {
+      "range_0_30m": 326253,
+      "range_30_60m": 200870,
+      "range_60_120m": 172877
+    },
+    "output_quotas": {
+      "range_0_30m": 8000,
+      "range_30_60m": 1700,
+      "range_60_120m": 300
+    },
+    "selected_by_range": {
+      "range_0_30m": 8000,
+      "range_30_60m": 1700,
+      "range_60_120m": 300
+    },
+    "rejected_minimum_distance_by_range": {
+      "range_0_30m": 276,
+      "range_30_60m": 2,
+      "range_60_120m": 0
+    },
+    "minimum_euclidean_distance_m": 0.05,
+    "observed_minimum_pair_distance_m": 0.050163520229599336,
+    "exact_point_count": 10000,
+    "finite_xyz": true,
+    "finite_confidence": true,
+    "unique_selected_candidate_count": 10000,
+    "copy_padding_jitter_duplicate": false,
+    "ground_truth_accessed": false
+  },
+  "wrong_export": {
+    "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+    "candidate_count": 700000,
+    "candidate_capacity_by_range": {
+      "range_0_30m": 326253,
+      "range_30_60m": 200870,
+      "range_60_120m": 172877
+    },
+    "output_quotas": {
+      "range_0_30m": 8000,
+      "range_30_60m": 1700,
+      "range_60_120m": 300
+    },
+    "selected_by_range": {
+      "range_0_30m": 8000,
+      "range_30_60m": 1700,
+      "range_60_120m": 300
+    },
+    "rejected_minimum_distance_by_range": {
+      "range_0_30m": 272,
+      "range_30_60m": 2,
+      "range_60_120m": 0
+    },
+    "minimum_euclidean_distance_m": 0.05,
+    "observed_minimum_pair_distance_m": 0.05017626167379985,
+    "exact_point_count": 10000,
+    "finite_xyz": true,
+    "finite_confidence": true,
+    "unique_selected_candidate_count": 10000,
+    "copy_padding_jitter_duplicate": false,
+    "ground_truth_accessed": false
+  },
+  "matched_hashes": {
+    "xyz_sha256": "c4c0fa520e24fb4efe95830c0535e3005709ce64dfa1a71fbd0ad65680773928",
+    "confidence_sha256": "7de0b77690a555ade2c5acf576b77a68ae542ad71ea7de50b027da342ac393b8",
+    "selected_candidate_rows_sha256": "fe43b491d62ca6611d8e6de37b048ccb9ebea2fb355cec929a265c5c0f702ad6"
+  },
+  "wrong_hashes": {
+    "xyz_sha256": "d346ce378dd4f420ff59e04f659b02960c89a271bb89d61e7698e9ea031c630f",
+    "confidence_sha256": "3786cabdca1338df3b07f337400bdcaa11800cc176189bcf9bcaaa387f3c17e2",
+    "selected_candidate_rows_sha256": "423bf50ec2966aa2934a7ad4ba57927371720fbbc118eb0b49ae971f9b26df10"
+  },
+  "runtime": {
+    "device_name": "NVIDIA H200 NVL",
+    "elapsed_seconds": 0.8474211399443448,
+    "peak_allocated_bytes": 2177790464,
+    "peak_reserved_bytes": 2434793472
+  },
+  "checks": {
+    "formal_q0_500k": true,
+    "formal_q1_200k": true,
+    "matched_exact_10000": true,
+    "wrong_exact_10000": true,
+    "matched_minimum_5cm": true,
+    "wrong_minimum_5cm": true,
+    "same_query_wrong_condition": true,
+    "no_gt_query_or_selection": true,
+    "doppler_locked": true,
+    "allocated_below_55gib": true,
+    "reserved_below_65gib": true
+  },
+  "passed": true
+}

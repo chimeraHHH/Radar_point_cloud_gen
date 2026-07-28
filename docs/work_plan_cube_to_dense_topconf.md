@@ -46,6 +46,8 @@
 
 > **2026-07-29 P-RF 稀疏 target lifting no-go：**为避免对 `<10k` target 帧复制补点，source `259663c` 实现了局部 PCA 切平面、target-occupied RAE cell 限制和 5 cm 全局间距的 continuous lifting。H200 定向测试 `19 passed`，但全量 preflight 中 57 个稀疏 train/validation 帧只有 47 个达到 exact 10k，另外 10 帧认证容量仅 `3,410--9,901`。协议保守拒绝放宽 support、间距或使用 padding，因此尚未进入模型梯度、NFE=4 和显存检查，P-RF 长训练不授权。该 no-go 只关闭当前 target adapter，不证明 rectified flow 一般无效；详见 `artifacts/g1/p_rf_target_lifting_failure_2026-07-29.md`。
 
+> **2026-07-29 R-A1 RaLD-WCE 工程门通过并启动正式 Stage-0：**source `f2a9489` 完成 condition-exclusive coordinate-only field、固定 500k Q0、matched-occupancy 驱动的 200k Q1、same-query wrong-Cube 干预及 5 cm capacity-one exact-10k 导出。H200 上定向测试 `23 passed`、全仓 `380 passed`；full-domain 压测 matched/wrong 均 exact-10k，最小点距 `5.016/5.018 cm`，推理 `0.85 s`，峰值 reserved `2.27 GiB`。两帧 smoke 的 condition 效应只有 `0.0204%`，不构成科学结果。冻结的 20-epoch、76/24-frame 正式 Stage-0 已在物理 GPU2 启动；输出仍仅为 `XYZ+confidence`，Doppler head 后置锁定。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---
