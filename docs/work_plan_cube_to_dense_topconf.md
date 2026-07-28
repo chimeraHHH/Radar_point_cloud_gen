@@ -22,6 +22,8 @@
 
 > **2026-07-28 G1D RaLD 损失归一化修订：**对官方 RaLD `ffec4b4` 的二次核对确认，其 6.25% occupied / 93.75% empty 查询在拼接后直接进入一次未加权 `BCEWithLogitsLoss`；`d0c8c6fb` 错误地对两类分别求均值并施加 `1.0/0.1`，导致常数预测的理论最优偏向 occupied。该 seed-A 在 epoch 5 出现 occupancy recall/FPR=`1.0/1.0` 后停止于 epoch 7，标记为协议无效的工程运行，不构成 G1D 科学失败，详见 `artifacts/g1/g1d_invalid_d0c8c6f_loss_normalization.json`。G1D 将从采用全 query BCE 的新 source-bound snapshot 重新执行测试、预飞和 Stage A；原预飞仅保留为历史结构证据。
 
+> **2026-07-28 G1D 纠正预飞通过：**科学代码固定为 `8598871d`，H200 完整回归 `213 passed`。新预飞的 22 项 source/count/cache/gradient 检查全部通过，metrics SHA-256 为 `a9dba2af2647a8a4ff6fa4600b895e1f3ad12733b6bf1179bd6035f605b81e60`，归档于 `artifacts/g1/g1d_preflight_8598871d.json`。纠正后的 seed-A 150-epoch Stage A 已在 H200 GPU2 运行；当前仍无科学门控结论。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---
