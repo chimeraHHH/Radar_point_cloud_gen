@@ -31,6 +31,7 @@ from eval.g1f_candidate_support import (  # noqa: E402
     select_candidate_support_oracle,
 )
 from eval.rald_guided_query import duplicate_report  # noqa: E402
+from eval.temporal_methods import aggregate_flat_reports  # noqa: E402
 from models.cube_cycle import continuous_rae_to_xyz  # noqa: E402
 from models.rald_query_field import (  # noqa: E402
     coarse_query_templates,
@@ -266,7 +267,7 @@ def aggregate_range_support(frames: list[dict]) -> dict:
                 if isinstance(value, (int, float)) and value is not None
             }
             reports.append(report)
-        result[label] = aggregate_scalar_reports(reports)
+        result[label] = aggregate_flat_reports(reports)
     return result
 
 

@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "protocol": "g1g_condition_exclusive_hierarchy_stage0_preflight",
+  "generated_utc": "2026-07-28T17:38:20.324374+00:00",
+  "source_commit": "e226f3eabebc4ed75c75b2b65d01a3b8638fcb3a",
+  "device": "NVIDIA H200 NVL",
+  "seed": 20260729,
+  "input": {
+    "sequence": 6,
+    "radar_index": 183,
+    "shuffle_sequence": 55,
+    "shuffle_radar_index": 376,
+    "cube_shape": [
+      1,
+      64,
+      256,
+      107,
+      37
+    ]
+  },
+  "architecture": {
+    "global_radar_token_count": 336,
+    "center_query_count": 2500,
+    "children_per_center": 4,
+    "final_point_count": 10000,
+    "pre_allocation_sources": [
+      "learned_center_queries",
+      "normalized_center_templates",
+      "global_full_raed_tokens"
+    ],
+    "forbidden_pre_allocation_sources": [
+      "local_cube_spectrum",
+      "local_cube_energy",
+      "local_cube_neighborhood",
+      "proposal_score"
+    ],
+    "local_cube_sampling_stage": "after_center_allocation",
+    "child_offset_contract": "per-axis half-cell bound plus one-cell physical diagonal",
+    "stage_sequence": [
+      "encode_global_full_raed_tokens",
+      "allocate_2500_centers",
+      "sample_local_center_spectrum",
+      "decode_four_bounded_children",
+      "sample_final_point_spectrum"
+    ]
+  },
+  "parameter_count": 41684584,
+  "tensor_shapes": {
+    "radar_tokens": [
+      1,
+      336,
+      512
+    ],
+    "centers": [
+      1,
+      2500,
+      3
+    ],
+    "center_spectrum": [
+      1,
+      2500,
+      64
+    ],
+    "child_offsets": [
+      1,
+      2500,
+      4,
+      3
+    ],
+    "points": [
+      1,
+      10000,
+      3
+    ],
+    "point_spectrum": [
+      1,
+      10000,
+      64
+    ]
+  },
+  "dependency_audit": {
+    "measured_cube_allocation_gradient_is_none": true,
+    "condition_cube_allocation_gradient_nonzero": true,
+    "condition_shuffle_center_coordinate_max_abs": 0.26568603515625,
+    "condition_shuffle_center_feature_mean_abs": 0.00533767556771636
+  },
+  "bounds": {
+    "child_offset_bound_bins": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "maximum_bin_bound_excess": 0.0,
+    "maximum_physical_bound_excess_m": 0.0,
+    "maximum_cell_diagonal_m": 2.8738350868225098
+  },
+  "gradient_norms": {
+    "radar_encoder": 15124.083984375,
+    "center_queries": 47.426551818847656,
+    "allocation_blocks": 36603.8359375,
+    "center_coordinate_head": 26344.576171875,
+    "center_spectrum_projection": 24.0727596282959,
+    "patch_decoder": 55.20740509033203,
+    "child_offset_head": 444.9037780761719
+  },
+  "peak_cuda_memory_bytes": 8632353280,
+  "checks": {
+    "h200_identity": true,
+    "global_token_shape": true,
+    "exact_center_shape": true,
+    "exact_point_shape": true,
+    "exact_four_children_per_center": true,
+    "pre_allocation_source_allowlist": true,
+    "local_sampling_after_allocation": true,
+    "measured_cube_has_no_allocation_gradient": true,
+    "condition_cube_drives_allocation": true,
+    "condition_shuffle_changes_center_features": true,
+    "condition_shuffle_changes_center_coordinates": true,
+    "child_bin_offsets_bounded": true,
+    "child_physical_offsets_bounded": true,
+    "all_trainable_gradients_present": true,
+    "all_trainable_gradients_finite": true,
+    "required_gradient_groups_nonzero": true
+  },
+  "passed": true
+}
