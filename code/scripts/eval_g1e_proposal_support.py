@@ -192,9 +192,15 @@ def evaluate_run(
     final_rae = support.final_coordinates_rae[0].float()
     predicted_xyz = continuous_rae_to_xyz(
         final_rae,
-        torch.as_tensor(axes.range_m, device=device),
-        torch.as_tensor(axes.azimuth_rad, device=device),
-        torch.as_tensor(axes.elevation_rad, device=device),
+        torch.as_tensor(
+            axes.range_m, device=device, dtype=final_rae.dtype
+        ),
+        torch.as_tensor(
+            axes.azimuth_rad, device=device, dtype=final_rae.dtype
+        ),
+        torch.as_tensor(
+            axes.elevation_rad, device=device, dtype=final_rae.dtype
+        ),
     )
     geometry = geometry_report(
         predicted_xyz,
