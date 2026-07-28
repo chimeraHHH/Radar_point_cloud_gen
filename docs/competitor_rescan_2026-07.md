@@ -10,9 +10,9 @@
 
 - ✅ **两条主线空白仍成立**（截至 2026-07）。
 - **主线 A（显式可微 Doppler 物理一致性损失，用于生成模型）**：仍无人做。**最近距离 = RadarMP**（感知侧，tesseract→点云+scene flow，含 **Doppler 引导的时序/运动一致性自监督损失**）——**须引用并明确区分「感知 vs 生成」**。它反而佐证了该损失机制有效，利于我们的定位。
-- **主线 B（多帧一致雷达序列生成 + Doppler 驱动一致性）**：仍无人做。所有序列/世界模型仍是 **LiDAR**（LiSTAR、LiDARCrafter、Copilot4D、"Learning to Generate 4D LiDAR Sequences" 2509.11959）；雷达生成器（RadarGen、4D-RaDiff）仍单帧。
+- **主线 B（多帧雷达增强）不能再声称空白**：Radar-Mamba 使用当前与前两帧雷达特征，RadarMP 使用相邻 tesseract 联合点生成和 scene flow，DoppDrive 使用 Doppler 驱动历史聚合。当前可检验差异收缩为 Full-RAED 条件下的固定点数几何、逐点圆周 Doppler 分布和置信度联合生成，并同时施加 Cube 重投影与位移-Doppler 闭环。
 - ⚠️ **代码可得性（确认风险 R1）**：4D-RaDiff ❌、RadarGen ❌（仅项目页 radargen.github.io）、**SDDiff ✅**（github.com/StellarEsti/SDDiff）、R3D ✅。→ **核心基线需自建**，SDDiff 可作「Doppler 进扩散」的参考实现。
-- 📌 **无同期直接竞品**，但新增几篇**几何增强类**雷达生成/增强论文（R3D、2606.26743、Radar-Mamba），需在 related work 覆盖，且它们都**不涉及 Doppler 生成/物理约束/时序**，不冲击空白。
+- 📌 **已有强近邻而非“无直接竞品”**：Radar-Mamba、RadarMP、DoppDrive 分别覆盖多帧增强、相邻帧点生成 + scene flow、Doppler 聚合。它们尚未覆盖的联合输出和闭环必须由本项目实验证明，不能仅凭任务命名认定创新。
 
 置信度：中高。Web 检索覆盖良好；建议按计划**月度**用 Semantic Scholar / Google Scholar 复扫 RadarGen、4D-RaDiff、RadarMP 的引用图（本轮未做正式引用图遍历）。
 
@@ -25,7 +25,7 @@
 | **RadarMP** (2511.12117) | 2025.11 | tesseract→点云+**scene flow**（**感知**） | ⚠️点云非Doppler属性 | ✅ **Doppler 时序自监督损失** | ✅ 相邻帧 | ❗**最近邻，非生成** | **重点引用+区分任务** |
 | **R3D** (2601.06465) | 2026.01 | LiDAR-radar 残差扩散**增强**（ColoRadar） | ❌ | ❌ | 未明示 | 否（几何增强） | related work 覆盖；代码✅可参考 |
 | **Depth-Semantic Align.** (2606.26743) | 2026.06 | 视觉-雷达融合**补全** | ❌ | ❌（仅语义结构约束） | ❌ | 否（几何补全） | related work 覆盖 |
-| **Radar-Mamba** (MM'25) | 2025 | SSM **Doppler-aware 增强** | ❌（Doppler 作输入特征） | ❌ | ❌ | 否（几何增强） | related work 覆盖 |
+| **Radar-Mamba** (MM'25) | 2025 | SSM **Doppler-aware 增强** | ❌（Doppler 作输入特征） | ❌ | ✅ 当前 + 前两帧 | 强时序几何增强近邻 | 必须作为多帧基线/边界 |
 | **DRO** (2504.20339) | 2025 | Doppler-aware **里程计** | ❌ | ✅（Doppler↔ego 约束） | — | 否（非生成） | 佐证「物理约束在感知/里程计成熟、生成侧空白」 |
 | Learning to Gen 4D LiDAR Seq (2509.11959) | 2025.09 | **LiDAR** 序列生成 | ❌（LiDAR无Doppler） | ❌ | ✅ | 否（非雷达） | 方法学借鉴（B 线） |
 | LiSTAR / LiDARCrafter / Copilot4D | 2025 | **LiDAR** 世界模型 | ❌ | ❌ | ✅ | 否（非雷达） | 方法学借鉴（B 线，已在调研） |
@@ -42,7 +42,9 @@
   - **定位策略**：把 RadarMP 作为「Doppler-一致性损失在感知侧被验证有效」的证据，我们**首次把它作为对生成分布的约束**引入 LiDAR→Radar 扩散；并保留**静态背景解析硬约束** `v_r=−v_ego·r̂` 这一 RadarMP/RadarGen/4D-RaDiff 均未用的差异点。
 
 ### 主线 B —— 空白成立
-- 雷达侧仍全单帧；序列生成/世界模型仍 LiDAR 专属；RadarMP 虽跨帧但为感知、非序列**生成**。
+- 雷达生成主流仍偏单帧，但雷达增强/点生成已经存在多帧路线。只能把
+  RadarMP 定位为“相邻帧点生成 + scene flow 的强近邻”，再由联合
+  Doppler 分布、置信度和双闭环建立可验证差异。
 - FlowRadar-4D（Doppler 驱动帧间 warp + `v_r·Δt↔Δrange` 双向一致性）无同期竞品。
 
 ---

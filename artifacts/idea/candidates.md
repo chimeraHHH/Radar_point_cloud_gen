@@ -1,0 +1,57 @@
+# Cube-to-dense candidate frontier
+
+> Frozen on 2026-07-28. Test access is false. The existing G1D v2 run continues
+> unchanged and does not select settings for these candidates.
+
+## Unified Stage-0 contract
+
+Every learned route uses the existing 76/24 scene-held-out split, 10,000 output
+points, G1D geometry metrics, scene-first reporting, and H200 GPU 0 or 2. A
+candidate is not promoted because of lower loss or a single favorable metric.
+It must expose its named mechanism with a paired control.
+
+The authoritative final geometry gate remains:
+
+| Metric | Required |
+|---|---:|
+| median Chamfer | `<= 2.50 m` |
+| mean outlier fraction at 2 m | `<= 25%` |
+| median completeness | `<= 0.65 m` |
+| mean far completeness | `<= 8.0 m` |
+| mean duplicate fraction at 5 cm | `<= 10%` |
+| output count | exactly `10,000` |
+| named learned-condition shuffle degradation | `>= 1%` |
+
+Stage-0 may terminate a route early. It cannot relax this final gate.
+
+## Candidate table
+
+| ID | Primary mechanism | Stage-0 | Anti-win condition | Promotion rule |
+|---|---|---|---|---|
+| G1F | Candidate support oracle plus differentiable balanced transport allocation | F0 oracle on the frozen 32k pool; only then a 10-epoch soft selector | GT is used only for an unattainable diagnostic upper bound; learned inference sees no GT; all logits need finite nonzero gradients | F0 must show that one fixed-count subset can satisfy the geometry support gates; F1 must improve completeness and duplicates without worsening outlier above 25% |
+| G1G | Condition-exclusive global allocation plus bounded hierarchical local patches | 20-epoch, one-seed allocator; 2.5k centers x 4 children | No local Cube spectrum, energy, or coordinate-neighborhood feature before center allocation; local refinement has a frozen offset radius | condition shuffle `>=1%`, duplicate `<=15%` at Stage-0, and at least 30% completeness improvement over matched G1D epoch-15 control |
+| G1T | Ego/Doppler-warped history as a measurement proposal prior | no-train current-only, ego-union, Doppler-union comparison | Identical 10k export, current-Cube rescore, no LiDAR/GT selection, duplicate-aware deduplication fixed before evaluation | Doppler-union must beat ego-union on completeness and far completeness without more than 2 percentage points outlier or duplicate degradation |
+| G1H | Frozen G1B equal-count tail replacement | no-train low-support isolated-tail replacement | Remove and add exactly the same number of points; no confidence masking or output-count reduction | Full geometry gate must pass; otherwise audit-only |
+
+## Ordering and resource policy
+
+1. Run G1F-F0 first because a failed candidate-support oracle closes both G1F-F1
+   and any selector-only repair on that pool.
+2. Run G1T concurrently because it is no-train and tests a disjoint source of
+   geometric support.
+3. Run G1H as a low-cost conservative control.
+4. Start G1G training after its H200 preflight and when an allowed H200 has
+   sufficient memory; it does not wait for G1D scientific selection.
+
+No route may use physical GPU 1. Existing unrelated jobs are not interrupted.
+
+## Decision matrix
+
+| Outcome | Decision |
+|---|---|
+| G1F-F0 fails support | abandon selector-only repair; prioritize G1G representation and G1T support |
+| G1F-F0 passes, F1 fails | candidate support is adequate but the selected transport objective is insufficient; do not tune beyond the frozen Stage-0 budget |
+| G1G shuffle fails | architecture still permits condition bypass; close the route regardless of geometry |
+| G1T Doppler does not beat ego | history cannot justify a Doppler-specific temporal mechanism on this cohort |
+| G1H passes all gates | retain as a strong non-generative control; still require G1G or a new learned family for a method claim |
+| More than one route passes | select by the complete unified gate, then resource cost; do not combine mechanisms until each has an independent ablation |

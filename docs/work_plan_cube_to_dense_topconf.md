@@ -32,6 +32,8 @@
 
 > **2026-07-28 G1E-D0 终局：**source `da6f8a5f` 通过 H200 `216` 项回归后完成两套 archived VAE 的只读诊断。R1-fidelity 的 Chamfer 仅由 `10.9985` 降至 `10.7680 m`（改善 `2.10%`），R1-KRadar 由 `9.9612` 恶化至 `11.4948 m`；两者 outlier 均低于 8%，查询计数与 latent-only decoder 契约全部通过，但均未达到 `<=5 m` 和至少 30% 改善门。结果 `artifacts/g1/g1e_d0_da6f8a5f.json` 的 SHA-256 为 `f59d1afbf015e2004e32575826b437afa1ffad535b2bc318170ac037f8c147e5`。因此独立 occupancy-VAE/EDM 的 G1E-E1/E2 不授权；RaLD `512 x 32` physical latent/EDM 只保留为通过几何父模型后的 G3L 后置生成模块。
 
+> **2026-07-28 长时训练诊断与并行候选冻结：**G1D v2 的中期监控显示最佳 selection 停留在 epoch 15，随后 offset 增长、duplicate/recall 同时上升，而跨 scene condition shuffle 仍接近零；该运行继续原样到冻结终点，不能用中期指标下结论。独立文献、源码和失败机制审计据此冻结四条新路线：G1F 候选池 oracle + balanced transport、G1G condition-exclusive 层级 patch 分配、G1T ego/Doppler 历史 proposal、G1H 等量尾点替换控制。协议见 `artifacts/idea/candidates.md` 和 `artifacts/idea/pre_idea_drafts/`。同时纠正 novelty：Radar-Mamba、RadarMP 和 DoppDrive 已证明多帧雷达增强/聚合并非空白；项目只主张 Full-RAED 条件下稠密几何、逐点圆周 Doppler 分布与置信度的联合状态生成及物理闭环这一限定差异。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---

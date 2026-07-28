@@ -1,6 +1,7 @@
 # 论文 PDF 索引
 
-调研涉及的论文 PDF（arXiv 可获取者），与各调研文档对应。下载日期 2026-06-08。
+调研涉及的论文 PDF（arXiv 或作者主页可获取者），与各调研文档对应。
+初始下载日期 2026-06-08；多帧竞品补充于 2026-07-28。
 
 ## 与本课题最接近（生成多普勒）
 | 文件 | 标题 | 年份 | 多普勒 |
@@ -43,6 +44,12 @@
 
 ## 时序 × Doppler 调研新增（对应 `survey_temporal_doppler.md`）
 
+### 多帧雷达增强与点生成强近邻
+| 文件 | 标题 | 关键点 |
+|------|------|--------|
+| `2509_Radar-Mamba_MM25.pdf` | Radar-Mamba (ACM MM 2025) | 当前与前两帧雷达特征融合，保留 Doppler 特征并增强稠密点云 |
+| `2511.12117_RadarMP.pdf` | RadarMP (AAAI 2026) | 相邻两帧 tesseract 联合点生成与逐点 3D scene flow |
+
 ### Doppler↔时序耦合（感知侧，可借损失/机制）
 | 文件 | 标题 | 关键点 |
 |------|------|--------|
@@ -66,4 +73,3 @@
 |------|------|--------|
 | `2509.18068_RadarSFD_singleframe.pdf` | RadarSFD: Single-Frame Diffusion for Radar | 确认单帧趋势 |
 | `2407.07462_MAN_TruckScenes_dataset.pdf` | MAN TruckScenes (NeurIPS 2024) | 20Hz 4D雷达逐点 Doppler，时序生成最佳数据集 |
-

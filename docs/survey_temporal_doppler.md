@@ -25,13 +25,14 @@ v_r ≈ d(range)/dt      ⟹      v_r · Δt ≈ 帧间径向位移
 
 | 子问题 | 判定 | 依据 |
 |--------|------|------|
-| 时序/连续多帧**雷达点云生成** | ✅ **NOVEL** | 两个 SOTA 雷达生成器均单帧；时序点云生成只在 LiDAR 成熟 |
-| Doppler↔时序运动**耦合用于生成** | ✅ **NOVEL** | 感知侧成熟，生成侧无人做；4D-RaDiff 自述为 future work |
-| 二者协调（Doppler 驱动时序一致性） | ✅ **NOVEL** | 所有 LiDAR 时序方法在测量层"速度无关"，雷达 Doppler 是实测速度 |
+| 时序/连续多帧雷达点云增强 | ❌ 非空白 | Radar-Mamba 已融合当前与前两帧；RadarMP 联合相邻 tesseract 点生成和 scene flow；DoppDrive 做 Doppler 聚合 |
+| 全 RAED 到稠密几何 + 逐点 Doppler 分布/置信度的时序状态生成 | ⚠️ 限定范围内未发现直接覆盖 | 必须与 Radar-Mamba、RadarMP、DoppDrive 逐项比较，不得写成普遍空白 |
+| Doppler↔时序运动耦合用于雷达状态生成 | ⚠️ 限定差异 | RadarMP 已把 Doppler 时序约束用于点生成 + scene flow；本项目必须靠圆周 Doppler 分布、置信度与 Cube 闭环形成差异 |
+| Doppler 驱动时序一致性 | ❌ 机制本身非新 | RaFlow、DoppDrive、RadarMP 已覆盖感知/聚合侧；只可主张在完整状态生成闭环中的新组合与验证 |
 
 ---
 
-## 2. 现状：雷达生成全是单帧（确认空白）
+## 2. 现状：生成主流仍偏单帧，但多帧雷达增强并非空白
 
 | 工作 | 年份 | 单帧/序列 | Doppler | 时序一致性 |
 |------|------|-----------|---------|-----------|
@@ -39,12 +40,21 @@ v_r ≈ d(range)/dt      ⟹      v_r · Δt ≈ 帧间径向位移
 | RadarGen (2512.17897) | 2025 | **单帧**（输入 2 帧相机）| ✅ | ❌（输出无时序）|
 | RadarSFD (2509.18068) | 2025 | 单帧 | ❌ | ❌ |
 | R2LDM (2503.17097) | 2025 | 单帧超分 | ❌ | ❌ |
+| Radar-Mamba (ACM MM 2025) | 2025 | 当前帧 + 前两帧 | 作为输入特征保留 | 时空增强 |
+| RadarMP (AAAI 2026) | 2025/2026 | 相邻两帧 tesseract | 用于时序/运动一致性 | 点生成 + scene flow |
+| DoppDrive (ICCV 2025) | 2025 | 多帧稀疏点 | 用于历史点径向修正 | 聚合，不生成新点 |
+
+因此，旧版“雷达生成全是单帧”“无人使用历史雷达增强当前点云”的表述
+已经失效。当前可守住的限定命题是：在本次检索范围内，尚未发现同时从
+Full-RAED 与历史观测生成固定数量稠密 3D 点、逐点圆周 Doppler 分布和
+置信度，并同时施加 Cube 重投影及位移-Doppler 闭环的方法。完整证据表见
+`artifacts/idea/literature_survey_2026-07-28.md`。
 
 > **关键证据**：4D-RaDiff §4.4 原文 —— *"our foreground generation does not model the trail of motion produced by dynamic objects when aggregating multiple radar scans. This could be addressed by also compensating the motion of dynamic objects based on Doppler information."* 作者亲口把"用 Doppler 建模多帧动态拖尾"列为未做的 future work。
 
 ---
 
-## 3. Doppler↔时序耦合：感知侧成熟，生成侧空白
+## 3. Doppler↔时序耦合：感知侧成熟，生成侧已有近邻
 
 **感知侧（DONE，可借公式）：**
 - **RaFlow**（RA-L 2022, arXiv:2203.01137）：自监督场景流，**径向位移损失**
@@ -56,7 +66,11 @@ v_r ≈ d(range)/dt      ⟹      v_r · Δt ≈ 帧间径向位移
 - **DoGFlow**（arXiv:2508.18506）：用雷达 Doppler 生成速度伪标签监督 LiDAR 场景流（跨模态）。
 - 辅助：MoRAL (2505.09422)、RadarMOSEVE (2402.14380)、温故综述 (2204.01184)。
 
-**生成侧（NOT DONE）：** 没人做 (a) Doppler 约束的多帧一致雷达序列，或 (b) 对生成 Doppler 沿 Δt 积分得到动态物体帧间"拖尾"。
+**生成/增强侧：** RadarMP 已联合相邻 tesseract 的点生成与 scene flow，
+Radar-Mamba 已融合三帧雷达特征。因此不能再声称“生成侧无人做”。尚待
+实验证明的限定差异是：生成的圆周 Doppler **分布**和置信度能否与生成
+几何共同满足 Cube 重投影及 `v_r * dt` 位移闭环，而不是仅把测得的
+Doppler 当输入特征或监督信号。
 
 ---
 
@@ -105,12 +119,15 @@ v_r ≈ d(range)/dt      ⟹      v_r · Δt ≈ 帧间径向位移
 
 ## 7. 由此提炼的精化 thesis（对 cvpr_proposal 的升级）
 
-> **FlowRadar-4D**：时序一致的 LiDAR→Radar 多帧雷达点云生成，其中**多普勒既是生成目标、又是时序一致性的物理驱动**——用 Doppler 驱动帧间 warp（替代 LiDAR 工作的注入轨迹），并用"径向位移一致性"（借 RaFlow 损失）双向约束 Doppler 与帧间运动。
+> **Cube-to-Dense Radar State Generation**：从当前 Full-RAED Cube 和可选
+> 历史观测生成固定数量稠密点、逐点圆周 Doppler 分布及置信度；用当前
+> Cube 重投影约束可观测性，并用径向位移一致性约束生成速度与帧间运动。
 
-相比 `cvpr_proposal.md`（单帧 + 反事实），本方向增加了**时序维度**这条更强、更空白的主线，三个支柱：
-1. **时序一致多帧雷达生成**（NOVEL，雷达无人做）
-2. **Doppler 驱动的帧间 warp**（把感知侧 DoppDrive/RaFlow 的耦合首次用于生成）
-3. **Doppler↔时序双向一致性损失**（`v_r·Δt ↔ 帧间位移`）+ 新的速度场一致性评估指标
+相比 `cvpr_proposal.md`（单帧 + 反事实），修正后的三个支柱是：
+1. **雷达可观测状态联合生成**：几何 + 圆周 Doppler 分布 + 置信度。
+2. **当前 Cube 物理闭环**：历史只提供 proposal，不能替代当前测量。
+3. **位移-Doppler 双向一致性**：作为完整状态的约束和评估，而非声称
+   warp 或径向位移损失本身首次出现。
 
 可与单帧版的"反事实速度编辑""静态解析硬约束"叠加，形成完整故事。
 
