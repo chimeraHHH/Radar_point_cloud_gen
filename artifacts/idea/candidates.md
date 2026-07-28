@@ -88,3 +88,34 @@ Artifact: `artifacts/g1/g1f_f0_ca60d76.json`, SHA-256
 The G1F geometry failure remains sufficient to close selector-only repair on
 the frozen 32k pool because Chamfer, completeness, and duplicates also failed.
 Its archived far-completeness value is censored and must not be cited.
+
+### G1G: failed, condition-exclusive hierarchy closed
+
+Source `c2a0ccb38b27c17ff4eaa7acc151189fd8b06958` completed the frozen
+20-epoch H200 Stage-0. Static and dynamic anti-bypass checks passed, but the
+scientific promotion gate failed:
+
+| Metric | Result | Stage-0 requirement |
+|---|---:|---:|
+| Condition-shuffle Chamfer degradation | `-0.1211%` | `>=1%` |
+| Mean duplicate fraction at 5 cm | `70.8108%` | `<=15%` |
+| Median completeness | `1.2086 m` | `<=2.4946 m` |
+| Mean outlier fraction at 2 m | `84.6854%` | `<=25%` |
+| Corrected far completeness | `6.5635 m`, 23/23 frames | no worse than `46.9407 m` |
+
+The route achieved broad coverage but bought it through off-surface points and
+child collapse. The wrong cross-scene Cube was marginally better on average,
+so nonzero allocation gradients did not establish useful condition dependence.
+G1G is closed without extending training or relaxing its gates. Artifact:
+`artifacts/g1/g1g_formal_stage0_decision_c2a0ccb.json`, SHA-256
+`430a238531f45d5cbbe213007075334bf1516360ba7dc717284e8caa15fa4dde`.
+
+### G1T: corrected result does not authorize a learned follow-up
+
+The corrected no-train comparison found less than `0.05%` relative geometry
+change between current-only, ego-union, and Doppler-union arms. All three arms
+had about `15.9 m` Chamfer and `87.6%` outliers. The old proposal-union
+mechanism is therefore closed as a learned parent even though its internal
+relative boolean passed. An independently defined temporal model may still be
+tested, but it cannot cite G1T as evidence that the current proposal mechanism
+is useful.

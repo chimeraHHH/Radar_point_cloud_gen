@@ -40,6 +40,8 @@
 
 > **2026-07-28 RaLD-wide 支持域审查：**对初版 1.2M 候选 R-A0 的独立代码审查给出 NO-GO：其 full-pool nearest support 被硬 range 分箱切断，GT selector 是无重分配启发式而非可信 upper bound，且“secondary refinement”并未复现 RaLD 的 occupancy-dependent 第二轮查询。因此该版本不得 formal、不得因失败关闭完整 RaLD-wide family。修复要求为全局 support、0--30/30--60/60--120 输出配额、unique-capacity gate、保守失败语义、真实 5 cm Euclidean 去重和最大帧 H200 preflight。
 
+> **2026-07-29 G1G 正式终局：**source `c2a0ccb` 的 condition-exclusive `2,500 centers x 4 children` 层级模型在 H200 完成冻结的 20 epochs。结构和动态 anti-bypass 审计全部通过，但科学门失败：condition-shuffle Chamfer 变化为 `-0.1211%`，mean duplicate=`70.8108%`，mean outlier=`84.6854%`；只有 median completeness=`1.2086 m` 和 corrected far completeness=`6.5635 m` 通过相对控制门。该模型以大规模喷点和 child collapse 换取覆盖，且没有学到可靠的 Full-RAED 条件依赖。G1G 不延长训练、不调门、不与其他路线融合；完整记录见 `artifacts/g1/g1g_formal_failure_2026-07-29.md` 和签名 JSON `artifacts/g1/g1g_formal_stage0_decision_c2a0ccb.json`。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---
