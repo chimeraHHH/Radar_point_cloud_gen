@@ -30,6 +30,8 @@
 
 > **2026-07-28 RaLD 核心机制后继冻结：**进一步源码审计确认 G1D 仍是 deterministic `512 x 512` query refiner，直接 local-Cube query state 可绕过全局 condition；它没有 RaLD 的 `512 x 32` target posterior、EDM 噪声建模或 latent-only implicit decoder。为避免把“借鉴 RaLD”退化为堆叠同类 Transformer，在观察 G1D Stage-A 结果前冻结独立 [`G1E RaLD latent-EDM`](g1e_rald_latent_edm_protocol.md)。G1E 先用既有 R1 checkpoints 做 proposal-support D0 诊断；仅当长量程查询分配可将 archived Chamfer 改善至少 30% 且达到 `<=5 m` 时，才依次训练 source-faithful occupancy VAE 与 Full-RAED-conditioned EDM。D0 不读取 test、不使用 CFAR、不加载 learned G1D。
 
+> **2026-07-28 G1E-D0 终局：**source `da6f8a5f` 通过 H200 `216` 项回归后完成两套 archived VAE 的只读诊断。R1-fidelity 的 Chamfer 仅由 `10.9985` 降至 `10.7680 m`（改善 `2.10%`），R1-KRadar 由 `9.9612` 恶化至 `11.4948 m`；两者 outlier 均低于 8%，查询计数与 latent-only decoder 契约全部通过，但均未达到 `<=5 m` 和至少 30% 改善门。结果 `artifacts/g1/g1e_d0_da6f8a5f.json` 的 SHA-256 为 `f59d1afbf015e2004e32575826b437afa1ffad535b2bc318170ac037f8c147e5`。因此独立 occupancy-VAE/EDM 的 G1E-E1/E2 不授权；RaLD `512 x 32` physical latent/EDM 只保留为通过几何父模型后的 G3L 后置生成模块。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---
@@ -615,7 +617,7 @@ independently gated geometry parent
 - [x] 完成 G1C 实现与调度修复；在任何科学训练结果产生前，经 RaLD 源码审计判定其仅适合作为 deterministic control。
 - [x] 完成 G1D H200 正式尺寸预飞；结构、查询计数、逐层条件梯度和 source-bound provenance 全部通过。
 - [ ] 按冻结协议完成独立 G1D RaLD query-field Stage A；仅在通过后运行 Stage B 和新命名 G2D/G3D。
-- [ ] 完成 G1E-D0 retrospective proposal-support 诊断；只有 D0 通过才实现并训练 source-faithful `512 x 32` VAE 与 Full-RAED EDM。
+- [x] 完成 G1E-D0 retrospective proposal-support 诊断；D0 失败，source-faithful occupancy VAE/EDM 的 E1/E2 按协议关闭。
 - [x] 建立 RaLD-structured G4R 的预测缓存、token/latent/query 训练、基线、
   preflight、rollout、比较与总队列；严格等待 G3R checkpoint family。
 - [x] 实现 G3L 的 `512 x 32` physical posterior、anchor-only 24-layer decoder、

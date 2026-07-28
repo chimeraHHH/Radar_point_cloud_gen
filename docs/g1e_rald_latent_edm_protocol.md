@@ -81,6 +81,23 @@ D0 passes only if at least one checkpoint satisfies all of:
 If D0 fails, query allocation is not sufficient to rescue the existing RaLD
 occupancy representation. G1E closes without VAE or EDM retraining.
 
+### D0 outcome
+
+D0 ran on H200 source `da6f8a5f` after `216` regression tests passed. Both
+archived runs preserved their source-bound best checkpoint and train frame:
+
+| Archived VAE | Full-grid Chamfer | Proposal-support Chamfer | Relative change | Outlier@2m |
+|---|---:|---:|---:|---:|
+| R1-fidelity | 10.9985 m | 10.7680 m | -2.10% | 7.32% |
+| R1-KRadar | 9.9612 m | 11.4948 m | +15.40% | 7.41% |
+
+Both arms preserved the exact `1,000 / 32,000 / 2,500 / 10,000`
+seed/coarse/selected/final counts and used only normalized coordinates plus the
+target latent in the decoder. Neither reached `5.0 m` or the required 30%
+improvement. D0 therefore failed and E1/E2 are not authorized. The result is
+archived at `artifacts/g1/g1e_d0_da6f8a5f.json` with SHA-256
+`f59d1afbf015e2004e32575826b437afa1ffad535b2bc318170ac037f8c147e5`.
+
 ## E1: target-latent VAE
 
 D0 is the only authorization for E1. Train one Stage-A seed (`20260719`) for

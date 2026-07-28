@@ -1,0 +1,184 @@
+{
+  "protocol": "g1e_rald_latent_edm_d0_proposal_support_v1",
+  "created_utc": "2026-07-28T14:14:01.070504+00:00",
+  "source_commit": "da6f8a5fa4b306132600c32617c44c01b78e15c0",
+  "official_rald_commit": "ffec4b41241391734b1eda5c093de843c909eb8e",
+  "device": "NVIDIA H200 NVL",
+  "manifest": "/home/wangning/Workspace/radar_cube_dense/snapshots/da6f8a5/artifacts/g0/g0_audit_100_manifest.json",
+  "manifest_sha256": "645307a8bae351db51b55128043dae69bce5b928169d5fa25c1b9c55083de4e4",
+  "thresholds": {
+    "maximum_chamfer_m": 5.0,
+    "maximum_outlier_fraction_2m": 0.25,
+    "minimum_chamfer_improvement_fraction": 0.3
+  },
+  "runs": [
+    {
+      "gate_path": "/home/wangning/Workspace/radar_cube_dense/snapshots/da6f8a5/artifacts/baselines/rald/physics_r1_fidelity_gate_cc9ab3b.json",
+      "gate_sha256": "6cda2da7c986a226b35c9d86fd5f228273ce13009b0ef92f15695e63969ab4c5",
+      "archived_run": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_cc9ab3b_rald_physics/r1_fidelity",
+      "archived_source_commit": "cc9ab3b7c5e404e30a026cde5dea6638c8a6a3e9",
+      "config_sha256": "704644b8b2b544ff8adb359a9ab3fe93481a493c2a3a1b67df78ad14d28d0049",
+      "checkpoint": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_cc9ab3b_rald_physics/r1_fidelity/best.pt",
+      "checkpoint_sha256": "8c8734c18d9ca860c8b5f2328ee110c16bff4220a16fd1dd63ca54b1e7067d74",
+      "archived_metrics": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_cc9ab3b_rald_physics/r1_fidelity/best_validation_metrics.json",
+      "archived_metrics_sha256": "738e0254bb92548c44fada0707cafaf13133d3197b34c7948dfbd17d4f2abcd2",
+      "frame": {
+        "partition": "train",
+        "sequence": 1,
+        "radar_index": 232
+      },
+      "query_decoder_inputs": [
+        "normalized_rae",
+        "latent"
+      ],
+      "counts": {
+        "base_seed": 1000,
+        "coarse": 32000,
+        "selected_coarse": 2500,
+        "final": 10000
+      },
+      "archived_full_grid": {
+        "chamfer_m": 10.998469352722168,
+        "outlier_fraction_2m": 0.1339000016450882
+      },
+      "proposal_support": {
+        "geometry": {
+          "chamfer_m": 10.768047332763672,
+          "precision_mean_distance_m": 0.9198738932609558,
+          "completeness_mean_distance_m": 9.848173141479492,
+          "outlier_fraction_2m": 0.07319999486207962,
+          "prediction_count": 10000,
+          "target_count": 10436,
+          "target_effective_count": 2881.76904296875,
+          "precision_0p5m": 0.2857999801635742,
+          "recall_0p5m": 0.18297283351421356,
+          "fscore_0p5m": 0.22310863435268402,
+          "precision_1p0m": 0.6485999822616577,
+          "recall_1p0m": 0.2982037663459778,
+          "fscore_1p0m": 0.4085639715194702,
+          "precision_2p0m": 0.9267999529838562,
+          "recall_2p0m": 0.42637866735458374,
+          "fscore_2p0m": 0.5840585231781006,
+          "range_0_30m_precision_mean_distance_m": 0.9068986773490906,
+          "range_0_30m_completeness_mean_distance_m": 2.445915699005127,
+          "range_0_30m_fscore_1m": 0.5460816621780396,
+          "range_30_60m_precision_mean_distance_m": 1.2713727951049805,
+          "range_30_60m_completeness_mean_distance_m": 10.185758590698242,
+          "range_30_60m_fscore_1m": 0.10591614246368408
+        },
+        "duplicates": {
+          "duplicate_fraction_0p05m": 0.22049999237060547,
+          "nearest_other_median_m": 0.08706206828355789,
+          "nearest_other_mean_m": 0.11079934984445572
+        },
+        "chamfer_improvement_fraction": 0.020950371598886682,
+        "occupancy_logit": {
+          "minimum": -4.46875,
+          "median": -3.96875,
+          "maximum": -0.9140625
+        }
+      },
+      "checks": {
+        "archived_source_matched": true,
+        "one_frame_configuration": true,
+        "proposal_chamfer": false,
+        "proposal_outlier": true,
+        "minimum_relative_improvement": false,
+        "base_seed_count": true,
+        "coarse_query_count": true,
+        "selected_coarse_count": true,
+        "final_point_count": true,
+        "coordinate_and_latent_decoder_only": true,
+        "learned_g1d_checkpoint_accessed": false,
+        "cfar_query_helper": false,
+        "test_accessed": false
+      },
+      "passed": false
+    },
+    {
+      "gate_path": "/home/wangning/Workspace/radar_cube_dense/snapshots/da6f8a5/artifacts/baselines/rald/physics_r1_kradar_gate_9f2ed62.json",
+      "gate_sha256": "be6439d54936e07b5c0d05124edec1f6bc83a56091ec295e7630f00f9bc6147e",
+      "archived_run": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_9f2ed62_rald_physics/r1_kradar",
+      "archived_source_commit": "9f2ed629e5109d0bcbbccccc7761c8ccd287857b",
+      "config_sha256": "915e698393ede43b8ca544e924ae9f05813192ab095a098ff9d858155b117010",
+      "checkpoint": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_9f2ed62_rald_physics/r1_kradar/best.pt",
+      "checkpoint_sha256": "f358fbcc13e6c70a0a8c27a3210c6750e33c5cc3f375666849850c1ec338a811",
+      "archived_metrics": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_9f2ed62_rald_physics/r1_kradar/best_validation_metrics.json",
+      "archived_metrics_sha256": "e995f4d123598909270cecb469cd0c01694ff4753d546694a788788dd514e452",
+      "frame": {
+        "partition": "train",
+        "sequence": 1,
+        "radar_index": 232
+      },
+      "query_decoder_inputs": [
+        "normalized_rae",
+        "latent"
+      ],
+      "counts": {
+        "base_seed": 1000,
+        "coarse": 32000,
+        "selected_coarse": 2500,
+        "final": 10000
+      },
+      "archived_full_grid": {
+        "chamfer_m": 9.961193084716797,
+        "outlier_fraction_2m": 0.10480000078678131
+      },
+      "proposal_support": {
+        "geometry": {
+          "chamfer_m": 11.49483585357666,
+          "precision_mean_distance_m": 0.8133552670478821,
+          "completeness_mean_distance_m": 10.681480407714844,
+          "outlier_fraction_2m": 0.07409999519586563,
+          "prediction_count": 10000,
+          "target_count": 10436,
+          "target_effective_count": 2881.76904296875,
+          "precision_0p5m": 0.36890000104904175,
+          "recall_0p5m": 0.17393265664577484,
+          "fscore_0p5m": 0.2364034503698349,
+          "precision_1p0m": 0.7400999665260315,
+          "recall_1p0m": 0.21761615574359894,
+          "fscore_1p0m": 0.33633705973625183,
+          "precision_2p0m": 0.9258999824523926,
+          "recall_2p0m": 0.2979854941368103,
+          "fscore_2p0m": 0.4508669674396515,
+          "range_0_30m_precision_mean_distance_m": 0.7466054558753967,
+          "range_0_30m_completeness_mean_distance_m": 3.1848464012145996,
+          "range_0_30m_fscore_1m": 0.4683268070220947,
+          "range_30_60m_precision_mean_distance_m": 1.598005771636963,
+          "range_30_60m_completeness_mean_distance_m": 11.401750564575195,
+          "range_30_60m_fscore_1m": 0.09221196919679642
+        },
+        "duplicates": {
+          "duplicate_fraction_0p05m": 0.28049999475479126,
+          "nearest_other_median_m": 0.07709278911352158,
+          "nearest_other_mean_m": 0.10283336043357849
+        },
+        "chamfer_improvement_fraction": -0.15396175496416106,
+        "occupancy_logit": {
+          "minimum": -5.46875,
+          "median": -1.6328125,
+          "maximum": 2.765625
+        }
+      },
+      "checks": {
+        "archived_source_matched": true,
+        "one_frame_configuration": true,
+        "proposal_chamfer": false,
+        "proposal_outlier": true,
+        "minimum_relative_improvement": false,
+        "base_seed_count": true,
+        "coarse_query_count": true,
+        "selected_coarse_count": true,
+        "final_point_count": true,
+        "coordinate_and_latent_decoder_only": true,
+        "learned_g1d_checkpoint_accessed": false,
+        "cfar_query_helper": false,
+        "test_accessed": false
+      },
+      "passed": false
+    }
+  ],
+  "passed": false,
+  "test_accessed": false
+}
