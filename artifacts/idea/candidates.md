@@ -3,6 +3,14 @@
 > Frozen on 2026-07-28. Test access is false. The existing G1D v2 run continues
 > unchanged and does not select settings for these candidates.
 
+> Corrected-evaluator addendum, 2026-07-28: the original far-completeness gate
+> and every archived far value below used a censored metric that omitted
+> target-bearing frames without same-bin predictions. They remain historical
+> preregistration records, not valid current evidence. New runs must use
+> `dense_geometry.py` from source `1561ac3` or later and bind all relative gates
+> to `g1d_epoch15_corrected_geometry_control_1561ac3.json`. The absolute far
+> gate is suspended until all parent arms are re-evaluated; it is not relaxed.
+
 ## Unified Stage-0 contract
 
 Every learned route uses the existing 76/24 scene-held-out split, 10,000 output
@@ -76,3 +84,7 @@ only `17.80%` at 2 m, so the failure is not attributable to the learned hard
 top-k selector alone. G1F-F1 balanced-transport training is not authorized.
 Artifact: `artifacts/g1/g1f_f0_ca60d76.json`, SHA-256
 `edaf94fa57b324abc3fe853438ed9146671ee8e73494e62339dff47514911320`.
+
+The G1F geometry failure remains sufficient to close selector-only repair on
+the frozen 32k pool because Chamfer, completeness, and duplicates also failed.
+Its archived far-completeness value is censored and must not be cited.

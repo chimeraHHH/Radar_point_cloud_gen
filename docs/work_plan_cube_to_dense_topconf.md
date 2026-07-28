@@ -36,6 +36,10 @@
 
 > **2026-07-28 G1F 候选池 oracle 终局：**source `ca60d76` 在 H200 上以 GT coverage oracle 从冻结的 32,000 个 G1D proposals 中等量选出 10,000 点。即使允许这一不可实现上限，median Chamfer=`2.8863 m`、median completeness=`1.6513 m`、far completeness=`8.6533 m`、duplicate=`14.015%`，仅 outlier=`24.853%` 过门；60--120 m proposals 的 2 m GT recall 仅 `17.80%`。因此 hard top-k 不是唯一病因，同一候选池上的 G1F-F1 balanced transport 不授权。结果归档于 `artifacts/g1/g1f_f0_ca60d76.json`，SHA-256=`edaf94fa57b324abc3fe853438ed9146671ee8e73494e62339dff47514911320`。下一 learned priority 为改变表示/信息路径的 G1G，G1T 独立检查历史观测能否补足 support。
 
+> **2026-07-28 远距评估口径纠正：**独立审计发现旧版 `dense_geometry.py` 仅在目标和预测都落入同一距离段时才报告分段指标，因而会删除“存在 60--120 m GT、但模型完全没有远距预测”的最差帧。修正后用冻结的 G1D epoch-15 EMA、相同 24 帧和相同数据字节重评：总体 median completeness=`3.5637 m`；23 个含远距 GT 的帧全部计入后，mean far completeness=`46.9407 m`，而旧 `8.1239 m` 属于删失偏差。签名控制件为 `artifacts/g1/g1d_epoch15_corrected_geometry_control_1561ac3.json`，SHA-256=`56a0343745f29bb7ecb2f9176b4527435db97f14bd510ed2f03e5d0c9d0e3fd7`。所有旧 far-completeness 数字保留作历史记录但不再用于科学结论；原绝对 `<=8.0 m` final gate 暂停，待所有父模型按 corrected evaluator 重算后重新冻结，不能把暂停解释为放宽门槛。G1G Stage-0 只使用同字节 matched control：median completeness 至少改善 30%，即 `<=2.4946 m`，且 corrected far completeness 不劣于 `46.9407 m`。
+
+> **2026-07-28 RaLD-wide 支持域审查：**对初版 1.2M 候选 R-A0 的独立代码审查给出 NO-GO：其 full-pool nearest support 被硬 range 分箱切断，GT selector 是无重分配启发式而非可信 upper bound，且“secondary refinement”并未复现 RaLD 的 occupancy-dependent 第二轮查询。因此该版本不得 formal、不得因失败关闭完整 RaLD-wide family。修复要求为全局 support、0--30/30--60/60--120 输出配额、unique-capacity gate、保守失败语义、真实 5 cm Euclidean 去重和最大帧 H200 preflight。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---
