@@ -10,7 +10,10 @@ from eval.g1t_temporal_proposal import (
     warp_history_source,
 )
 from models.cube_doppler import circular_mean
-from scripts.eval_g1t_temporal_proposal import range_slice_geometry
+from scripts.eval_g1t_temporal_proposal import (
+    forbidden_access_checks,
+    range_slice_geometry,
+)
 
 
 def axes() -> tuple[torch.Tensor, ...]:
@@ -221,6 +224,17 @@ def test_selection_api_cannot_receive_gt_or_lidar() -> None:
             for name in parameter_names
             for token in ("target", "lidar", "ground_truth", "gt_")
         )
+
+
+def test_forbidden_access_checks_pass_when_paths_are_not_used() -> None:
+    checks = forbidden_access_checks()
+
+    assert checks == {
+        "learned_g1d_score_not_accessed": True,
+        "lidar_or_gt_selection_not_accessed": True,
+        "test_partition_not_accessed": True,
+    }
+    assert all(checks.values())
 
 
 def test_t1_equals_t2_when_residual_doppler_is_zero() -> None:

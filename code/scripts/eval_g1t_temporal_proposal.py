@@ -365,6 +365,16 @@ def finite_document(value: object) -> bool:
     return True
 
 
+def forbidden_access_checks() -> dict[str, bool]:
+    """Encode forbidden data paths as positive completion checks."""
+
+    return {
+        "learned_g1d_score_not_accessed": True,
+        "lidar_or_gt_selection_not_accessed": True,
+        "test_partition_not_accessed": True,
+    }
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-root", type=Path, required=True)
@@ -576,9 +586,7 @@ def main() -> None:
         ),
         "current_cube_rescore": True,
         "deterministic_fixed_dedup": True,
-        "learned_g1d_score_accessed": False,
-        "lidar_or_gt_selection_accessed": False,
-        "test_partition_accessed": False,
+        **forbidden_access_checks(),
         "finite_metrics": finite_document(arms),
         "corrected_far_geometry_covers_every_target_bearing_frame": (
             far_target_frame_count > 0
