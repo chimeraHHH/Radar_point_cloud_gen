@@ -109,11 +109,18 @@ def validate_archived_run(gate_path: Path) -> tuple[dict, Path, dict, dict, Path
     for path in (config_path, checkpoint_path, metrics_path):
         if not path.is_file():
             raise FileNotFoundError(f"Archived G1E-D0 input is missing: {path}")
-    config = json.loads(config_path.read_text(encoding="utf-8"))
+    config_document = json.loads(config_path.read_text(encoding="utf-8"))
+    if set(config_document) != {"config", "provenance"}:
+        raise ValueError("Archived RaLD config document has an unknown schema")
+    config = config_document["config"]
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     if checkpoint.get("config") != config:
         raise ValueError("Archived RaLD checkpoint config differs from config.json")
     provenance = checkpoint.get("provenance", {})
+    if config_document["provenance"] != provenance:
+        raise ValueError(
+            "Archived RaLD checkpoint provenance differs from config.json"
+        )
     if provenance.get("git_commit") != gate.get("source_commit"):
         raise ValueError("Archived RaLD checkpoint source differs from gate record")
     required = {
