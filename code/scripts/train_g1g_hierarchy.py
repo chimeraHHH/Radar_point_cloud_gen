@@ -47,13 +47,10 @@ FORMAL_TRAIN_COUNT = 76
 FORMAL_VALIDATION_COUNT = 24
 SMOKE_TRAIN_COUNT = 2
 SMOKE_VALIDATION_COUNT = 2
-G1D_EPOCH15_COMPLETENESS_M = 3.5811
-G1D_EPOCH15_FAR_COMPLETENESS_M = 8.1239
+G1D_CONTROL_PROTOCOL = "g1d_epoch15_corrected_geometry_control_v1"
+G1D_CONTROL_SOURCE_COMMIT = "4c6150cdd86ec1298f4b056569e3780020b4d8af"
+G1D_CONTROL_EPOCH = 15
 COMPLETENESS_IMPROVEMENT_FRACTION = 0.30
-STAGE0_COMPLETENESS_LIMIT_M = (
-    G1D_EPOCH15_COMPLETENESS_M
-    * (1.0 - COMPLETENESS_IMPROVEMENT_FRACTION)
-)
 FROZEN_MANIFEST_SHA256 = (
     "645307a8bae351db51b55128043dae69bce5b928169d5fa25c1b9c55083de4e4"
 )
@@ -81,6 +78,8 @@ class TrainConfig:
     weight_decay: float
     gradient_clip_norm: float
     ema_decay: float
+    ema_ramp_offset: int
+    selection_model: str
     point_count: int
     center_count: int
     children_per_center: int
@@ -97,11 +96,13 @@ class TrainConfig:
     center_coverage_weight: float
     center_existence_weight: float
     center_repulsion_weight: float
+    final_repulsion_weight: float
     child_diversity_weight: float
     child_bound_weight: float
     outlier_threshold_m: float
     existence_radius_m: float
     center_repulsion_distance_m: float
+    final_repulsion_distance_m: float
     child_diversity_diagonal_fraction: float
     selection_metric: str
     test_accessed: bool
@@ -124,6 +125,8 @@ def frozen_config(*, smoke: bool) -> TrainConfig:
         weight_decay=0.05,
         gradient_clip_norm=10.0,
         ema_decay=0.999,
+        ema_ramp_offset=10,
+        selection_model="raw",
         point_count=10_000,
         center_count=2_500,
         children_per_center=4,
@@ -140,11 +143,13 @@ def frozen_config(*, smoke: bool) -> TrainConfig:
         center_coverage_weight=0.25,
         center_existence_weight=0.05,
         center_repulsion_weight=0.05,
+        final_repulsion_weight=0.02,
         child_diversity_weight=0.05,
         child_bound_weight=1.0,
         outlier_threshold_m=2.0,
         existence_radius_m=1.0,
         center_repulsion_distance_m=0.10,
+        final_repulsion_distance_m=0.10,
         child_diversity_diagonal_fraction=0.20,
         selection_metric=(
             "median_chamfer + completeness_gate_excess + "
@@ -355,6 +360,90 @@ def frame_data_hashes(
     return result
 
 
+def canonical_data_contract(data_hashes: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "manifest_sha256": data_hashes["manifest"]["sha256"],
+        "scene_split_sha256": data_hashes["scene_split"]["sha256"],
+        "normalization_sha256": data_hashes["normalization"]["sha256"],
+        "range_azimuth_elevation_axes_sha256": data_hashes[
+            "range_azimuth_elevation_axes"
+        ]["sha256"],
+        "doppler_axis_sha256": data_hashes["doppler_axis"]["sha256"],
+        "frames": [
+            {
+                "partition": frame["partition"],
+                "sequence": frame["sequence"],
+                "radar_index": frame["radar_index"],
+                "cube_sha256": frame["cube_sha256"],
+                "dense_cache_sha256": frame["dense_cache_sha256"],
+            }
+            for frame in data_hashes["frames"]
+        ],
+    }
+
+
+def validate_g1d_control(
+    document: dict[str, Any],
+    *,
+    expected_data_contract: dict[str, Any],
+    expected_validation_records: list[dict],
+    expected_evaluator_sha256: str,
+) -> dict[str, Any]:
+    if document.get("protocol") != G1D_CONTROL_PROTOCOL:
+        raise ValueError("G1G G1D control protocol differs from the frozen contract")
+    checkpoint = document.get("checkpoint", {})
+    if (
+        checkpoint.get("source_commit") != G1D_CONTROL_SOURCE_COMMIT
+        or checkpoint.get("epoch") != G1D_CONTROL_EPOCH
+        or checkpoint.get("evaluation_state") != "ema_model"
+    ):
+        raise ValueError("G1G G1D control checkpoint identity is invalid")
+    checkpoint_sha = checkpoint.get("sha256")
+    if not isinstance(checkpoint_sha, str) or not re.fullmatch(
+        r"[0-9a-f]{64}", checkpoint_sha
+    ):
+        raise ValueError("G1G G1D control checkpoint SHA256 is invalid")
+    evaluator = document.get("evaluator", {})
+    if evaluator.get("dense_geometry_sha256") != expected_evaluator_sha256:
+        raise ValueError("G1G G1D control used a different geometry evaluator")
+    if document.get("data_contract") != expected_data_contract:
+        raise ValueError("G1G G1D control data bytes differ from current Stage-0")
+
+    expected_identities = [
+        {
+            "sequence": int(record["sequence"]),
+            "radar_index": int(record["radar_index"]),
+        }
+        for record in expected_validation_records
+    ]
+    if document.get("validation_frame_identities") != expected_identities:
+        raise ValueError("G1G G1D control validation identities differ")
+    metrics = document.get("metrics", {})
+    if metrics.get("frame_count") != FORMAL_VALIDATION_COUNT:
+        raise ValueError("G1G G1D control must evaluate all 24 validation frames")
+    completeness = metrics.get("generated", {}).get(
+        "completeness_mean_distance_m", {}
+    )
+    far = metrics.get("generated", {}).get(
+        "range_60_120m_completeness_mean_distance_m", {}
+    )
+    if (
+        completeness.get("sample_count") != FORMAL_VALIDATION_COUNT
+        or far.get("sample_count") != FORMAL_VALIDATION_COUNT
+    ):
+        raise ValueError("G1G G1D control endpoint sample counts are incomplete")
+    return {
+        "protocol": G1D_CONTROL_PROTOCOL,
+        "checkpoint_source_commit": G1D_CONTROL_SOURCE_COMMIT,
+        "checkpoint_epoch": G1D_CONTROL_EPOCH,
+        "checkpoint_sha256": checkpoint_sha,
+        "completeness_median_m": float(completeness["median"]),
+        "far_completeness_mean_m": float(far["mean"]),
+        "validation_frame_count": FORMAL_VALIDATION_COUNT,
+        "evaluator_dense_geometry_sha256": expected_evaluator_sha256,
+    }
+
+
 def source_hashes(repo: Path) -> dict[str, dict[str, str]]:
     relative_paths = (
         "artifacts/idea/pre_idea_drafts/g1g_condition_exclusive_hierarchy.md",
@@ -373,6 +462,7 @@ def source_hashes(repo: Path) -> dict[str, dict[str, str]]:
         "code/cube_dense/kradar.py",
         "code/eval/dense_geometry.py",
         "code/eval/rald_guided_query.py",
+        "code/scripts/eval_g1d_epoch15_control.py",
         "code/scripts/g1b_contract.py",
     )
     paths = [repo / relative for relative in relative_paths]
@@ -569,8 +659,17 @@ def dynamic_anti_bypass_checks(gradient_steps: list[dict]) -> dict[str, Any]:
 def update_ema(
     ema_model: G1GConditionExclusiveHierarchy,
     model: G1GConditionExclusiveHierarchy,
-    decay: float,
-) -> None:
+    maximum_decay: float,
+    *,
+    update_count: int,
+    ramp_offset: int,
+) -> float:
+    if update_count <= 0 or ramp_offset <= 0:
+        raise ValueError("G1G EMA update count and ramp offset must be positive")
+    decay = min(
+        maximum_decay,
+        (1.0 + update_count) / (ramp_offset + update_count),
+    )
     model_parameters = dict(model.named_parameters())
     for name, ema_parameter in ema_model.named_parameters():
         ema_parameter.mul_(decay).add_(
@@ -580,6 +679,7 @@ def update_ema(
     model_buffers = dict(model.named_buffers())
     for name, ema_buffer in ema_model.named_buffers():
         ema_buffer.copy_(model_buffers[name])
+    return decay
 
 
 def learning_rate(config: TrainConfig, epoch: int) -> float:
@@ -918,9 +1018,21 @@ def evaluate(
     return report
 
 
-def stage0_decision(metrics: dict) -> dict[str, Any]:
+def stage0_decision(
+    metrics: dict,
+    g1d_control: dict[str, Any],
+    *,
+    expected_frame_count: int = FORMAL_VALIDATION_COUNT,
+) -> dict[str, Any]:
     """Apply the frozen G1G Stage-0 gates without threshold relaxation."""
 
+    if expected_frame_count <= 0:
+        raise ValueError("G1G expected evaluation frame count must be positive")
+    g1d_completeness = float(g1d_control["completeness_median_m"])
+    g1d_far_completeness = float(g1d_control["far_completeness_mean_m"])
+    completeness_limit = g1d_completeness * (
+        1.0 - COMPLETENESS_IMPROVEMENT_FRACTION
+    )
     far_report = metrics["generated"].get(
         "range_60_120m_completeness_mean_distance_m"
     )
@@ -943,6 +1055,9 @@ def stage0_decision(metrics: dict) -> dict[str, Any]:
             metrics["generated"]["outlier_fraction_2m"]["mean"]
         ),
         "far_completeness_60_120m_mean": far_completeness,
+        "far_completeness_sample_count": (
+            int(far_report["sample_count"]) if far_report is not None else 0
+        ),
         "center_unique_fraction_0p05m_mean": float(
             metrics["center_structure"][
                 "center_unique_fraction_0p05m"
@@ -958,14 +1073,17 @@ def stage0_decision(metrics: dict) -> dict[str, Any]:
         ),
         "completeness_at_least_30pct_better_than_g1d_epoch15": (
             values["completeness_mean_distance_m_median"]
-            <= STAGE0_COMPLETENESS_LIMIT_M
+            <= completeness_limit
         ),
         "outlier_fraction_at_most_25pct": (
             values["outlier_fraction_2m_mean"] <= 0.25
         ),
         "far_completeness_no_worse_than_g1d_epoch15": (
             values["far_completeness_60_120m_mean"]
-            <= G1D_EPOCH15_FAR_COMPLETENESS_M
+            <= g1d_far_completeness
+        ),
+        "far_completeness_covers_every_evaluation_frame": (
+            values["far_completeness_sample_count"] == expected_frame_count
         ),
     }
     abandonment_checks = {
@@ -989,15 +1107,19 @@ def stage0_decision(metrics: dict) -> dict[str, Any]:
     return {
         "protocol": PROTOCOL,
         "metric_basis": "matched_frame_first_G1D_epoch15_24frame_aggregation",
+        "expected_frame_count": expected_frame_count,
         "fixed_controls": {
-            "g1d_epoch15_completeness_m": G1D_EPOCH15_COMPLETENESS_M,
+            "g1d_control_protocol": g1d_control["protocol"],
+            "g1d_checkpoint_sha256": g1d_control["checkpoint_sha256"],
+            "g1d_evaluator_dense_geometry_sha256": g1d_control[
+                "evaluator_dense_geometry_sha256"
+            ],
+            "g1d_epoch15_completeness_m": g1d_completeness,
             "required_completeness_improvement_fraction": (
                 COMPLETENESS_IMPROVEMENT_FRACTION
             ),
-            "g1g_completeness_limit_m": STAGE0_COMPLETENESS_LIMIT_M,
-            "g1d_epoch15_far_completeness_m": (
-                G1D_EPOCH15_FAR_COMPLETENESS_M
-            ),
+            "g1g_completeness_limit_m": completeness_limit,
+            "g1d_epoch15_far_completeness_m": g1d_far_completeness,
         },
         "values": values,
         "promotion_checks": promotion_checks,
@@ -1008,14 +1130,24 @@ def stage0_decision(metrics: dict) -> dict[str, Any]:
     }
 
 
-def selection_score(metrics: dict) -> float:
-    decision = stage0_decision(metrics)
+def selection_score(
+    metrics: dict,
+    g1d_control: dict[str, Any],
+    *,
+    expected_frame_count: int = FORMAL_VALIDATION_COUNT,
+) -> float:
+    decision = stage0_decision(
+        metrics,
+        g1d_control,
+        expected_frame_count=expected_frame_count,
+    )
     values = decision["values"]
+    controls = decision["fixed_controls"]
     return (
         float(metrics["generated"]["chamfer_m"]["median"])
         + max(
             values["completeness_mean_distance_m_median"]
-            - STAGE0_COMPLETENESS_LIMIT_M,
+            - controls["g1g_completeness_limit_m"],
             0.0,
         )
         + 2.0 * max(values["outlier_fraction_2m_mean"] - 0.25, 0.0)
@@ -1023,7 +1155,7 @@ def selection_score(metrics: dict) -> float:
         + 0.1
         * max(
             values["far_completeness_60_120m_mean"]
-            - G1D_EPOCH15_FAR_COMPLETENESS_M,
+            - controls["g1d_epoch15_far_completeness_m"],
             0.0,
         )
         + 10.0
@@ -1119,6 +1251,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--scene-split", type=Path, required=True)
     parser.add_argument("--normalization", type=Path, required=True)
+    parser.add_argument("--g1d-control", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--device", default="cuda:0")
@@ -1183,6 +1316,31 @@ def main() -> None:
             args.cache_root,
         ),
     }
+    train_set = KRadarCubeDataset(
+        args.data_root,
+        args.cache_root,
+        args.manifest,
+        ("train",),
+    )
+    validation_set = KRadarCubeDataset(
+        args.data_root,
+        args.cache_root,
+        args.manifest,
+        ("validation",),
+    )
+    if len(train_set) != FORMAL_TRAIN_COUNT or len(validation_set) != (
+        FORMAL_VALIDATION_COUNT
+    ):
+        raise ValueError("G1G dataset loader changed the frozen 76/24 split")
+    g1d_control_document = json.loads(
+        args.g1d_control.read_text(encoding="utf-8")
+    )
+    g1d_control = validate_g1d_control(
+        g1d_control_document,
+        expected_data_contract=canonical_data_contract(data_hashes),
+        expected_validation_records=validation_set.records,
+        expected_evaluator_sha256=sha256(repo / "code/eval/dense_geometry.py"),
+    )
 
     random.seed(config.seed)
     np.random.seed(config.seed)
@@ -1201,22 +1359,6 @@ def main() -> None:
         lr=config.learning_rate,
         weight_decay=config.weight_decay,
     )
-    train_set = KRadarCubeDataset(
-        args.data_root,
-        args.cache_root,
-        args.manifest,
-        ("train",),
-    )
-    validation_set = KRadarCubeDataset(
-        args.data_root,
-        args.cache_root,
-        args.manifest,
-        ("validation",),
-    )
-    if len(train_set) != FORMAL_TRAIN_COUNT or len(validation_set) != (
-        FORMAL_VALIDATION_COUNT
-    ):
-        raise ValueError("G1G dataset loader changed the frozen 76/24 split")
     train_indices = selected_indices(len(train_set), config.train_limit)
     validation_indices = (
         smoke_cross_scene_indices(validation_set.records)
@@ -1254,10 +1396,9 @@ def main() -> None:
         "proposal_cache": False,
         "local_pre_allocation_inputs": False,
         "g1d_control": {
-            "epoch": 15,
-            "completeness_m": G1D_EPOCH15_COMPLETENESS_M,
-            "far_completeness_m": G1D_EPOCH15_FAR_COMPLETENESS_M,
-            "model_loaded": False,
+            "path": str(args.g1d_control.resolve()),
+            "artifact_sha256": sha256(args.g1d_control),
+            "validated": g1d_control,
         },
     }
     run_document = artifact_document(
@@ -1310,7 +1451,7 @@ def main() -> None:
     initial_path = args.output / "initial_validation_metrics.json"
     if not initial_path.is_file():
         initial_metrics = evaluate(
-            ema_model,
+            model,
             validation_set,
             validation_indices,
             device,
@@ -1326,7 +1467,13 @@ def main() -> None:
                 payload={
                     "epoch": 0,
                     "metrics": initial_metrics,
-                    "stage0_decision": stage0_decision(initial_metrics),
+                    "ema_metrics": copy.deepcopy(initial_metrics),
+                    "selection_model": config.selection_model,
+                    "stage0_decision": stage0_decision(
+                        initial_metrics,
+                        g1d_control,
+                        expected_frame_count=len(validation_indices),
+                    ),
                 },
             ),
         )
@@ -1342,6 +1489,7 @@ def main() -> None:
         order = train_indices.copy()
         random.Random(config.seed + epoch).shuffle(order)
         losses = []
+        ema_decay_applied = 0.0
         components: dict[str, list[float]] = {}
         for index in order:
             item = train_set[index]
@@ -1375,12 +1523,16 @@ def main() -> None:
                 center_coverage_weight=config.center_coverage_weight,
                 center_existence_weight=config.center_existence_weight,
                 center_repulsion_weight=config.center_repulsion_weight,
+                final_repulsion_weight=config.final_repulsion_weight,
                 child_diversity_weight=config.child_diversity_weight,
                 child_bound_weight=config.child_bound_weight,
                 outlier_threshold_m=config.outlier_threshold_m,
                 existence_radius_m=config.existence_radius_m,
                 center_repulsion_distance_m=(
                     config.center_repulsion_distance_m
+                ),
+                final_repulsion_distance_m=(
+                    config.final_repulsion_distance_m
                 ),
                 child_diversity_diagonal_fraction=(
                     config.child_diversity_diagonal_fraction
@@ -1420,7 +1572,13 @@ def main() -> None:
                 config.gradient_clip_norm,
             )
             optimizer.step()
-            update_ema(ema_model, model, config.ema_decay)
+            ema_decay_applied = update_ema(
+                ema_model,
+                model,
+                config.ema_decay,
+                update_count=update_count,
+                ramp_offset=config.ema_ramp_offset,
+            )
             losses.append(float(loss.total.detach().item()))
             for name, value in loss.components.items():
                 components.setdefault(name, []).append(float(value.item()))
@@ -1448,6 +1606,7 @@ def main() -> None:
                 for name, values in components.items()
             },
             "learning_rate": epoch_learning_rate,
+            "ema_decay_applied": ema_decay_applied,
             "elapsed_seconds": round(
                 prior_elapsed + time.monotonic() - started,
                 3,
@@ -1456,14 +1615,29 @@ def main() -> None:
         is_best = False
         if epoch % config.eval_every == 0:
             metrics = evaluate(
+                model,
+                validation_set,
+                validation_indices,
+                device,
+            )
+            ema_metrics = evaluate(
                 ema_model,
                 validation_set,
                 validation_indices,
                 device,
             )
-            decision = stage0_decision(metrics)
-            score = selection_score(metrics)
+            decision = stage0_decision(
+                metrics,
+                g1d_control,
+                expected_frame_count=len(validation_indices),
+            )
+            score = selection_score(
+                metrics,
+                g1d_control,
+                expected_frame_count=len(validation_indices),
+            )
             record["validation"] = metrics
+            record["validation_ema"] = ema_metrics
             record["stage0_decision"] = decision
             record["selection_score"] = score
             metrics_document = artifact_document(
@@ -1475,6 +1649,8 @@ def main() -> None:
                 payload={
                     "epoch": epoch,
                     "metrics": metrics,
+                    "ema_metrics": ema_metrics,
+                    "selection_model": config.selection_model,
                     "stage0_decision": decision,
                     "selection_score": score,
                 },
@@ -1534,14 +1710,25 @@ def main() -> None:
         or best.get("exact_counts") != exact_counts
     ):
         raise ValueError("G1G selected checkpoint metadata differs")
+    model.load_state_dict(best["model"], strict=True)
     ema_model.load_state_dict(best["ema_model"], strict=True)
     final_metrics = evaluate(
+        model,
+        validation_set,
+        validation_indices,
+        device,
+    )
+    final_ema_metrics = evaluate(
         ema_model,
         validation_set,
         validation_indices,
         device,
     )
-    final_decision = stage0_decision(final_metrics)
+    final_decision = stage0_decision(
+        final_metrics,
+        g1d_control,
+        expected_frame_count=len(validation_indices),
+    )
     final_dynamic_audit = dynamic_anti_bypass_checks(gradient_steps)
     final_anti_bypass = {
         **anti_bypass,
@@ -1561,8 +1748,9 @@ def main() -> None:
         "selection_value": best_score,
         "best_checkpoint": str(best_path.resolve()),
         "best_checkpoint_sha256": sha256(best_path),
-        "evaluation_model": "ema_0p999",
+        "evaluation_model": config.selection_model,
         "metrics": final_metrics,
+        "ema_metrics": final_ema_metrics,
         "stage0_decision": final_decision,
         "gradient_steps": gradient_steps,
         "test_accessed": False,

@@ -122,6 +122,18 @@ def test_existence_confidence_rewards_matched_predictions() -> None:
     )
 
 
+def test_child_existence_requires_logits_for_stable_bce() -> None:
+    output = hierarchy_output()
+    del output["confidence_logit"]
+
+    try:
+        compute(output)
+    except KeyError as error:
+        assert error.args == ("confidence_logit",)
+    else:
+        raise AssertionError("G1G loss accepted probabilities without logits")
+
+
 def test_outlier_hinge_activates_only_beyond_two_metres() -> None:
     near = hierarchy_output()
     far = hierarchy_output()
@@ -150,6 +162,23 @@ def test_center_repulsion_penalizes_collapsed_allocations() -> None:
     assert collapsed_loss > separated_loss
     assert torch.all(collapsed_nearest == 0.0)
     assert torch.all(separated_nearest > 0.1)
+
+
+def test_final_repulsion_detects_overlap_across_different_parents() -> None:
+    output = hierarchy_output()
+    baseline = compute(output)
+    overlapped = hierarchy_output()
+    overlapped_children = overlapped["child_xyz_m"].clone()
+    overlapped_children[0, 1, 0] = overlapped_children[0, 0, 0]
+    overlapped["child_xyz_m"] = overlapped_children
+    overlapped["xyz_m"] = overlapped_children.reshape(1, 8, 3)
+
+    collapsed = compute(overlapped)
+
+    assert (
+        collapsed.components["final_point_repulsion"]
+        > baseline.components["final_point_repulsion"]
+    )
 
 
 def test_child_diversity_is_scale_normalized_and_detects_collapse() -> None:

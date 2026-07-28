@@ -13,7 +13,6 @@ from dataclasses import dataclass
 import torch
 import torch.nn.functional as F
 
-from losses.cube_cycle import existence_confidence_loss
 from losses.rald_anchor import nearest_target_assignment
 
 
@@ -138,11 +137,13 @@ def g1g_hierarchy_loss(
     center_coverage_weight: float = 0.25,
     center_existence_weight: float = 0.05,
     center_repulsion_weight: float = 0.05,
+    final_repulsion_weight: float = 0.02,
     child_diversity_weight: float = 0.05,
     child_bound_weight: float = 1.0,
     outlier_threshold_m: float = 2.0,
     existence_radius_m: float = 1.0,
     center_repulsion_distance_m: float = 0.10,
+    final_repulsion_distance_m: float = 0.10,
     child_diversity_diagonal_fraction: float = 0.20,
     nearest_other_chunk_size: int = 512,
 ) -> G1GHierarchyLoss:
@@ -161,6 +162,7 @@ def g1g_hierarchy_loss(
     child_offset = output["child_physical_offset_m"]
     diagonal = output["center_cell_diagonal_m"]
     confidence = output["confidence"]
+    confidence_logit = output["confidence_logit"]
     center_score_logit = output["center_score_logit"]
     if prediction.shape != (1, expected_point_count, 3):
         raise ValueError("G1G output must contain the frozen point count")
@@ -182,6 +184,10 @@ def g1g_hierarchy_loss(
         raise ValueError("G1G center cell diagonals have the wrong shape")
     if confidence.shape != (1, expected_point_count):
         raise ValueError("G1G child confidence must align with exported points")
+    if confidence_logit.shape != (1, expected_point_count):
+        raise ValueError(
+            "G1G child confidence logits must align with exported points"
+        )
     if center_score_logit.shape != (1, expected_center_count):
         raise ValueError("G1G center scores must align with allocated centers")
 
@@ -211,10 +217,12 @@ def g1g_hierarchy_loss(
         prediction_to_target
         - prediction_to_target.new_tensor(outlier_threshold_m)
     ).square().mean()
-    child_existence, child_existence_target = existence_confidence_loss(
-        confidence[0].float(),
-        prediction_to_target,
-        match_radius_m=existence_radius_m,
+    child_existence_target = (
+        prediction_to_target.detach() <= existence_radius_m
+    ).to(confidence_logit)
+    child_existence = F.binary_cross_entropy_with_logits(
+        confidence_logit[0].float(),
+        child_existence_target.float(),
     )
 
     center_to_target, _ = nearest_target_assignment(center_xyz, target_xyz)
@@ -231,6 +239,11 @@ def g1g_hierarchy_loss(
     center_repulsion, center_nearest_other = center_repulsion_loss(
         center_xyz,
         minimum_distance_m=center_repulsion_distance_m,
+        chunk_size=nearest_other_chunk_size,
+    )
+    final_repulsion, prediction_nearest_other = center_repulsion_loss(
+        prediction_xyz,
+        minimum_distance_m=final_repulsion_distance_m,
         chunk_size=nearest_other_chunk_size,
     )
     child_diversity, child_pair_fraction = bounded_child_diversity_loss(
@@ -250,6 +263,7 @@ def g1g_hierarchy_loss(
         + center_coverage_weight * center_coverage
         + center_existence_weight * center_existence
         + center_repulsion_weight * center_repulsion
+        + final_repulsion_weight * final_repulsion
         + child_diversity_weight * child_diversity
         + child_bound_weight * child_bound
     )
@@ -262,6 +276,7 @@ def g1g_hierarchy_loss(
         "center_coverage_mean_distance_m": center_coverage.detach(),
         "center_existence_confidence": center_existence.detach(),
         "center_repulsion": center_repulsion.detach(),
+        "final_point_repulsion": final_repulsion.detach(),
         "bounded_child_diversity": child_diversity.detach(),
         "child_physical_bound_violation": child_bound.detach(),
         "child_confidence_mean": confidence[0].float().mean().detach(),
@@ -279,6 +294,7 @@ def g1g_hierarchy_loss(
             "center_to_target_m": center_to_target,
             "target_to_center_m": target_to_center,
             "center_nearest_other_m": center_nearest_other,
+            "prediction_nearest_other_m": prediction_nearest_other,
             "child_pair_diagonal_fraction": child_pair_fraction,
             "child_physical_bound_excess_m": child_bound_excess,
         },

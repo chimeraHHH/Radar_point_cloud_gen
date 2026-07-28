@@ -120,20 +120,25 @@ def geometry_report(
     for lower, upper in distance_bins_m:
         prediction_mask = (prediction_range >= lower) & (prediction_range < upper)
         target_mask = (target_range >= lower) & (target_range < upper)
-        if not prediction_mask.any() or not target_mask.any():
+        if not target_mask.any():
             continue
-        bin_prediction = prediction_to_target[prediction_mask]
         bin_target = target_to_prediction[target_mask]
         bin_weight = target_weight[target_mask]
         bin_weight_sum = bin_weight.sum().clamp_min(1e-8)
-        precision = (bin_prediction <= 1.0).float().mean()
         recall = ((bin_target <= 1.0).to(bin_weight) * bin_weight).sum()
         recall = recall / bin_weight_sum
+        if prediction_mask.any():
+            bin_prediction = prediction_to_target[prediction_mask]
+            precision = (bin_prediction <= 1.0).float().mean()
+        else:
+            bin_prediction = None
+            precision = recall.new_zeros(())
         fscore = 2.0 * precision * recall / (precision + recall).clamp_min(1e-8)
         prefix = f"range_{int(lower)}_{int(upper)}m"
-        report[f"{prefix}_precision_mean_distance_m"] = float(
-            bin_prediction.mean().item()
-        )
+        if bin_prediction is not None:
+            report[f"{prefix}_precision_mean_distance_m"] = float(
+                bin_prediction.mean().item()
+            )
         report[f"{prefix}_completeness_mean_distance_m"] = float(
             ((bin_target * bin_weight).sum() / bin_weight_sum).item()
         )

@@ -11,9 +11,9 @@ from scripts.train_g1g_hierarchy import (
     FORMAL_EVAL_EVERY,
     FROZEN_NORMALIZATION_SHA256,
     FORMAL_SEED,
-    STAGE0_COMPLETENESS_LIMIT_M,
     architecture_anti_bypass_checks,
     artifact_document,
+    canonical_data_contract,
     cross_scene_condition_indices,
     dynamic_anti_bypass_checks,
     frozen_config,
@@ -21,8 +21,29 @@ from scripts.train_g1g_hierarchy import (
     repeated_control_duplicate_report,
     smoke_cross_scene_indices,
     stage0_decision,
+    update_ema,
     validate_data_contract,
+    validate_g1d_control,
 )
+
+
+def g1d_control() -> dict:
+    return {
+        "protocol": "g1d_epoch15_corrected_geometry_control_v1",
+        "checkpoint_source_commit": (
+            "4c6150cdd86ec1298f4b056569e3780020b4d8af"
+        ),
+        "checkpoint_epoch": 15,
+        "checkpoint_sha256": "a" * 64,
+        "completeness_median_m": 3.5811,
+        "far_completeness_mean_m": 8.1239,
+        "validation_frame_count": 24,
+        "evaluator_dense_geometry_sha256": "b" * 64,
+    }
+
+
+def completeness_limit() -> float:
+    return g1d_control()["completeness_median_m"] * 0.70
 
 
 def passing_metrics() -> dict:
@@ -36,11 +57,12 @@ def passing_metrics() -> dict:
         "generated": {
             "chamfer_m": {"median": 2.0},
             "completeness_mean_distance_m": {
-                "median": STAGE0_COMPLETENESS_LIMIT_M,
+                "median": completeness_limit(),
             },
             "outlier_fraction_2m": {"mean": 0.25},
             "range_60_120m_completeness_mean_distance_m": {
                 "mean": 8.1239,
+                "sample_count": 24,
             },
         },
         "center_structure": {
@@ -89,6 +111,8 @@ def test_formal_and_smoke_configs_are_nonoverridable_protocol_constants() -> Non
     assert formal.point_count == 10_000
     assert formal.center_count == 2_500
     assert formal.children_per_center == 4
+    assert formal.selection_model == "raw"
+    assert formal.ema_ramp_offset == 10
     assert smoke.seed == formal.seed
     assert smoke.epochs == 1
     assert smoke.eval_every == 1
@@ -97,6 +121,35 @@ def test_formal_and_smoke_configs_are_nonoverridable_protocol_constants() -> Non
     assert FROZEN_NORMALIZATION_SHA256 == (
         "4d0bca7d027a1a9f457c526f21a034a406ce4973e2dccee55ddd2d7019b41b77"
     )
+
+
+def test_ema_uses_update_count_ramp_instead_of_random_initial_residue() -> None:
+    model = torch.nn.Linear(1, 1, bias=False)
+    ema_model = torch.nn.Linear(1, 1, bias=False)
+    with torch.no_grad():
+        model.weight.fill_(1.0)
+        ema_model.weight.zero_()
+
+    first_decay = update_ema(
+        ema_model,
+        model,
+        0.999,
+        update_count=1,
+        ramp_offset=10,
+    )
+    assert first_decay == pytest.approx(2.0 / 11.0)
+    assert ema_model.weight.item() == pytest.approx(1.0 - first_decay)
+
+    with torch.no_grad():
+        model.weight.fill_(2.0)
+    late_decay = update_ema(
+        ema_model,
+        model,
+        0.999,
+        update_count=2_000,
+        ramp_offset=10,
+    )
+    assert late_decay == pytest.approx(0.9955223880597015)
 
 
 def test_probability_bce_loss_stays_outside_cuda_autocast() -> None:
@@ -154,6 +207,91 @@ def test_data_contract_requires_exact_76_24_manifest_and_no_test() -> None:
         validate_data_contract({"frames": invalid}, {"gate_pass": True})
     with pytest.raises(ValueError, match="leakage"):
         validate_data_contract({"frames": frames}, {"gate_pass": False})
+
+
+def test_g1d_control_is_bound_to_checkpoint_evaluator_data_and_frames() -> None:
+    validation_records = [
+        {"sequence": 10 + index, "radar_index": 100 + index}
+        for index in range(24)
+    ]
+    frames = [
+        {
+            "partition": "validation",
+            **record,
+            "cube_sha256": f"{index:064x}",
+            "dense_cache_sha256": f"{index + 100:064x}",
+        }
+        for index, record in enumerate(validation_records)
+    ]
+    data_hashes = {
+        "manifest": {"sha256": "1" * 64},
+        "scene_split": {"sha256": "2" * 64},
+        "normalization": {"sha256": "3" * 64},
+        "range_azimuth_elevation_axes": {"sha256": "4" * 64},
+        "doppler_axis": {"sha256": "5" * 64},
+        "frames": frames,
+    }
+    data_contract = canonical_data_contract(data_hashes)
+    document = {
+        "protocol": "g1d_epoch15_corrected_geometry_control_v1",
+        "checkpoint": {
+            "source_commit": (
+                "4c6150cdd86ec1298f4b056569e3780020b4d8af"
+            ),
+            "epoch": 15,
+            "evaluation_state": "ema_model",
+            "sha256": "a" * 64,
+        },
+        "evaluator": {"dense_geometry_sha256": "b" * 64},
+        "data_contract": data_contract,
+        "validation_frame_identities": validation_records,
+        "metrics": {
+            "frame_count": 24,
+            "generated": {
+                "completeness_mean_distance_m": {
+                    "median": 3.5,
+                    "sample_count": 24,
+                },
+                "range_60_120m_completeness_mean_distance_m": {
+                    "mean": 9.0,
+                    "sample_count": 24,
+                },
+            },
+        },
+    }
+
+    validated = validate_g1d_control(
+        document,
+        expected_data_contract=data_contract,
+        expected_validation_records=validation_records,
+        expected_evaluator_sha256="b" * 64,
+    )
+    assert validated["checkpoint_sha256"] == "a" * 64
+    assert validated["completeness_median_m"] == 3.5
+    assert validated["far_completeness_mean_m"] == 9.0
+
+    bad_evaluator = {
+        **document,
+        "evaluator": {"dense_geometry_sha256": "c" * 64},
+    }
+    with pytest.raises(ValueError, match="evaluator"):
+        validate_g1d_control(
+            bad_evaluator,
+            expected_data_contract=data_contract,
+            expected_validation_records=validation_records,
+            expected_evaluator_sha256="b" * 64,
+        )
+    bad_frames = {
+        **document,
+        "validation_frame_identities": list(reversed(validation_records)),
+    }
+    with pytest.raises(ValueError, match="identities"):
+        validate_g1d_control(
+            bad_frames,
+            expected_data_contract=data_contract,
+            expected_validation_records=validation_records,
+            expected_evaluator_sha256="b" * 64,
+        )
 
 
 def test_cross_scene_shuffle_is_deterministic_and_never_same_scene() -> None:
@@ -229,7 +367,7 @@ def test_dynamic_anti_bypass_requires_two_complete_gradient_audits() -> None:
 
 
 def test_stage0_decision_uses_exact_inclusive_frozen_boundaries() -> None:
-    decision = stage0_decision(passing_metrics())
+    decision = stage0_decision(passing_metrics(), g1d_control())
     assert all(decision["promotion_checks"].values())
     assert all(decision["abandonment_checks"].values())
     assert decision["promotion_passed"] is True
@@ -246,7 +384,7 @@ def test_stage0_decision_uses_exact_inclusive_frozen_boundaries() -> None:
         (("duplicates", "duplicate_fraction_0p05m", "mean"), 0.150001),
         (
             ("generated", "completeness_mean_distance_m", "median"),
-            STAGE0_COMPLETENESS_LIMIT_M + 1e-6,
+            completeness_limit() + 1e-6,
         ),
         (("generated", "outlier_fraction_2m", "mean"), 0.250001),
         (
@@ -265,7 +403,7 @@ def test_stage0_decision_fails_any_promotion_gate(
 ) -> None:
     metrics = passing_metrics()
     metrics[path[0]][path[1]][path[2]] = value
-    decision = stage0_decision(metrics)
+    decision = stage0_decision(metrics, g1d_control())
     assert decision["promotion_passed"] is False
     assert decision["passed"] is False
 
@@ -273,7 +411,7 @@ def test_stage0_decision_fails_any_promotion_gate(
 def test_stage0_center_collapse_is_an_explicit_abandonment() -> None:
     metrics = passing_metrics()
     metrics["center_structure"]["center_unique_fraction_0p05m"]["mean"] = 0.799999
-    decision = stage0_decision(metrics)
+    decision = stage0_decision(metrics, g1d_control())
     assert decision["promotion_passed"] is True
     assert decision["abandonment_triggered"] is True
     assert decision["passed"] is False
@@ -284,10 +422,24 @@ def test_smoke_decision_fails_closed_when_no_far_slice_exists() -> None:
     del metrics["generated"][
         "range_60_120m_completeness_mean_distance_m"
     ]
-    decision = stage0_decision(metrics)
+    decision = stage0_decision(metrics, g1d_control())
     assert decision["values"]["far_completeness_60_120m_mean"] == 1_000_000.0
     assert decision["promotion_checks"][
         "far_completeness_no_worse_than_g1d_epoch15"
+    ] is False
+    assert decision["passed"] is False
+
+
+def test_stage0_decision_requires_far_completeness_for_every_frame() -> None:
+    metrics = passing_metrics()
+    metrics["generated"][
+        "range_60_120m_completeness_mean_distance_m"
+    ]["sample_count"] = 23
+
+    decision = stage0_decision(metrics, g1d_control())
+
+    assert decision["promotion_checks"][
+        "far_completeness_covers_every_evaluation_frame"
     ] is False
     assert decision["passed"] is False
 
