@@ -798,7 +798,7 @@ def main() -> None:
                         "training_query_occupancy_logit"
                     ],
                     "generated_xyz_m": output["xyz_m"],
-                    "generated_confidence": output["confidence"],
+                    "generated_confidence_logit": output["confidence_logit"],
                     "normalized_offset": output["offset_bins"]
                     / model.offset_bounds_bins.to(output["offset_bins"]),
                 }

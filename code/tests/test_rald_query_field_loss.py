@@ -29,9 +29,9 @@ def _loss_output(
     return {
         "query_logits": query_logits,
         "generated_xyz_m": xyz,
-        "generated_confidence": torch.full(
+        "generated_confidence_logit": torch.full(
             (xyz.shape[0],),
-            0.75,
+            torch.logit(torch.tensor(0.75)).item(),
             dtype=xyz.dtype,
             device=xyz.device,
         ),

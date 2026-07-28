@@ -477,12 +477,12 @@ def rald_query_field_loss(
             "generated_xyz_m must have shape "
             f"({generated_point_count},3), got {tuple(generated_xyz.shape)}"
         )
-    confidence = _single_frame_tensor(
+    confidence_logit = _single_frame_tensor(
         _output_tensor(
             output,
-            ("generated_confidence", "confidence"),
+            ("generated_confidence_logit", "confidence_logit"),
         ),
-        name="generated_confidence",
+        name="generated_confidence_logit",
         trailing_dimensions=1,
     ).to(device=generated_xyz.device, dtype=generated_xyz.dtype)
     normalized_offset = _single_frame_tensor(
@@ -493,20 +493,19 @@ def rald_query_field_loss(
         name="normalized_offset",
         trailing_dimensions=2,
     ).to(device=generated_xyz.device, dtype=generated_xyz.dtype)
-    if confidence.shape != (generated_point_count,):
-        raise ValueError("generated_confidence must align with generated points")
+    if confidence_logit.shape != (generated_point_count,):
+        raise ValueError(
+            "generated_confidence_logit must align with generated points"
+        )
     if normalized_offset.shape != (generated_point_count, 3):
         raise ValueError("normalized_offset must have shape (N,3)")
     for name, value in {
         "generated_xyz_m": generated_xyz,
-        "generated_confidence": confidence,
+        "generated_confidence_logit": confidence_logit,
         "normalized_offset": normalized_offset,
     }.items():
         if not torch.isfinite(value).all():
             raise ValueError(f"{name} must contain only finite values")
-    if bool(((confidence < 0) | (confidence > 1)).any()):
-        raise ValueError("generated_confidence must contain probabilities in [0,1]")
-
     target = _single_frame_tensor(
         target_xyz_confidence,
         name="target_xyz_confidence",
@@ -552,9 +551,9 @@ def rald_query_field_loss(
 
     existence_target = (
         prediction_to_target.detach() <= existence_radius_m
-    ).to(confidence)
-    existence = F.binary_cross_entropy(
-        confidence.clamp(1e-6, 1.0 - 1e-6),
+    ).to(confidence_logit)
+    existence = F.binary_cross_entropy_with_logits(
+        confidence_logit,
         existence_target,
     )
     offset_square = normalized_offset.square().mean()
@@ -583,7 +582,7 @@ def rald_query_field_loss(
         "confidence_existence": existence.detach(),
         "normalized_offset_square": offset_square.detach(),
         "global_knn_repulsion": repulsion.detach(),
-        "confidence_mean": confidence.mean().detach(),
+        "confidence_mean": torch.sigmoid(confidence_logit).mean().detach(),
         "total": total.detach(),
     }
     distances = {
