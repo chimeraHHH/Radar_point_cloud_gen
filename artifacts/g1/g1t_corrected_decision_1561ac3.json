@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "protocol": "g1t_corrected_scientific_decision_v1",
+  "source_artifact": {
+    "path": "artifacts/g1/g1t_temporal_proposal_corrected_1561ac3.json",
+    "sha256": "5e8cc009cda6c744150e096e2d36073120a664cb95839616b33f085f903ce070",
+    "source_commit": "1561ac3f8b338d9458f15dbaf41aaeb04d94e004",
+    "evaluation_frame_count": 352,
+    "far_target_frame_count": 312,
+    "far_metric_sample_count_by_arm": {
+      "t0_current": 312,
+      "t1_ego": 312,
+      "t2_doppler": 312
+    }
+  },
+  "completion_semantics_audit": {
+    "source_artifact_completed": false,
+    "metrics_complete": true,
+    "cause": "successful forbidden-access assertions were encoded as false before all(checks.values())",
+    "repair_commit": "fa6b2595b6d0855174f42d23127282ba62883e29",
+    "repair_changes_observed_metrics": false,
+    "repair_changes_original_promotion_logic": false
+  },
+  "scene_first_values": {
+    "t0_current": {
+      "chamfer_m": 15.924193749373611,
+      "completeness_m": 1.0703843556005848,
+      "far_completeness_m": 2.745903767384849,
+      "outlier_fraction": 0.8757232723926955,
+      "duplicate_fraction": 5.681818038283382e-07
+    },
+    "t1_ego": {
+      "chamfer_m": 15.915926887230441,
+      "completeness_m": 1.0704543363641608,
+      "far_completeness_m": 2.747321978068123,
+      "outlier_fraction": 0.8758019662716172,
+      "duplicate_fraction": 5.681818038283382e-07
+    },
+    "t2_doppler": {
+      "chamfer_m": 15.91986759277907,
+      "completeness_m": 1.0701532006602397,
+      "far_completeness_m": 2.746386897418049,
+      "outlier_fraction": 0.8759124771776524,
+      "duplicate_fraction": 5.681818038283382e-07
+    }
+  },
+  "t2_doppler_effect": {
+    "versus_t1_ego": {
+      "chamfer_fraction": 0.0002475951024750581,
+      "completeness_fraction": -0.00028131578684982957,
+      "far_completeness_fraction": -0.0003403607795295242,
+      "outlier_fraction_relative": 0.00012618252789001625,
+      "outlier_fraction_absolute": 0.00011051090603519942,
+      "duplicate_fraction_absolute": 0.0
+    },
+    "versus_t0_current": {
+      "chamfer_fraction": -0.0002716719391027814,
+      "completeness_fraction": -0.00021595508112167002,
+      "far_completeness_fraction": 0.00017594572648112105,
+      "outlier_fraction_relative": 0.00021605544916023612,
+      "outlier_fraction_absolute": 0.00018920478495687565,
+      "duplicate_fraction_absolute": 0.0
+    }
+  },
+  "internal_relative_promotion_passed": true,
+  "scientific_assessment": {
+    "doppler_history_effect_is_material": false,
+    "absolute_geometry_is_method_usable": false,
+    "reason": "relative changes are below 0.05 percent while all arms have approximately 15.9 m Chamfer and 87.6 percent outliers",
+    "decision": "do_not_authorize_learned_followup_from_current_g1t_proposal",
+    "independent_twc_route_allowed": true,
+    "claim_boundary": "support-mechanism diagnostic only"
+  },
+  "test_accessed": false
+}
