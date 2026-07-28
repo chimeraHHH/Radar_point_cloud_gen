@@ -1,8 +1,11 @@
+import ast
+import inspect
 from pathlib import Path
 
 import pytest
 import torch
 
+import scripts.train_g1g_hierarchy as train_g1g_hierarchy
 from scripts.train_g1g_hierarchy import (
     FORMAL_EPOCHS,
     FORMAL_EVAL_EVERY,
@@ -94,6 +97,32 @@ def test_formal_and_smoke_configs_are_nonoverridable_protocol_constants() -> Non
     assert FROZEN_NORMALIZATION_SHA256 == (
         "4d0bca7d027a1a9f457c526f21a034a406ce4973e2dccee55ddd2d7019b41b77"
     )
+
+
+def test_probability_bce_loss_stays_outside_cuda_autocast() -> None:
+    tree = ast.parse(inspect.getsource(train_g1g_hierarchy.main))
+    autocast_calls = []
+    loss_calls_inside_autocast = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.With):
+            continue
+        if any(
+            isinstance(item.context_expr, ast.Call)
+            and isinstance(item.context_expr.func, ast.Attribute)
+            and item.context_expr.func.attr == "autocast"
+            for item in node.items
+        ):
+            autocast_calls.append(node)
+            loss_calls_inside_autocast.extend(
+                child
+                for child in ast.walk(node)
+                if isinstance(child, ast.Call)
+                and isinstance(child.func, ast.Name)
+                and child.func.id == "g1g_hierarchy_loss"
+            )
+
+    assert autocast_calls
+    assert not loss_calls_inside_autocast
 
 
 def test_data_contract_requires_exact_76_24_manifest_and_no_test() -> None:

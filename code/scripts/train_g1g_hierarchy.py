@@ -1363,29 +1363,29 @@ def main() -> None:
                         condition_cube_drae=condition_cube,
                     ),
                 )
-                loss = g1g_hierarchy_loss(
-                    output,
-                    target,
-                    expected_point_count=config.point_count,
-                    expected_center_count=config.center_count,
-                    expected_children_per_center=config.children_per_center,
-                    geometry_weight=config.geometry_weight,
-                    outlier_weight=config.outlier_weight,
-                    child_existence_weight=config.child_existence_weight,
-                    center_coverage_weight=config.center_coverage_weight,
-                    center_existence_weight=config.center_existence_weight,
-                    center_repulsion_weight=config.center_repulsion_weight,
-                    child_diversity_weight=config.child_diversity_weight,
-                    child_bound_weight=config.child_bound_weight,
-                    outlier_threshold_m=config.outlier_threshold_m,
-                    existence_radius_m=config.existence_radius_m,
-                    center_repulsion_distance_m=(
-                        config.center_repulsion_distance_m
-                    ),
-                    child_diversity_diagonal_fraction=(
-                        config.child_diversity_diagonal_fraction
-                    ),
-                )
+            loss = g1g_hierarchy_loss(
+                output,
+                target,
+                expected_point_count=config.point_count,
+                expected_center_count=config.center_count,
+                expected_children_per_center=config.children_per_center,
+                geometry_weight=config.geometry_weight,
+                outlier_weight=config.outlier_weight,
+                child_existence_weight=config.child_existence_weight,
+                center_coverage_weight=config.center_coverage_weight,
+                center_existence_weight=config.center_existence_weight,
+                center_repulsion_weight=config.center_repulsion_weight,
+                child_diversity_weight=config.child_diversity_weight,
+                child_bound_weight=config.child_bound_weight,
+                outlier_threshold_m=config.outlier_threshold_m,
+                existence_radius_m=config.existence_radius_m,
+                center_repulsion_distance_m=(
+                    config.center_repulsion_distance_m
+                ),
+                child_diversity_diagonal_fraction=(
+                    config.child_diversity_diagonal_fraction
+                ),
+            )
             if audit_update:
                 allocation_probe = (
                     output["center_coordinates_rae"].float().square().mean()
