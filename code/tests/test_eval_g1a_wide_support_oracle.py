@@ -3,6 +3,7 @@ import copy
 from pathlib import Path
 import sys
 
+import numpy as np
 import pytest
 
 import scripts.eval_g1a_wide_support_oracle as eval_ra0
@@ -10,12 +11,17 @@ from scripts.eval_g1a_wide_support_oracle import (
     FORMAL_VALIDATION_COUNT,
     FROZEN_MANIFEST_SHA256,
     FROZEN_SCENE_SPLIT_SHA256,
+    PROTOCOL,
     RA0_THRESHOLDS,
     aggregate_evaluation,
+    aggregate_resource_usage,
     atomic_json_exclusive,
+    diagnostic_decision,
     estimated_peak_memory,
     gate_checks,
     parse_args,
+    preflight_checks,
+    select_max_target_frame,
     validate_data_contract,
 )
 
@@ -56,7 +62,22 @@ def passing_frames() -> list[dict]:
                     "raw_query_count": 1_200_000,
                     "random_query_count": 500_000,
                     "radar_query_count": 700_000,
+                    "unique_range_capacity_at_least_export_count": True,
                     "ground_truth_used_for_proposal_generation": False,
+                },
+                "artifact_label": {
+                    "full_rald_wide_family_closure_eligible": False,
+                },
+                "selection": {
+                    "range_capacity_validated_after_unique_pool": True,
+                    "heuristic": True,
+                    "strict_upper_bound": False,
+                },
+                "overall_support": {
+                    "pool_support_scope": "global_cross_range_nearest",
+                },
+                "duplicates": {
+                    "duplicate_fraction_0p05m": 0.0,
                 },
                 "selected_count": 10_000,
                 "unique_selected_candidate_id_count": 10_000,
@@ -171,6 +192,7 @@ def test_cli_exposes_no_scientific_count_ratio_or_threshold_overrides(
             "/output.json",
             "--source-commit",
             "a" * 40,
+            "--preflight-max-frame",
         ],
     )
     args = parse_args()
@@ -183,7 +205,35 @@ def test_cli_exposes_no_scientific_count_ratio_or_threshold_overrides(
         "output",
         "source_commit",
         "device",
+        "preflight_max_frame",
     }
+    assert args.preflight_max_frame is True
+
+
+def test_protocol_is_an_initial_query_domain_diagnostic_not_an_upper_bound() -> None:
+    assert PROTOCOL == (
+        "g1a_ra0_rald_inspired_initial_query_domain_diagnostic_v2"
+    )
+    for frame in passing_frames():
+        assert frame["wide"]["selection"]["heuristic"] is True
+        assert frame["wide"]["selection"]["strict_upper_bound"] is False
+        assert (
+            frame["wide"]["artifact_label"][
+                "full_rald_wide_family_closure_eligible"
+            ]
+            is False
+        )
+
+
+def test_failed_diagnostic_does_not_close_full_rald_wide_support_family() -> None:
+    assert diagnostic_decision(passed=False, preflight=False) == (
+        "initial_query_domain_diagnostic_failed_"
+        "no_conclusion_about_full_rald_wide_support_family"
+    )
+    assert diagnostic_decision(passed=False, preflight=True) == (
+        "initial_query_domain_preflight_failed_"
+        "no_conclusion_about_full_rald_wide_support_family"
+    )
 
 
 def test_existing_output_is_rejected_before_h200_or_data_access(
@@ -262,9 +312,96 @@ def test_aggregation_reports_frame_first_and_scene_first() -> None:
     assert set(aggregate["scene_first"]["per_scene"]) == {"1", "2"}
 
 
+def test_max_target_frame_preflight_selection_is_stable(tmp_path: Path) -> None:
+    records = [
+        {"sequence": 6, "radar_index": 183},
+        {"sequence": 55, "radar_index": 376},
+        {"sequence": 2, "radar_index": 99},
+    ]
+    target_counts = [4, 7, 7]
+    for record, target_count in zip(records, target_counts, strict=True):
+        cache = tmp_path / (
+            f"seq{record['sequence']:02d}_"
+            f"radar_{record['radar_index']:05d}.npz"
+        )
+        np.savez(
+            cache,
+            target_xyz_confidence=np.zeros(
+                (target_count, 4),
+                dtype=np.float32,
+            ),
+        )
+
+    selected = select_max_target_frame(records, tmp_path)
+
+    assert selected["dataset_index"] == 2
+    assert selected["sequence"] == 2
+    assert selected["radar_index"] == 99
+    assert selected["target_count"] == 7
+
+
+def test_preflight_checks_require_global_support_capacity_nms_and_resources() -> None:
+    frame = passing_frames()[0]
+    frame["wide"]["geometry"] = {"target_count": 123}
+    frame["resources"] = {
+        "wall_time_seconds": 2.0,
+        "cuda_peak_allocated_bytes": 1_024,
+        "cuda_peak_reserved_bytes": 2_048,
+    }
+    selected_frame = {
+        "sequence": frame["sequence"],
+        "radar_index": frame["radar_index"],
+        "target_count": 123,
+    }
+
+    checks = preflight_checks(frame, selected_frame)
+    assert all(checks.values())
+
+    changed = copy.deepcopy(frame)
+    changed["wide"]["overall_support"]["pool_support_scope"] = (
+        "range_local_nearest"
+    )
+    assert not all(preflight_checks(changed, selected_frame).values())
+    changed = copy.deepcopy(frame)
+    changed["wide"]["duplicates"]["duplicate_fraction_0p05m"] = 0.001
+    assert not all(preflight_checks(changed, selected_frame).values())
+
+
+def test_resource_aggregation_records_peak_and_wall_time() -> None:
+    frames = [
+        {
+            "resources": {
+                "wall_time_seconds": 2.0,
+                "cuda_peak_allocated_bytes": 1_000,
+                "cuda_peak_reserved_bytes": 2_000,
+                "cuda_peak_allocated_delta_bytes": 800,
+                "cuda_peak_reserved_delta_bytes": 1_500,
+            }
+        },
+        {
+            "resources": {
+                "wall_time_seconds": 3.0,
+                "cuda_peak_allocated_bytes": 1_200,
+                "cuda_peak_reserved_bytes": 2_400,
+                "cuda_peak_allocated_delta_bytes": 900,
+                "cuda_peak_reserved_delta_bytes": 1_700,
+            }
+        },
+    ]
+
+    report = aggregate_resource_usage(frames)
+
+    assert report["frame_count"] == 2
+    assert report["total_wall_time_seconds"] == 5.0
+    assert report["maximum_frame_wall_time_seconds"] == 3.0
+    assert report["maximum_cuda_peak_allocated_bytes"] == 1_200
+    assert report["maximum_cuda_peak_reserved_bytes"] == 2_400
+
+
 def test_streaming_peak_estimate_is_below_32gb() -> None:
     report = estimated_peak_memory(max_target_count=50_000)
 
     assert report["below_32gb"] is True
     assert report["estimated_peak_bytes"] < report["limit_bytes"]
     assert report["maximum_streamed_distance_tile_bytes"] == 8192 * 4096 * 4
+    assert report["target_topk_shortlist_bytes"] == 50_000 * 4 * (4 + 8)

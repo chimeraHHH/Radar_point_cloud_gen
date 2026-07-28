@@ -7,7 +7,6 @@ from eval.g1r_range_aware_support import (
     ExpandedCandidatePool,
     calibrated_integrated_energy,
     fit_range_energy_calibration,
-    fixed_quota_oracle_weights,
     physical_angular_suppression_mask,
     range_aware_proposal_indices,
     select_fixed_quota_support_oracle,
@@ -170,7 +169,7 @@ def _full_candidate_pool() -> ExpandedCandidatePool:
     )
 
 
-def test_fixed_weight_rescaling_and_reused_g1f_oracle_lock_export_quotas() -> None:
+def test_gt_aided_heuristic_locks_explicit_export_quotas() -> None:
     target_xyz = torch.tensor(
         [
             [10.0, 0.0, 0.0],
@@ -180,21 +179,6 @@ def test_fixed_weight_rescaling_and_reused_g1f_oracle_lock_export_quotas() -> No
         ]
     )
     target_weight = torch.tensor([1.0, 3.0, 2.0, 4.0])
-    selection_weight = fixed_quota_oracle_weights(
-        target_xyz,
-        target_weight,
-    )
-
-    radius = torch.linalg.vector_norm(target_xyz, dim=1)
-    masses = tuple(
-        float(
-            selection_weight[
-                (radius >= lower) & (radius < upper)
-            ].sum()
-        )
-        for _, lower, upper in RANGE_BINS_M
-    )
-    assert masses == tuple(float(value) for value in EXPORT_QUOTAS)
 
     result = select_fixed_quota_support_oracle(
         _full_candidate_pool(),
@@ -209,3 +193,64 @@ def test_fixed_weight_rescaling_and_reused_g1f_oracle_lock_export_quotas() -> No
     assert result.selected_xyz_m.shape == (10_000, 3)
     assert selected_counts == EXPORT_QUOTAS
     assert CANDIDATE_PARENT_QUOTAS == (24_000, 6_400, 1_600)
+
+
+def test_seq51_radar305_equivalent_empty_mid_bin_uses_gt_free_fill() -> None:
+    target_xyz = torch.tensor(
+        [
+            [10.0, 0.0, 0.0],
+            [80.0, 0.0, 0.0],
+        ]
+    )
+    result = select_fixed_quota_support_oracle(
+        _full_candidate_pool(),
+        target_xyz,
+        torch.ones(2),
+        distance_chunk_size=32,
+    )
+
+    mid = result.per_range_support["range_30_60m"]
+    assert mid["target_count"] == 0
+    assert mid["ground_truth_used_for_selection"] is False
+    assert (
+        mid["selection_mode"]
+        == "deterministic_candidate_index_gt_free_fill"
+    )
+    torch.testing.assert_close(
+        result.selected_candidate_indices[7_500:9_500],
+        torch.arange(24_000, 26_000),
+    )
+
+
+def test_seq51_radar454_equivalent_empty_mid_and_far_bins_are_deterministic() -> None:
+    target_xyz = torch.tensor([[10.0, 0.0, 0.0]])
+    pool = _full_candidate_pool()
+    first = select_fixed_quota_support_oracle(
+        pool,
+        target_xyz,
+        torch.ones(1),
+        distance_chunk_size=32,
+    )
+    second = select_fixed_quota_support_oracle(
+        pool,
+        target_xyz + torch.tensor([[1.0, 0.0, 0.0]]),
+        torch.ones(1),
+        distance_chunk_size=32,
+    )
+
+    for label in ("range_30_60m", "range_60_120m"):
+        report = first.per_range_support[label]
+        assert report["target_count"] == 0
+        assert report["ground_truth_used_for_selection"] is False
+        assert (
+            report["selection_mode"]
+            == "deterministic_candidate_index_gt_free_fill"
+        )
+    torch.testing.assert_close(
+        first.selected_candidate_indices[7_500:],
+        second.selected_candidate_indices[7_500:],
+    )
+    torch.testing.assert_close(
+        first.selected_candidate_indices[9_500:],
+        torch.arange(30_400, 30_900),
+    )

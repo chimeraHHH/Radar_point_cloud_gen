@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evaluate the frozen R-A0 RaLD-wide support oracle on 24 validation frames."""
+"""Evaluate the R-A0 RaLD-inspired initial-query-domain diagnostic."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import time
 from typing import Any
 
 import numpy as np
@@ -27,16 +28,17 @@ from eval.dense_geometry import (  # noqa: E402
     geometry_report,
 )
 from eval.g1a_wide_support import (  # noqa: E402
+    DIAGNOSTIC_ARTIFACT_LABEL,
     EXPORT_COUNT,
-    ORACLE_ARTIFACT_LABEL,
     RADAR_QUERY_COUNT,
     RANDOM_QUERY_COUNT,
     RANGE_STRATA_M,
     RAW_QUERY_COUNT,
     SOURCE_LABELS,
+    TARGET_REASSIGNMENT_TOPK,
     build_wide_query_domain,
     diagnostic_artifact_label,
-    select_wide_support_oracle,
+    select_wide_support_diagnostic,
 )
 from eval.g1f_candidate_support import (  # noqa: E402
     PROPOSAL_COUNT as G1F_PROPOSAL_COUNT,
@@ -51,7 +53,7 @@ from scripts.eval_g1f_oracle import (  # noqa: E402
 from scripts.g1b_contract import sha256  # noqa: E402
 
 
-PROTOCOL = "g1a_ra0_wide_support_oracle_v1"
+PROTOCOL = "g1a_ra0_rald_inspired_initial_query_domain_diagnostic_v2"
 FORMAL_SEED = 20260716
 FORMAL_TRAIN_COUNT = 76
 FORMAL_VALIDATION_COUNT = 24
@@ -360,6 +362,11 @@ def evaluate_frame(
     device: torch.device,
     proposal_cache: dict[tuple[int, int], torch.Tensor],
 ) -> dict:
+    torch.cuda.synchronize(device)
+    torch.cuda.reset_peak_memory_stats(device)
+    start_allocated = torch.cuda.memory_allocated(device)
+    start_reserved = torch.cuda.memory_reserved(device)
+    started = time.perf_counter()
     cube = item["cube_drae"].unsqueeze(0).to(device, non_blocking=True)
     target = item["target_xyz_confidence"].to(device, non_blocking=True)
     range_m = torch.as_tensor(axes.range_m, device=device, dtype=torch.float32)
@@ -382,7 +389,7 @@ def evaluate_frame(
         sequence=int(item["sequence"]),
         radar_index=int(item["radar_index"]),
     )
-    wide_selection = select_wide_support_oracle(
+    wide_selection = select_wide_support_diagnostic(
         domain,
         target[:, :3].float(),
         target_weight=target[:, 3].float(),
@@ -413,6 +420,7 @@ def evaluate_frame(
         "selected_source_counts": _source_counts(
             wide_selection.selected_source_codes
         ),
+        "selection": wide_selection.selection_report,
         "geometry": wide_geometry,
         "duplicates": wide_duplicates,
         "overall_support": wide_selection.overall_support,
@@ -470,9 +478,165 @@ def evaluate_frame(
         "paired": _paired_report(wide, g1f),
         "test_accessed": False,
     }
+    torch.cuda.synchronize(device)
+    result["resources"] = {
+        "wall_time_seconds": time.perf_counter() - started,
+        "cuda_start_allocated_bytes": int(start_allocated),
+        "cuda_start_reserved_bytes": int(start_reserved),
+        "cuda_peak_allocated_bytes": int(
+            torch.cuda.max_memory_allocated(device)
+        ),
+        "cuda_peak_reserved_bytes": int(
+            torch.cuda.max_memory_reserved(device)
+        ),
+        "cuda_peak_allocated_delta_bytes": int(
+            max(
+                0,
+                torch.cuda.max_memory_allocated(device) - start_allocated,
+            )
+        ),
+        "cuda_peak_reserved_delta_bytes": int(
+            max(
+                0,
+                torch.cuda.max_memory_reserved(device) - start_reserved,
+            )
+        ),
+    }
     del cube, target, domain, wide_selection, g1f_selection
     torch.cuda.empty_cache()
     return result
+
+
+def select_max_target_frame(
+    validation_records: list[dict],
+    cache_root: Path,
+) -> dict[str, int | str]:
+    """Select the frozen validation frame with the largest cached target set."""
+
+    if not validation_records:
+        raise ValueError("R-A0 preflight requires validation records")
+    ranked = []
+    for dataset_index, record in enumerate(validation_records):
+        cache_path = _cache_path(cache_root, record)
+        if not cache_path.is_file():
+            raise FileNotFoundError(f"R-A0 preflight cache is missing: {cache_path}")
+        with np.load(cache_path) as cache:
+            target_count = int(cache["target_xyz_confidence"].shape[0])
+        ranked.append(
+            (
+                -target_count,
+                int(record["sequence"]),
+                int(record["radar_index"]),
+                dataset_index,
+                cache_path,
+            )
+        )
+    rank, sequence, radar_index, dataset_index, cache_path = min(ranked)
+    target_count = -rank
+    return {
+        "dataset_index": dataset_index,
+        "sequence": sequence,
+        "radar_index": radar_index,
+        "target_count": target_count,
+        "cache": str(cache_path.resolve()),
+    }
+
+
+def aggregate_resource_usage(frames: list[dict]) -> dict[str, float | int]:
+    if not frames:
+        raise ValueError("R-A0 resource aggregation requires frames")
+    resources = [frame["resources"] for frame in frames]
+    return {
+        "frame_count": len(resources),
+        "total_wall_time_seconds": float(
+            sum(float(item["wall_time_seconds"]) for item in resources)
+        ),
+        "maximum_frame_wall_time_seconds": float(
+            max(float(item["wall_time_seconds"]) for item in resources)
+        ),
+        "maximum_cuda_peak_allocated_bytes": max(
+            int(item["cuda_peak_allocated_bytes"]) for item in resources
+        ),
+        "maximum_cuda_peak_reserved_bytes": max(
+            int(item["cuda_peak_reserved_bytes"]) for item in resources
+        ),
+        "maximum_cuda_peak_allocated_delta_bytes": max(
+            int(item["cuda_peak_allocated_delta_bytes"]) for item in resources
+        ),
+        "maximum_cuda_peak_reserved_delta_bytes": max(
+            int(item["cuda_peak_reserved_delta_bytes"]) for item in resources
+        ),
+    }
+
+
+def preflight_checks(frame: dict, selected_frame: dict) -> dict[str, bool]:
+    wide = frame["wide"]
+    return {
+        "selected_largest_cached_target_frame": (
+            frame["sequence"] == selected_frame["sequence"]
+            and frame["radar_index"] == selected_frame["radar_index"]
+            and wide["geometry"]["target_count"] == selected_frame["target_count"]
+        ),
+        "raw_pool_exact_500k_random_plus_700k_radar": (
+            wide["domain"]["raw_query_count"] == RAW_QUERY_COUNT
+            and wide["domain"]["random_query_count"] == RANDOM_QUERY_COUNT
+            and wide["domain"]["radar_query_count"] == RADAR_QUERY_COUNT
+        ),
+        "post_dedup_range_capacity_validated": (
+            wide["domain"]["unique_range_capacity_at_least_export_count"]
+            is True
+            and wide["selection"][
+                "range_capacity_validated_after_unique_pool"
+            ]
+            is True
+        ),
+        "global_cross_range_pool_support": (
+            wide["overall_support"]["pool_support_scope"]
+            == "global_cross_range_nearest"
+        ),
+        "heuristic_not_strict_upper_bound": (
+            wide["selection"]["heuristic"] is True
+            and wide["selection"]["strict_upper_bound"] is False
+            and wide["artifact_label"]["full_rald_wide_family_closure_eligible"]
+            is False
+        ),
+        "exact_10000": (
+            wide["selected_count"] == EXPORT_COUNT
+            and wide["unique_selected_candidate_id_count"] == EXPORT_COUNT
+        ),
+        "true_5cm_euclidean_unique": (
+            wide["duplicates"]["duplicate_fraction_0p05m"] == 0.0
+        ),
+        "cuda_resource_measurement_recorded": (
+            frame["resources"]["wall_time_seconds"] > 0.0
+            and frame["resources"]["cuda_peak_allocated_bytes"] > 0
+            and frame["resources"]["cuda_peak_reserved_bytes"] > 0
+        ),
+        "validation_only_test_untouched": (
+            frame["partition"] == "validation"
+            and frame["test_accessed"] is False
+        ),
+    }
+
+
+def diagnostic_decision(*, passed: bool, preflight: bool) -> str:
+    if preflight:
+        return (
+            "preflight_pass_authorizes_full_validation_diagnostic"
+            if passed
+            else (
+                "initial_query_domain_preflight_failed_"
+                "no_conclusion_about_full_rald_wide_support_family"
+            )
+        )
+    return (
+        "authorize_r_a1_one_seed_10_epoch_from_current_initial_domain"
+        if passed
+        else (
+            "initial_query_domain_diagnostic_failed_"
+            "no_conclusion_about_full_rald_wide_support_family"
+        )
+    )
 
 
 def _mean_numeric_reports(reports: list[dict]) -> dict[str, float]:
@@ -655,10 +819,39 @@ def gate_checks(metrics: dict, frames: list[dict]) -> dict[str, bool]:
             frame["g1f_32k"]["candidate_count"] == G1F_PROPOSAL_COUNT
             for frame in frames
         ),
+        "post_dedup_range_capacity_validated": all(
+            frame["wide"]["domain"][
+                "unique_range_capacity_at_least_export_count"
+            ]
+            is True
+            and frame["wide"]["selection"][
+                "range_capacity_validated_after_unique_pool"
+            ]
+            is True
+            for frame in frames
+        ),
+        "global_cross_range_pool_support": all(
+            frame["wide"]["overall_support"]["pool_support_scope"]
+            == "global_cross_range_nearest"
+            for frame in frames
+        ),
+        "heuristic_not_strict_upper_bound": all(
+            frame["wide"]["selection"]["heuristic"] is True
+            and frame["wide"]["selection"]["strict_upper_bound"] is False
+            and frame["wide"]["artifact_label"][
+                "full_rald_wide_family_closure_eligible"
+            ]
+            is False
+            for frame in frames
+        ),
         "exact_10000": all(
             frame["wide"]["selected_count"] == EXPORT_COUNT
             and frame["wide"]["unique_selected_candidate_id_count"]
             == EXPORT_COUNT
+            for frame in frames
+        ),
+        "true_5cm_euclidean_unique": all(
+            frame["wide"]["duplicates"]["duplicate_fraction_0p05m"] == 0.0
             for frame in frames
         ),
         "chamfer_at_most_2p50m": (
@@ -714,6 +907,11 @@ def estimated_peak_memory(max_target_count: int) -> dict[str, int | bool]:
         * min(max(max_target_count, 1), TARGET_DISTANCE_CHUNK)
         * float_bytes
     )
+    target_topk_bytes = (
+        max(max_target_count, 1)
+        * TARGET_REASSIGNMENT_TOPK
+        * (float_bytes + 8)
+    )
     dense_metric_tile_bytes = 1_024 * max(max_target_count, EXPORT_COUNT) * 4
     duplicate_tile_bytes = 512 * EXPORT_COUNT * float_bytes
     conservative_runtime_overhead_bytes = 4 * 1024**3
@@ -721,6 +919,7 @@ def estimated_peak_memory(max_target_count: int) -> dict[str, int | bool]:
         cube_bytes
         + pool_bytes
         + distance_tile_bytes
+        + target_topk_bytes
         + dense_metric_tile_bytes
         + duplicate_tile_bytes
         + conservative_runtime_overhead_bytes
@@ -729,6 +928,7 @@ def estimated_peak_memory(max_target_count: int) -> dict[str, int | bool]:
         "cube_bytes": cube_bytes,
         "pool_and_sort_workspace_bytes": pool_bytes,
         "maximum_streamed_distance_tile_bytes": distance_tile_bytes,
+        "target_topk_shortlist_bytes": target_topk_bytes,
         "dense_metric_tile_bytes": dense_metric_tile_bytes,
         "duplicate_metric_tile_bytes": duplicate_tile_bytes,
         "conservative_runtime_overhead_bytes": conservative_runtime_overhead_bytes,
@@ -748,6 +948,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument("--preflight-max-frame", action="store_true")
     return parser.parse_args()
 
 
@@ -788,15 +989,17 @@ def main() -> None:
     )
     if len(dataset) != FORMAL_VALIDATION_COUNT:
         raise ValueError("R-A0 dataset loader changed the frozen validation count")
+    max_frame = select_max_target_frame(validation_records, args.cache_root)
+    evaluation_indices = (
+        [int(max_frame["dataset_index"])]
+        if args.preflight_max_frame
+        else list(range(len(dataset)))
+    )
     proposal_cache: dict[tuple[int, int], torch.Tensor] = {}
     frames = []
-    max_target_count = 0
-    for index in range(len(dataset)):
+    run_started = time.perf_counter()
+    for index in evaluation_indices:
         item = dataset[index]
-        max_target_count = max(
-            max_target_count,
-            int(item["target_xyz_confidence"].shape[0]),
-        )
         frames.append(
             evaluate_frame(
                 item,
@@ -805,14 +1008,39 @@ def main() -> None:
                 proposal_cache,
             )
         )
-    metrics = aggregate_evaluation(frames)
-    checks = gate_checks(metrics, frames)
+    run_wall_time_seconds = time.perf_counter() - run_started
+    resource_usage = aggregate_resource_usage(frames)
+    if args.preflight_max_frame:
+        metrics = {
+            "preflight_frame": {
+                "sequence": frames[0]["sequence"],
+                "radar_index": frames[0]["radar_index"],
+                "wide": frames[0]["wide"],
+                "g1f_32k": frames[0]["g1f_32k"],
+                "paired": frames[0]["paired"],
+            }
+        }
+        checks = preflight_checks(frames[0], max_frame)
+        mode = "maximum_target_frame_preflight"
+        decision = diagnostic_decision(
+            passed=all(checks.values()),
+            preflight=True,
+        )
+    else:
+        metrics = aggregate_evaluation(frames)
+        checks = gate_checks(metrics, frames)
+        mode = "formal_24_validation_frame_diagnostic"
+        decision = diagnostic_decision(
+            passed=all(checks.values()),
+            preflight=False,
+        )
     label = diagnostic_artifact_label()
-    memory = estimated_peak_memory(max_target_count)
+    memory = estimated_peak_memory(int(max_frame["target_count"]))
     if not memory["below_32gb"]:
         raise RuntimeError("R-A0 estimated peak exceeds the frozen 32 GB limit")
     document = {
         "protocol": PROTOCOL,
+        "mode": mode,
         "artifact_label": label,
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "source_commit": current_commit,
@@ -830,10 +1058,20 @@ def main() -> None:
                 }
                 for label_value, lower, upper in RANGE_STRATA_M
             ],
-            "candidate_capacity": "one_per_0p05m_cartesian_cell",
+            "candidate_representative": (
+                "one_per_0p05m_cell_with_radar_evidence_priority"
+            ),
+            "final_minimum_distance": "true_euclidean_0p05m",
+            "selector": (
+                "capacity_aware_global_topk_greedy_heuristic"
+            ),
+            "strict_upper_bound": False,
             "ground_truth_used_for_proposal_generation": False,
             "ground_truth_used_for_selection": True,
             "diagnostic_unattainable": True,
+            "rald_scope": "inspired_initial_query_domain_only",
+            "occupancy_dependent_second_pass": False,
+            "full_rald_wide_family_closure_eligible": False,
             "paired_control": "same_frame_frozen_g1f_32k_oracle",
         },
         "metrics": metrics,
@@ -841,14 +1079,11 @@ def main() -> None:
         "thresholds": RA0_THRESHOLDS,
         "checks": checks,
         "passed": all(checks.values()),
-        "decision": (
-            "authorize_r_a1_one_seed_10_epoch"
-            if all(checks.values())
-            else "close_r_a_without_ratio_or_threshold_repair"
-        ),
+        "decision": decision,
         "complexity": {
             "wide_support": (
-                "O(frames * unique_wide_candidates * target_points)"
+                "O(frames * unique_wide_candidates * target_points), "
+                "global across range boundaries"
             ),
             "paired_g1f_support": (
                 "O(frames * 32000 * target_points)"
@@ -857,28 +1092,34 @@ def main() -> None:
                 f"at most {CANDIDATE_DISTANCE_CHUNK} x "
                 f"{TARGET_DISTANCE_CHUNK} per streamed tile"
             ),
-            "estimated_h200_wall_time": "45-90 minutes for 24 frames",
-            "frozen_h200_budget_upper_bound": "1.5 GPU-h",
+            "wall_time_policy": (
+                "measure maximum-target-frame preflight before formal 24-frame run"
+            ),
+            "run_wall_time_seconds": run_wall_time_seconds,
+            "measured_resources": resource_usage,
             "memory": memory,
         },
+        "maximum_target_frame": max_frame,
         "assumptions_requiring_mainline_confirmation": [
             (
-                "Equal candidate counts per 0-40, 40-60, and 60-120 m "
+                "Equal raw candidate counts per 0-30, 30-60, and 60-120 m "
                 "stratum are the frozen K-Radar interpretation of "
-                "range-stratified quotas."
+                "range-stratified initial-query generation; post-dedup "
+                "capacity and output quotas are recorded separately."
             ),
             (
                 "The per-stratum 0.75 integrated-log-energy quantile is the "
                 "frozen K-Radar low-threshold analogue; it is not tunable."
             ),
             (
-                "With no trained occupancy field at R-A0, secondary "
-                "refinement is centered on Cube-derived low-threshold cells "
-                "using the RaLD helper 1/2-cell bias, never on GT."
+                "With no trained occupancy field at R-A0, Cube-derived helper "
+                "augmentation uses a 1/2-cell bias and is not RaLD's "
+                "occupancy-dependent second decoding pass."
             ),
             (
-                "The G1F target-mass capacity allocation is reused for both "
-                "paired exact-10k unattainable oracles."
+                "GT target mass sets only the diagnostic output quota; "
+                "selection is a top-k capacity-aware greedy heuristic, not a "
+                "strict upper bound."
             ),
         ],
         "provenance": {
@@ -894,12 +1135,13 @@ def main() -> None:
             "g1d": g1d,
             "g1d_proposal_cache_entries": len(proposal_cache),
             "partitions": ["validation"],
+            "evaluated_frame_count": len(frames),
             "test_accessed": False,
             "torch_version": torch.__version__,
         },
     }
-    if document["artifact_label"]["label"] != ORACLE_ARTIFACT_LABEL:
-        raise AssertionError("R-A0 artifact lost its unattainable oracle label")
+    if document["artifact_label"]["label"] != DIAGNOSTIC_ARTIFACT_LABEL:
+        raise AssertionError("R-A0 artifact lost its diagnostic label")
     atomic_json_exclusive(args.output, document)
     print(json.dumps(document, indent=2))
     if not document["passed"]:

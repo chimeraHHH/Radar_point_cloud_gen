@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evaluate the frozen G1R-R0 range-aware candidate-support oracle."""
+"""Evaluate the frozen G1R-R0 range-aware heuristic diagnostic."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ import json
 import re
 import subprocess
 import sys
+import time
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -45,6 +46,7 @@ from eval.g1r_range_aware_support import (  # noqa: E402
     range_count_report,
     select_fixed_quota_support_oracle,
     stable_score_proposal_indices,
+    unique_range_count_report,
 )
 from eval.rald_guided_query import duplicate_report  # noqa: E402
 from eval.temporal_methods import aggregate_flat_reports  # noqa: E402
@@ -70,10 +72,13 @@ from scripts.train_rald_query_field import (  # noqa: E402
 )
 
 
-PROTOCOL = "g1r_r0_range_aware_support_oracle_v1"
+PROTOCOL = "g1r_r0_range_aware_support_heuristic_v2"
 SOURCE_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 FAR_LABEL = "range_60_120m"
 FAR_RECALL_KEY = "gt_recall_from_proposals_2p0m"
+FROZEN_VALIDATION_FRAME_COUNT = 24
+FROZEN_VALIDATION_SCENE_COUNT = 8
+FROZEN_FAR_TARGET_FRAME_COUNT = 23
 COMPLETENESS_LIMIT_M = 1.20
 FAR_COMPLETENESS_LIMIT_M = 8.0
 FAR_RECALL_MINIMUM = 0.30
@@ -109,6 +114,61 @@ def require_h200(device_name: str) -> tuple[torch.device, str]:
     if "H200" not in resolved.upper():
         raise RuntimeError(f"G1R-R0 requires an H200, got {resolved}")
     return device, resolved
+
+
+def resolve_preflight_identity(
+    sequence: int | None,
+    radar_index: int | None,
+) -> tuple[int, int] | None:
+    if (sequence is None) != (radar_index is None):
+        raise ValueError(
+            "G1R-R0 preflight requires both sequence and radar index"
+        )
+    if sequence is None:
+        return None
+    if sequence < 0 or radar_index is None or radar_index < 0:
+        raise ValueError("G1R-R0 preflight frame identity must be nonnegative")
+    return sequence, radar_index
+
+
+def validation_indices(
+    records: list[dict],
+    preflight_identity: tuple[int, int] | None,
+) -> list[int]:
+    if preflight_identity is None:
+        return list(range(len(records)))
+    matches = [
+        index
+        for index, record in enumerate(records)
+        if (
+            int(record["sequence"]),
+            int(record["radar_index"]),
+        )
+        == preflight_identity
+    ]
+    if len(matches) != 1:
+        raise ValueError(
+            "G1R-R0 preflight frame is not a unique validation record: "
+            f"{preflight_identity}"
+        )
+    return matches
+
+
+def profile_cuda_call(device: torch.device, operation) -> tuple[Any, dict]:
+    torch.cuda.synchronize(device)
+    torch.cuda.reset_peak_memory_stats(device)
+    started = time.perf_counter()
+    result = operation()
+    torch.cuda.synchronize(device)
+    return result, {
+        "elapsed_seconds": float(time.perf_counter() - started),
+        "peak_memory_allocated_bytes": int(
+            torch.cuda.max_memory_allocated(device)
+        ),
+        "peak_memory_reserved_bytes": int(
+            torch.cuda.max_memory_reserved(device)
+        ),
+    }
 
 
 def validate_frozen_data_contract(
@@ -268,23 +328,21 @@ def _range_parent_counts(parent_bin: torch.Tensor) -> dict[str, int]:
     }
 
 
-def _arm_endpoint(arm: dict, endpoint: str) -> float:
+def _arm_endpoint(arm: dict, endpoint: str) -> float | None:
     if endpoint == "completeness_mean_distance_m":
         return float(arm["geometry"][endpoint])
     if endpoint == "far_completeness_60_120m":
-        return float(
-            arm["geometry"][
-                "range_60_120m_completeness_mean_distance_m"
-            ]
+        value = arm["geometry"].get(
+            "range_60_120m_completeness_mean_distance_m"
         )
+        return None if value is None else float(value)
     if endpoint == "outlier_fraction_2m":
         return float(arm["geometry"][endpoint])
     if endpoint == "duplicate_fraction_0p05m":
         return float(arm["duplicates"][endpoint])
     if endpoint == "far_full_pool_weighted_gt_recall_2m":
-        return float(
-            arm["per_range_support"][FAR_LABEL][FAR_RECALL_KEY]
-        )
+        value = arm["per_range_support"][FAR_LABEL].get(FAR_RECALL_KEY)
+        return None if value is None else float(value)
     raise KeyError(endpoint)
 
 
@@ -299,15 +357,18 @@ PAIRED_ENDPOINTS = (
 
 def paired_deltas(arms: dict[str, dict]) -> dict[str, dict[str, float]]:
     vanilla = arms["vanilla"]
-    return {
-        name: {
-            endpoint: _arm_endpoint(arm, endpoint)
-            - _arm_endpoint(vanilla, endpoint)
-            for endpoint in PAIRED_ENDPOINTS
-        }
-        for name, arm in arms.items()
-        if name != "vanilla"
-    }
+    result = {}
+    for name, arm in arms.items():
+        if name == "vanilla":
+            continue
+        deltas = {}
+        for endpoint in PAIRED_ENDPOINTS:
+            arm_value = _arm_endpoint(arm, endpoint)
+            vanilla_value = _arm_endpoint(vanilla, endpoint)
+            if arm_value is not None and vanilla_value is not None:
+                deltas[endpoint] = arm_value - vanilla_value
+        result[name] = deltas
+    return result
 
 
 @torch.inference_mode()
@@ -376,6 +437,9 @@ def evaluate_frame(
             ),
             "candidate_parent_range_count": parent_counts,
             "candidate_actual_range_count": range_count_report(pool.xyz_m),
+            "unique_candidate_actual_range_count": (
+                unique_range_count_report(pool.xyz_m)
+            ),
             "selected_count": int(selection.selected_xyz_m.shape[0]),
             "unique_selected_index_count": int(
                 torch.unique(selection.selected_candidate_indices).numel()
@@ -386,6 +450,9 @@ def evaluate_frame(
             "selected_actual_range_count": range_count_report(
                 selection.selected_xyz_m
             ),
+            "unique_selected_actual_range_count": (
+                unique_range_count_report(selection.selected_xyz_m)
+            ),
             "proposal_flat_index_sha256": tensor_sha256(
                 pool.proposal_flat_index
             ),
@@ -395,7 +462,16 @@ def evaluate_frame(
             "geometry": geometry,
             "duplicates": duplicates,
             "per_range_support": selection.per_range_support,
-            "ground_truth_used_for_selection": True,
+            "ground_truth_used_for_selection": any(
+                report["ground_truth_used_for_selection"]
+                for report in selection.per_range_support.values()
+            ),
+            "empty_range_bins_use_gt_free_fill": all(
+                report["ground_truth_used_for_selection"]
+                or report["selection_mode"]
+                == "deterministic_candidate_index_gt_free_fill"
+                for report in selection.per_range_support.values()
+            ),
             "geometry_uses_original_target_confidence": True,
         }
     expected_parent_counts = {
@@ -412,7 +488,7 @@ def evaluate_frame(
     if arms["range_aware"]["candidate_actual_range_count"] != (
         expected_parent_counts
     ):
-        raise AssertionError("G1R-R0 lost its physical candidate range quotas")
+        raise AssertionError("G1R-R0 lost its metric-range candidate quotas")
     expected_selected_counts = {
         label: quota
         for (label, _, _), quota in zip(RANGE_BINS_M, EXPORT_QUOTAS)
@@ -437,11 +513,28 @@ def _mean_numeric_reports(reports: list[dict[str, Any]]) -> dict[str, float]:
             key
             for report in reports
             for key, value in report.items()
-            if isinstance(value, (int, float))
+            if (
+                isinstance(value, (int, float))
+                and not isinstance(value, bool)
+                and np.isfinite(value)
+            )
         }
     )
     return {
-        key: float(np.mean([report[key] for report in reports if key in report]))
+        key: float(
+            np.mean(
+                [
+                    report[key]
+                    for report in reports
+                    if (
+                        key in report
+                        and isinstance(report[key], (int, float))
+                        and not isinstance(report[key], bool)
+                        and np.isfinite(report[key])
+                    )
+                ]
+            )
+        )
         for key in keys
     }
 
@@ -528,21 +621,20 @@ def aggregate_paired_deltas(frames: list[dict]) -> dict:
             for _, values in sorted(grouped.items())
         ]
         result[arm_name] = {
-            "frame_first": aggregate_scalar_reports(reports),
-            "scene_first": aggregate_scalar_reports(scene_reports),
+            "frame_first": aggregate_flat_reports(reports),
+            "scene_first": aggregate_flat_reports(scene_reports),
         }
     return result
 
 
-def stage0_decision(metrics: dict, frames: list[dict]) -> dict[str, Any]:
-    range_aware = metrics["range_aware"]["frame_first"]
-    geometry = range_aware["geometry"]
-    duplicates = range_aware["duplicates"]
-    far_support = range_aware["per_range_support"][FAR_LABEL]
+def _decision_values(report: dict) -> dict[str, float]:
+    geometry = report["geometry"]
+    duplicates = report["duplicates"]
+    far_support = report["per_range_support"][FAR_LABEL]
     far_geometry = geometry.get(
         "range_60_120m_completeness_mean_distance_m"
     )
-    values = {
+    return {
         "far_full_pool_weighted_gt_recall_2m_mean": float(
             far_support[FAR_RECALL_KEY]["mean"]
         ),
@@ -561,7 +653,70 @@ def stage0_decision(metrics: dict, frames: list[dict]) -> dict[str, Any]:
             duplicates["duplicate_fraction_0p05m"]["mean"]
         ),
     }
+
+
+def stage0_decision(
+    metrics: dict,
+    frames: list[dict],
+    *,
+    expected_frame_count: int = FROZEN_VALIDATION_FRAME_COUNT,
+    expected_scene_count: int = FROZEN_VALIDATION_SCENE_COUNT,
+    expected_far_target_frame_count: int = FROZEN_FAR_TARGET_FRAME_COUNT,
+) -> dict[str, Any]:
+    range_aware_metrics = metrics["range_aware"]
+    scene_values = _decision_values(range_aware_metrics["scene_first"])
+    frame_values = _decision_values(range_aware_metrics["frame_first"])
+    values = scene_values
+    frame_geometry = range_aware_metrics["frame_first"]["geometry"]
+    frame_far_geometry = frame_geometry.get(
+        "range_60_120m_completeness_mean_distance_m",
+        {},
+    )
+    frame_far_support = range_aware_metrics["frame_first"][
+        "per_range_support"
+    ][FAR_LABEL].get(FAR_RECALL_KEY, {})
+    far_target_flags = [
+        tuple(
+            int(arm["per_range_support"][FAR_LABEL]["target_count"]) > 0
+            for arm in frame["arms"].values()
+        )
+        for frame in frames
+    ]
+    far_target_frame_count = sum(
+        frame["arms"]["range_aware"]["per_range_support"][FAR_LABEL][
+            "target_count"
+        ]
+        > 0
+        for frame in frames
+    )
+    paired_reports = aggregate_paired_deltas(frames)
     checks = {
+        "exact_validation_frame_count": len(frames) == expected_frame_count,
+        "exact_validation_scene_count": (
+            len({int(frame["sequence"]) for frame in frames})
+            == expected_scene_count
+        ),
+        "all_arms_agree_on_far_target_presence": all(
+            len(set(flags)) == 1 for flags in far_target_flags
+        ),
+        "exact_far_target_frame_count": (
+            far_target_frame_count == expected_far_target_frame_count
+        ),
+        "far_geometry_sample_count_exact": (
+            frame_far_geometry.get("sample_count")
+            == expected_far_target_frame_count
+        ),
+        "far_support_sample_count_exact": (
+            frame_far_support.get("sample_count")
+            == expected_far_target_frame_count
+        ),
+        "paired_far_sample_count_exact": all(
+            paired_reports[arm_name]["frame_first"]
+            .get("far_completeness_60_120m", {})
+            .get("sample_count")
+            == expected_far_target_frame_count
+            for arm_name in ("z_only", "range_aware")
+        ),
         "far_recall_at_least_30pct": (
             values["far_full_pool_weighted_gt_recall_2m_mean"]
             >= FAR_RECALL_MINIMUM
@@ -609,6 +764,19 @@ def stage0_decision(metrics: dict, frames: list[dict]) -> dict[str, Any]:
             == CANDIDATE_PARENT_QUOTAS
             for frame in frames
         ),
+        "range_aware_unique_xyz_capacity_supports_export_quota": all(
+            all(
+                frame["arms"]["range_aware"][
+                    "unique_candidate_actual_range_count"
+                ][label]
+                >= quota
+                for (label, _, _), quota in zip(
+                    RANGE_BINS_M,
+                    EXPORT_QUOTAS,
+                )
+            )
+            for frame in frames
+        ),
         "all_selected_range_quotas_exact": all(
             tuple(
                 arm["selected_actual_range_count"][label]
@@ -618,10 +786,37 @@ def stage0_decision(metrics: dict, frames: list[dict]) -> dict[str, Any]:
             for frame in frames
             for arm in frame["arms"].values()
         ),
+        "empty_range_bins_use_deterministic_gt_free_fill": all(
+            arm["empty_range_bins_use_gt_free_fill"]
+            for frame in frames
+            for arm in frame["arms"].values()
+        ),
     }
     passed = all(checks.values())
     return {
         "values": values,
+        "observed_counts": {
+            "validation_frame_count": len(frames),
+            "validation_scene_count": len(
+                {int(frame["sequence"]) for frame in frames}
+            ),
+            "far_target_frame_count": far_target_frame_count,
+            "far_geometry_sample_count": frame_far_geometry.get(
+                "sample_count"
+            ),
+            "far_support_sample_count": frame_far_support.get("sample_count"),
+            "paired_far_sample_count": {
+                arm_name: paired_reports[arm_name]["frame_first"]
+                .get("far_completeness_60_120m", {})
+                .get("sample_count")
+                for arm_name in ("z_only", "range_aware")
+            },
+        },
+        "reporting": {
+            "primary_gate_unit": "scene_first",
+            "scene_first": scene_values,
+            "frame_first_diagnostic": frame_values,
+        },
         "thresholds": {
             "far_full_pool_weighted_gt_recall_2m_minimum": FAR_RECALL_MINIMUM,
             "oracle_completeness_median_m_maximum": COMPLETENESS_LIMIT_M,
@@ -630,14 +825,29 @@ def stage0_decision(metrics: dict, frames: list[dict]) -> dict[str, Any]:
             ),
             "oracle_outlier_fraction_mean_maximum": OUTLIER_LIMIT,
             "oracle_duplicate_fraction_mean_maximum": DUPLICATE_LIMIT,
+            "validation_frame_count": expected_frame_count,
+            "validation_scene_count": expected_scene_count,
+            "far_target_frame_count": expected_far_target_frame_count,
+            "unique_candidate_xyz_minimum_by_range": {
+                label: quota
+                for (label, _, _), quota in zip(
+                    RANGE_BINS_M,
+                    EXPORT_QUOTAS,
+                )
+            },
         },
         "checks": checks,
         "passed": passed,
         "training_authorized": passed,
+        "complete_route_closed": False,
+        "diagnostic_semantics": (
+            "gt_aided_heuristic_pass_proves_one_feasible_subset;"
+            "failure_is_inconclusive"
+        ),
         "decision": (
             "authorize_frozen_10_epoch_r0_training"
             if passed
-            else "forbid_r0_training_oracle_gate_failed"
+            else "inconclusive_gt_aided_heuristic_diagnostic_failed"
         ),
     }
 
@@ -653,10 +863,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--distance-chunk-size", type=int, default=1024)
+    parser.add_argument("--preflight-sequence", type=int)
+    parser.add_argument("--preflight-radar-index", type=int)
     return parser.parse_args()
 
 
 def main() -> None:
+    job_started = time.perf_counter()
     args = parse_args()
     if args.output.exists():
         raise FileExistsError(f"G1R-R0 output already exists: {args.output}")
@@ -664,6 +877,10 @@ def main() -> None:
         raise ValueError("G1R-R0 source commit must be a full lowercase Git SHA")
     if args.distance_chunk_size <= 0:
         raise ValueError("G1R-R0 distance chunk size must be positive")
+    preflight_identity = resolve_preflight_identity(
+        args.preflight_sequence,
+        args.preflight_radar_index,
+    )
     repo = Path(__file__).resolve().parents[2]
     current_commit = git_commit(repo)
     if args.source_commit != current_commit:
@@ -705,19 +922,30 @@ def main() -> None:
     )
     if len(training_dataset) != 76 or len(validation_dataset) != 24:
         raise AssertionError("G1R-R0 dataset changed after contract validation")
-    calibration = fit_training_profile(training_dataset, device)
+    calibration, calibration_runtime = profile_cuda_call(
+        device,
+        lambda: fit_training_profile(training_dataset, device),
+    )
     frames = []
-    for index in range(len(validation_dataset)):
+    evaluation_indices = validation_indices(
+        validation_dataset.records,
+        preflight_identity,
+    )
+    for index in evaluation_indices:
         item = validation_dataset[index]
         key = (int(item["sequence"]), int(item["radar_index"]))
-        frame = evaluate_frame(
-            item,
-            axes_tensors,
-            calibration,
+        frame, frame_runtime = profile_cuda_call(
             device,
-            hash_lookup[key],
-            args.distance_chunk_size,
+            lambda: evaluate_frame(
+                item,
+                axes_tensors,
+                calibration,
+                device,
+                hash_lookup[key],
+                args.distance_chunk_size,
+            ),
         )
+        frame["runtime"] = frame_runtime
         frames.append(frame)
         del item
         torch.cuda.empty_cache()
@@ -726,15 +954,56 @@ def main() -> None:
         arm_name: aggregate_arm(frames, arm_name)
         for arm_name in ARM_NAMES
     }
-    decision = stage0_decision(metrics, frames)
+    run_mode = (
+        "single_frame_preflight"
+        if preflight_identity is not None
+        else "formal_validation"
+    )
+    if preflight_identity is None:
+        decision = stage0_decision(metrics, frames)
+    else:
+        decision = {
+            "passed": None,
+            "training_authorized": False,
+            "complete_route_closed": False,
+            "decision": "preflight_only_no_scientific_decision",
+            "diagnostic_semantics": (
+                "runtime_and_contract_check_only;"
+                "single_frame_metrics_are_not_a_gate"
+            ),
+        }
+    phase_runtimes = [calibration_runtime] + [
+        frame["runtime"] for frame in frames
+    ]
+    runtime = {
+        "total_elapsed_seconds": float(time.perf_counter() - job_started),
+        "calibration": calibration_runtime,
+        "evaluated_frame_count": len(frames),
+        "peak_memory_allocated_bytes": max(
+            phase["peak_memory_allocated_bytes"] for phase in phase_runtimes
+        ),
+        "peak_memory_reserved_bytes": max(
+            phase["peak_memory_reserved_bytes"] for phase in phase_runtimes
+        ),
+    }
     document = {
         "protocol": PROTOCOL,
+        "run_mode": run_mode,
+        "preflight_frame": (
+            {
+                "sequence": preflight_identity[0],
+                "radar_index": preflight_identity[1],
+            }
+            if preflight_identity is not None
+            else None
+        ),
         "artifact_label": {
             "label": ORACLE_ARTIFACT_LABEL,
             "diagnostic": True,
             "unattainable": True,
             "ground_truth_used_for_selection": True,
             "eligible_as_method_result": False,
+            "heuristic_not_optimal_oracle": True,
         },
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "source_commit": current_commit,
@@ -746,11 +1015,15 @@ def main() -> None:
             "vanilla": "g1d_stable_energy_nms_5x5x3",
             "z_only": "calibrated_energy_with_g1d_compatible_nms_5x5x3",
             "range_aware": (
-                "calibrated_energy_fixed_range_quota_physical_nms_"
+                "calibrated_energy_fixed_range_quota_approximate_physical_nms_"
                 "template_safe_parents"
             ),
-            "physical_nms_lateral_radius_m": LATERAL_NMS_RADIUS_M,
-            "physical_nms_radial_radius_m": RADIAL_NMS_RADIUS_M,
+            "approximate_physical_nms_lateral_radius_m": (
+                LATERAL_NMS_RADIUS_M
+            ),
+            "approximate_physical_nms_radial_radius_m": (
+                RADIAL_NMS_RADIUS_M
+            ),
             "seed_quotas_0_30_30_60_60_120m": list(SEED_QUOTAS),
             "candidate_parent_quotas_0_30_30_60_60_120m": list(
                 CANDIDATE_PARENT_QUOTAS
@@ -758,12 +1031,20 @@ def main() -> None:
             "selected_quotas_0_30_30_60_60_120m": list(EXPORT_QUOTAS),
             "candidate_count": PROPOSAL_COUNT,
             "export_count": EXPORT_COUNT,
-            "oracle_selection": "reused_g1f_gt_support_oracle",
+            "selection": (
+                "gt_aided_covered_mass_heuristic_with_"
+                "deterministic_gt_free_empty_bin_fill"
+            ),
+            "failure_semantics": "inconclusive_does_not_close_complete_route",
+            "primary_gate_unit": "scene_first",
+            "frame_first_reported_as_diagnostic": True,
+            "frozen_far_target_frame_count": FROZEN_FAR_TARGET_FRAME_COUNT,
             "geometry_metrics": "reused_eval_dense_geometry",
             "duplicate_metric": "reused_eval_rald_guided_query",
             "test_accessed": False,
         },
         "calibration": calibration_document(calibration),
+        "runtime": runtime,
         "metrics": metrics,
         "paired_delta_vs_vanilla": aggregate_paired_deltas(frames),
         "frames": frames,
@@ -803,7 +1084,7 @@ def main() -> None:
             indent=2,
         )
     )
-    if not decision["passed"]:
+    if preflight_identity is None and not decision["passed"]:
         raise SystemExit(2)
 
 

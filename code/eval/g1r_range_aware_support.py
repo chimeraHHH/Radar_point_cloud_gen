@@ -1,8 +1,7 @@
-"""Range-aware proposal support for the G1R-R0 diagnostic oracle.
+"""Range-aware proposal support for the G1R-R0 heuristic diagnostic.
 
-The module changes only proposal support. Geometry selection remains the
-unattainable G1F ground-truth oracle, and all geometry metrics remain in
-``eval.dense_geometry``.
+The module changes only proposal support. Geometry selection is a GT-aided
+heuristic diagnostic, and all geometry metrics remain in ``eval.dense_geometry``.
 """
 
 from __future__ import annotations
@@ -12,12 +11,14 @@ from dataclasses import dataclass
 import numpy as np
 import torch
 
+from eval.dense_geometry import nearest_distance
 from eval.g1f_candidate_support import (
     EXPORT_COUNT,
     PROPOSAL_COUNT,
     RANGE_BINS_M,
+    SUPPORT_THRESHOLDS_M,
     CandidateSupportSelection,
-    select_candidate_support_oracle,
+    nearest_candidate_assignment,
 )
 from models.cube_cycle import continuous_rae_to_xyz
 from models.rald_query_field import (
@@ -39,7 +40,7 @@ LATERAL_NMS_RADIUS_M = 1.0
 RADIAL_NMS_RADIUS_M = 1.0
 COARSE_TEMPLATE_RADIAL_RADIUS_BINS = 2
 CALIBRATION_EPSILON = 1e-6
-ORACLE_ARTIFACT_LABEL = "g1r_r0_unattainable_gt_support_oracle"
+ORACLE_ARTIFACT_LABEL = "g1r_r0_gt_aided_heuristic_diagnostic"
 
 
 @dataclass(frozen=True)
@@ -274,7 +275,9 @@ def physical_angular_suppression_mask(
     """
 
     if lateral_radius_m <= 0.0:
-        raise ValueError("G1R physical lateral NMS radius must be positive")
+        raise ValueError(
+            "G1R approximate physical lateral NMS radius must be positive"
+        )
     _validate_axes(
         range_m,
         azimuth_rad,
@@ -359,7 +362,7 @@ def range_aware_proposal_indices(
     lateral_radius_m: float = LATERAL_NMS_RADIUS_M,
     radial_radius_m: float = RADIAL_NMS_RADIUS_M,
 ) -> torch.Tensor:
-    """Select stable proposals with fixed range quotas and physical angular NMS."""
+    """Select fixed range quotas with approximate physical angular NMS."""
 
     if score_brae.ndim != 4:
         raise ValueError("G1R range-aware scores must have shape (B,R,A,E)")
@@ -372,7 +375,7 @@ def range_aware_proposal_indices(
     ):
         raise ValueError("G1R requires one positive seed quota per range bin")
     if lateral_radius_m <= 0.0 or radial_radius_m <= 0.0:
-        raise ValueError("G1R physical NMS radii must be positive")
+        raise ValueError("G1R approximate physical NMS radii must be positive")
 
     spatial_shape = tuple(int(size) for size in score_brae.shape[1:])
     _validate_axes(range_m, azimuth_rad, elevation_rad, spatial_shape)
@@ -447,7 +450,7 @@ def range_aware_proposal_indices(
             cursor = stop
         if tuple(bin_counts) != tuple(seed_quotas):
             raise RuntimeError(
-                "G1R physical NMS cannot pack the frozen range quotas: "
+                "G1R approximate physical NMS cannot pack range quotas: "
                 f"{tuple(bin_counts)}"
             )
         selected_batches.append(selected)
@@ -526,44 +529,79 @@ def expand_g1d_candidate_pool(
     )
 
 
-def fixed_quota_oracle_weights(
-    target_xyz_m: torch.Tensor,
+def _coordinate_range_masks(xyz_m: torch.Tensor) -> list[torch.Tensor]:
+    radius = torch.linalg.vector_norm(xyz_m, dim=1)
+    masks = [
+        (radius >= lower) & (radius < upper)
+        for _, lower, upper in RANGE_BINS_M
+    ]
+    if xyz_m.shape[0] and not bool(torch.stack(masks).any(dim=0).all()):
+        raise ValueError("G1R coordinates must lie in the frozen [0,120) m bins")
+    return masks
+
+
+def _covered_candidate_statistics(
+    assigned_candidate: torch.Tensor,
+    assignment_distance_m: torch.Tensor,
     target_weight: torch.Tensor,
-    *,
-    export_quotas: tuple[int, int, int] = EXPORT_QUOTAS,
+    candidate_count: int,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    covered_mass = target_weight.new_zeros(candidate_count)
+    weighted_distance = target_weight.new_zeros(candidate_count)
+    covered_mass.scatter_add_(0, assigned_candidate, target_weight)
+    weighted_distance.scatter_add_(
+        0,
+        assigned_candidate,
+        assignment_distance_m * target_weight,
+    )
+    covered_mean_distance = target_weight.new_full(
+        (candidate_count,),
+        float("inf"),
+    )
+    positive = covered_mass > 0.0
+    covered_mean_distance[positive] = (
+        weighted_distance[positive] / covered_mass[positive]
+    )
+    return covered_mass, covered_mean_distance
+
+
+def _stable_covered_order(
+    covered_mass: torch.Tensor,
+    covered_distance_m: torch.Tensor,
+    candidate_indices: torch.Tensor,
 ) -> torch.Tensor:
-    """Rescale GT weights only for G1F selection to force export quotas.
+    selected = torch.nonzero(covered_mass > 0.0, as_tuple=False).flatten()
+    selected = selected[
+        torch.argsort(candidate_indices[selected], stable=True)
+    ]
+    selected = selected[
+        torch.argsort(covered_distance_m[selected], stable=True)
+    ]
+    return selected[
+        torch.argsort(covered_mass[selected], descending=True, stable=True)
+    ]
 
-    Original target confidence is preserved within each range bin. The caller
-    must use the unmodified target weights for all reported geometry metrics.
-    """
 
-    if target_xyz_m.ndim != 2 or target_xyz_m.shape[1] != 3:
-        raise ValueError("G1R target XYZ must have shape (N,3)")
-    if target_weight.shape != (target_xyz_m.shape[0],):
-        raise ValueError("G1R target weights must match target rows")
-    if len(export_quotas) != len(RANGE_BINS_M):
-        raise ValueError("G1R requires one export quota per range bin")
-    if sum(export_quotas) != EXPORT_COUNT:
-        raise ValueError("G1R export quotas must sum to exactly 10,000")
-    if not torch.isfinite(target_weight).all() or bool((target_weight < 0).any()):
-        raise ValueError("G1R target weights must be finite and nonnegative")
+def _stable_distance_order(
+    distance_m: torch.Tensor,
+    candidate_indices: torch.Tensor,
+) -> torch.Tensor:
+    by_index = torch.argsort(candidate_indices, stable=True)
+    return by_index[
+        torch.argsort(distance_m[by_index], stable=True)
+    ]
 
-    radius = torch.linalg.vector_norm(target_xyz_m, dim=1)
-    selection_weight = torch.zeros_like(target_weight)
-    for quota, (_, lower, upper) in zip(export_quotas, RANGE_BINS_M):
-        mask = (radius >= lower) & (radius < upper)
-        mass = target_weight[mask].sum()
-        if not bool(mask.any()) or float(mass.item()) <= 0.0:
-            raise ValueError("G1R fixed oracle quota has no positive target mass")
-        scaled = target_weight[mask] * (float(quota) / mass)
-        positive = torch.nonzero(scaled > 0.0, as_tuple=False).flatten()
-        if positive.numel() == 0:
-            raise ValueError("G1R fixed oracle quota lost positive target mass")
-        correction = scaled.new_tensor(float(quota)) - scaled.sum()
-        scaled[positive[0]] += correction
-        selection_weight[mask] = scaled
-    return selection_weight
+
+def _weighted_support_fraction(
+    distance_m: torch.Tensor,
+    weight: torch.Tensor,
+    threshold_m: float,
+) -> float | None:
+    mass = weight.sum()
+    if float(mass.item()) <= 0.0:
+        return None
+    supported = (distance_m <= threshold_m).to(weight)
+    return float(((supported * weight).sum() / mass).item())
 
 
 def select_fixed_quota_support_oracle(
@@ -573,31 +611,234 @@ def select_fixed_quota_support_oracle(
     *,
     distance_chunk_size: int = 1024,
 ) -> CandidateSupportSelection:
-    """Reuse the G1F oracle under the frozen 75/20/5 output allocation."""
+    """Select fixed per-range quotas with an explicitly heuristic diagnostic.
+
+    Bins with positive target confidence use the frozen covered-mass and
+    nearest-distance ordering. Bins without positive target confidence are
+    filled by stable external candidate index and do not access GT geometry.
+    """
 
     if candidate_pool.xyz_m.shape != (PROPOSAL_COUNT, 3):
-        raise ValueError("G1R oracle requires exactly 32,000 candidates")
-    selection_weight = fixed_quota_oracle_weights(
-        target_xyz_m,
-        target_weight,
-    )
-    result = select_candidate_support_oracle(
-        candidate_pool.xyz_m.float(),
-        candidate_pool.candidate_indices,
-        target_xyz_m.float(),
-        target_weight=selection_weight.float(),
-        distance_chunk_size=distance_chunk_size,
-    )
-    actual_quotas = tuple(
-        int(result.per_range_support[label]["selected_count"])
-        for label, _, _ in RANGE_BINS_M
-    )
-    if actual_quotas != EXPORT_QUOTAS:
-        raise AssertionError(
-            "G1R G1F oracle did not preserve frozen export quotas: "
-            f"{actual_quotas}"
+        raise ValueError("G1R diagnostic requires exactly 32,000 candidates")
+    if not torch.is_floating_point(candidate_pool.xyz_m):
+        raise TypeError("G1R candidate XYZ coordinates must be floating point")
+    if not torch.isfinite(candidate_pool.xyz_m).all():
+        raise ValueError("G1R candidate XYZ coordinates must be finite")
+    if candidate_pool.candidate_indices.shape != (PROPOSAL_COUNT,):
+        raise ValueError("G1R candidate indices must match the candidate pool")
+    if torch.unique(candidate_pool.candidate_indices).numel() != PROPOSAL_COUNT:
+        raise ValueError("G1R candidate indices must be unique")
+    if (
+        target_xyz_m.ndim != 2
+        or target_xyz_m.shape[1] != 3
+        or target_xyz_m.shape[0] == 0
+    ):
+        raise ValueError("G1R target XYZ must have non-empty shape (N,3)")
+    if not torch.is_floating_point(target_xyz_m):
+        raise TypeError("G1R target XYZ coordinates must be floating point")
+    if not torch.isfinite(target_xyz_m).all():
+        raise ValueError("G1R target XYZ coordinates must be finite")
+    if target_weight.shape != (target_xyz_m.shape[0],):
+        raise ValueError("G1R target weights must match target rows")
+    if not torch.isfinite(target_weight).all() or bool((target_weight < 0).any()):
+        raise ValueError("G1R target weights must be finite and nonnegative")
+    if distance_chunk_size <= 0:
+        raise ValueError("G1R distance chunk size must be positive")
+
+    candidate_xyz = candidate_pool.xyz_m.float()
+    target_xyz = target_xyz_m.float()
+    target_weight = target_weight.float()
+    candidate_masks = _coordinate_range_masks(candidate_xyz)
+    target_masks = _coordinate_range_masks(target_xyz)
+    selected_pool_parts = []
+    support = {}
+
+    for bin_index, ((label, lower, upper), quota) in enumerate(
+        zip(RANGE_BINS_M, EXPORT_QUOTAS)
+    ):
+        candidate_pool_indices = torch.nonzero(
+            candidate_masks[bin_index],
+            as_tuple=False,
+        ).flatten()
+        target_indices = torch.nonzero(
+            target_masks[bin_index],
+            as_tuple=False,
+        ).flatten()
+        if candidate_pool_indices.numel() < quota:
+            raise ValueError(
+                f"G1R {label} has {candidate_pool_indices.numel()} candidates "
+                f"for quota {quota}"
+            )
+
+        candidate_bin = candidate_xyz[candidate_pool_indices]
+        candidate_bin_indices = candidate_pool.candidate_indices[
+            candidate_pool_indices
+        ]
+        target_bin = target_xyz[target_indices]
+        target_bin_weight = target_weight[target_indices]
+        positive_target_mass = float(target_bin_weight.sum().item()) > 0.0
+        covered_mass = candidate_bin.new_zeros(candidate_bin.shape[0])
+        selected_assigned = candidate_pool_indices.new_empty(0)
+        target_to_candidate = None
+        candidate_to_target = None
+
+        if target_indices.numel() and positive_target_mass:
+            candidate_to_target = nearest_distance(
+                candidate_bin,
+                target_bin,
+                chunk_size=distance_chunk_size,
+            )
+            target_to_candidate, assigned_candidate = (
+                nearest_candidate_assignment(
+                    target_bin,
+                    candidate_bin,
+                    candidate_bin_indices,
+                    chunk_size=distance_chunk_size,
+                )
+            )
+            covered_mass, covered_distance = _covered_candidate_statistics(
+                assigned_candidate,
+                target_to_candidate,
+                target_bin_weight,
+                candidate_bin.shape[0],
+            )
+            covered_order = _stable_covered_order(
+                covered_mass,
+                covered_distance,
+                candidate_bin_indices,
+            )
+            selected_assigned = covered_order[:quota]
+            selection_mode = "gt_aided_covered_mass_then_distance"
+        else:
+            selection_mode = "deterministic_candidate_index_gt_free_fill"
+
+        selected_mask = torch.zeros(
+            candidate_bin.shape[0],
+            dtype=torch.bool,
+            device=candidate_bin.device,
         )
-    return result
+        selected_mask[selected_assigned] = True
+        available = torch.nonzero(~selected_mask, as_tuple=False).flatten()
+        fill_count = quota - int(selected_assigned.numel())
+        if candidate_to_target is None:
+            fill_order = torch.argsort(
+                candidate_bin_indices[available],
+                stable=True,
+            )
+        else:
+            fill_order = _stable_distance_order(
+                candidate_to_target[available],
+                candidate_bin_indices[available],
+            )
+        selected_fill = available[fill_order[:fill_count]]
+        selected_local = torch.cat((selected_assigned, selected_fill))
+        if selected_local.numel() != quota:
+            raise AssertionError(f"G1R could not fill the frozen {label} quota")
+        selected_pool = candidate_pool_indices[selected_local]
+        selected_pool_parts.append(selected_pool)
+
+        target_to_selected = (
+            nearest_distance(
+                target_bin,
+                candidate_xyz[selected_pool],
+                chunk_size=distance_chunk_size,
+            )
+            if target_indices.numel()
+            else None
+        )
+        total_covered_mass = float(covered_mass.sum().item())
+        selected_covered_mass = float(
+            covered_mass[selected_assigned].sum().item()
+        )
+        report = {
+            "candidate_count": int(candidate_pool_indices.numel()),
+            "candidate_density_per_radial_m": float(
+                candidate_pool_indices.numel() / (upper - lower)
+            ),
+            "target_count": int(target_indices.numel()),
+            "target_effective_count": float(target_bin_weight.sum().item()),
+            "output_quota": int(quota),
+            "selected_count": int(selected_pool.numel()),
+            "assigned_candidate_count": int(
+                (covered_mass > 0.0).sum().item()
+            ),
+            "selected_assigned_candidate_count": int(
+                selected_assigned.numel()
+            ),
+            "fill_candidate_count": int(selected_fill.numel()),
+            "covered_target_effective_mass": total_covered_mass,
+            "selected_covered_target_effective_mass": selected_covered_mass,
+            "selected_covered_target_mass_fraction": (
+                selected_covered_mass / max(total_covered_mass, 1e-8)
+                if positive_target_mass
+                else None
+            ),
+            "selection_mode": selection_mode,
+            "ground_truth_used_for_selection": bool(positive_target_mass),
+        }
+        for threshold in SUPPORT_THRESHOLDS_M:
+            suffix = str(threshold).replace(".", "p")
+            report[f"proposal_to_gt_support_fraction_{suffix}m"] = (
+                float(
+                    (candidate_to_target <= threshold)
+                    .float()
+                    .mean()
+                    .item()
+                )
+                if candidate_to_target is not None
+                else None
+            )
+            report[f"selected_to_gt_support_fraction_{suffix}m"] = (
+                float(
+                    (candidate_to_target[selected_local] <= threshold)
+                    .float()
+                    .mean()
+                    .item()
+                )
+                if candidate_to_target is not None
+                else None
+            )
+            report[f"gt_recall_from_proposals_{suffix}m"] = (
+                _weighted_support_fraction(
+                    target_to_candidate,
+                    target_bin_weight,
+                    threshold,
+                )
+                if target_to_candidate is not None
+                else None
+            )
+            report[f"gt_recall_from_selected_{suffix}m"] = (
+                _weighted_support_fraction(
+                    target_to_selected,
+                    target_bin_weight,
+                    threshold,
+                )
+                if target_to_selected is not None
+                else None
+            )
+        support[label] = report
+
+    selected_pool_indices = torch.cat(selected_pool_parts)
+    if selected_pool_indices.shape != (EXPORT_COUNT,):
+        raise AssertionError("G1R diagnostic must export exactly 10,000 candidates")
+    selected_candidate_indices = candidate_pool.candidate_indices[
+        selected_pool_indices
+    ]
+    if torch.unique(selected_candidate_indices).numel() != EXPORT_COUNT:
+        raise AssertionError("G1R selected a candidate index more than once")
+    return CandidateSupportSelection(
+        selected_pool_indices=selected_pool_indices,
+        selected_candidate_indices=selected_candidate_indices,
+        selected_xyz_m=candidate_xyz[selected_pool_indices],
+        per_range_support=support,
+        artifact_label={
+            "label": ORACLE_ARTIFACT_LABEL,
+            "diagnostic": True,
+            "unattainable": True,
+            "ground_truth_used_for_selection": True,
+            "eligible_as_method_result": False,
+        },
+    )
 
 
 def range_count_report(
@@ -608,5 +849,22 @@ def range_count_report(
     radius = torch.linalg.vector_norm(xyz_m, dim=1)
     return {
         label: int(((radius >= lower) & (radius < upper)).sum().item())
+        for label, lower, upper in RANGE_BINS_M
+    }
+
+
+def unique_range_count_report(
+    xyz_m: torch.Tensor,
+) -> dict[str, int]:
+    """Count unique physical XYZ coordinates in each frozen range bin."""
+
+    radius = torch.linalg.vector_norm(xyz_m, dim=1)
+    return {
+        label: int(
+            torch.unique(
+                xyz_m[(radius >= lower) & (radius < upper)],
+                dim=0,
+            ).shape[0]
+        )
         for label, lower, upper in RANGE_BINS_M
     }

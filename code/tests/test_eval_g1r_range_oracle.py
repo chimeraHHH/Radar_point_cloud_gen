@@ -8,32 +8,37 @@ from scripts.eval_g1r_range_oracle import (
     ARM_NAMES,
     CANDIDATE_PARENT_QUOTAS,
     EXPORT_QUOTAS,
+    FROZEN_FAR_TARGET_FRAME_COUNT,
     FAR_RECALL_KEY,
     PROTOCOL,
     aggregate_paired_deltas,
     paired_deltas,
+    resolve_preflight_identity,
     source_hashes,
     stage0_decision,
     validate_frozen_data_contract,
+    validation_indices,
 )
 
 
 def _geometry(
     *,
     completeness: float,
-    far: float,
+    far: float | None,
     outlier: float,
 ) -> dict[str, float]:
-    return {
+    result = {
         "chamfer_m": completeness + 0.2,
         "precision_mean_distance_m": 0.2,
         "completeness_mean_distance_m": completeness,
         "outlier_fraction_2m": outlier,
-        "range_60_120m_completeness_mean_distance_m": far,
         "prediction_count": 10_000,
         "target_count": 4,
         "target_effective_count": 4.0,
     }
+    if far is not None:
+        result["range_60_120m_completeness_mean_distance_m"] = far
+    return result
 
 
 def _arm(
@@ -42,11 +47,17 @@ def _arm(
     far: float = 7.5,
     outlier: float = 0.20,
     duplicate: float = 0.08,
-    far_recall: float = 0.35,
+    far_recall: float | None = 0.35,
     range_aware: bool = False,
+    far_target: bool = True,
 ) -> dict:
     parent = (
-        dict(zip(("range_0_30m", "range_30_60m", "range_60_120m"), CANDIDATE_PARENT_QUOTAS))
+        dict(
+            zip(
+                ("range_0_30m", "range_30_60m", "range_60_120m"),
+                CANDIDATE_PARENT_QUOTAS,
+            )
+        )
         if range_aware
         else {
             "range_0_30m": 20_000,
@@ -65,10 +76,11 @@ def _arm(
         "selected_count": 10_000,
         "candidate_parent_range_count": parent,
         "candidate_actual_range_count": parent,
+        "unique_candidate_actual_range_count": parent,
         "selected_actual_range_count": selected,
         "geometry": _geometry(
             completeness=completeness,
-            far=far,
+            far=far if far_target else None,
             outlier=outlier,
         ),
         "duplicates": {
@@ -78,17 +90,19 @@ def _arm(
         },
         "per_range_support": {
             "range_60_120m": {
-                FAR_RECALL_KEY: far_recall,
+                FAR_RECALL_KEY: far_recall if far_target else None,
+                "target_count": 1 if far_target else 0,
             }
         },
+        "empty_range_bins_use_gt_free_fill": True,
     }
 
 
-def _frame(sequence: int = 6) -> dict:
+def _frame(sequence: int = 6, *, far_target: bool = True) -> dict:
     arms = {
-        "vanilla": _arm(completeness=1.1),
-        "z_only": _arm(completeness=1.05),
-        "range_aware": _arm(range_aware=True),
+        "vanilla": _arm(completeness=1.1, far_target=far_target),
+        "z_only": _arm(completeness=1.05, far_target=far_target),
+        "range_aware": _arm(range_aware=True, far_target=far_target),
     }
     return {
         "sequence": sequence,
@@ -98,80 +112,126 @@ def _frame(sequence: int = 6) -> dict:
     }
 
 
-def _aggregate_metrics(frame: dict) -> dict:
+def _aggregate_metrics(
+    frame: dict,
+    *,
+    far_sample_count: int = 1,
+    scene_completeness: float | None = None,
+    frame_completeness: float | None = None,
+) -> dict:
     arm = frame["arms"]["range_aware"]
+    scene_completeness = (
+        arm["geometry"]["completeness_mean_distance_m"]
+        if scene_completeness is None
+        else scene_completeness
+    )
+    frame_completeness = (
+        arm["geometry"]["completeness_mean_distance_m"]
+        if frame_completeness is None
+        else frame_completeness
+    )
+
+    def report(completeness: float, sample_count: int) -> dict:
+        return {
+            "geometry": {
+                "completeness_mean_distance_m": {
+                    "mean": completeness,
+                    "median": completeness,
+                    "sample_count": sample_count,
+                },
+                "outlier_fraction_2m": {
+                    "mean": arm["geometry"]["outlier_fraction_2m"],
+                    "median": arm["geometry"]["outlier_fraction_2m"],
+                    "sample_count": sample_count,
+                },
+                "range_60_120m_completeness_mean_distance_m": {
+                    "mean": arm["geometry"][
+                        "range_60_120m_completeness_mean_distance_m"
+                    ],
+                    "median": arm["geometry"][
+                        "range_60_120m_completeness_mean_distance_m"
+                    ],
+                    "sample_count": far_sample_count,
+                },
+            },
+            "duplicates": {
+                "duplicate_fraction_0p05m": {
+                    "mean": arm["duplicates"][
+                        "duplicate_fraction_0p05m"
+                    ],
+                    "median": arm["duplicates"][
+                        "duplicate_fraction_0p05m"
+                    ],
+                    "sample_count": sample_count,
+                }
+            },
+            "per_range_support": {
+                "range_60_120m": {
+                    FAR_RECALL_KEY: {
+                        "mean": arm["per_range_support"][
+                            "range_60_120m"
+                        ][FAR_RECALL_KEY],
+                        "median": arm["per_range_support"][
+                            "range_60_120m"
+                        ][FAR_RECALL_KEY],
+                        "sample_count": far_sample_count,
+                    }
+                }
+            },
+        }
+
     return {
         "range_aware": {
-            "frame_first": {
-                "geometry": {
-                    "completeness_mean_distance_m": {
-                        "mean": arm["geometry"][
-                            "completeness_mean_distance_m"
-                        ],
-                        "median": arm["geometry"][
-                            "completeness_mean_distance_m"
-                        ],
-                    },
-                    "outlier_fraction_2m": {
-                        "mean": arm["geometry"]["outlier_fraction_2m"],
-                        "median": arm["geometry"]["outlier_fraction_2m"],
-                    },
-                    "range_60_120m_completeness_mean_distance_m": {
-                        "mean": arm["geometry"][
-                            "range_60_120m_completeness_mean_distance_m"
-                        ],
-                        "median": arm["geometry"][
-                            "range_60_120m_completeness_mean_distance_m"
-                        ],
-                    },
-                },
-                "duplicates": {
-                    "duplicate_fraction_0p05m": {
-                        "mean": arm["duplicates"][
-                            "duplicate_fraction_0p05m"
-                        ],
-                        "median": arm["duplicates"][
-                            "duplicate_fraction_0p05m"
-                        ],
-                    }
-                },
-                "per_range_support": {
-                    "range_60_120m": {
-                        FAR_RECALL_KEY: {
-                            "mean": arm["per_range_support"][
-                                "range_60_120m"
-                            ][FAR_RECALL_KEY],
-                            "median": arm["per_range_support"][
-                                "range_60_120m"
-                            ][FAR_RECALL_KEY],
-                        }
-                    }
-                },
-            }
+            "frame_first": report(frame_completeness, 1),
+            "scene_first": report(scene_completeness, 1),
         }
     }
 
 
 def test_stage0_gate_passes_only_when_every_frozen_condition_passes() -> None:
     frame = _frame()
-    decision = stage0_decision(_aggregate_metrics(frame), [frame])
+    decision = stage0_decision(
+        _aggregate_metrics(
+            frame,
+            scene_completeness=1.0,
+            frame_completeness=9.0,
+        ),
+        [frame],
+        expected_frame_count=1,
+        expected_scene_count=1,
+        expected_far_target_frame_count=1,
+    )
 
     assert decision["passed"] is True
     assert decision["training_authorized"] is True
+    assert decision["reporting"]["primary_gate_unit"] == "scene_first"
+    assert decision["reporting"]["frame_first_diagnostic"][
+        "oracle_completeness_median_m"
+    ] == 9.0
     assert all(decision["checks"].values())
 
     frame["arms"]["range_aware"]["per_range_support"]["range_60_120m"][
         FAR_RECALL_KEY
     ] = 0.299
-    decision = stage0_decision(_aggregate_metrics(frame), [frame])
+    decision = stage0_decision(
+        _aggregate_metrics(frame),
+        [frame],
+        expected_frame_count=1,
+        expected_scene_count=1,
+        expected_far_target_frame_count=1,
+    )
     assert decision["passed"] is False
     assert decision["training_authorized"] is False
-    assert decision["decision"] == "forbid_r0_training_oracle_gate_failed"
+    assert decision["complete_route_closed"] is False
+    assert (
+        decision["decision"]
+        == "inconclusive_gt_aided_heuristic_diagnostic_failed"
+    )
 
 
 def test_paired_comparison_preserves_same_frame_and_scene_first_units() -> None:
     first = _frame(sequence=6)
-    second = _frame(sequence=12)
+    second = _frame(sequence=12, far_target=False)
     first_delta = first["paired_delta_vs_vanilla"]["range_aware"][
         "completeness_mean_distance_m"
     ]
@@ -184,6 +244,56 @@ def test_paired_comparison_preserves_same_frame_and_scene_first_units() -> None:
     assert aggregate["range_aware"]["scene_first"][
         "completeness_mean_distance_m"
     ]["sample_count"] == 2
+    assert "far_completeness_60_120m" not in second[
+        "paired_delta_vs_vanilla"
+    ]["range_aware"]
+    assert aggregate["range_aware"]["frame_first"][
+        "far_completeness_60_120m"
+    ]["sample_count"] == 1
+
+
+def test_frozen_validation_requires_exactly_23_far_target_frames() -> None:
+    sequences = (6, 12, 30, 34, 38, 43, 51, 55)
+    frames = []
+    for sequence in sequences:
+        for offset in range(3):
+            far_target = not (sequence == 51 and offset == 2)
+            frame = _frame(sequence=sequence, far_target=far_target)
+            frame["radar_index"] += offset
+            frames.append(frame)
+
+    metrics = _aggregate_metrics(
+        frames[0],
+        far_sample_count=FROZEN_FAR_TARGET_FRAME_COUNT,
+    )
+    decision = stage0_decision(metrics, frames)
+    assert decision["checks"]["exact_far_target_frame_count"] is True
+    assert decision["checks"]["far_geometry_sample_count_exact"] is True
+    assert decision["checks"]["far_support_sample_count_exact"] is True
+    assert decision["checks"]["paired_far_sample_count_exact"] is True
+    assert decision["observed_counts"]["far_target_frame_count"] == 23
+
+    for arm in frames[0]["arms"].values():
+        arm["per_range_support"]["range_60_120m"]["target_count"] = 0
+    decision = stage0_decision(metrics, frames)
+    assert decision["passed"] is False
+    assert decision["checks"]["exact_far_target_frame_count"] is False
+
+
+def test_preflight_identity_selects_one_validation_frame() -> None:
+    records = [
+        {"sequence": 51, "radar_index": 305},
+        {"sequence": 51, "radar_index": 454},
+    ]
+    identity = resolve_preflight_identity(51, 454)
+    assert identity == (51, 454)
+    assert validation_indices(records, identity) == [1]
+    assert validation_indices(records, None) == [0, 1]
+
+    with pytest.raises(ValueError, match="both sequence and radar index"):
+        resolve_preflight_identity(51, None)
+    with pytest.raises(ValueError, match="not a unique validation record"):
+        validation_indices(records, (51, 999))
 
 
 def test_data_contract_delegates_to_frozen_76_24_and_rejects_test(
@@ -251,6 +361,8 @@ def test_cli_has_source_lock_h200_guard_and_no_overwrite_escape() -> None:
 
     assert PROTOCOL in source
     assert "--source-commit" in option_strings
+    assert "--preflight-sequence" in option_strings
+    assert "--preflight-radar-index" in option_strings
     assert "--overwrite" not in option_strings
     assert "if args.output.exists()" in source
     assert "require_h200" in source
@@ -258,6 +370,10 @@ def test_cli_has_source_lock_h200_guard_and_no_overwrite_escape() -> None:
     assert '("train",)' in source
     assert '("validation",)' in source
     assert "test_accessed" in source
+    assert "profile_cuda_call" in source
+    assert "peak_memory_allocated_bytes" in source
+    assert "peak_memory_reserved_bytes" in source
+    assert "single_frame_preflight" in source
     assert set(ARM_NAMES) == {"vanilla", "z_only", "range_aware"}
 
 
