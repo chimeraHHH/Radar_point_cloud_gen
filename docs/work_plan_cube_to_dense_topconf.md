@@ -16,6 +16,8 @@
 
 > **2026-07-22 G1B 终局与 G1C 重路由：**G1B Stage A 无候选存活，Stage B、RH1/RH2、G2R/G3R 均按协议跳过。`full_raed_rank2` 的 validation median Chamfer 为 `2.0251 m`，但 mean outlier 为 `28.885%`，未达到固定 `25%` 门，不能事后放宽。当前 occupancy geometry family 正式关闭。新建独立 [`G1C RaLD-guided query`](g1c_rald_guided_query_protocol.md) 协议：不加载失败 occupancy checkpoint，直接用 Full-RAED radar-guided seeds、512 mixed latents、24-layer Transformer 和 query decoder 生成固定 10k 点。只有 G1C 三种子通过，才允许新命名的 RH-C/G2C/G3C/G3L-C/G4L-C。
 
+> **2026-07-28 RaLD 源码审计与 G1D：**G1C 没有产生科学训练结果：首次队列因后台解释器解析失败而未启动子进程，修复后的队列仍在等待 H200 时被停止。对 RaLD 固定 commit `ffec4b4` 的逐函数审计表明，G1C 只是 deterministic set-latent residual refiner，缺少正负 occupancy query、逐层 radar condition 和 coarse-to-refine arbitrary-query 解码。因而在观察任何 G1C 指标前，新建独立 [`G1D RaLD query-field`](g1d_rald_query_field_protocol.md) 协议。G1D 才是当前最高优先级；G1C 保留为未正式训练的结构控制，不得追溯改名。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---
@@ -564,7 +566,8 @@ independently gated geometry parent
 - **G0 失败**：数据不支持完整 Cube、同步 LiDAR 或可靠 Doppler 标定，立即缩小命题，不投入大规模训练。
 - **G1 失败（已触发）**：原 G2/G3 链永久停止；当前只进入独立 G1B，禁止放宽原门槛或把后续分支称为 G1 recovery。
 - **G1B 失败**：关闭当前 occupancy geometry family，不运行 RH/G2R/G3R/G4R；下一路线必须重新提出独立协议。
-- **G1C 失败**：当前 Cube-to-dense 单帧几何路线终止，不再增加有界修复或接触 P5 test；只保留负结果、实现资产和论文/报告收口。
+- **G1C 未产生科学结果（已触发）**：调度失败后在源码审计阶段被 G1D 取代，不能用于任何性能结论。
+- **G1D 失败**：当前 Cube-to-dense 单帧几何路线终止，不再增加有界修复或接触 P5 test；只保留负结果、实现资产和论文/报告收口。
 - **RH 失败**：RaLD-anchor late fusion 关闭，不能仅凭 RH0 结构验证形成方法主张。
 - **G2 失败**：Doppler head 不优于简单回归，重新检查频谱查询和标签定义。
 - **G3 失败**：Cube cycle 没有独立贡献，停止“顶会创新已成立”的表述，重设计闭环或转为应用型工作。
@@ -597,14 +600,15 @@ independently gated geometry parent
 - [x] 关闭 G1 comparison；按冻结结果终止原 G2/G3，并归档终局负结果。
 - [x] 完成独立 G1B Stage A；无 survivor，Stage B 与 RaLD-anchor RH1/RH2 按协议跳过并归档。
 - [x] 因无合格 geometry parent，G2R/G3R 队列按协议跳过，不复用原 G2/G3 结论。
-- [ ] 按冻结协议完成独立 G1C RaLD-guided query Stage A；仅在通过后运行 Stage B 和新命名 RH-C/G2C/G3C。
+- [x] 完成 G1C 实现与调度修复；在任何科学训练结果产生前，经 RaLD 源码审计判定其仅适合作为 deterministic control。
+- [ ] 按冻结协议完成独立 G1D RaLD query-field Stage A；仅在通过后运行 Stage B 和新命名 G2D/G3D。
 - [x] 建立 RaLD-structured G4R 的预测缓存、token/latent/query 训练、基线、
   preflight、rollout、比较与总队列；严格等待 G3R checkpoint family。
 - [x] 实现 G3L 的 `512 x 32` physical posterior、anchor-only 24-layer decoder、
   Full-RAED-conditioned 24-layer EDM、18-step sampler 与组件测试。
 - [x] 完成 G3L VAE/EDM 训练器、固定单样本评估、condition-shuffle 与三种子 gate；因 G1B no-go 不启动旧 G3L 训练。
-- [ ] 若 G1C/G3C 通过，将 G3L 训练链绑定到 G3L-C parent，并实现 G4L-C 条件扩散时序链。
-- [ ] 完成 G4R 45/45 序列下载、CRC、时序训练与 family freeze。
+- [ ] 若 G1D/G3D 通过，将 G3L 训练链绑定到 G3L-D parent，并实现 G4L-D 条件扩散时序链。
+- [x] 完成 G4R 45/45 序列下载（约 601 GB）；CRC、时序训练与 family freeze 继续等待 G3D。
 - [ ] 释放 P5 test 并完成 P6 论文证据包。
 
-> 当前最高优先级是完成 **独立 G1C RaLD-guided query Stage A**。G4 只继续数据下载与校验，不在新单帧 family 冻结前训练。
+> 当前最高优先级是完成 **独立 G1D RaLD query-field Stage A**。G4 数据已完成 45/45 序列下载，但不在新单帧 family 冻结前训练。
