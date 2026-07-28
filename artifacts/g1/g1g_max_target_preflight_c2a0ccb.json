@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "protocol": "g1g_max_target_h200_preflight_v1",
+  "source_commit": "c2a0ccb38b27c17ff4eaa7acc151189fd8b06958",
+  "source_hashes": {
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/c2a0ccb/code/scripts/preflight_g1g_max_target.py": "58b99ebf64d546363b0c7ac738d1cfecd31945ea56b2da29f502f483a6d7bc36",
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/c2a0ccb/code/models/g1g_hierarchical_allocator.py": "7ec2296d55435cdf8ff8c1a6f0851b78dbe468f2a20d35160de4fd78c076d2b4",
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/c2a0ccb/code/losses/g1g_hierarchy.py": "1f5bfd0c5a1ec3f0a4cbbf1c4143654d682bbbe786043464f8cee50e9f70e6e8",
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/c2a0ccb/code/scripts/train_g1g_hierarchy.py": "481e9f240e2aef2601fdbbd622a8f9a6e28a7c0e44ac6e5d8d0452e47b5ed5c9"
+  },
+  "data": {
+    "manifest": "/home/wangning/Workspace/radar_cube_dense/snapshots/c2a0ccb/artifacts/g0/g0_audit_100_manifest.json",
+    "manifest_sha256": "645307a8bae351db51b55128043dae69bce5b928169d5fa25c1b9c55083de4e4",
+    "cache_file": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq14_radar_00430.npz",
+    "cache_sha256": "11f0b30dfaa41030016531dab90e3b9436b0d6e0d582f82f4ca183f9fa068820",
+    "sequence": 14,
+    "radar_index": 430,
+    "partition": "train",
+    "target_count": 18836,
+    "frame_count_screened": 100
+  },
+  "runtime": {
+    "device": "cuda:0",
+    "device_name": "NVIDIA H200 NVL",
+    "torch_version": "2.12.1+cu130",
+    "model_parameter_count": 41684584,
+    "elapsed_seconds": 1.0751809000503272,
+    "cuda_peak_allocated_bytes": 7541868032,
+    "cuda_peak_reserved_bytes": 8302624768
+  },
+  "loss": {
+    "total": 190.53497314453125,
+    "components": {
+      "geometry_chamfer": 22.946401596069336,
+      "precision_mean_distance_m": 21.790454864501953,
+      "completeness_mean_distance_m": 1.155947208404541,
+      "outlier_hinge_2m": 668.6181640625,
+      "child_existence_confidence": 0.7892743945121765,
+      "center_coverage_mean_distance_m": 1.2379390001296997,
+      "center_existence_confidence": 0.9104862809181213,
+      "center_repulsion": 7.512313970892137e-08,
+      "final_point_repulsion": 0.0001535402552690357,
+      "bounded_child_diversity": 0.0020324504002928734,
+      "child_physical_bound_violation": 0.0,
+      "child_confidence_mean": 0.49441179633140564,
+      "center_confidence_mean": 0.5799176692962646,
+      "total": 190.53497314453125
+    }
+  },
+  "checks": {
+    "largest_target_frame_selected": true,
+    "exact_10000_output": true,
+    "finite_loss": true,
+    "finite_nonzero_gradients": true,
+    "no_test_partition_accessed": true
+  },
+  "passed": true
+}
