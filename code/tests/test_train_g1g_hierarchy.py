@@ -6,6 +6,7 @@ import torch
 from scripts.train_g1g_hierarchy import (
     FORMAL_EPOCHS,
     FORMAL_EVAL_EVERY,
+    FROZEN_NORMALIZATION_SHA256,
     FORMAL_SEED,
     STAGE0_COMPLETENESS_LIMIT_M,
     architecture_anti_bypass_checks,
@@ -90,6 +91,9 @@ def test_formal_and_smoke_configs_are_nonoverridable_protocol_constants() -> Non
     assert smoke.eval_every == 1
     assert smoke.train_limit == 2
     assert smoke.validation_limit == 2
+    assert FROZEN_NORMALIZATION_SHA256 == (
+        "4d0bca7d027a1a9f457c526f21a034a406ce4973e2dccee55ddd2d7019b41b77"
+    )
 
 
 def test_data_contract_requires_exact_76_24_manifest_and_no_test() -> None:
