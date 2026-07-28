@@ -87,6 +87,7 @@ def write_preflight_run(tmp_path: Path) -> Job:
                     "occupancy_query_count": 10_000,
                     "positive_occupancy_query_count": 625,
                     "empty_occupancy_query_count": 9_375,
+                    "proposal_cache_used": True,
                 }
             ]
         },

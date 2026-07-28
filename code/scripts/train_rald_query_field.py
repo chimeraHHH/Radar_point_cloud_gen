@@ -30,7 +30,10 @@ from losses.rald_query_field import (  # noqa: E402
     sample_occupancy_queries,
 )
 from models.cube_occupancy import parameter_count  # noqa: E402
-from models.rald_query_field import RaLDQueryField  # noqa: E402
+from models.rald_query_field import (  # noqa: E402
+    RaLDQueryField,
+    stable_radar_proposals,
+)
 from scripts.g1b_contract import FROZEN_G1B_SEEDS, sha256  # noqa: E402
 
 
@@ -307,6 +310,23 @@ def occupancy_report(logits: torch.Tensor, labels: torch.Tensor) -> dict[str, fl
     }
 
 
+def cached_proposal_flat_index(
+    item: dict,
+    cube: torch.Tensor,
+    config: TrainConfig,
+    cache: dict[tuple[int, int], torch.Tensor],
+) -> torch.Tensor:
+    key = (int(item["sequence"]), int(item["radar_index"]))
+    if key not in cache:
+        proposals = stable_radar_proposals(
+            cube,
+            seed_count=config.base_seed_count,
+            nms_kernel=config.nms_kernel,
+        )
+        cache[key] = proposals.flat_index.detach().cpu()
+    return cache[key].to(device=cube.device, non_blocking=True)
+
+
 @torch.no_grad()
 def update_ema(
     ema_model: RaLDQueryField, model: RaLDQueryField, decay: float
@@ -327,6 +347,7 @@ def evaluate(
     indices: list[int],
     device: torch.device,
     config: TrainConfig,
+    proposal_cache: dict[tuple[int, int], torch.Tensor],
 ) -> dict:
     model.eval()
     generated_reports = []
@@ -343,15 +364,26 @@ def evaluate(
         cube = move_frame(item, device)
         shuffled_cube = move_frame(shuffled_item, device)
         target = item["target_xyz_confidence"].to(device)
+        proposal_flat_index = cached_proposal_flat_index(
+            item,
+            cube,
+            config,
+            proposal_cache,
+        )
         normalized_queries, labels = occupancy_queries(
             item, config, device, epoch=0
         )
         with torch.autocast("cuda", dtype=torch.bfloat16):
-            output = model(cube, normalized_queries)
+            output = model(
+                cube,
+                normalized_queries,
+                proposal_flat_index=proposal_flat_index,
+            )
             shuffled_output = model(
                 cube,
                 normalized_queries,
                 condition_cube_drae=shuffled_cube,
+                proposal_flat_index=proposal_flat_index,
             )
         generated = geometry_report(
             output["xyz_m"][0].float(),
@@ -417,6 +449,9 @@ def evaluate(
                 output["selected_coarse_count"].item()
             ),
             "final_point_count": int(output["final_point_count"].item()),
+            "proposal_cache_used": bool(
+                output["proposal_cache_used"].item()
+            ),
         }
         generated_reports.append(generated)
         control_reports.append(control)
@@ -434,6 +469,7 @@ def evaluate(
             target,
             normalized_queries,
             labels,
+            proposal_flat_index,
             output,
             shuffled_output,
         )
@@ -468,6 +504,7 @@ def evaluate(
             ),
         },
         "frames": frames,
+        "proposal_cache_entry_count": len(proposal_cache),
     }
 
 
@@ -717,6 +754,7 @@ def main() -> None:
         "occupancy_checkpoint": None,
         "official_rald_commit": OFFICIAL_RALD_COMMIT,
         "doppler_geometry_status": "measured_cube_spectrum_attached_not_learned",
+        "proposal_index_cache": "deterministic_flat_indices_only",
     }
     run_document = {"config": asdict(config), "provenance": provenance}
     config_path = args.output / "config.json"
@@ -741,6 +779,7 @@ def main() -> None:
     best_score = float("inf")
     prior_elapsed = 0.0
     gradient_steps: list[dict] = []
+    proposal_cache: dict[tuple[int, int], torch.Tensor] = {}
     if args.resume:
         last = torch.load(
             args.output / "last.pt", map_location=device, weights_only=False
@@ -766,7 +805,12 @@ def main() -> None:
         initial = json.loads(initial_path.read_text(encoding="utf-8"))
     else:
         initial = evaluate(
-            ema_model, validation_set, validation_indices, device, config
+            ema_model,
+            validation_set,
+            validation_indices,
+            device,
+            config,
+            proposal_cache,
         )
         atomic_json(initial_path, initial)
     started = time.monotonic()
@@ -787,12 +831,22 @@ def main() -> None:
             if update_count < 2:
                 cube = cube.detach().requires_grad_(True)
             target = item["target_xyz_confidence"].to(device)
+            proposal_flat_index = cached_proposal_flat_index(
+                item,
+                cube,
+                config,
+                proposal_cache,
+            )
             normalized_queries, labels = occupancy_queries(
                 item, config, device, epoch=epoch
             )
             optimizer.zero_grad(set_to_none=True)
             with torch.autocast("cuda", dtype=torch.bfloat16):
-                output = model(cube, normalized_queries)
+                output = model(
+                    cube,
+                    normalized_queries,
+                    proposal_flat_index=proposal_flat_index,
+                )
                 loss_output = {
                     "query_logits": output[
                         "training_query_occupancy_logit"
@@ -843,6 +897,7 @@ def main() -> None:
                 target,
                 normalized_queries,
                 labels,
+                proposal_flat_index,
                 output,
                 loss_output,
                 loss,
@@ -866,7 +921,12 @@ def main() -> None:
             or epoch == config.epochs
         ):
             metrics = evaluate(
-                ema_model, validation_set, validation_indices, device, config
+                ema_model,
+                validation_set,
+                validation_indices,
+                device,
+                config,
+                proposal_cache,
             )
             score = selection_score(metrics)
             record["validation"] = metrics
@@ -915,7 +975,12 @@ def main() -> None:
         raise ValueError("G1D selected checkpoint metadata differs")
     ema_model.load_state_dict(best["ema_model"], strict=True)
     final = evaluate(
-        ema_model, validation_set, validation_indices, device, config
+        ema_model,
+        validation_set,
+        validation_indices,
+        device,
+        config,
+        proposal_cache,
     )
     report = {
         "protocol": PROTOCOL,
@@ -929,6 +994,7 @@ def main() -> None:
         "initial": initial,
         "validation": final,
         "gradient_steps": gradient_steps,
+        "proposal_cache_entry_count": len(proposal_cache),
         "test_accessed": False,
         "provenance": provenance,
     }

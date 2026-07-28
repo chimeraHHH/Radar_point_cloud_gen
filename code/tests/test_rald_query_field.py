@@ -235,3 +235,32 @@ def test_plateau_nms_is_deterministic_and_respects_local_suppression() -> None:
     identity = torch.eye(4, dtype=torch.bool).unsqueeze(0)
     adjacent = (distance <= 1.0).all(dim=-1) & ~identity
     assert not adjacent.any()
+
+
+def test_cached_proposal_indices_are_forward_equivalent() -> None:
+    torch.manual_seed(23)
+    model = tiny_model()
+    measured = cube()
+    proposals = stable_radar_proposals(
+        measured,
+        seed_count=model.base_seed_count,
+        nms_kernel=model.nms_kernel,
+    )
+
+    direct = model(measured)
+    cached = model(measured, proposal_flat_index=proposals.flat_index)
+
+    for name in (
+        "proposal_coordinates_rae",
+        "proposal_integrated_log_energy",
+        "latent",
+        "occupancy_logit",
+        "confidence_logit",
+        "offset_bins",
+        "coordinates_rae",
+        "xyz_m",
+        "point_cube_spectrum",
+    ):
+        torch.testing.assert_close(direct[name], cached[name])
+    assert bool(direct["proposal_cache_used"].item()) is False
+    assert bool(cached["proposal_cache_used"].item()) is True

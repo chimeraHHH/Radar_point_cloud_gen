@@ -163,6 +163,10 @@ def load_run(path: Path) -> dict:
         "measured_cube_spectrum_attached_not_learned"
     ):
         raise ValueError("G1D Doppler geometry claim boundary differs")
+    if provenance.get("proposal_index_cache") != (
+        "deterministic_flat_indices_only"
+    ):
+        raise ValueError("G1D proposal-cache contract differs")
     if not all(_formal_config_checks(config).values()):
         raise ValueError("G1D formal configuration differs from the frozen protocol")
     if not checkpoint_path.is_file():
@@ -299,6 +303,9 @@ def frame_count_checks(run: dict) -> dict[str, bool]:
     checks["all_frames_empty_queries_9375"] = bool(frames) and all(
         int(frame.get("empty_occupancy_query_count", -1)) == 9_375
         for frame in frames
+    )
+    checks["all_frames_used_deterministic_proposal_cache"] = bool(frames) and all(
+        frame.get("proposal_cache_used") is True for frame in frames
     )
     return checks
 

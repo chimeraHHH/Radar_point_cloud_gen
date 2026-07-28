@@ -154,6 +154,37 @@ def stable_radar_proposals(
     )
 
 
+def proposals_from_flat_index(
+    cube_drae: torch.Tensor,
+    flat_index: torch.Tensor,
+) -> RadarProposalSet:
+    """Reconstruct proposal coordinates while recomputing current Cube energy."""
+
+    energy = integrated_log_energy(cube_drae)
+    if flat_index.ndim != 2 or flat_index.shape[0] != cube_drae.shape[0]:
+        raise ValueError("Cached proposal indices must have shape (B,N)")
+    expected_shape = (cube_drae.shape[0], flat_index.shape[1])
+    if flat_index.dtype != torch.long:
+        raise TypeError("Cached proposal indices must use torch.long")
+    spatial_shape = tuple(int(size) for size in energy.shape[1:])
+    spatial_count = energy[0].numel()
+    if bool(((flat_index < 0) | (flat_index >= spatial_count)).any()):
+        raise ValueError("Cached proposal index is outside the Cube")
+    if any(
+        torch.unique(flat_index[batch_index]).numel() != flat_index.shape[1]
+        for batch_index in range(flat_index.shape[0])
+    ):
+        raise ValueError("Cached proposal indices must be unique per frame")
+    selected_energy = energy.detach().flatten(start_dim=1).gather(1, flat_index)
+    if selected_energy.shape != expected_shape:
+        raise AssertionError("Cached proposal energy gather changed cardinality")
+    return RadarProposalSet(
+        coordinates_rae=_flat_to_rae(flat_index, spatial_shape).to(cube_drae),
+        flat_index=flat_index,
+        integrated_log_energy=selected_energy.to(cube_drae),
+    )
+
+
 def coarse_query_templates(
     *,
     device: torch.device | None = None,
@@ -683,6 +714,7 @@ class RaLDQueryField(nn.Module):
         occupancy_queries_rae: torch.Tensor | None = None,
         *,
         condition_cube_drae: torch.Tensor | None = None,
+        proposal_flat_index: torch.Tensor | None = None,
     ) -> dict[str, torch.Tensor | dict[str, torch.Tensor]]:
         self._validate_cube(cube_drae)
         if condition_cube_drae is None:
@@ -693,11 +725,26 @@ class RaLDQueryField(nn.Module):
                 raise ValueError("Condition Cube must match the measured Cube shape")
         log_power_drae = torch.log1p(cube_drae.clamp_min(0.0))
         energy_rae = log_power_drae.sum(dim=1)
-        proposals = stable_radar_proposals(
-            cube_drae,
-            seed_count=self.base_seed_count,
-            nms_kernel=self.nms_kernel,
-        )
+        if proposal_flat_index is None:
+            proposals = stable_radar_proposals(
+                cube_drae,
+                seed_count=self.base_seed_count,
+                nms_kernel=self.nms_kernel,
+            )
+            proposal_cache_used = False
+        else:
+            if proposal_flat_index.shape != (
+                cube_drae.shape[0],
+                self.base_seed_count,
+            ):
+                raise ValueError(
+                    "Cached proposal count differs from base_seed_count"
+                )
+            proposals = proposals_from_flat_index(
+                cube_drae,
+                proposal_flat_index.to(device=cube_drae.device),
+            )
+            proposal_cache_used = True
         proposal_evidence = self.query_tokens(
             cube_drae,
             proposals.coordinates_rae,
@@ -846,6 +893,9 @@ class RaLDQueryField(nn.Module):
             ),
             "final_point_count": coordinates.new_tensor(
                 self.point_count, dtype=torch.long
+            ),
+            "proposal_cache_used": coordinates.new_tensor(
+                proposal_cache_used, dtype=torch.bool
             ),
         }
 

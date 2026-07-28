@@ -119,6 +119,10 @@ one seed. Confidence cannot reduce the geometry or outlier terms.
 - gradient norm clipping at `10`;
 - parameter EMA at `0.999`;
 - one Cube per optimizer step;
+- deterministic NMS flat indices may be cached per frame because they are a
+  detached function of the frozen input Cube; cached and uncached forwards must
+  be tensor-equivalent, while local spectra, absolute energy, radar tokens, and
+  all differentiable query features are recomputed on every optimizer step;
 - the EMA model is evaluated on the complete validation partition for every
   checkpoint-selection event;
 - no architecture, query-count, loss-weight, or threshold sweep.

@@ -18,7 +18,7 @@
 
 > **2026-07-28 RaLD 源码审计与 G1D：**G1C 没有产生科学训练结果：首次队列因后台解释器解析失败而未启动子进程，修复后的队列仍在等待 H200 时被停止。对 RaLD 固定 commit `ffec4b4` 的逐函数审计表明，G1C 只是 deterministic set-latent residual refiner，缺少正负 occupancy query、逐层 radar condition 和 coarse-to-refine arbitrary-query 解码。因而在观察任何 G1C 指标前，新建独立 [`G1D RaLD query-field`](g1d_rald_query_field_protocol.md) 协议。G1D 才是当前最高优先级；G1C 保留为未正式训练的结构控制，不得追溯改名。
 
-> **2026-07-28 G1D 预飞通过：**提交 `bd23a4f2` 在 H200 上通过 `211` 项回归和正式尺寸预飞。实测 148.37M 参数，625/9,375 正负查询、336 radar tokens、32,000/2,500/10,000 粗选与精修计数全部匹配；64 个 Cube 输入通道、64 个局部频谱列、64 个 radar projection 列和 24/24 condition blocks 在第二步均有有限非零梯度。证据归档于 `artifacts/g1/g1d_preflight_bd23a4f2.json`；seed-A 150-epoch Stage A 已在 H200 GPU2 启动。预飞指标不用于科学门控结论。
+> **2026-07-28 G1D 预飞通过：**提交 `bd23a4f2` 在 H200 上通过 `211` 项回归和正式尺寸预飞。实测 148.37M 参数，625/9,375 正负查询、336 radar tokens、32,000/2,500/10,000 粗选与精修计数全部匹配；64 个 Cube 输入通道、64 个局部频谱列、64 个 radar projection 列和 24/24 condition blocks 在第二步均有有限非零梯度。证据归档于 `artifacts/g1/g1d_preflight_bd23a4f2.json`。首次 seed-A 在产生任何 epoch 指标前因重复 CPU NMS 的性能审计被停止；当前只增加数学等价的离散 proposal-index cache，重新预飞后再启动 Stage A。预飞指标不用于科学门控结论。
 
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 

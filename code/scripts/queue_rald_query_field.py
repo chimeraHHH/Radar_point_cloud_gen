@@ -321,6 +321,9 @@ def validate_preflight(job: Job, source_commit: str, output: Path) -> dict:
         "selected_coarse_count_2500": bool(
             frames and frames[0]["selected_coarse_count"] == 2_500
         ),
+        "deterministic_proposal_cache_used": bool(
+            frames and frames[0]["proposal_cache_used"] is True
+        ),
         "first_step_output_head_gradient": bool(
             gradients and gradients[0]["gradients"]["output_heads"] > 0.0
         ),
