@@ -50,6 +50,8 @@
 
 > **2026-07-29 D-MHW 直接多时距机制门通过、真实训练锁定：**source `9f6a9d3` 在 H200 上一次前向同时输出 `0.5/1.5/2.5 s` 三个时距，每个严格 10k，固定 `7k persistent + 3k birth`；persistent 路径强制 ego+Doppler warp，current/history Cube 的 64/64 通道、两类 64-bin Doppler head 及五种历史/条件干预均有有限非零梯度，峰值 reserved `13.31 GiB`。严格 `+/-0.05 s` 的真实数据审计得到 740 个 train 和 160 个 validation anchor，future Cube 与 test 均未读取。但正式训练仍未授权：当前没有通过完整门的 geometry parent，train future-target cache 为 `0/1480`，且 birth Doppler 在禁止未来 Cube 下缺少合法真实监督。签名预飞见 `artifacts/g1/dmhw_preflight_9f6a9d3.json`；该结果只支持计算图可行性。
 
+> **2026-07-29 D-MHW birth radial-moment 标签 no-go：**source `e161be7` 对全部 740/160 direct-multi-horizon anchors 完成 future-LiDAR/track/ego 的 G-RM label-only 审计，future Cube 与 test 访问均为 0。坐标、符号和 provenance 契约通过，40 个动态 tracked windows 及 P5 box-center MAE=`0.1422 m/s` 也过门；但 overall valid coverage 仅 `4.487%`，三个时距分别为 `4.731/4.301/4.434%`，远低于 `75%/60%` 冻结门。未验证背景贡献约 3,391 万 invalid 点，不能事后按静态 ego motion 补标签。G-RM 的 500-update 属性训练关闭；D-MHW birth 回退为 A-NC，即只输出 `XYZ+confidence` 并标记 `doppler_valid=false`，64-bin Doppler 主张仅允许 persistent 点。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---
