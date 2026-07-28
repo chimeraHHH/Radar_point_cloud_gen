@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -54,6 +55,21 @@ def atomic_json(path: Path, document: dict) -> None:
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
     temporary.replace(path)
+
+
+def resolve_python() -> Path:
+    configured = os.environ.get("PYTHON")
+    if configured is None:
+        candidate = Path(sys.executable)
+    else:
+        resolved = shutil.which(configured)
+        if resolved is None:
+            raise FileNotFoundError(f"Configured Python executable not found: {configured}")
+        candidate = Path(resolved)
+    candidate = candidate.resolve()
+    if not candidate.is_file() or not os.access(candidate, os.X_OK):
+        raise FileNotFoundError(f"Python executable is not runnable: {candidate}")
+    return candidate
 
 
 def completed_run(job: Job, source_commit: str, expected_epochs: int) -> bool:
@@ -302,7 +318,7 @@ def main() -> None:
         raise ValueError("G1C may use only physical H200 GPUs 0 and 2")
     validate_gpu_candidates(args.gpu_candidates, args.required_gpu_name)
     args.run_root.mkdir(parents=True, exist_ok=True)
-    python = Path(os.environ.get("PYTHON", "python"))
+    python = resolve_python()
     tag = args.source_commit[:8]
     jobs = {
         seed: Job(
