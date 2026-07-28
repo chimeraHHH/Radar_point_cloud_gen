@@ -18,7 +18,10 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from cube_dense.dataset import KRadarCubeDataset  # noqa: E402
-from losses.rald_wce import rald_wce_stage0_loss  # noqa: E402
+from losses.rald_wce import (  # noqa: E402
+    rald_wce_stage0_loss,
+    sample_bounded_occupancy_queries,
+)
 from models.cube_occupancy import parameter_count  # noqa: E402
 from models.rald_wce_field import RaLDWCEField  # noqa: E402
 from scripts.g1b_contract import sha256  # noqa: E402
@@ -101,113 +104,13 @@ def build_stage0_query_targets(
 ) -> dict[str, torch.Tensor | int]:
     """Build deterministic positive-jitter and empty-cell Sobol queries."""
 
-    if (
-        len(spatial_shape) != 3
-        or any(int(size) <= 1 for size in spatial_shape)
-    ):
-        raise ValueError("RaLD-WCE spatial shape must contain three sizes > 1")
-    if query_count < 2:
-        raise ValueError("RaLD-WCE preflight requires at least two queries")
-    spatial_count = math.prod(spatial_shape)
-    if query_count > spatial_count:
-        raise ValueError("RaLD-WCE query count exceeds Cube spatial capacity")
-
-    target_flat = torch.unique(
-        _flat_target_indices(target_rae_index, spatial_shape),
-        sorted=True,
-    )
-    positive_count = min(query_count // 2, int(target_flat.numel()))
-    if positive_count <= 0:
-        raise ValueError("RaLD-WCE preflight requires positive target cells")
-    selected_position = torch.linspace(
-        0,
-        target_flat.numel() - 1,
-        positive_count,
-    ).round().long()
-    selected_flat = target_flat[selected_position]
-    range_index = selected_flat // (spatial_shape[1] * spatial_shape[2])
-    remainder = selected_flat % (spatial_shape[1] * spatial_shape[2])
-    azimuth_index = remainder // spatial_shape[2]
-    elevation_index = remainder % spatial_shape[2]
-    selected_target = torch.stack(
-        (range_index, azimuth_index, elevation_index),
-        dim=-1,
-    ).float()
-
-    generator = torch.Generator(device="cpu").manual_seed(seed)
-    jitter = (torch.rand(
-        (positive_count, 3),
-        generator=generator,
-    ) - 0.5) * 0.5
-    maximum = torch.tensor(spatial_shape, dtype=torch.float32) - 1.0
-    positive_query_bins = (selected_target + jitter).clamp(
-        min=torch.zeros(3),
-        max=maximum,
-    )
-    positive_residual = selected_target - positive_query_bins
-
-    negative_count = query_count - positive_count
-    target_cells = {int(value) for value in target_flat.tolist()}
-    selected_negative_cells: set[int] = set()
-    negative_queries: list[torch.Tensor] = []
-    sobol = torch.quasirandom.SobolEngine(
-        dimension=3,
-        scramble=True,
+    return sample_bounded_occupancy_queries(
+        target_rae_index,
+        spatial_shape=spatial_shape,
+        query_count=query_count,
+        positive_query_ratio=0.5,
         seed=seed,
     )
-    while len(negative_queries) < negative_count:
-        remaining = negative_count - len(negative_queries)
-        candidates = sobol.draw(max(remaining * 2, 256))
-        candidate_bins = candidates * maximum
-        rounded = candidate_bins.round().long()
-        flat = (
-            rounded[:, 0] * spatial_shape[1] * spatial_shape[2]
-            + rounded[:, 1] * spatial_shape[2]
-            + rounded[:, 2]
-        )
-        for candidate, cell in zip(candidate_bins, flat.tolist()):
-            cell = int(cell)
-            if cell in target_cells or cell in selected_negative_cells:
-                continue
-            selected_negative_cells.add(cell)
-            negative_queries.append(candidate)
-            if len(negative_queries) == negative_count:
-                break
-        if len(selected_negative_cells) + len(target_cells) >= spatial_count:
-            break
-    if len(negative_queries) != negative_count:
-        raise RuntimeError(
-            "RaLD-WCE cannot construct the requested unique empty-cell queries"
-        )
-
-    negative_query_bins = torch.stack(negative_queries)
-    query_bins = torch.cat((positive_query_bins, negative_query_bins), dim=0)
-    occupancy_target = torch.cat(
-        (
-            torch.ones(positive_count),
-            torch.zeros(negative_count),
-        )
-    )
-    residual_target = torch.cat(
-        (
-            positive_residual,
-            torch.zeros(negative_count, 3),
-        ),
-        dim=0,
-    )
-    normalized_rae = 2.0 * query_bins / maximum - 1.0
-    order = torch.randperm(query_count, generator=generator)
-    normalized_rae = normalized_rae[order].unsqueeze(0)
-    occupancy_target = occupancy_target[order].unsqueeze(0)
-    residual_target = residual_target[order].unsqueeze(0)
-    return {
-        "normalized_rae": normalized_rae,
-        "occupancy_target": occupancy_target,
-        "residual_target_bins": residual_target,
-        "positive_count": positive_count,
-        "negative_count": negative_count,
-        "unique_target_cell_count": int(target_flat.numel()),
-    }
 
 
 def atomic_json(path: Path, document: dict) -> None:
