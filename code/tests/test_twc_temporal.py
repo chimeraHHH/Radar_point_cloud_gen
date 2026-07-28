@@ -17,7 +17,7 @@ def tiny_case() -> tuple[
     range_m = torch.linspace(0.0, 60.0, 16)
     azimuth_rad = torch.linspace(-1.0, 1.0, 9)
     elevation_rad = torch.linspace(-0.3, 0.3, 5)
-    doppler_mps = torch.linspace(-6.0, 6.0, 8)
+    doppler_mps = torch.linspace(-6.0, 6.0, 64)
     model = ForcedTemporalTWC(
         range_m,
         azimuth_rad,
@@ -103,7 +103,7 @@ def test_forced_temporal_output_has_persistent_birth_contract() -> None:
         )
 
     assert output["xyz_m"].shape == (2, 12, 3)
-    assert output["doppler_probability"].shape == (2, 12, 8)
+    assert output["doppler_probability"].shape == (2, 12, 64)
     assert output["persistent_mask"][:, :9].all()
     assert not output["persistent_mask"][:, 9:].any()
     assert (

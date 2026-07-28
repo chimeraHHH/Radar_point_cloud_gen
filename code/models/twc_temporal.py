@@ -81,8 +81,8 @@ class ForcedTemporalTWC(nn.Module):
             raise ValueError("Azimuth axis must contain at least two bins")
         if elevation_rad.ndim != 1 or elevation_rad.numel() < 2:
             raise ValueError("Elevation axis must contain at least two bins")
-        if doppler_mps.ndim != 1 or doppler_mps.numel() < 2:
-            raise ValueError("Doppler axis must contain at least two bins")
+        if doppler_mps.ndim != 1 or doppler_mps.numel() != 64:
+            raise ValueError("T-WC requires the project 64-bin Doppler axis")
         for name, axis in (
             ("range", range_m),
             ("azimuth", azimuth_rad),
