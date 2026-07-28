@@ -44,6 +44,8 @@
 
 > **2026-07-29 G1D v2 正式终局与 D1/D2/D3 诊断：**冻结的 150-epoch H200 Stage A 完成，selected checkpoint 仍为 epoch 15；endpoint 的 corrected median Chamfer 从 `4.4609` 恶化到 `5.4221 m`，mean outlier 从 `17.8875%` 升至 `24.8396%`，mean duplicate 从 `26.9721%` 升至 `30.7279%`，23/23-frame far completeness 从 `46.9407` 恶化至 `48.5173 m`。D1 表明所有小于 1 的 offset scale 都显著恶化 Chamfer/completeness；D2 的 wrong-global-Cube mean Chamfer 变化仅 `+1.05%` 且 scene-first 95% CI 跨零；D3 中 occupancy-only ranking 虽降低 mean Chamfer `12.03%`，却增加 outlier `3.00 pp`，同一 32k pool 上的 validation-GT oracle 仍未过绝对几何门。G1D、offset clipping 和同池 learned ranking 均关闭；完整边界见 `artifacts/g1/g1d_formal_failure_and_factors_2026-07-29.md`。
 
+> **2026-07-29 P-RF 稀疏 target lifting no-go：**为避免对 `<10k` target 帧复制补点，source `259663c` 实现了局部 PCA 切平面、target-occupied RAE cell 限制和 5 cm 全局间距的 continuous lifting。H200 定向测试 `19 passed`，但全量 preflight 中 57 个稀疏 train/validation 帧只有 47 个达到 exact 10k，另外 10 帧认证容量仅 `3,410--9,901`。协议保守拒绝放宽 support、间距或使用 padding，因此尚未进入模型梯度、NFE=4 和显存检查，P-RF 长训练不授权。该 no-go 只关闭当前 target adapter，不证明 rectified flow 一般无效；详见 `artifacts/g1/p_rf_target_lifting_failure_2026-07-29.md`。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---

@@ -1,20 +1,20 @@
 # P-RF Continuous Target Lifting Protocol
 
-状态：实现冻结，尚未授权长训练  
-适用范围：P-RF 单帧训练 target endpoint，不适用于推理期点云后处理  
+状态：H200 preflight no-go，禁止长训练
+适用范围：P-RF 单帧训练 target endpoint，不适用于推理期点云后处理
 固定输出：`N = 10,000`
 
 ## 1. 阻塞与审计结论
 
 P-RF 原 `canonical_fixed_target` 只允许从原始 target unique XYZ 中无放回选
-10,000 点。K-Radar 100 帧缓存中有 57 帧低于该容量，最稀疏训练帧
-`seq58/radar205` 只有 247 个 unique 点，因此原 adapter 不能覆盖真实训练分布。
+10,000 点。K-Radar 100 帧缓存中有 57 帧低于该容量，因此原 adapter 不能覆盖
+真实训练分布。
 
 只在同一 RAE cell 的观测点凸包内插值不能解决阻塞。最稀疏帧只有 102 个
 occupied RAE cells，同-cell 三角插值在 5 cm 网格上仅提供约 778 个位置。该机制
 容量不足，冻结为 no-go。
 
-允许继续的最小机制是：
+本轮接受审查的最小候选机制是：
 
 ```text
 observed target point
@@ -25,8 +25,10 @@ observed target point
   -> exact 10,000 or hard failure
 ```
 
-最稀疏训练帧的只读容量审计在相同约束下得到至少 10,745 个 5 cm 分离位置。
-这是实现可行性证据，不是几何质量或论文门控结果。
+最终 source `259663c` 的全量 H200 preflight 表明，该机制只能让 57 个稀疏帧中
+的 47 帧达到 exact 10,000；其余 10 帧的认证容量为 `3,410--9,901`。因此该
+候选在进入模型梯度、NFE 和显存检查前 no-go。完整失败表见
+`artifacts/g1/p_rf_target_lifting_failure_2026-07-29.md`。
 
 ## 2. 冻结构造
 
@@ -108,6 +110,7 @@ RAE cell、读取未来帧或按 validation 结果扩大 patch 来补救。
 
 ## 7. 证据边界
 
-通过该协议只说明 P-RF target representation 在真实缓存上可构造、可追踪并可
-训练。它不证明 lifted surface 是真实未采样表面，不证明 P-RF 几何优于现有模型，
-不授权长训练，也不改变 G1D、G1G、RaLD-WCE 或时序路线的任何结论。
+该协议本轮未通过。现有结果只说明机制在 47/57 个稀疏帧上具备受约束容量，
+不能说明 P-RF target representation 可覆盖完整训练分布，更不能证明 lifted
+surface 是真实未采样表面或 P-RF 几何优于现有模型。它不授权长训练，也不改变
+G1D、G1G、RaLD-WCE 或时序路线的任何结论。
