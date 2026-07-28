@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "protocol": "p_rf_h200_representation_model_preflight_v1",
+  "source_commit": "0c433a72a04443da1d9ffe7a78ff94188e3cd621",
+  "source_hashes": {
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/0c433a7/code/cube_dense/polar_flow_target.py": "5087be692561bb25887ba2120108e2d9e8a08a10cb781d3efdf51e1a9dc5b2ab",
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/0c433a7/code/models/polar_rectified_flow.py": "f3b2b730029acba1138102ced6a21e637a4eb2d8b833cf03439431f263869ff5",
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/0c433a7/code/losses/polar_rectified_flow.py": "874ca67c7221a35a6df117afcd1755da983801b47326ca7a9dd940e31f97b248",
+    "/home/wangning/Workspace/radar_cube_dense/snapshots/0c433a7/code/scripts/preflight_polar_rectified_flow.py": "a1e923e8282e4a12a31f68f69d8f2437c1c377cd032beb50c1fe846fdd83761d"
+  },
+  "data": {
+    "manifest": "/home/wangning/Workspace/radar_cube_dense/snapshots/0c433a7/artifacts/g0/g0_audit_100_manifest.json",
+    "manifest_sha256": "645307a8bae351db51b55128043dae69bce5b928169d5fa25c1b9c55083de4e4",
+    "normalization": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_0e5fe84_g1_recovery/g1_cube_normalization_train.json",
+    "normalization_sha256": "4d0bca7d027a1a9f457c526f21a034a406ce4973e2dccee55ddd2d7019b41b77",
+    "frame_count": 100,
+    "train_frame_count": 76,
+    "validation_frame_count": 24,
+    "selected_frame": {
+      "index": 27,
+      "sequence": 14,
+      "radar_index": 430,
+      "partition": "train",
+      "target_count": 18836,
+      "unique_xyz_count": 18836
+    },
+    "selected_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq14_radar_00430.npz",
+    "selected_cache_sha256": "11f0b30dfaa41030016531dab90e3b9436b0d6e0d582f82f4ca183f9fa068820",
+    "wrong_cube_frame": {
+      "index": 0,
+      "sequence": 1,
+      "radar_index": 232,
+      "partition": "train",
+      "target_count": 10436,
+      "unique_xyz_count": 10436
+    },
+    "wrong_cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/1/radar_tesseract/tesseract_00232.mat",
+    "range_cdf": {
+      "knot_count": 257,
+      "range_knots_sha256": "b2e35ca2ab315e91eaca63ee0ffd49def7b287c137905791d9b1bc279ebfc14e",
+      "range_cdf_sha256": "aa43e7f8cac7cfdaabcfb5262e2c731f1967f874e02e0e2b20ea4bc319ca52e9",
+      "fit_partition": "train_only"
+    }
+  },
+  "representation": {
+    "point_count": 10000,
+    "source_seed": 20260716,
+    "source_unit_sha256": "f6e3f12ea0141eb3b57e816a214c7e8289250694de4112ad0f6745a3a6cda5c0",
+    "source_state_sha256": "30cf34f0eadcebe3d3a60e6134dec8916eff33b7ebcf1fec916b602d0f13c0c2",
+    "target_hashes": {
+      "xyz_sha256": "871ba9fcb91ecec5c19a40f22c97e29bad4a124bb810158ce61048def77327ab",
+      "confidence_sha256": "0ff08e5fc18914d95972349e4f847b23df2f907d5c3f2e5f796bae8dcf695b52",
+      "source_indices_sha256": "ebbcd4cf984031241a40b77c82c7c1344cb9c379a1ea4c5b2e7998968dd98b0e"
+    },
+    "target_round_trip_max_error_m": 0.0002593994140625,
+    "transport": {
+      "block_size": 40,
+      "total_squared_cost": 48476.431348106074,
+      "hashes": {
+        "source_state_sha256": "b50b80a65a0b1258b80793c42f345a312ab906dd94443bca5c68b034ebeb07e4",
+        "target_state_sha256": "5c01dd0658d4e1704f25b728621cfd071cdf7cf513933f1bb28149db5b795cb7",
+        "source_to_target_sha256": "60f7ff7b244bfe12f96a86b7110c7522b63a4b577cc5d4124f137027784dd004",
+        "total_squared_cost_sha256": "d36d0f473ccdde7e0b8c5d5d9761e84cf11a367c02788dbaafd8e59a66e3a5b7"
+      },
+      "elapsed_seconds": 0.06565320980735123
+    }
+  },
+  "architecture": {
+    "route": "p_rf_independent_polar_rectified_flow",
+    "point_count": 10000,
+    "source": "fixed_scrambled_sobol_open_unit_polar",
+    "source_seed": 20260716,
+    "geometry_condition_sources": [
+      "full_raed_cube_condition_latents"
+    ],
+    "forbidden_geometry_sources": [
+      "g1d_checkpoint",
+      "g1d_proposal",
+      "g1d_selector",
+      "g1d_anchor",
+      "local_cube_spectrum_query"
+    ],
+    "particle_self_attention": false,
+    "inference_method": "euler",
+    "inference_nfe": 4,
+    "inference_postprocessing": [],
+    "endpoint_outputs": [
+      "64_bin_doppler_logits",
+      "confidence_logit"
+    ]
+  },
+  "runtime": {
+    "device": "cuda:0",
+    "device_name": "NVIDIA H200 NVL",
+    "torch_version": "2.12.1+cu130",
+    "model_parameter_count": 22415012,
+    "chunk_size": 2048,
+    "backward_seconds": 1.6237447999883443,
+    "two_nfe4_inference_seconds": 0.59156669001095,
+    "cuda_peak_allocated_bytes": 10140849664,
+    "cuda_peak_reserved_bytes": 10498342912,
+    "max_allocated_bytes": 59055800320,
+    "max_reserved_bytes": 69793218560
+  },
+  "diagnostics": {
+    "loss_total": 1.7714664936065674,
+    "loss_components": {
+      "flow_matching": 0.5860535502433777,
+      "endpoint_geometry": 0.18965286016464233,
+      "wrong_condition_margin": 0.04888176918029785,
+      "wrong_condition_error_delta": 0.0011182427406311035,
+      "doppler_cross_entropy": 4.316993713378906,
+      "doppler_circular_w1": 0.07997943460941315,
+      "confidence_bce": 0.677364706993103,
+      "total": 1.7714664936065674
+    },
+    "cube_nonzero_gradient_channels": 64,
+    "doppler_head_nonzero_gradient_rows": 64,
+    "wrong_cube_state_mean_absolute_delta": 0.07842672616243362
+  },
+  "checks": {
+    "exact_10000_output": true,
+    "all_outputs_finite": true,
+    "one_to_one_target_assignment": true,
+    "polar_target_round_trip_within_2cm": true,
+    "fixed_source_cube_independent": true,
+    "cube_gradient_finite_nonzero": true,
+    "all_64_cube_channels_receive_gradient": true,
+    "condition_parameter_gradients_finite_nonzero": true,
+    "all_64_doppler_outputs_receive_gradient": true,
+    "wrong_cube_changes_prediction": true,
+    "nfe4_euler_without_postprocessing": true,
+    "memory_within_preflight_budget": true,
+    "no_test_partition_accessed": true
+  },
+  "passed": true
+}
