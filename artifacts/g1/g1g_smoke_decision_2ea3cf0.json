@@ -1,0 +1,1147 @@
+{
+  "schema_version": 1,
+  "protocol": "g1g_condition_exclusive_hierarchy_stage0_v1",
+  "artifact_type": "stage0_decision",
+  "config": {
+    "protocol": "g1g_condition_exclusive_hierarchy_stage0_v1",
+    "epochs": 1,
+    "eval_every": 1,
+    "seed": 20260716,
+    "smoke": true,
+    "train_limit": 2,
+    "validation_limit": 2,
+    "learning_rate": 0.0001,
+    "minimum_learning_rate": 1e-06,
+    "warmup_epochs": 1,
+    "weight_decay": 0.05,
+    "gradient_clip_norm": 10.0,
+    "ema_decay": 0.999,
+    "point_count": 10000,
+    "center_count": 2500,
+    "children_per_center": 4,
+    "radar_token_count": 336,
+    "model_dim": 512,
+    "depth": 6,
+    "heads": 8,
+    "head_dim": 64,
+    "radar_base_channels": 64,
+    "radar_spectral_channels": 16,
+    "geometry_weight": 1.0,
+    "outlier_weight": 0.25,
+    "child_existence_weight": 0.1,
+    "center_coverage_weight": 0.25,
+    "center_existence_weight": 0.05,
+    "center_repulsion_weight": 0.05,
+    "child_diversity_weight": 0.05,
+    "child_bound_weight": 1.0,
+    "outlier_threshold_m": 2.0,
+    "existence_radius_m": 1.0,
+    "center_repulsion_distance_m": 0.1,
+    "child_diversity_diagonal_fraction": 0.2,
+    "selection_metric": "median_chamfer + completeness_gate_excess + 2*outlier_gate_excess + duplicate_gate_excess + 0.1*far_gate_excess + 10*shuffle_gate_deficit",
+    "test_accessed": false
+  },
+  "provenance": {
+    "git_commit": "2ea3cf0adec31fb38d84a56be8963b9f6c050f96",
+    "worktree_clean": true,
+    "source_hashes": {
+      "/home/wangning/Workspace/radar_cube_dense/snapshots/2ea3cf0/artifacts/idea/pre_idea_drafts/g1g_condition_exclusive_hierarchy.md": {
+        "sha256": "e686e516c4b33f6b084e7bff4239728a336b5d49b631de90a2ce6b56a3a13cd9"
+      },
+      "/home/wangning/Workspace/radar_cube_dense/snapshots/2ea3cf0/code/models/g1g_hierarchical_allocator.py": {
+        "sha256": "7ec2296d55435cdf8ff8c1a6f0851b78dbe468f2a20d35160de4fd78c076d2b4"
+      },
+      "/home/wangning/Workspace/radar_cube_dense/snapshots/2ea3cf0/code/losses/g1g_hierarchy.py": {
+        "sha256": "03abf03c8e4fd9f1ddcc6a49c4b964a0769f0fd292d8315ec1fcd9f486ad6149"
+      },
+      "/home/wangning/Workspace/radar_cube_dense/snapshots/2ea3cf0/code/scripts/train_g1g_hierarchy.py": {
+        "sha256": "5b46f42f39f6223f23ab4748fa33477057720c004b6e241e2d526a2907a4842b"
+      },
+      "/home/wangning/Workspace/radar_cube_dense/snapshots/2ea3cf0/code/models/rald_matched.py": {
+        "sha256": "fccb5decc7935916ed35dcb4756cea1a4be8159d68cfe2dec9f8baeb6fa02858"
+      },
+      "/home/wangning/Workspace/radar_cube_dense/snapshots/2ea3cf0/code/models/cube_doppler.py": {
+        "sha256": "e6fbdf5b5aa8af075682302cd54438ebfd24402c736e0ad61951d2ae66c6bee8"
+      },
+      "/home/wangning/Workspace/radar_cube_dense/snapshots/2ea3cf0/code/models/cube_cycle.py": {
+        "sha256": "b1c5df672f4daeedfd83064175b116f64b30b07b7125b6570be31c734751f5fc"
+      },
+      "/home/wangning/Workspace/radar_cube_dense/snapshots/2ea3cf0/code/models/cube_occupancy.py": {
+        "sha256": "6e82093ff504495c34caab8928a72d01f3d3e7c3619ea4e8faa989caaf4a3f91"
+      },
+      "/home/wangning/Workspace/radar_cube_dense/snapshots/2ea3cf0/code/models/point_to_cube.py": {
+        "sha256": "b284b5fc583a16968ae23c7093f4c79411b7cf7289274821d5bcd07a5ca97c70"
+      },
+      "/home/wangning/Workspace/radar_cube_dense/snapshots/2ea3cf0/code/losses/cube_cycle.py": {
+        "sha256": "74ce48ae7a8b2b75dcc3300ce3bd33f3fef2995c61e896791fd6f4a66ba202b2"
+      },
+      "/home/wangning/Workspace/radar_cube_dense/snapshots/2ea3cf0/code/losses/doppler_distribution.py": {
+        "sha256": "75989d2db631203d7cc68febe0a6d402dd3fe6d2e2d7e470d5d1fb5e5d741929"
+      },
+      "/home/wangning/Workspace/radar_cube_dense/snapshots/2ea3cf0/code/losses/rald_anchor.py": {
+        "sha256": "3032bf9aaefaa1726afaa78bb3ca80a8388c0aac43333e69289fc9cef817045d"
+      },
+      "/home/wangning/Workspace/radar_cube_dense/snapshots/2ea3cf0/code/cube_dense/dataset.py": {
+        "sha256": "bd2fa60cf72b0acf5195e14a4b6e7110f9f035430e4b0c2ed71fc64c003f6f32"
+      },
+      "/home/wangning/Workspace/radar_cube_dense/snapshots/2ea3cf0/code/cube_dense/kradar.py": {
+        "sha256": "ec518a8172ef0992a29072ca387f7a6d9620b231fa744a6eb8893647a67d07f3"
+      },
+      "/home/wangning/Workspace/radar_cube_dense/snapshots/2ea3cf0/code/eval/dense_geometry.py": {
+        "sha256": "98e23d7e54b849e6f61fa8fd91367ee4dcaafb033b8c05984daa0a64e9219ea9"
+      },
+      "/home/wangning/Workspace/radar_cube_dense/snapshots/2ea3cf0/code/eval/rald_guided_query.py": {
+        "sha256": "28d4453e8ec4eabbcf380609d15feadb6b791e542c06544e454b4474d2153397"
+      },
+      "/home/wangning/Workspace/radar_cube_dense/snapshots/2ea3cf0/code/scripts/g1b_contract.py": {
+        "sha256": "1f27682942fcd4ce60c194cd0e1d3abd2760ec811bc22a1c6eb640af6fe565a2"
+      }
+    },
+    "data_hashes": {
+      "manifest": {
+        "path": "/home/wangning/Workspace/radar_cube_dense/snapshots/2ea3cf0/artifacts/g0/g0_audit_100_manifest.json",
+        "sha256": "645307a8bae351db51b55128043dae69bce5b928169d5fa25c1b9c55083de4e4"
+      },
+      "scene_split": {
+        "path": "/home/wangning/Workspace/radar_cube_dense/snapshots/2ea3cf0/artifacts/g0/g0_scene_split.json",
+        "sha256": "61596bd50ce0bdab633c9ff0ec5ab5148c2c78a10dfc06a71d0d6f0a6c9427cc"
+      },
+      "normalization": {
+        "path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_0e5fe84_g1_recovery/g1_cube_normalization_train.json",
+        "sha256": "4d0bca7d027a1a9f457c526f21a034a406ce4973e2dccee55ddd2d7019b41b77"
+      },
+      "range_azimuth_elevation_axes": {
+        "path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/resources/info_arr.mat",
+        "sha256": "53f72b22544aa11bc0057f9b8c2177a7a844fddd0e8ce3f753a989d07159767a"
+      },
+      "doppler_axis": {
+        "path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/resources/arr_doppler.mat",
+        "sha256": "f81e56889c2cedc98eb3eb8a4828e382845e3d4758a36f3b8fc0fce4839e0493"
+      },
+      "frames": [
+        {
+          "partition": "train",
+          "sequence": 1,
+          "radar_index": 232,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/1/radar_tesseract/tesseract_00232.mat",
+          "cube_sha256": "b21355705b672ec348f5c802fbed8b288077f58ad31d8a2675874f26cd4e4b2e",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq01_radar_00232.npz",
+          "dense_cache_sha256": "76380164d2460a5de33cb06e2779a98aae0f9260fe6b77ef92b2332f12ba8fae"
+        },
+        {
+          "partition": "train",
+          "sequence": 1,
+          "radar_index": 430,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/1/radar_tesseract/tesseract_00430.mat",
+          "cube_sha256": "651932e2e8425fc42a4b1f5a0819ee5edbdcd33131436ce7c715cc5d2547b17f",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq01_radar_00430.npz",
+          "dense_cache_sha256": "f961fd865780f131247059935fd3f06133fdb10209659bede252fe7bbe9bc1da"
+        },
+        {
+          "partition": "train",
+          "sequence": 2,
+          "radar_index": 185,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/2/radar_tesseract/tesseract_00185.mat",
+          "cube_sha256": "09cdc5a3253592f09898a51231df1a9106d840ffb28569650ce782df71bdbbb6",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq02_radar_00185.npz",
+          "dense_cache_sha256": "df24505d88f2dd988e90b43d12436d220e3fbfdbe213c34f034221a33740a6a9"
+        },
+        {
+          "partition": "train",
+          "sequence": 2,
+          "radar_index": 338,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/2/radar_tesseract/tesseract_00338.mat",
+          "cube_sha256": "93780ca98c00038ff7c98aa9f4533ec82a785280b0795dcec4ecce87b604132a",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq02_radar_00338.npz",
+          "dense_cache_sha256": "c4a443e85de23e0a6d971133bf46a4f624be2e9c18d1c77393a83fed5c22a360"
+        },
+        {
+          "partition": "train",
+          "sequence": 3,
+          "radar_index": 230,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/3/radar_tesseract/tesseract_00230.mat",
+          "cube_sha256": "21673ebbbfa91d22e8fb8c2c4e80645000ad3969e693d939d7a08eda1c931114",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq03_radar_00230.npz",
+          "dense_cache_sha256": "a9452b8c3ff6cec6292064edb20ed29f90384d3beb84fa1dff0d16edc642edee"
+        },
+        {
+          "partition": "train",
+          "sequence": 3,
+          "radar_index": 428,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/3/radar_tesseract/tesseract_00428.mat",
+          "cube_sha256": "0aadcfd0d854e3a6fea5c3d646435c8bc0d34633831ed6285a8e5576ef336674",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq03_radar_00428.npz",
+          "dense_cache_sha256": "cdaeed89d9fe03eda22d9d2b115dcda35ace59e80b8baa883c22f54ca55a66b2"
+        },
+        {
+          "partition": "train",
+          "sequence": 4,
+          "radar_index": 238,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/4/radar_tesseract/tesseract_00238.mat",
+          "cube_sha256": "12d883ae7bf309fa28e16282b14845f7dac0fe00674c69e2c3105fc2d5101436",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq04_radar_00238.npz",
+          "dense_cache_sha256": "4aaef69d07717a868a6b9aff2536be1d594ecac29e6fcfdd814228212f59cb35"
+        },
+        {
+          "partition": "train",
+          "sequence": 4,
+          "radar_index": 433,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/4/radar_tesseract/tesseract_00433.mat",
+          "cube_sha256": "e7b7b76a3edd3079abf7d962792032552c24323d2dcc3b25716e50f64699281d",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq04_radar_00433.npz",
+          "dense_cache_sha256": "1b82073ebe95f00c4b397b65a62f81af22fa0f6c3ef1a7b12ae089c5667f8fe1"
+        },
+        {
+          "partition": "train",
+          "sequence": 5,
+          "radar_index": 231,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/5/radar_tesseract/tesseract_00231.mat",
+          "cube_sha256": "f9f87cd47e2160de114caf469bb78312a052b885d751780a7eab97f711eac7cd",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq05_radar_00231.npz",
+          "dense_cache_sha256": "5cb28db3b070770ab03836d21034b2d6c148b5400b1a07859f7ed80c6a4c331f"
+        },
+        {
+          "partition": "train",
+          "sequence": 5,
+          "radar_index": 429,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/5/radar_tesseract/tesseract_00429.mat",
+          "cube_sha256": "6da2066dae79f7bf8773b856cc2b4d3fd3c373f4292cfa777dde174f392f46d4",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq05_radar_00429.npz",
+          "dense_cache_sha256": "5a187efaac5ef4d7f785f2428fbdc9b4e9160a11ee609b466dc2231d8e5d8587"
+        },
+        {
+          "partition": "train",
+          "sequence": 7,
+          "radar_index": 232,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/7/radar_tesseract/tesseract_00232.mat",
+          "cube_sha256": "855d25184ae9c1eaa27629e53ab5945ecff4bf936b38bf3dbefae99d06c72980",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq07_radar_00232.npz",
+          "dense_cache_sha256": "ec2d5cf5fd8a9d6936709c1498867a371e8f05d17e18af0106280ddd12d1e035"
+        },
+        {
+          "partition": "train",
+          "sequence": 7,
+          "radar_index": 430,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/7/radar_tesseract/tesseract_00430.mat",
+          "cube_sha256": "8ceccee5235191354acecb3b8d4e7cd99050f4177b7debe11e0f8b1ac25c89c9",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq07_radar_00430.npz",
+          "dense_cache_sha256": "89f7d8bc59999614d3ed7adb879386be149600234c2f6db29835727c293e35f0"
+        },
+        {
+          "partition": "train",
+          "sequence": 8,
+          "radar_index": 221,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/8/radar_tesseract/tesseract_00221.mat",
+          "cube_sha256": "2808c0bede8929d5beca836e3d8e78a8919aa94e9119fa4474b4ad86c3ba4d74",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq08_radar_00221.npz",
+          "dense_cache_sha256": "1d2e28b82f39526ef63a6891b431ac1cea17833c8ba731f6823f99b2b53a4ef3"
+        },
+        {
+          "partition": "train",
+          "sequence": 8,
+          "radar_index": 409,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/8/radar_tesseract/tesseract_00409.mat",
+          "cube_sha256": "2db641f4dcccf5004bc8966717828e9b87560c64503e2dc789e0d9da032cc2d3",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq08_radar_00409.npz",
+          "dense_cache_sha256": "04d579972185f69b43653b1b981106c2b8f730161dd201fa26fc9779986d36c8"
+        },
+        {
+          "partition": "train",
+          "sequence": 9,
+          "radar_index": 232,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/9/radar_tesseract/tesseract_00232.mat",
+          "cube_sha256": "519b5aacfa2d419fa431b4843eee05df7c405c1c2fc3b41271d0d7080b2bdf55",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq09_radar_00232.npz",
+          "dense_cache_sha256": "8a511a950bfa9f15fc8e8dd257c09183d444955b0904ddf01feb9b219cc899c1"
+        },
+        {
+          "partition": "train",
+          "sequence": 9,
+          "radar_index": 440,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/9/radar_tesseract/tesseract_00440.mat",
+          "cube_sha256": "162b20cd299f8a72919c00bceb1c50e2e1e572c3ae6a58881d249c487370025b",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq09_radar_00440.npz",
+          "dense_cache_sha256": "1d045ff8f3058719441e9a3b084aa9f49df4d588568ae757f51036b99595227c"
+        },
+        {
+          "partition": "train",
+          "sequence": 9,
+          "radar_index": 648,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/9/radar_tesseract/tesseract_00648.mat",
+          "cube_sha256": "03c25e3dfd06390d2ea91d9026e31f16ef794d9956ff678da8684ed077217859",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq09_radar_00648.npz",
+          "dense_cache_sha256": "9e6df9f3d2a230f12a42105cabe9334ad7222a24903e3eda6b464ff07d832976"
+        },
+        {
+          "partition": "train",
+          "sequence": 11,
+          "radar_index": 332,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/11/radar_tesseract/tesseract_00332.mat",
+          "cube_sha256": "77918cd5f3d33f7443861801b76b913343a1b8d358a334316157ff8a1467d7cd",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq11_radar_00332.npz",
+          "dense_cache_sha256": "e64d0cc7620516c93c7aef017fcfba349665d2bb1542edcd641d6002a71992b2"
+        },
+        {
+          "partition": "train",
+          "sequence": 11,
+          "radar_index": 631,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/11/radar_tesseract/tesseract_00631.mat",
+          "cube_sha256": "0f077825a25e4df43ac87ab65448c0447ce74eaeca3391dadccda7016457ed1e",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq11_radar_00631.npz",
+          "dense_cache_sha256": "496d0695c2161d71675a3c407b7ef9d31fe1cdc9de25778c55edefeb19cdc8b6"
+        },
+        {
+          "partition": "train",
+          "sequence": 11,
+          "radar_index": 930,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/11/radar_tesseract/tesseract_00930.mat",
+          "cube_sha256": "be3e60abc52d2722fd4e861c130b901b674e2b2a25c89a89f4c9b978b53b5edd",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq11_radar_00930.npz",
+          "dense_cache_sha256": "71e34ba6b68bef38d2fcf63c35e84286725f0ec3442130f6b0f9f2659ac729ce"
+        },
+        {
+          "partition": "train",
+          "sequence": 14,
+          "radar_index": 232,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/14/radar_tesseract/tesseract_00232.mat",
+          "cube_sha256": "5feee5747f5d2f07ae1279feb268bab8420bb8d09b835f08778ce3a532adce55",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq14_radar_00232.npz",
+          "dense_cache_sha256": "9ee59d8ffc9b856ec8d50325c3c5ab58dee366facfc77e5d0c7588b7bddb0a87"
+        },
+        {
+          "partition": "train",
+          "sequence": 14,
+          "radar_index": 430,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/14/radar_tesseract/tesseract_00430.mat",
+          "cube_sha256": "37c6ece1ef76c1474c5a8c59d7212b380f4b0fd4375a4dba3d9b602b118ea740",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq14_radar_00430.npz",
+          "dense_cache_sha256": "11f0b30dfaa41030016531dab90e3b9436b0d6e0d582f82f4ca183f9fa068820"
+        },
+        {
+          "partition": "train",
+          "sequence": 18,
+          "radar_index": 234,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/18/radar_tesseract/tesseract_00234.mat",
+          "cube_sha256": "fb8fdc3109133c965837595e43801e595751015db519892911ace8c95a9ea067",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq18_radar_00234.npz",
+          "dense_cache_sha256": "098f0e4fef201fae01b4f49d24fcb442a99647ade1ecddb340a2b490a4db3cce"
+        },
+        {
+          "partition": "train",
+          "sequence": 18,
+          "radar_index": 431,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/18/radar_tesseract/tesseract_00431.mat",
+          "cube_sha256": "4149a7ab88f64a46f98d0b61e6efc6abb9dd7cdae44967cc7ec6a24cf2405cb8",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq18_radar_00431.npz",
+          "dense_cache_sha256": "92938710da1f5e7cf71727aa51b4adcfdc4259a3c22597e275bdbb1c3848c098"
+        },
+        {
+          "partition": "train",
+          "sequence": 21,
+          "radar_index": 204,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/21/radar_tesseract/tesseract_00204.mat",
+          "cube_sha256": "eb976a26556c4d09b73878e4f7054f7a127c99274f6d2a3dda89ba911b55521b",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq21_radar_00204.npz",
+          "dense_cache_sha256": "977c9b30aa1324fe53d9b971c18d93a648732b7a55fb96c12d122bde8f71e936"
+        },
+        {
+          "partition": "train",
+          "sequence": 21,
+          "radar_index": 402,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/21/radar_tesseract/tesseract_00402.mat",
+          "cube_sha256": "f6e85c2017be7fc544a83844422bd98581031cacadc2beb4d1bb659afa23e52c",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq21_radar_00402.npz",
+          "dense_cache_sha256": "b113efd586d19735ffa8c8246a4510be7ab6a89d11290c8ade3f6497e860adef"
+        },
+        {
+          "partition": "train",
+          "sequence": 22,
+          "radar_index": 202,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/22/radar_tesseract/tesseract_00202.mat",
+          "cube_sha256": "24e6e6448cba23a39b3c232226efe9de1ee770361aeb12b97d029f11ad78bb9a",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq22_radar_00202.npz",
+          "dense_cache_sha256": "145fbcd25eb9be34693d2299301fc6916d9c77020ccda31ba99c3ef2a1708504"
+        },
+        {
+          "partition": "train",
+          "sequence": 22,
+          "radar_index": 401,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/22/radar_tesseract/tesseract_00401.mat",
+          "cube_sha256": "0e9e10c9e8fd0cc45347df519e561b7da24e2fc6cb8f125a704f36e6ba21ebfb",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq22_radar_00401.npz",
+          "dense_cache_sha256": "91256b5c2a6e75ab2f303c4472a02495e848aa72e5fb8ccae32347edbfc631b2"
+        },
+        {
+          "partition": "train",
+          "sequence": 24,
+          "radar_index": 203,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/24/radar_tesseract/tesseract_00203.mat",
+          "cube_sha256": "7b5e894f1cd83adf54cb5d53e3f5057d7705b7d528ea94098fbc9713513f0831",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq24_radar_00203.npz",
+          "dense_cache_sha256": "3fa1966f2f85d0cd4956991729a299fdda17146c06bed7539d1d150e604179c2"
+        },
+        {
+          "partition": "train",
+          "sequence": 24,
+          "radar_index": 402,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/24/radar_tesseract/tesseract_00402.mat",
+          "cube_sha256": "b2ea679f6f3e0b9b7f66e48bb12665d6f11568cd3f0d7d62fd175eb543b89575",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq24_radar_00402.npz",
+          "dense_cache_sha256": "6d2fb8cea0be442900899d580a648b98769f04d1e4c1902ccada98ad9b38a579"
+        },
+        {
+          "partition": "train",
+          "sequence": 25,
+          "radar_index": 200,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/25/radar_tesseract/tesseract_00200.mat",
+          "cube_sha256": "c4a35a0ec90d3dcb5859beef715b8ef4abafda578aa88bc8002a8673cd981ee5",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq25_radar_00200.npz",
+          "dense_cache_sha256": "d308497b429c42070f8aa4364befd985175693f10aeb5ea0a122b5e49a1e17fe"
+        },
+        {
+          "partition": "train",
+          "sequence": 25,
+          "radar_index": 398,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/25/radar_tesseract/tesseract_00398.mat",
+          "cube_sha256": "2280bf874868b6d34d8b3b50f5e119236275e787e182b9727c006e76de7d8e4b",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq25_radar_00398.npz",
+          "dense_cache_sha256": "e41e057e6c5f414cb5bccc330442e5df01416c3995a83f176b81b48691d9f51a"
+        },
+        {
+          "partition": "train",
+          "sequence": 26,
+          "radar_index": 205,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/26/radar_tesseract/tesseract_00205.mat",
+          "cube_sha256": "9e44a1b93483f40147d53d829f0928d278cca80cf35b37e835e9356913ce16e3",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq26_radar_00205.npz",
+          "dense_cache_sha256": "76f0e0cbde57fecc3b4a89715b08870cf7ea1643aa53cb60eedb53e7e36b63bf"
+        },
+        {
+          "partition": "train",
+          "sequence": 26,
+          "radar_index": 403,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/26/radar_tesseract/tesseract_00403.mat",
+          "cube_sha256": "3614c58e6e8ff3b5f74c3d9edebf3ea8615f71141e238cb0004e5ec724698954",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq26_radar_00403.npz",
+          "dense_cache_sha256": "5f2da6457e503f55de5583f71b8ddfac5e007b35fe65faed768a7249ba0dc8fb"
+        },
+        {
+          "partition": "train",
+          "sequence": 27,
+          "radar_index": 204,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/27/radar_tesseract/tesseract_00204.mat",
+          "cube_sha256": "c3c512b15e6b669a5fc33faab988d66ef92e8a5b312ee2d7c2c9766361c0e3e6",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq27_radar_00204.npz",
+          "dense_cache_sha256": "54ceda3e9c6906d1b0bda5f23987fae3b22f5622b91c6af0532b74319b4fdd07"
+        },
+        {
+          "partition": "train",
+          "sequence": 27,
+          "radar_index": 403,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/27/radar_tesseract/tesseract_00403.mat",
+          "cube_sha256": "87a16e31c8693d0c82ad0f92c5ee0da90ca19d7f2488a34d362d3c16485449c2",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq27_radar_00403.npz",
+          "dense_cache_sha256": "d5f2be39e469b342e538f7a6c8277f446c746db4ede3aa07ca448b7992d5bad5"
+        },
+        {
+          "partition": "train",
+          "sequence": 28,
+          "radar_index": 203,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/28/radar_tesseract/tesseract_00203.mat",
+          "cube_sha256": "f7eb8b60fc20e077abd42cafa8711d204f1d4771dbff17a0c8a2847d0f27bc25",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq28_radar_00203.npz",
+          "dense_cache_sha256": "ba7045624882fdd6343675b2fd048e1e91b04bc7aa50c86c78342d9b05b1b6d3"
+        },
+        {
+          "partition": "train",
+          "sequence": 28,
+          "radar_index": 401,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/28/radar_tesseract/tesseract_00401.mat",
+          "cube_sha256": "80ac18fc936403e1016553de0a2553894e9f589be34778b5b05386d13fdd278b",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq28_radar_00401.npz",
+          "dense_cache_sha256": "6a960056a5572ba2780a9b7dc07723b2f1ea60dd4b7a431b05eeb7c7881293ed"
+        },
+        {
+          "partition": "train",
+          "sequence": 29,
+          "radar_index": 200,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/29/radar_tesseract/tesseract_00200.mat",
+          "cube_sha256": "d2b21619878e0f2932d9d24b160f6e4051bdb5c2854cacbb6678392fc122f136",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq29_radar_00200.npz",
+          "dense_cache_sha256": "a488fd717bb3ca95c76ccaba4ec09786d81cb15a03dcf04cc3ce511eabd610b7"
+        },
+        {
+          "partition": "train",
+          "sequence": 29,
+          "radar_index": 399,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/29/radar_tesseract/tesseract_00399.mat",
+          "cube_sha256": "6392ccbc6fa0942d99938ca3c40402bd34aa1c40975f5ef1e2a4aeefe6e8516b",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq29_radar_00399.npz",
+          "dense_cache_sha256": "4493b3934a8c34968566e425f47b94985bd68e04a2330e4491671a7ee42e96af"
+        },
+        {
+          "partition": "train",
+          "sequence": 31,
+          "radar_index": 206,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/31/radar_tesseract/tesseract_00206.mat",
+          "cube_sha256": "55d492b279d961a6b3c6e7f811e93565dc5062196a4769358d120a60ea1e584c",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq31_radar_00206.npz",
+          "dense_cache_sha256": "e68424678f65af4023367790246a3df2e43a87919f27c86c24309be9cad7e8f6"
+        },
+        {
+          "partition": "train",
+          "sequence": 31,
+          "radar_index": 405,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/31/radar_tesseract/tesseract_00405.mat",
+          "cube_sha256": "46c76849140436d053730c21a3cc24fb26866eeeb0035349bd5189c3d80d5d6f",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq31_radar_00405.npz",
+          "dense_cache_sha256": "61af78562343b79bbb5d53ff22704f4c9d2a84e568fdd30b22d1a5998e1a85b8"
+        },
+        {
+          "partition": "train",
+          "sequence": 32,
+          "radar_index": 205,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/32/radar_tesseract/tesseract_00205.mat",
+          "cube_sha256": "eae0acfa89b08b85d55023648f9f12e26e2a12bb3fa449e774825503f616c423",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq32_radar_00205.npz",
+          "dense_cache_sha256": "c1f8af36aa65f3c5c5da1825102c557e4402b477e6399e2706cfdd7cd70c9543"
+        },
+        {
+          "partition": "train",
+          "sequence": 32,
+          "radar_index": 403,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/32/radar_tesseract/tesseract_00403.mat",
+          "cube_sha256": "27af27d2b73f33a4f95e4ab24d9c94ae4dac696bea0fed5f5b2c7086b7cce97d",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq32_radar_00403.npz",
+          "dense_cache_sha256": "397443b2a684730e948ae45158d87b75cafe06de2df0ccd129e493c6a6abdf2a"
+        },
+        {
+          "partition": "train",
+          "sequence": 33,
+          "radar_index": 205,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/33/radar_tesseract/tesseract_00205.mat",
+          "cube_sha256": "ef1cd196a4d07424f0cf0d5fe318f51eb8e49b74cccff0794584d749a53e0814",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq33_radar_00205.npz",
+          "dense_cache_sha256": "fe0d59e3a97b950c38eae160a0ba9cba4fa07b83b9f53909a9b0b3e9cfe03274"
+        },
+        {
+          "partition": "train",
+          "sequence": 33,
+          "radar_index": 404,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/33/radar_tesseract/tesseract_00404.mat",
+          "cube_sha256": "f0199e09244443d6f3e277a4af2d3f5319ee56d97ebd589a764272279357d1d9",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq33_radar_00404.npz",
+          "dense_cache_sha256": "92debda2371395c939c73a1672679455ecd47809563096b54aff64d4fc13a746"
+        },
+        {
+          "partition": "train",
+          "sequence": 35,
+          "radar_index": 205,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/35/radar_tesseract/tesseract_00205.mat",
+          "cube_sha256": "d9d65df36707d84d48b80f5658fcfb95f66a4bd390f180b09514f9cac445ec87",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq35_radar_00205.npz",
+          "dense_cache_sha256": "59c71e89a21adb172ee441eb1e21da9e94035358accbf1512399bf74202e77f6"
+        },
+        {
+          "partition": "train",
+          "sequence": 35,
+          "radar_index": 403,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/35/radar_tesseract/tesseract_00403.mat",
+          "cube_sha256": "221b6c8cb7ad8cf5cc154e887986a6943ff80ca3521b18fbc5462ce3ac8bf754",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq35_radar_00403.npz",
+          "dense_cache_sha256": "580c1c90a1c0db9222b4e12a584d7a07d59872e2e869b9d46e7e09c5e3dd9e15"
+        },
+        {
+          "partition": "train",
+          "sequence": 39,
+          "radar_index": 207,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/39/radar_tesseract/tesseract_00207.mat",
+          "cube_sha256": "92715f960710826d8bc2745640441cb099f97e9108aa6b1a5f8fa1f518ebcb9e",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq39_radar_00207.npz",
+          "dense_cache_sha256": "88b5d2d7affe23de0349925dd7fe52d81ac9b6db39fe4905b8c1889942eb60a8"
+        },
+        {
+          "partition": "train",
+          "sequence": 39,
+          "radar_index": 405,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/39/radar_tesseract/tesseract_00405.mat",
+          "cube_sha256": "d0b730ce82fa16ffebcedeccb243456ca15992b107211c8cd32196e9147e0610",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq39_radar_00405.npz",
+          "dense_cache_sha256": "28f6f6aaa79a9488db680032cc92f26a9985416996956f1e88aeae92e06f63a1"
+        },
+        {
+          "partition": "train",
+          "sequence": 40,
+          "radar_index": 204,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/40/radar_tesseract/tesseract_00204.mat",
+          "cube_sha256": "6c69791db19538ed62420400618d14484a32f77e3141d1394426d839577505fc",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq40_radar_00204.npz",
+          "dense_cache_sha256": "1c91b87b2a5c4c95d15a36e07de73c8df29b102120709b2583bb6b7126284677"
+        },
+        {
+          "partition": "train",
+          "sequence": 40,
+          "radar_index": 403,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/40/radar_tesseract/tesseract_00403.mat",
+          "cube_sha256": "db90536afd1f77af64d365437d06f3568188ce74987e0e814158af49ccf77b8a",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq40_radar_00403.npz",
+          "dense_cache_sha256": "27ee6889533cabdf96adb2aefcab5f597ba95eddff627f7b3e0bbcad3fa964e3"
+        },
+        {
+          "partition": "train",
+          "sequence": 42,
+          "radar_index": 209,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/42/radar_tesseract/tesseract_00209.mat",
+          "cube_sha256": "7e0377dd4bd19d0f324b35e043c4a4b158fc57e643c2a8a26ffa40946eec290d",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq42_radar_00209.npz",
+          "dense_cache_sha256": "feb35b0101f4924ab81444452ed597205d23ecb6548ca3728d4bf460e864bfbc"
+        },
+        {
+          "partition": "train",
+          "sequence": 42,
+          "radar_index": 408,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/42/radar_tesseract/tesseract_00408.mat",
+          "cube_sha256": "8de1a63f66bcaeb2d59a643887ceca1e34bd51e06a66fe81d911b8c85dec531c",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq42_radar_00408.npz",
+          "dense_cache_sha256": "8742844cf243fbef0fd254cb3ae7c8613982714412035d97fd6e95c8ad797d1f"
+        },
+        {
+          "partition": "train",
+          "sequence": 44,
+          "radar_index": 209,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/44/radar_tesseract/tesseract_00209.mat",
+          "cube_sha256": "671802b47e9264a172d7d5ad290e17d735e7191612c35ed5c62c0f5c4cc0bf53",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq44_radar_00209.npz",
+          "dense_cache_sha256": "6495d317530218739dd6c285d47fb08fa06f916847f0793d570e20ea7eb23e7e"
+        },
+        {
+          "partition": "train",
+          "sequence": 44,
+          "radar_index": 407,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/44/radar_tesseract/tesseract_00407.mat",
+          "cube_sha256": "7b38887e9f5af57adf97c2a602bb03244b3818ab0aff7e6c7daeabd48f4b6865",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq44_radar_00407.npz",
+          "dense_cache_sha256": "3f124a7bb5d63b0686602eaa0069ce10c5447468967e2463658c897b4e6fc77a"
+        },
+        {
+          "partition": "train",
+          "sequence": 45,
+          "radar_index": 219,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/45/radar_tesseract/tesseract_00219.mat",
+          "cube_sha256": "3e685ce6fe9bc6dc472478a6e6bbe6c838bd298142c8bb9d29c4fe45b44ee6f5",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq45_radar_00219.npz",
+          "dense_cache_sha256": "01f8bdc5406c9f51c0e1d7f392ba6873b2c577014b03f7f9f6dcedf655691114"
+        },
+        {
+          "partition": "train",
+          "sequence": 45,
+          "radar_index": 416,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/45/radar_tesseract/tesseract_00416.mat",
+          "cube_sha256": "af400c05cb5b06235f4ac04840a74183ac23aac2bc3b9973f99a30def914fecd",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq45_radar_00416.npz",
+          "dense_cache_sha256": "6c5380f255377b73f5571e750b51d3d6438e1107b010a0e46d60e22864c0a376"
+        },
+        {
+          "partition": "train",
+          "sequence": 46,
+          "radar_index": 205,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/46/radar_tesseract/tesseract_00205.mat",
+          "cube_sha256": "e65df65113357935a6652309794c31338c9d68c07486d592d8be8db5a8fabbd8",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq46_radar_00205.npz",
+          "dense_cache_sha256": "ffd8fc0537a6b739a435876194170bc939dda67a1c783a00df2711a911c05f92"
+        },
+        {
+          "partition": "train",
+          "sequence": 46,
+          "radar_index": 404,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/46/radar_tesseract/tesseract_00404.mat",
+          "cube_sha256": "b49fafd60cbe16cfc606931307f02528137df132ba54ec4fbb7846fff144fb4b",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq46_radar_00404.npz",
+          "dense_cache_sha256": "5a5040be4eade8c13e6df8bc300859bba94fe85e5191035e49bef9c62f2e1de0"
+        },
+        {
+          "partition": "train",
+          "sequence": 47,
+          "radar_index": 94,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/47/radar_tesseract/tesseract_00094.mat",
+          "cube_sha256": "c7ec934a8eff5c33b08a50baac3746e417459452a553398e000c719239164b10",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq47_radar_00094.npz",
+          "dense_cache_sha256": "5c662a8c50cc48927d0463fc7d11993902a4c3c5b3277e6e7f6d043edf131cc2"
+        },
+        {
+          "partition": "train",
+          "sequence": 47,
+          "radar_index": 514,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/47/radar_tesseract/tesseract_00514.mat",
+          "cube_sha256": "eb2923edb0084e697351f5fbc3445ab4b8752f2bfd9042131ffcbd6b14a28641",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq47_radar_00514.npz",
+          "dense_cache_sha256": "bda9d834ba0d5401d6a752da854ad61391d5c6676337adecdb18e3a7fb983d34"
+        },
+        {
+          "partition": "train",
+          "sequence": 49,
+          "radar_index": 206,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/49/radar_tesseract/tesseract_00206.mat",
+          "cube_sha256": "d50f3863e5332420c76d9d9d948133df45f5000a5a4d043f3457e6054a1b4f76",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq49_radar_00206.npz",
+          "dense_cache_sha256": "ee87daadb990117b06a6bf91a19b88c28b77389f2f72d4bced733abb0af77474"
+        },
+        {
+          "partition": "train",
+          "sequence": 49,
+          "radar_index": 405,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/49/radar_tesseract/tesseract_00405.mat",
+          "cube_sha256": "2559020b14bb8a78de7b006a50308fec662061760508069d780c39279f5fe119",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq49_radar_00405.npz",
+          "dense_cache_sha256": "13fa1d0f89be0b80c5b95ec099f2f2595d5f86a82329fb40cc581c866ee3cf11"
+        },
+        {
+          "partition": "train",
+          "sequence": 50,
+          "radar_index": 207,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/50/radar_tesseract/tesseract_00207.mat",
+          "cube_sha256": "f652408e15c71f7c3dc761160b90cc46763f34c311296e9aa0713d576a5dc443",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq50_radar_00207.npz",
+          "dense_cache_sha256": "80b9041d5a5940751a5ac02109e6897a43243476a3aa249623e42e1d0bf36739"
+        },
+        {
+          "partition": "train",
+          "sequence": 50,
+          "radar_index": 405,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/50/radar_tesseract/tesseract_00405.mat",
+          "cube_sha256": "ec6e86dedbc1e0476f1f3d9fe7fa4137156aa98f5975b163571d65034ef6f5ab",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq50_radar_00405.npz",
+          "dense_cache_sha256": "eff9419ad647efaccc6bd9cabe7af1cf214f2d5804773fe737682ee22bb41e4a"
+        },
+        {
+          "partition": "train",
+          "sequence": 52,
+          "radar_index": 202,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/52/radar_tesseract/tesseract_00202.mat",
+          "cube_sha256": "f8123ae92a3eaca38efe2c8b18f2adff822ae72515b937317d21104ef4b25ef2",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq52_radar_00202.npz",
+          "dense_cache_sha256": "def6f5926eb18b97f4b33dd899c17c4f732bd150b6206195359fb131c1eaa99b"
+        },
+        {
+          "partition": "train",
+          "sequence": 52,
+          "radar_index": 401,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/52/radar_tesseract/tesseract_00401.mat",
+          "cube_sha256": "4ae142ce849833871c96796ea3e0fb24c118b08c12f112b571839469f9733446",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq52_radar_00401.npz",
+          "dense_cache_sha256": "4ab8eb03b8b2184c7a3c4d91159193ae0d4e115a1b6d3c02b78e8dcc984699a0"
+        },
+        {
+          "partition": "train",
+          "sequence": 53,
+          "radar_index": 204,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/53/radar_tesseract/tesseract_00204.mat",
+          "cube_sha256": "e10bf7532524d5e584f3e3c9ca546bb9b074bb7d452082b60ac0d3212f26533e",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq53_radar_00204.npz",
+          "dense_cache_sha256": "d4ce929d2624b4f858df928f8f1fe3dd08099c3f9e37e2a8be02d1dc320c3513"
+        },
+        {
+          "partition": "train",
+          "sequence": 53,
+          "radar_index": 402,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/53/radar_tesseract/tesseract_00402.mat",
+          "cube_sha256": "36077f06dac15f32d714aaffd1654cb25821afc682b294752e1ee100b0b0191e",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq53_radar_00402.npz",
+          "dense_cache_sha256": "15061bf860df7fe45bea1f2d8c150ef9c7450266d6d31bafa57cfc4cd9793462"
+        },
+        {
+          "partition": "train",
+          "sequence": 56,
+          "radar_index": 206,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/56/radar_tesseract/tesseract_00206.mat",
+          "cube_sha256": "ab343980f00d7d44c38b258eb10a5fe2b79c3605779b8116694b0c65ef670b49",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq56_radar_00206.npz",
+          "dense_cache_sha256": "6eab1f3131b84b1c246ff14cefa42a5b21938495078e3ba9ad52f827700e0c73"
+        },
+        {
+          "partition": "train",
+          "sequence": 56,
+          "radar_index": 405,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/56/radar_tesseract/tesseract_00405.mat",
+          "cube_sha256": "a5228a117fa8f2a5275cb5ade7a85833fa080e5758d71e629f43937e0b04ef11",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq56_radar_00405.npz",
+          "dense_cache_sha256": "e434de1f90bec7827dcfef39279cfa7d41308d33bd5f92309ff47e9b093951af"
+        },
+        {
+          "partition": "train",
+          "sequence": 57,
+          "radar_index": 205,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/57/radar_tesseract/tesseract_00205.mat",
+          "cube_sha256": "85d723d01e2d0079b609ff0100b6d79dc56bedf5aaec1844a39f502d3962e0b4",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq57_radar_00205.npz",
+          "dense_cache_sha256": "045fbef814bc2eee68848f2c1270481ef00c91feac1b1ceed0c983dd78cb89c7"
+        },
+        {
+          "partition": "train",
+          "sequence": 57,
+          "radar_index": 404,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/57/radar_tesseract/tesseract_00404.mat",
+          "cube_sha256": "a58b58b396acb127e0810e4f204a1e0ffe7f94463da0cf330c706301408bb2f4",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq57_radar_00404.npz",
+          "dense_cache_sha256": "370647b3c939c59262792758401bb6569ef2f3476e7e2ad485f7cf160bebbe3f"
+        },
+        {
+          "partition": "train",
+          "sequence": 58,
+          "radar_index": 205,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/58/radar_tesseract/tesseract_00205.mat",
+          "cube_sha256": "5c5b8ef4d69d937884d554568901119d3d7d2bc459fb1e9836b11ab7cd2e1098",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq58_radar_00205.npz",
+          "dense_cache_sha256": "8fda3a0ce7dd5b72f3d40baab8377be84d71c99ea1492d1b3f01a921cd998e0d"
+        },
+        {
+          "partition": "train",
+          "sequence": 58,
+          "radar_index": 404,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/58/radar_tesseract/tesseract_00404.mat",
+          "cube_sha256": "f75c7d777e27e4e5552de55c0ee89ed04a4213cf827c6439161a828c8c301258",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq58_radar_00404.npz",
+          "dense_cache_sha256": "1a193c3835f08fc9d53a3877af7544f457b4e1021577b39b57bcd8b86c02ace9"
+        },
+        {
+          "partition": "validation",
+          "sequence": 6,
+          "radar_index": 183,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/6/radar_tesseract/tesseract_00183.mat",
+          "cube_sha256": "96785e0baf067acad060e206f7189ff55ce3388716c59e10bd3ed27b3882b60f",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq06_radar_00183.npz",
+          "dense_cache_sha256": "422136ece0fcc38717b4665563ce15b07710433bc7e4732030fbb0b3e32c6e2f"
+        },
+        {
+          "partition": "validation",
+          "sequence": 6,
+          "radar_index": 331,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/6/radar_tesseract/tesseract_00331.mat",
+          "cube_sha256": "76404d68fd7f2c61158a475266547a454054621665f0f180aad80b4aee0df756",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq06_radar_00331.npz",
+          "dense_cache_sha256": "50bab1c260e395a82e647ce426aa5a7047ed4ef2892c32ac9057d1272dbaf388"
+        },
+        {
+          "partition": "validation",
+          "sequence": 6,
+          "radar_index": 480,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/6/radar_tesseract/tesseract_00480.mat",
+          "cube_sha256": "ebf2cad8ab04ac691ad4d72388797024632b36dad486c74368fb05d7df9f2c87",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq06_radar_00480.npz",
+          "dense_cache_sha256": "e90d43a40c5ec2517653d121e0fe7b1a7d170eaef0fd430bf8b545d6f354b020"
+        },
+        {
+          "partition": "validation",
+          "sequence": 12,
+          "radar_index": 259,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/12/radar_tesseract/tesseract_00259.mat",
+          "cube_sha256": "4766a7eefcec2af39321fab4233714f3f859bda5969a617baea27ac2d4f9bd20",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq12_radar_00259.npz",
+          "dense_cache_sha256": "5ad610494b5ff775f4f14ec8fc5242c1e6d58571b2c1fef43e5d3316f23ee4c0"
+        },
+        {
+          "partition": "validation",
+          "sequence": 12,
+          "radar_index": 481,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/12/radar_tesseract/tesseract_00481.mat",
+          "cube_sha256": "515df4872229b52613f18c2e3be22581d6e7d53922e1185963b8b4ceddcee8e6",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq12_radar_00481.npz",
+          "dense_cache_sha256": "5fd3a73de1b2afd74643b3e563a38a3ac224db584be14536b17e7ea91c0180e4"
+        },
+        {
+          "partition": "validation",
+          "sequence": 12,
+          "radar_index": 702,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/12/radar_tesseract/tesseract_00702.mat",
+          "cube_sha256": "a1ffc1e7895bca12a42398cb1be3a1a585f10bfba56af2c551338ac602e9ca5f",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq12_radar_00702.npz",
+          "dense_cache_sha256": "1217dbf2d3959fbf6bc3a46de2a3e232dec59762a705cdda231aa99e01cfd731"
+        },
+        {
+          "partition": "validation",
+          "sequence": 30,
+          "radar_index": 123,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/30/radar_tesseract/tesseract_00123.mat",
+          "cube_sha256": "ea2b8654146a412ac6096723e5f5c1d1c33d6882106142d5b3d7332d2089e6e9",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq30_radar_00123.npz",
+          "dense_cache_sha256": "367e794d87ecd459512f535cf7df0503305112a9e319e07e8036b38f4d1a93fe"
+        },
+        {
+          "partition": "validation",
+          "sequence": 30,
+          "radar_index": 240,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/30/radar_tesseract/tesseract_00240.mat",
+          "cube_sha256": "6a9d17601e0e4ad8125e16705932c5983c08e321a135dacc8f04f74f41a8bf0d",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq30_radar_00240.npz",
+          "dense_cache_sha256": "e59ff5eed67b75ab5dfa798dd446a86dfdd807aca4da75cb9abf3a1ad8d4e57a"
+        },
+        {
+          "partition": "validation",
+          "sequence": 30,
+          "radar_index": 358,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/30/radar_tesseract/tesseract_00358.mat",
+          "cube_sha256": "6d12d0553feac2758aff7b5b2a40f2cba5846df882cbd0a31683df1d679720e4",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq30_radar_00358.npz",
+          "dense_cache_sha256": "b91adfcb86e60d7ff5be5c5b4264843cd7aa0cb7ce8b06d13f85de388985898b"
+        },
+        {
+          "partition": "validation",
+          "sequence": 34,
+          "radar_index": 153,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/34/radar_tesseract/tesseract_00153.mat",
+          "cube_sha256": "0b8fd425ac0fc8d8f5c2ce143541d519ddb6bfbe0f73e89789b346495401b174",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq34_radar_00153.npz",
+          "dense_cache_sha256": "25751677adeba1a907053da5dd1fe7238ad6d1a247ef6b32508d79cc0275470a"
+        },
+        {
+          "partition": "validation",
+          "sequence": 34,
+          "radar_index": 302,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/34/radar_tesseract/tesseract_00302.mat",
+          "cube_sha256": "74ee6ee7be85fe175b8117c503263f9c9703a3f5b20acc1c65b2fb24cf3fabba",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq34_radar_00302.npz",
+          "dense_cache_sha256": "08cf1938a80c267d9811b8c27e206a689d76906fcc5daafdc5d2719100048e55"
+        },
+        {
+          "partition": "validation",
+          "sequence": 34,
+          "radar_index": 452,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/34/radar_tesseract/tesseract_00452.mat",
+          "cube_sha256": "48774263b26933af21e1ae268555c5771a0f44e8855321d4724a7ab420bb30a7",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq34_radar_00452.npz",
+          "dense_cache_sha256": "639044c4fae1ac3961c63a562edab80355d62ee3ef3587cbb4a029cc0ab73bd1"
+        },
+        {
+          "partition": "validation",
+          "sequence": 38,
+          "radar_index": 158,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/38/radar_tesseract/tesseract_00158.mat",
+          "cube_sha256": "ee0ffa80241eb271868fa0b6150c4da700bec9fbdbdbea845a2715f921fa4a28",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq38_radar_00158.npz",
+          "dense_cache_sha256": "025c0bf37788ef900424eefb0e0392570a0b1deee7db849c1a7018c5ef2bd7cf"
+        },
+        {
+          "partition": "validation",
+          "sequence": 38,
+          "radar_index": 307,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/38/radar_tesseract/tesseract_00307.mat",
+          "cube_sha256": "2d34ae11491709146d22e7d6e2bba2c0a449bed1719e0bb4b276062c61c4bd19",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq38_radar_00307.npz",
+          "dense_cache_sha256": "f4dd3ca75faac49bc5e2219a65ec418254a62d1e97a108439fff4c82c13645da"
+        },
+        {
+          "partition": "validation",
+          "sequence": 38,
+          "radar_index": 456,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/38/radar_tesseract/tesseract_00456.mat",
+          "cube_sha256": "894079c22a662b4d1184cf11feeb22f5ca46f8185d2a24fc3ecf267a335d9bd7",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq38_radar_00456.npz",
+          "dense_cache_sha256": "c40205cd57bd27a142e6eff6ac8b9113eea9515ef2126fab604aa1ab10bcc10f"
+        },
+        {
+          "partition": "validation",
+          "sequence": 43,
+          "radar_index": 155,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/43/radar_tesseract/tesseract_00155.mat",
+          "cube_sha256": "dd118f995b28131f2870b415a6898fbdbd0eea4e0a495fd56fd39147f7ba48c7",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq43_radar_00155.npz",
+          "dense_cache_sha256": "e75f0260ed9fb93a2ff8829031008353608ad2db740c59e45d82f44e84a90bea"
+        },
+        {
+          "partition": "validation",
+          "sequence": 43,
+          "radar_index": 304,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/43/radar_tesseract/tesseract_00304.mat",
+          "cube_sha256": "c01b5a0a33bc769a2516df7ab58d405eaf763c12437f12bb8acac3cbbef729d1",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq43_radar_00304.npz",
+          "dense_cache_sha256": "b70af7fbb298e7a42042d1d0007186d1c09cfbde52c550ef223101b8de0b48a2"
+        },
+        {
+          "partition": "validation",
+          "sequence": 43,
+          "radar_index": 454,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/43/radar_tesseract/tesseract_00454.mat",
+          "cube_sha256": "b32686dc5560a648e10c5620bc7869a597cfd8f15722342ceccd4c404352a1c5",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq43_radar_00454.npz",
+          "dense_cache_sha256": "f09d86595242ec0dd87fcc55c7b4cf357a3bfab7637437cc179200935040cdd5"
+        },
+        {
+          "partition": "validation",
+          "sequence": 51,
+          "radar_index": 156,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/51/radar_tesseract/tesseract_00156.mat",
+          "cube_sha256": "e437b607ccdb79b5336235198ae3aa932b1f82d1e6be450631f782a0192ae797",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq51_radar_00156.npz",
+          "dense_cache_sha256": "a1d05e4f4d0aea5b46961f65c59eacf5c7acf7fdf4753226aa3187a391dc28c5"
+        },
+        {
+          "partition": "validation",
+          "sequence": 51,
+          "radar_index": 305,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/51/radar_tesseract/tesseract_00305.mat",
+          "cube_sha256": "c1bf76d5b1228c386849f38f7bbef49c7ba081e678468ff99ebe7171122c0c80",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq51_radar_00305.npz",
+          "dense_cache_sha256": "7c56ca2cab439557070f9fd5685d7407431e61d0d4c01fc248435dc47b262cb0"
+        },
+        {
+          "partition": "validation",
+          "sequence": 51,
+          "radar_index": 454,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/51/radar_tesseract/tesseract_00454.mat",
+          "cube_sha256": "cf6df18eff9148ce05dc5019b13ab4c9a75401d925f33c5713b8d4fc96e3141f",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq51_radar_00454.npz",
+          "dense_cache_sha256": "0656f6d08299f6d279a8f8b455801fc08a7fbe75f8011625c5670ff87f068f07"
+        },
+        {
+          "partition": "validation",
+          "sequence": 55,
+          "radar_index": 129,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/55/radar_tesseract/tesseract_00129.mat",
+          "cube_sha256": "e791efddb4d9c32e26e42acee852fdf523d7a6f333e57b51854bada295a90166",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq55_radar_00129.npz",
+          "dense_cache_sha256": "50d4d9c34890700bcfe76e2428d53c9196db04bb6d27d22603af4831fc323d78"
+        },
+        {
+          "partition": "validation",
+          "sequence": 55,
+          "radar_index": 252,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/55/radar_tesseract/tesseract_00252.mat",
+          "cube_sha256": "7fac44c5e02b1f301fcf4e772c6c888b5e7d4066e5f29d88d12e209f8e1eba67",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq55_radar_00252.npz",
+          "dense_cache_sha256": "d072d61f167e475a77f792244e60540ff4527afc3fc9c237719ddf499d08f240"
+        },
+        {
+          "partition": "validation",
+          "sequence": 55,
+          "radar_index": 376,
+          "cube": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/55/radar_tesseract/tesseract_00376.mat",
+          "cube_sha256": "b3f70cdb3f83104ec96cb3d0f75c251fc202bc7f6db5d6fb4db880171f3c1d1f",
+          "dense_cache": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq55_radar_00376.npz",
+          "dense_cache_sha256": "0d8ec8c0ee777536882a3c28ddabdd9a851ea6f2e99ddf8a598ef222bcbdb4ac"
+        }
+      ]
+    },
+    "device": "NVIDIA H200 NVL",
+    "torch_version": "2.12.1+cu130",
+    "model_parameter_count": 41684584,
+    "partitions": [
+      "train",
+      "validation"
+    ],
+    "test_accessed": false,
+    "external_pretraining": false,
+    "occupancy_queries": false,
+    "proposal_cache": false,
+    "local_pre_allocation_inputs": false,
+    "g1d_control": {
+      "epoch": 15,
+      "completeness_m": 3.5811,
+      "far_completeness_m": 8.1239,
+      "model_loaded": false
+    }
+  },
+  "exact_counts": {
+    "manifest_frame_count": 100,
+    "train_frame_count": 76,
+    "validation_frame_count": 24,
+    "test_frame_count": 0,
+    "used_train_frame_count": 2,
+    "used_validation_frame_count": 2,
+    "point_count_per_frame": 10000,
+    "center_count_per_frame": 2500,
+    "children_per_center": 4,
+    "radar_token_count": 336,
+    "optimizer_updates_planned": 2,
+    "evaluation_epochs": [
+      1
+    ]
+  },
+  "anti_bypass": {
+    "architecture_metadata": {
+      "global_radar_token_count": 336,
+      "center_query_count": 2500,
+      "children_per_center": 4,
+      "final_point_count": 10000,
+      "pre_allocation_sources": [
+        "learned_center_queries",
+        "normalized_center_templates",
+        "global_full_raed_tokens"
+      ],
+      "forbidden_pre_allocation_sources": [
+        "local_cube_spectrum",
+        "local_cube_energy",
+        "local_cube_neighborhood",
+        "proposal_score"
+      ],
+      "local_cube_sampling_stage": "after_center_allocation",
+      "child_offset_contract": "per-axis half-cell bound plus one-cell physical diagonal",
+      "stage_sequence": [
+        "encode_global_full_raed_tokens",
+        "allocate_2500_centers",
+        "sample_local_center_spectrum",
+        "decode_four_bounded_children",
+        "sample_final_point_spectrum"
+      ]
+    },
+    "static_checks": {
+      "global_radar_token_count_is_336": true,
+      "center_count_is_2500": true,
+      "four_children_per_center": true,
+      "final_point_count_is_10000": true,
+      "pre_allocation_allowlist_exact": true,
+      "pre_allocation_forbidden_sources_exact": true,
+      "local_cube_sampling_after_allocation": true,
+      "stage_sequence_exact": true,
+      "no_occupancy_queries": true,
+      "no_proposal_cache": true,
+      "no_local_pre_allocation_inputs": true
+    },
+    "static_passed": true,
+    "dynamic_allocation_gradient_audit": {
+      "checks": {
+        "two_optimizer_updates_audited": true,
+        "measured_cube_has_no_allocation_gradient": true,
+        "condition_cube_drives_allocation": true,
+        "radar_encoder_receives_geometry_gradient": true,
+        "every_allocation_layer_receives_condition_gradient": true,
+        "post_allocation_local_path_receives_gradient": true
+      },
+      "passed": true
+    }
+  },
+  "best_epoch": 1,
+  "best_checkpoint_sha256": "3c21f2bf12df8b6f73a255a3638ebdc9616b2a04d65cac198613800699feecb7",
+  "decision": {
+    "protocol": "g1g_condition_exclusive_hierarchy_stage0_v1",
+    "metric_basis": "matched_frame_first_G1D_epoch15_24frame_aggregation",
+    "fixed_controls": {
+      "g1d_epoch15_completeness_m": 3.5811,
+      "required_completeness_improvement_fraction": 0.3,
+      "g1g_completeness_limit_m": 2.50677,
+      "g1d_epoch15_far_completeness_m": 8.1239
+    },
+    "values": {
+      "condition_shuffle_chamfer_fraction_mean": -1.4757213245286671e-05,
+      "duplicate_fraction_0p05m_mean": 0.02024999912828207,
+      "completeness_mean_distance_m_median": 1.459872543811798,
+      "outlier_fraction_2m_mean": 0.9029499888420105,
+      "far_completeness_60_120m_mean": 3.5122973918914795,
+      "center_unique_fraction_0p05m_mean": 1.0
+    },
+    "promotion_checks": {
+      "condition_shuffle_chamfer_degradation_at_least_1pct": false,
+      "duplicate_fraction_at_most_15pct": true,
+      "completeness_at_least_30pct_better_than_g1d_epoch15": true,
+      "outlier_fraction_at_most_25pct": false,
+      "far_completeness_no_worse_than_g1d_epoch15": true
+    },
+    "abandonment_checks": {
+      "at_least_80pct_unique_center_cells_at_5cm": true,
+      "completeness_not_bought_by_outlier_or_far_regression": false
+    },
+    "promotion_passed": false,
+    "abandonment_triggered": true,
+    "passed": false
+  },
+  "test_accessed": false
+}
