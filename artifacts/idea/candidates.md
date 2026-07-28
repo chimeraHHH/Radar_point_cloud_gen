@@ -119,3 +119,27 @@ mechanism is therefore closed as a learned parent even though its internal
 relative boolean passed. An independently defined temporal model may still be
 tested, but it cannot cite G1T as evidence that the current proposal mechanism
 is useful.
+
+### G1D endpoint: failed, bounded repairs closed
+
+The source-`4c6150cd` run completed all 150 epochs, but the selected checkpoint
+remained epoch 15. Corrected endpoint metrics degraded versus that checkpoint:
+median Chamfer `4.4609 -> 5.4221 m`, mean outlier
+`17.8875% -> 24.8396%`, corrected far completeness
+`46.9407 -> 48.5173 m`, and duplicate `26.9721% -> 30.7279%`.
+
+The source-`22f4aa6` D1/D2/D3 diagnostic covered all 24 validation frames and
+23 far-target frames:
+
+- scaling residual offsets below `1.0` always worsened Chamfer and
+  completeness;
+- wrong global condition changed mean Chamfer by `+1.05%`, with a scene-first
+  interval spanning zero;
+- occupancy-only ranking improved mean Chamfer `12.03%` but worsened outliers
+  by `3.00 pp`;
+- even validation-GT ranking on the same 32k pool failed the absolute geometry
+  gate and worsened outliers by `2.42 pp`.
+
+G1D is closed together with offset clipping and same-pool learned ranking.
+Raw artifact: `artifacts/g1/g1d_epoch150_d1_d2_d3_22f4aa6.json`, SHA-256
+`bae5d699a4c3d7be14a446c79aa4293b37509d1467b7b00516b48a3e32066e8c`.

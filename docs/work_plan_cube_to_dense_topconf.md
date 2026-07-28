@@ -42,6 +42,8 @@
 
 > **2026-07-29 G1G 正式终局：**source `c2a0ccb` 的 condition-exclusive `2,500 centers x 4 children` 层级模型在 H200 完成冻结的 20 epochs。结构和动态 anti-bypass 审计全部通过，但科学门失败：condition-shuffle Chamfer 变化为 `-0.1211%`，mean duplicate=`70.8108%`，mean outlier=`84.6854%`；只有 median completeness=`1.2086 m` 和 corrected far completeness=`6.5635 m` 通过相对控制门。该模型以大规模喷点和 child collapse 换取覆盖，且没有学到可靠的 Full-RAED 条件依赖。G1G 不延长训练、不调门、不与其他路线融合；完整记录见 `artifacts/g1/g1g_formal_failure_2026-07-29.md` 和签名 JSON `artifacts/g1/g1g_formal_stage0_decision_c2a0ccb.json`。
 
+> **2026-07-29 G1D v2 正式终局与 D1/D2/D3 诊断：**冻结的 150-epoch H200 Stage A 完成，selected checkpoint 仍为 epoch 15；endpoint 的 corrected median Chamfer 从 `4.4609` 恶化到 `5.4221 m`，mean outlier 从 `17.8875%` 升至 `24.8396%`，mean duplicate 从 `26.9721%` 升至 `30.7279%`，23/23-frame far completeness 从 `46.9407` 恶化至 `48.5173 m`。D1 表明所有小于 1 的 offset scale 都显著恶化 Chamfer/completeness；D2 的 wrong-global-Cube mean Chamfer 变化仅 `+1.05%` 且 scene-first 95% CI 跨零；D3 中 occupancy-only ranking 虽降低 mean Chamfer `12.03%`，却增加 outlier `3.00 pp`，同一 32k pool 上的 validation-GT oracle 仍未过绝对几何门。G1D、offset clipping 和同池 learned ranking 均关闭；完整边界见 `artifacts/g1/g1d_formal_failure_and_factors_2026-07-29.md`。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---
