@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "protocol": "g1r_single_frame_preflight_failure_v1",
+  "source_commit": "078cd1538172a224558330239615e8d9e8365ee6",
+  "device": "NVIDIA H200 NVL",
+  "run_mode": "single_frame_preflight",
+  "preflight_frame": {
+    "sequence": 6,
+    "radar_index": 183
+  },
+  "completed_before_failure": {
+    "frozen_data_contract_validation": true,
+    "train_only_range_energy_calibration": true,
+    "validation_frame_loading": true
+  },
+  "failure": {
+    "exception_type": "ValueError",
+    "message": "G1R range_60_120m has 0 candidates for quota 500",
+    "stage": "fixed_quota_oracle_selection",
+    "candidate_arm_not_emitted_by_failed_script": true
+  },
+  "evidence_boundary": {
+    "scientific_metric_emitted": false,
+    "training_authorized": false,
+    "complete_g1r_route_closed": false,
+    "test_partition_accessed": false,
+    "interpretation": "The preflight exposed an incoherent control-arm capacity assumption; it is not evidence that the range-aware arm fails."
+  },
+  "decision": {
+    "formal_validation_run_authorized": false,
+    "required_before_retry": "Freeze a GT-free candidate-capacity policy for control arms or evaluate the range-aware arm independently.",
+    "post_hoc_quota_relaxation_forbidden": true
+  }
+}
