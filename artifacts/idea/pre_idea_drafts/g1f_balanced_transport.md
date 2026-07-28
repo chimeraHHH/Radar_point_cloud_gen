@@ -14,8 +14,11 @@ queries.
 - Pool: exactly 32,000 unique proposal coordinates per frame.
 - Export: exactly 10,000 points.
 - GT access: allowed only inside this diagnostic upper bound.
-- Selection: range-stratified, capacity-constrained nearest support assignment;
-  repeated selection of one candidate is forbidden.
+- Selection: range-stratified, capacity-one coverage assignment. Every target
+  first votes for its nearest candidate; candidates are ranked by aggregated
+  target confidence mass, weighted assignment distance, and stable candidate
+  index. Remaining quota is filled by nearest target support. Repeated
+  selection of one candidate is forbidden.
 - Report: the complete G1D geometry table, proposal-to-GT recall by range,
   candidate density, and the unattainable oracle label on every output artifact.
 
