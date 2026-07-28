@@ -2,6 +2,7 @@ import ast
 import inspect
 from pathlib import Path
 
+import numpy as np
 import pytest
 import torch
 
@@ -18,6 +19,7 @@ from scripts.train_g1g_hierarchy import (
     dynamic_anti_bypass_checks,
     frozen_config,
     hierarchy_control_point_sets,
+    range_target_frame_identities,
     repeated_control_duplicate_report,
     smoke_cross_scene_indices,
     stage0_decision,
@@ -232,6 +234,7 @@ def test_g1d_control_is_bound_to_checkpoint_evaluator_data_and_frames() -> None:
         "frames": frames,
     }
     data_contract = canonical_data_contract(data_hashes)
+    far_target_identities = validation_records[:20]
     document = {
         "protocol": "g1d_epoch15_corrected_geometry_control_v1",
         "checkpoint": {
@@ -245,6 +248,7 @@ def test_g1d_control_is_bound_to_checkpoint_evaluator_data_and_frames() -> None:
         "evaluator": {"dense_geometry_sha256": "b" * 64},
         "data_contract": data_contract,
         "validation_frame_identities": validation_records,
+        "far_target_frame_identities": far_target_identities,
         "metrics": {
             "frame_count": 24,
             "generated": {
@@ -254,7 +258,7 @@ def test_g1d_control_is_bound_to_checkpoint_evaluator_data_and_frames() -> None:
                 },
                 "range_60_120m_completeness_mean_distance_m": {
                     "mean": 9.0,
-                    "sample_count": 24,
+                    "sample_count": 20,
                 },
             },
         },
@@ -264,6 +268,7 @@ def test_g1d_control_is_bound_to_checkpoint_evaluator_data_and_frames() -> None:
         document,
         expected_data_contract=data_contract,
         expected_validation_records=validation_records,
+        expected_far_target_identities=far_target_identities,
         expected_evaluator_sha256="b" * 64,
     )
     assert validated["checkpoint_sha256"] == "a" * 64
@@ -279,6 +284,7 @@ def test_g1d_control_is_bound_to_checkpoint_evaluator_data_and_frames() -> None:
             bad_evaluator,
             expected_data_contract=data_contract,
             expected_validation_records=validation_records,
+            expected_far_target_identities=far_target_identities,
             expected_evaluator_sha256="b" * 64,
         )
     bad_frames = {
@@ -290,8 +296,28 @@ def test_g1d_control_is_bound_to_checkpoint_evaluator_data_and_frames() -> None:
             bad_frames,
             expected_data_contract=data_contract,
             expected_validation_records=validation_records,
+            expected_far_target_identities=far_target_identities,
             expected_evaluator_sha256="b" * 64,
         )
+
+
+def test_far_target_contract_reads_validation_cache_bytes(tmp_path: Path) -> None:
+    records = [
+        {"sequence": 1, "radar_index": 10},
+        {"sequence": 2, "radar_index": 20},
+    ]
+    np.savez(
+        tmp_path / "seq01_radar_00010.npz",
+        target_xyz_confidence=np.asarray([[30.0, 0.0, 0.0, 1.0]]),
+    )
+    np.savez(
+        tmp_path / "seq02_radar_00020.npz",
+        target_xyz_confidence=np.asarray([[80.0, 0.0, 0.0, 1.0]]),
+    )
+
+    assert range_target_frame_identities(tmp_path, records) == [
+        {"sequence": 2, "radar_index": 20}
+    ]
 
 
 def test_cross_scene_shuffle_is_deterministic_and_never_same_scene() -> None:
@@ -439,9 +465,28 @@ def test_stage0_decision_requires_far_completeness_for_every_frame() -> None:
     decision = stage0_decision(metrics, g1d_control())
 
     assert decision["promotion_checks"][
-        "far_completeness_covers_every_evaluation_frame"
+        "far_completeness_covers_every_far_target_frame"
     ] is False
     assert decision["passed"] is False
+
+
+def test_stage0_far_coverage_counts_only_target_bearing_frames() -> None:
+    metrics = passing_metrics()
+    metrics["generated"][
+        "range_60_120m_completeness_mean_distance_m"
+    ]["sample_count"] = 20
+
+    decision = stage0_decision(
+        metrics,
+        g1d_control(),
+        expected_frame_count=24,
+        expected_far_frame_count=20,
+    )
+
+    assert decision["promotion_checks"][
+        "far_completeness_covers_every_far_target_frame"
+    ] is True
+    assert decision["passed"] is True
 
 
 def test_zero_local_and_child_collapse_controls_are_distinct_fixed_sets() -> None:

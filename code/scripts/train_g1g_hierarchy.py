@@ -382,11 +382,37 @@ def canonical_data_contract(data_hashes: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def range_target_frame_identities(
+    cache_root: Path,
+    records: list[dict],
+    *,
+    lower_m: float = 60.0,
+    upper_m: float = 120.0,
+) -> list[dict[str, int]]:
+    if not 0.0 <= lower_m < upper_m:
+        raise ValueError("G1G target range interval is invalid")
+    identities = []
+    for record in records:
+        cache_path = _cache_path(cache_root, record)
+        with np.load(cache_path) as cache:
+            target_xyz = cache["target_xyz_confidence"][:, :3]
+        target_range = np.linalg.norm(target_xyz, axis=1)
+        if np.any((target_range >= lower_m) & (target_range < upper_m)):
+            identities.append(
+                {
+                    "sequence": int(record["sequence"]),
+                    "radar_index": int(record["radar_index"]),
+                }
+            )
+    return identities
+
+
 def validate_g1d_control(
     document: dict[str, Any],
     *,
     expected_data_contract: dict[str, Any],
     expected_validation_records: list[dict],
+    expected_far_target_identities: list[dict[str, int]],
     expected_evaluator_sha256: str,
 ) -> dict[str, Any]:
     if document.get("protocol") != G1D_CONTROL_PROTOCOL:
@@ -418,6 +444,10 @@ def validate_g1d_control(
     ]
     if document.get("validation_frame_identities") != expected_identities:
         raise ValueError("G1G G1D control validation identities differ")
+    if document.get("far_target_frame_identities") != (
+        expected_far_target_identities
+    ):
+        raise ValueError("G1G G1D control far-target identities differ")
     metrics = document.get("metrics", {})
     if metrics.get("frame_count") != FORMAL_VALIDATION_COUNT:
         raise ValueError("G1G G1D control must evaluate all 24 validation frames")
@@ -429,9 +459,11 @@ def validate_g1d_control(
     )
     if (
         completeness.get("sample_count") != FORMAL_VALIDATION_COUNT
-        or far.get("sample_count") != FORMAL_VALIDATION_COUNT
+        or far.get("sample_count") != len(expected_far_target_identities)
     ):
         raise ValueError("G1G G1D control endpoint sample counts are incomplete")
+    if not expected_far_target_identities:
+        raise ValueError("G1G G1D control has no far-target validation frames")
     return {
         "protocol": G1D_CONTROL_PROTOCOL,
         "checkpoint_source_commit": G1D_CONTROL_SOURCE_COMMIT,
@@ -440,6 +472,7 @@ def validate_g1d_control(
         "completeness_median_m": float(completeness["median"]),
         "far_completeness_mean_m": float(far["mean"]),
         "validation_frame_count": FORMAL_VALIDATION_COUNT,
+        "far_validation_frame_count": len(expected_far_target_identities),
         "evaluator_dense_geometry_sha256": expected_evaluator_sha256,
     }
 
@@ -1023,11 +1056,18 @@ def stage0_decision(
     g1d_control: dict[str, Any],
     *,
     expected_frame_count: int = FORMAL_VALIDATION_COUNT,
+    expected_far_frame_count: int | None = None,
 ) -> dict[str, Any]:
     """Apply the frozen G1G Stage-0 gates without threshold relaxation."""
 
     if expected_frame_count <= 0:
         raise ValueError("G1G expected evaluation frame count must be positive")
+    if expected_far_frame_count is None:
+        expected_far_frame_count = int(
+            g1d_control.get("far_validation_frame_count", expected_frame_count)
+        )
+    if not 0 < expected_far_frame_count <= expected_frame_count:
+        raise ValueError("G1G expected far-target frame count is invalid")
     g1d_completeness = float(g1d_control["completeness_median_m"])
     g1d_far_completeness = float(g1d_control["far_completeness_mean_m"])
     completeness_limit = g1d_completeness * (
@@ -1082,8 +1122,8 @@ def stage0_decision(
             values["far_completeness_60_120m_mean"]
             <= g1d_far_completeness
         ),
-        "far_completeness_covers_every_evaluation_frame": (
-            values["far_completeness_sample_count"] == expected_frame_count
+        "far_completeness_covers_every_far_target_frame": (
+            values["far_completeness_sample_count"] == expected_far_frame_count
         ),
     }
     abandonment_checks = {
@@ -1108,6 +1148,7 @@ def stage0_decision(
         "protocol": PROTOCOL,
         "metric_basis": "matched_frame_first_G1D_epoch15_24frame_aggregation",
         "expected_frame_count": expected_frame_count,
+        "expected_far_target_frame_count": expected_far_frame_count,
         "fixed_controls": {
             "g1d_control_protocol": g1d_control["protocol"],
             "g1d_checkpoint_sha256": g1d_control["checkpoint_sha256"],
@@ -1135,11 +1176,13 @@ def selection_score(
     g1d_control: dict[str, Any],
     *,
     expected_frame_count: int = FORMAL_VALIDATION_COUNT,
+    expected_far_frame_count: int | None = None,
 ) -> float:
     decision = stage0_decision(
         metrics,
         g1d_control,
         expected_frame_count=expected_frame_count,
+        expected_far_frame_count=expected_far_frame_count,
     )
     values = decision["values"]
     controls = decision["fixed_controls"]
@@ -1339,6 +1382,10 @@ def main() -> None:
         g1d_control_document,
         expected_data_contract=canonical_data_contract(data_hashes),
         expected_validation_records=validation_set.records,
+        expected_far_target_identities=range_target_frame_identities(
+            args.cache_root,
+            validation_set.records,
+        ),
         expected_evaluator_sha256=sha256(repo / "code/eval/dense_geometry.py"),
     )
 
@@ -1368,10 +1415,15 @@ def main() -> None:
     cross_scene_condition_indices(
         [validation_set.records[index] for index in validation_indices]
     )
+    used_far_target_identities = range_target_frame_identities(
+        args.cache_root,
+        [validation_set.records[index] for index in validation_indices],
+    )
     exact_counts = {
         **manifest_counts,
         "used_train_frame_count": len(train_indices),
         "used_validation_frame_count": len(validation_indices),
+        "used_far_target_frame_count": len(used_far_target_identities),
         "point_count_per_frame": config.point_count,
         "center_count_per_frame": config.center_count,
         "children_per_center": config.children_per_center,
@@ -1473,6 +1525,9 @@ def main() -> None:
                         initial_metrics,
                         g1d_control,
                         expected_frame_count=len(validation_indices),
+                        expected_far_frame_count=len(
+                            used_far_target_identities
+                        ),
                     ),
                 },
             ),
@@ -1630,11 +1685,13 @@ def main() -> None:
                 metrics,
                 g1d_control,
                 expected_frame_count=len(validation_indices),
+                expected_far_frame_count=len(used_far_target_identities),
             )
             score = selection_score(
                 metrics,
                 g1d_control,
                 expected_frame_count=len(validation_indices),
+                expected_far_frame_count=len(used_far_target_identities),
             )
             record["validation"] = metrics
             record["validation_ema"] = ema_metrics
@@ -1728,6 +1785,7 @@ def main() -> None:
         final_metrics,
         g1d_control,
         expected_frame_count=len(validation_indices),
+        expected_far_frame_count=len(used_far_target_identities),
     )
     final_dynamic_audit = dynamic_anti_bypass_checks(gradient_steps)
     final_anti_bypass = {

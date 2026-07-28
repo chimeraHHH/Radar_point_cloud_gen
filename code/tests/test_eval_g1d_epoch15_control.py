@@ -103,7 +103,7 @@ def test_document_rejects_censored_far_metrics(
             }
         },
     }
-    with pytest.raises(ValueError, match="all 24"):
+    with pytest.raises(ValueError, match="far-target"):
         build_document(
             source_commit="c" * 40,
             source_script=source_script,

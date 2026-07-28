@@ -80,11 +80,25 @@ def build_document(
 ) -> dict[str, Any]:
     if metrics.get("frame_count") != FORMAL_VALIDATION_COUNT:
         raise ValueError("G1D control did not evaluate all validation frames")
+    far_metric = "range_60_120m_completeness_mean_distance_m"
+    far_target_identities = [
+        {
+            "sequence": int(frame["sequence"]),
+            "radar_index": int(frame["radar_index"]),
+        }
+        for frame in metrics.get("frames", [])
+        if far_metric in frame.get("generated", {})
+    ]
     far = metrics.get("generated", {}).get(
-        "range_60_120m_completeness_mean_distance_m", {}
+        far_metric, {}
     )
-    if far.get("sample_count") != FORMAL_VALIDATION_COUNT:
-        raise ValueError("Corrected far completeness must cover all 24 frames")
+    if (
+        not far_target_identities
+        or far.get("sample_count") != len(far_target_identities)
+    ):
+        raise ValueError(
+            "Corrected far completeness must cover every far-target frame"
+        )
     return {
         "schema_version": 1,
         "protocol": G1D_CONTROL_PROTOCOL,
@@ -119,6 +133,7 @@ def build_document(
             }
             for record in validation_records
         ],
+        "far_target_frame_identities": far_target_identities,
         "metrics": metrics,
         "device": device_name,
         "torch_version": torch.__version__,
