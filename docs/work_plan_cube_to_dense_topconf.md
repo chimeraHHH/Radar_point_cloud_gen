@@ -26,6 +26,8 @@
 
 > **2026-07-28 G1D v2 源码与尺度二次修订：**独立子审计发现 `8598871d` 误把 RaLD 的 evaluation BCE 当成 training BCE；官方训练实际为 `0.1 BCE_positive + 1.0 BCE_empty`。同时，epoch-13 checkpoint 的 raw integrated-energy 对 query MLP 第一层贡献为完整 64-bin spectrum 的 `11,053x`；正样本有 cell jitter 而负样本无 jitter，坐标小数相位泄漏标签；condition shuffle 的 16/24 配对仍在同一 sequence。该运行停止于 epoch 13 并标记为无效工程运行，详见 `artifacts/g1/g1d_invalid_8598871_rald_train_loss_and_energy_scale.json`。v2 仅修复已证实的 source-parity/尺度/配对问题：官方 classwise loss、train-only 固定能量标准化、官方默认 occupancy-head 初始化、正负同分布 jitter、确定性跨 scene derangement；数据、架构、几何目标、门槛和 test 锁均不变。v2 必须重新通过完整 H200 回归与扩展 preflight 后才可重新进入 Stage A。
 
+> **2026-07-28 G1D v2 预飞通过：**科学 source `4c6150cd` 在 H200 上通过 `214` 项完整回归和 30/30 扩展 preflight 检查。两帧验证严格跨 scene（seq 6↔55），正负 query fractional-coordinate rate 均为 `1.0`，标准化绝对能量最大值为 `1.879/1.899`，RaLD `0.1/1.0` class weights、66 个 query-state 输入列、64 个 Cube 通道、64 个 radar projection 通道和 24/24 condition blocks 均有有限非零梯度。metrics SHA-256 为 `28ab7130798ba984edaf6f8aef1dc5a87309a861acecbad7e7c630678421f324`，归档于 `artifacts/g1/g1d_preflight_4c6150cd.json`。v2 seed-A 已在 H200 GPU2 运行，尚无科学门控结论。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---
