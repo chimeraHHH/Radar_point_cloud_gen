@@ -34,6 +34,8 @@
 
 > **2026-07-28 长时训练诊断与并行候选冻结：**G1D v2 的中期监控显示最佳 selection 停留在 epoch 15，随后 offset 增长、duplicate/recall 同时上升，而跨 scene condition shuffle 仍接近零；该运行继续原样到冻结终点，不能用中期指标下结论。独立文献、源码和失败机制审计据此冻结四条新路线：G1F 候选池 oracle + balanced transport、G1G condition-exclusive 层级 patch 分配、G1T ego/Doppler 历史 proposal、G1H 等量尾点替换控制。协议见 `artifacts/idea/candidates.md` 和 `artifacts/idea/pre_idea_drafts/`。同时纠正 novelty：Radar-Mamba、RadarMP 和 DoppDrive 已证明多帧雷达增强/聚合并非空白；项目只主张 Full-RAED 条件下稠密几何、逐点圆周 Doppler 分布与置信度的联合状态生成及物理闭环这一限定差异。
 
+> **2026-07-28 G1F 候选池 oracle 终局：**source `ca60d76` 在 H200 上以 GT coverage oracle 从冻结的 32,000 个 G1D proposals 中等量选出 10,000 点。即使允许这一不可实现上限，median Chamfer=`2.8863 m`、median completeness=`1.6513 m`、far completeness=`8.6533 m`、duplicate=`14.015%`，仅 outlier=`24.853%` 过门；60--120 m proposals 的 2 m GT recall 仅 `17.80%`。因此 hard top-k 不是唯一病因，同一候选池上的 G1F-F1 balanced transport 不授权。结果归档于 `artifacts/g1/g1f_f0_ca60d76.json`，SHA-256=`edaf94fa57b324abc3fe853438ed9146671ee8e73494e62339dff47514911320`。下一 learned priority 为改变表示/信息路径的 G1G，G1T 独立检查历史观测能否补足 support。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---

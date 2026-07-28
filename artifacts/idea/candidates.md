@@ -55,3 +55,24 @@ No route may use physical GPU 1. Existing unrelated jobs are not interrupted.
 | G1T Doppler does not beat ego | history cannot justify a Doppler-specific temporal mechanism on this cohort |
 | G1H passes all gates | retain as a strong non-generative control; still require G1G or a new learned family for a method claim |
 | More than one route passes | select by the complete unified gate, then resource cost; do not combine mechanisms until each has an independent ablation |
+
+## Observed Stage-0 results
+
+### G1F-F0: failed, selector-only route closed
+
+Source `ca60d76174b62dd7364285655b7ae25f92700330` evaluated all 24
+validation frames with the explicitly unattainable GT coverage oracle:
+
+| Metric | Oracle result | Gate |
+|---|---:|---:|
+| median Chamfer | `2.8863 m` | `<=2.50 m` |
+| mean outlier fraction | `24.853%` | `<=25%` |
+| median completeness | `1.6513 m` | `<=0.65 m` |
+| mean far completeness | `8.6533 m` | `<=8.0 m` |
+| mean duplicate fraction | `14.015%` | `<=10%` |
+
+Only the outlier gate passed. The full 32k pool had mean far-range GT recall of
+only `17.80%` at 2 m, so the failure is not attributable to the learned hard
+top-k selector alone. G1F-F1 balanced-transport training is not authorized.
+Artifact: `artifacts/g1/g1f_f0_ca60d76.json`, SHA-256
+`edaf94fa57b324abc3fe853438ed9146671ee8e73494e62339dff47514911320`.

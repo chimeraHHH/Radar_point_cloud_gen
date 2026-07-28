@@ -52,3 +52,11 @@ G1F, G1G, and G1T are evaluated independently. Mechanisms are combined only
 after at least one learned geometry family passes its own frozen gate and the
 other component shows an independent positive ablation. G1D v2 continues
 unchanged to epoch 150 as a frozen control.
+
+## First decision
+
+G1F-F0 failed the complete oracle gate on source `ca60d76`: Chamfer `2.8863 m`,
+completeness `1.6513 m`, far completeness `8.6533 m`, and duplicates `14.015%`.
+The selector-only F1 route is closed. G1G remains the primary learned mechanism
+because it changes representation and allocation support; G1T remains an
+independent no-train test of whether history supplies missing support.
