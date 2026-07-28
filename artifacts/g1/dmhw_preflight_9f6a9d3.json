@@ -1,0 +1,280 @@
+{
+  "schema_version": 1,
+  "protocol": "dmhw_direct_multi_horizon_synthetic_h200_preflight_v1",
+  "source_commit": "9f6a9d33925b28c1871a01917faf386f012e383a",
+  "source_hashes": {
+    "code/dmhw/__init__.py": "44696757483bb3c7a16b6e5e2283f3ace572b86e6422ef1e6ca021c484584cfe",
+    "code/dmhw/contracts.py": "cc8fe132edde1b670b88bf5f8a5dc0cc43d9d09649d6317d9f93fe49d83e8f8b",
+    "code/dmhw/synthetic_contract.py": "7e6244ae7b19a6bb8d7e82e74494470151335a3382da70cc02e42e8e537e53d2",
+    "code/models/dmhw_direct_world.py": "340378c0110c7480ebf9d1899c0165fe0b2880e8e637d0a8ba462caa8ebb9387",
+    "code/losses/dmhw_objective.py": "157d23ddeb5a50021bdf1c515e6c2000f5430585d1639b8ddc967e75f510707c",
+    "code/scripts/preflight_dmhw_direct_world.py": "d1bc37e737dc980b745c0c741b2b2c8a8dc36637455eb25f1c4902fd86b9c617",
+    "code/tests/test_dmhw_direct_world.py": "92ea675b622c95eb8978dab5cd7d4c7eab96e08fbc0ffd5d8ec46ae85f3b5722",
+    "docs/dmhw_direct_multi_horizon_stage0.md": "e614b4164e7e66b42a73b778b03dab798d3332de6674d0981256e2b0ec4615b1"
+  },
+  "seed": 20260716,
+  "runtime": {
+    "device": "cuda:0",
+    "device_name": "NVIDIA H200 NVL",
+    "torch_version": "2.12.1+cu130",
+    "elapsed_seconds": 0.3996140300296247,
+    "cuda_peak_allocated_bytes": 10011666432,
+    "cuda_peak_reserved_bytes": 14294188032
+  },
+  "model": {
+    "parameter_count": 490409,
+    "point_count": 10000,
+    "persistent_count": 7000,
+    "birth_count": 3000,
+    "horizons_seconds": [
+      0.5,
+      1.5,
+      2.5
+    ],
+    "input_cube_shape": [
+      2,
+      64,
+      256,
+      107,
+      37
+    ],
+    "history_cube_shape": [
+      2,
+      3,
+      64,
+      256,
+      107,
+      37
+    ]
+  },
+  "loss": {
+    "geometry_chamfer": 6.682674407958984,
+    "inverse_radial": 0.2382231205701828,
+    "motion_cycle": 7.304275999146792e-13,
+    "bounded_residual_regularizer": 0.08384674787521362,
+    "synthetic_doppler_cross_entropy": 1.2482693195343018,
+    "synthetic_confidence_bce": 0.6975010633468628,
+    "total": 7.124886512756348
+  },
+  "gradients": {
+    "current_cube_nonzero_channel_count": 64,
+    "history_cube_nonzero_channel_count": 64,
+    "persistent_doppler_nonzero_row_count": 64,
+    "birth_doppler_nonzero_row_count": 64,
+    "horizon_encoder_gradient_l1": 105.57636141777039
+  },
+  "motion": {
+    "maximum_tangential_speed_mps": 0.5244386196136475,
+    "maximum_radial_correction_mps": 0.05799415335059166,
+    "maximum_tangential_radial_dot": 2.1606683731079102e-07
+  },
+  "interventions": {
+    "wrong_history": {
+      "xyz_mean_abs_delta_m_by_horizon": [
+        1.2053182125091553,
+        3.6409506797790527,
+        6.081319808959961
+      ],
+      "doppler_mean_abs_delta_by_horizon": [
+        0.021875450387597084,
+        0.021875448524951935,
+        0.02187543362379074
+      ],
+      "confidence_mean_abs_delta_by_horizon": [
+        0.0001361569156870246,
+        0.00013798088184557855,
+        0.00012984151544515043
+      ],
+      "combined_delta_by_horizon": [
+        1.2273298501968384,
+        3.662964105606079,
+        6.103324890136719
+      ],
+      "delta_requires_grad": true,
+      "model_gradient_l1": 12.30195509344151,
+      "all_horizons_measurable": true,
+      "finite_nonzero_graph_gradient": true
+    },
+    "zero_history": {
+      "xyz_mean_abs_delta_m_by_horizon": [
+        0.004046052694320679,
+        0.004322902299463749,
+        0.004617947619408369
+      ],
+      "doppler_mean_abs_delta_by_horizon": [
+        1.9066662844124949e-06,
+        1.9065836340814712e-06,
+        1.819420049287146e-06
+      ],
+      "confidence_mean_abs_delta_by_horizon": [
+        4.8203044570982456e-05,
+        4.7128873120527714e-05,
+        3.81143981940113e-05
+      ],
+      "combined_delta_by_horizon": [
+        0.0040961625054478645,
+        0.0043719373643398285,
+        0.004657881334424019
+      ],
+      "delta_requires_grad": true,
+      "model_gradient_l1": 1257.4029327902526,
+      "all_horizons_measurable": true,
+      "finite_nonzero_graph_gradient": true
+    },
+    "doppler_sign_flip": {
+      "xyz_mean_abs_delta_m_by_horizon": [
+        2.5242161750793457,
+        7.5726447105407715,
+        12.621089935302734
+      ],
+      "doppler_mean_abs_delta_by_horizon": [
+        0.021874984726309776,
+        0.021874984726309776,
+        0.021874984726309776
+      ],
+      "confidence_mean_abs_delta_by_horizon": [
+        0.00014845197438262403,
+        0.00015267955313902348,
+        0.00014861291856504977
+      ],
+      "combined_delta_by_horizon": [
+        2.5462396144866943,
+        7.594672203063965,
+        12.64311408996582
+      ],
+      "delta_requires_grad": true,
+      "model_gradient_l1": 0.68535220509502,
+      "all_horizons_measurable": true,
+      "finite_nonzero_graph_gradient": true
+    },
+    "time_disorder": {
+      "xyz_mean_abs_delta_m_by_horizon": [
+        0.0002384533145232126,
+        0.00026095667271874845,
+        0.0002996364491991699
+      ],
+      "doppler_mean_abs_delta_by_horizon": [
+        1.5960496568823146e-07,
+        1.5755810522932734e-07,
+        1.5254937579811667e-07
+      ],
+      "confidence_mean_abs_delta_by_horizon": [
+        5.830201189382933e-06,
+        5.815328677272191e-06,
+        5.2808818509220146e-06
+      ],
+      "combined_delta_by_horizon": [
+        0.0002444431302137673,
+        0.00026692956453189254,
+        0.0003050699015147984
+      ],
+      "delta_requires_grad": true,
+      "model_gradient_l1": 1338.808040462755,
+      "all_horizons_measurable": true,
+      "finite_nonzero_graph_gradient": true
+    },
+    "cube_mismatch": {
+      "xyz_mean_abs_delta_m_by_horizon": [
+        0.0006877821870148182,
+        0.0012872971128672361,
+        0.001998871797695756
+      ],
+      "doppler_mean_abs_delta_by_horizon": [
+        2.919227881648112e-07,
+        2.971279400298954e-07,
+        3.060625886064372e-07
+      ],
+      "confidence_mean_abs_delta_by_horizon": [
+        1.2718946891254745e-05,
+        1.0909363481914625e-05,
+        9.76350565906614e-06
+      ],
+      "combined_delta_by_horizon": [
+        0.000700793054420501,
+        0.0012985036009922624,
+        0.002008941490203142
+      ],
+      "delta_requires_grad": true,
+      "model_gradient_l1": 19.79747677887567,
+      "all_horizons_measurable": true,
+      "finite_nonzero_graph_gradient": true
+    }
+  },
+  "data_supervision_audit": {
+    "protocol": "dmhw_direct_three_horizon_supervision_audit_v1",
+    "manifest": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_ae535ae_parallel_stage0/g4_temporal_manifest_radar_frame.json",
+    "history_frame_count": 3,
+    "horizons_seconds": [
+      0.5,
+      1.5,
+      2.5
+    ],
+    "horizon_tolerance_seconds": 0.05,
+    "example_count": 900,
+    "example_count_by_partition": {
+      "train": 740,
+      "validation": 160
+    },
+    "maximum_horizon_error_seconds": 0.044246673583984375,
+    "future_cube_exposed": false,
+    "test_accessed": false,
+    "raw_input_cube_unique_count": 1035,
+    "raw_input_cube_missing_count": 0,
+    "future_geometry_lidar_unique_count": 1800,
+    "future_geometry_lidar_missing_count": 0,
+    "target_cache_coverage": {
+      "train": {
+        "unique_required_target_count": 1480,
+        "present_target_count": 0,
+        "missing_target_count": 1480,
+        "cache_root_provided": true
+      },
+      "validation": {
+        "unique_required_target_count": 320,
+        "present_target_count": 320,
+        "missing_target_count": 0,
+        "cache_root_provided": true
+      }
+    },
+    "raw_supervision_available": true,
+    "prepared_training_cache_complete": false
+  },
+  "checks": {
+    "h200_device": true,
+    "full_raed_shape": true,
+    "exact_three_horizons": true,
+    "exact_10000_points_each_horizon": true,
+    "persistent_birth_split_7000_3000": true,
+    "persistent_ids_equal_across_horizons": true,
+    "analytic_radial_displacement_present": true,
+    "tangential_projection": true,
+    "bounded_tangential_speed": true,
+    "bounded_radial_correction": true,
+    "finite_loss": true,
+    "all_64_current_cube_channels_receive_gradient": true,
+    "all_64_history_cube_channels_receive_gradient": true,
+    "all_64_persistent_doppler_rows_receive_gradient": true,
+    "all_64_birth_doppler_rows_receive_gradient": true,
+    "all_horizon_encoder_parameters_receive_gradient": true,
+    "five_interventions_measurable_and_differentiable": true,
+    "direct_not_autoregressive": true,
+    "peak_allocated_below_55_gib": true,
+    "peak_reserved_below_65_gib": true
+  },
+  "mechanism_preflight_passed": true,
+  "formal_training_authorized": false,
+  "formal_training_blockers": [
+    "no frozen geometry parent has passed the full project gate",
+    "future birth-point Doppler supervision is unresolved without reading a future Cube",
+    "prepared train/validation dense-target cache is incomplete"
+  ],
+  "route_status": "mechanism_preflight_passed_real_training_locked",
+  "evidence_boundary": {
+    "synthetic_only": true,
+    "real_training_run": false,
+    "real_validation_metric": false,
+    "future_cube_read_by_model": false,
+    "test_accessed": false,
+    "attribute_targets": "synthetic point-aligned labels only; not a real-data claim"
+  }
+}

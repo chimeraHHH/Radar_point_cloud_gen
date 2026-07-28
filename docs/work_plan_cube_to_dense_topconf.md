@@ -48,6 +48,8 @@
 
 > **2026-07-29 R-A1 RaLD-WCE 工程门通过并启动正式 Stage-0：**source `f2a9489` 完成 condition-exclusive coordinate-only field、固定 500k Q0、matched-occupancy 驱动的 200k Q1、same-query wrong-Cube 干预及 5 cm capacity-one exact-10k 导出。H200 上定向测试 `23 passed`、全仓 `380 passed`；full-domain 压测 matched/wrong 均 exact-10k，最小点距 `5.016/5.018 cm`，推理 `0.85 s`，峰值 reserved `2.27 GiB`。两帧 smoke 的 condition 效应只有 `0.0204%`，不构成科学结果。冻结的 20-epoch、76/24-frame 正式 Stage-0 已在物理 GPU2 启动；输出仍仅为 `XYZ+confidence`，Doppler head 后置锁定。
 
+> **2026-07-29 D-MHW 直接多时距机制门通过、真实训练锁定：**source `9f6a9d3` 在 H200 上一次前向同时输出 `0.5/1.5/2.5 s` 三个时距，每个严格 10k，固定 `7k persistent + 3k birth`；persistent 路径强制 ego+Doppler warp，current/history Cube 的 64/64 通道、两类 64-bin Doppler head 及五种历史/条件干预均有有限非零梯度，峰值 reserved `13.31 GiB`。严格 `+/-0.05 s` 的真实数据审计得到 740 个 train 和 160 个 validation anchor，future Cube 与 test 均未读取。但正式训练仍未授权：当前没有通过完整门的 geometry parent，train future-target cache 为 `0/1480`，且 birth Doppler 在禁止未来 Cube 下缺少合法真实监督。签名预飞见 `artifacts/g1/dmhw_preflight_9f6a9d3.json`；该结果只支持计算图可行性。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---
