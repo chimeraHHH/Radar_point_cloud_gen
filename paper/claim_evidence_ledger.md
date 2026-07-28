@@ -1,6 +1,6 @@
 # Claim-Evidence Ledger
 
-> Updated: 2026-07-28 16:30 CST
+> Updated: 2026-07-28 19:30 CST
 > Rule: a claim is paper-eligible only when its frozen gate is complete and the authoritative artifact is recorded here.
 
 ## Claim Matrix
@@ -19,6 +19,7 @@
 | C9 | Separating occupancy training queries from radar-proposal inference queries reduces outliers while retaining fixed-count dense geometry. | G1D: 6.25% occupied and range-stratified reliable-empty queries; RaLD classwise `0.1/1.0` BCE; 32k coarse radar proposals; 2.5k selection; 10k local refinement; absolute and paired control gates over three seeds. | G1D v2 source `4c6150cd` passed expanded preflight; Stage A is running. Earlier runs are audit-only and cannot support the claim. | New independent gate | “We test coarse-to-refine radar query fields as an independently named alternative to failed occupancy ranking.” |
 | C10 | Full-RAED radar-observable state generation jointly produces fixed-count dense geometry, a circular pointwise Doppler distribution, and confidence under spatial and temporal physical closure. | A geometry parent passing the frozen gate; generated Doppler rather than measured-value attachment; Cube reprojection; displacement-Doppler consistency; Radar-Mamba/RadarMP/DoppDrive controls; three seeds and untouched test. | Literature boundary and four Stage-0 geometry candidates frozen on 2026-07-28. No geometry parent has passed, so Doppler and temporal claims remain locked. | Pending, scoped novelty only | “We target joint radar-observable state generation; existing multi-frame enhancement and aggregation are explicit related-work baselines, not claimed as absent.” |
 | C11 | The frozen G1D measurement proposal pool contains enough support for a learned allocation repair. | G1F-F0 GT coverage oracle over exact 32k-to-10k support under the complete geometry gate. | Oracle source `ca60d76` failed Chamfer, completeness, far completeness, and duplicate gates; only outlier passed. | Rejected | “The frozen proposal pool did not support a selector-only repair; balanced-transport training on that pool was not run.” |
+| C12 | Wide continuous spatial queries or Doppler-warped history provide support that is absent from the frozen 32k current-frame pool. | Corrected G1T temporal support; corrected global-support R-A1 initial-query diagnostic; no learned selector claim; complete far-target frame accounting. | Legacy G1T is archived but used a censored far metric. Corrected G1T is running. Initial G1A/G1R implementations are blocked by independent code review and are being repaired before H200 preflight. | Pending, parallel support diagnostics | “We separately test temporal and wide-query support before training a new generator.” |
 
 ## Rejected or Restricted Claims
 
@@ -31,6 +32,7 @@
 | R5 | “The method is the first radar densification model.” | Existing Cube/spectrum-to-point generation work. | Claim only the verified combination and complete a submission-time literature rescan. |
 | R6 | “G4 is successful because temporal output is smoother.” | Static or copied clouds can reduce flicker. | Require current-frame geometry, Doppler refresh, coverage, and rollout stability jointly. |
 | R7 | “The official or matched RaLD checkpoint is a competitive K-Radar main baseline.” | The official checkpoint is ColoRadar/intensity-only and not protocol-matched. The from-scratch matched AE failed its frozen one-frame Chamfer gate after one bounded repair (`9.1444 m` vs `<= 5.0 m`). | Cite RaLD as related work and architecture motivation. Preserve the matched run as a no-go; do not train its EDM or report it as a headline quantitative baseline. |
+| R8 | “Archived `8.x m` far-completeness values represent all far-target validation frames.” | The old evaluator omitted frames that had 60--120 m GT but no same-bin prediction. Corrected G1D epoch-15 covers 23/23 far-target frames and gives `46.9407 m`, versus the censored `8.1239 m`. | Do not cite any old far-completeness value. Re-evaluate every parent/control with source `1561ac3` or later before freezing a new absolute far gate. |
 
 ## Gate-to-Artifact Map
 
@@ -44,6 +46,9 @@
 | G1D | `docs/g1d_rald_query_field_protocol.md`; `docs/g1d_rald_source_map.md`; invalid-run records `artifacts/g1/g1d_invalid_d0c8c6f_loss_normalization.json` and `artifacts/g1/g1d_invalid_8598871_rald_train_loss_and_energy_scale.json`; v2 preflight `artifacts/g1/g1d_preflight_4c6150cd.json` | `d0c8c6fb` and `8598871d` are invalid engineering runs, not scientific failures. G1D v2 source `4c6150cd` passed H200 regression (`214 passed`) and 30/30 preflight checks; Stage A seed 20260716 is running with no scientific gate result yet. |
 | G1E | `docs/g1e_rald_latent_edm_protocol.md`; `artifacts/g1/g1e_d0_da6f8a5f.json`; archived R1 checkpoints and gate records under `artifacts/baselines/rald/` | D0 failed both arms while preserving source, frame, query counts, latent-only decoding, and the test lock. E1/E2 are not authorized. |
 | G1F | `artifacts/idea/pre_idea_drafts/g1f_balanced_transport.md`; `artifacts/g1/g1f_f0_ca60d76.json` | Explicitly unattainable GT coverage oracle failed the complete geometry gate; F1 selector training is closed. |
+| Corrected G1D control | `artifacts/g1/g1d_epoch15_corrected_geometry_control_1561ac3.json`; SHA-256 `56a0343745f29bb7ecb2f9176b4527435db97f14bd510ed2f03e5d0c9d0e3fd7` | Frozen epoch-15 EMA, same 24 validation frames and data bytes; completeness median `3.5637 m`; 23/23 far-target frames, far mean `46.9407 m`. This is the only matched Stage-0 control. |
+| G1G | `artifacts/g1/g1g_corrected_smoke_decision_1561ac3.json`; `artifacts/g1/g1g_corrected_smoke_best_1561ac3.json` | Corrected two-update H200 smoke passed static/dynamic anti-bypass and artifact contracts. Smoke metrics are engineering-only; formal 20-epoch result pending. |
+| G1T | `artifacts/g1/g1t_temporal_proposal_legacy_ae535ae.json` | Legacy 352-frame run is diagnostic-only because its far metric censored 40 frames. Corrected source `1561ac3` rerun pending. |
 | G2/G3 | Original `formal_28d69a0_g2_g3` queue | Not unlocked and permanently closed after G1 failure; any successor must be named G2R/G3R |
 | G4 data | `artifacts/g4/g4_temporal_manifest_a7d06db1.json`; server download summary `g4_temporal_download_w48/manifests/summary.json` | 45/45 requested sequences downloaded, no failures, about 601 GB; final source-bound CRC audit pending |
 | G4/G4R | Old server route `formal_206ffeb_g4` is closed. The source- and hash-bound RaLD-native cache/train/preflight/baseline/rollout/compare/queue chain is implemented. | Old queue must not train; new G4R queue awaits passing G3R and 45/45 verified sequences |
