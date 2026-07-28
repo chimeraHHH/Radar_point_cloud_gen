@@ -1,0 +1,33 @@
+{
+  "protocol": "g1d_rald_query_field_preflight_v1",
+  "source_commit": "d0c8c6fb7b5f746bb4f106d6ac0cb0eff572f36c",
+  "run": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_d0c8c6f_g1d_rald_query_field/g1d_preflight_d0c8c6fb",
+  "metrics": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_d0c8c6f_g1d_rald_query_field/g1d_preflight_d0c8c6fb/best_validation_metrics.json",
+  "metrics_sha256": "c8895804bf983a5b4911d84f1bf211e461e812997442164bef6b46100c9142b2",
+  "checks": {
+    "two_optimizer_steps": true,
+    "formal_depth_24": true,
+    "formal_model_dim_512": true,
+    "formal_latent_count_512": true,
+    "occupancy_queries_10000": true,
+    "positive_queries_625": true,
+    "recorded_occupancy_queries_10000": true,
+    "recorded_positive_queries_625": true,
+    "recorded_empty_queries_9375": true,
+    "fixed_10000_points": true,
+    "full_raed_336_tokens": true,
+    "coarse_query_count_32000": true,
+    "selected_coarse_count_2500": true,
+    "deterministic_proposal_cache_used": true,
+    "first_step_output_head_gradient": true,
+    "second_step_mixed_latent_gradient": true,
+    "second_step_query_decoder_gradient": true,
+    "second_step_full_raed_gradient": true,
+    "all_cube_channels_gradient": true,
+    "all_local_spectrum_columns_gradient": true,
+    "all_radar_projection_columns_gradient": true,
+    "all_24_condition_blocks_gradient": true
+  },
+  "passed": true,
+  "test_accessed": false
+}
