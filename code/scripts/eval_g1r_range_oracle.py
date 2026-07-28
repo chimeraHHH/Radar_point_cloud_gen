@@ -409,6 +409,10 @@ def evaluate_frame(
         expected_parent_counts
     ):
         raise AssertionError("G1R-R0 lost its frozen parent candidate quotas")
+    if arms["range_aware"]["candidate_actual_range_count"] != (
+        expected_parent_counts
+    ):
+        raise AssertionError("G1R-R0 lost its physical candidate range quotas")
     expected_selected_counts = {
         label: quota
         for (label, _, _), quota in zip(RANGE_BINS_M, EXPORT_QUOTAS)
@@ -595,6 +599,16 @@ def stage0_decision(metrics: dict, frames: list[dict]) -> dict[str, Any]:
             == CANDIDATE_PARENT_QUOTAS
             for frame in frames
         ),
+        "range_aware_actual_candidate_quota_exact": all(
+            tuple(
+                frame["arms"]["range_aware"]["candidate_actual_range_count"][
+                    label
+                ]
+                for label, _, _ in RANGE_BINS_M
+            )
+            == CANDIDATE_PARENT_QUOTAS
+            for frame in frames
+        ),
         "all_selected_range_quotas_exact": all(
             tuple(
                 arm["selected_actual_range_count"][label]
@@ -732,7 +746,8 @@ def main() -> None:
             "vanilla": "g1d_stable_energy_nms_5x5x3",
             "z_only": "calibrated_energy_with_g1d_compatible_nms_5x5x3",
             "range_aware": (
-                "calibrated_energy_fixed_range_quota_physical_nms"
+                "calibrated_energy_fixed_range_quota_physical_nms_"
+                "template_safe_parents"
             ),
             "physical_nms_lateral_radius_m": LATERAL_NMS_RADIUS_M,
             "physical_nms_radial_radius_m": RADIAL_NMS_RADIUS_M,
@@ -794,4 +809,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

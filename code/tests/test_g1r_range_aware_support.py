@@ -12,6 +12,7 @@ from eval.g1r_range_aware_support import (
     range_aware_proposal_indices,
     select_fixed_quota_support_oracle,
     stable_score_proposal_indices,
+    template_safe_range_mask,
 )
 from models.rald_query_field import (
     integrated_log_energy,
@@ -95,7 +96,7 @@ def test_physical_angular_nms_shrinks_with_range() -> None:
 
 
 def test_range_aware_selector_obeys_supplied_bin_quotas() -> None:
-    range_m = torch.tensor([10.0, 20.0, 40.0, 50.0, 80.0, 100.0])
+    range_m = torch.arange(0.5, 120.0, 0.5)
     azimuth = torch.linspace(-0.4, 0.4, 17)
     elevation = torch.linspace(-0.2, 0.2, 9)
     score = torch.arange(
@@ -123,6 +124,23 @@ def test_range_aware_selector_obeys_supplied_bin_quotas() -> None:
     assert selected.shape == (1, 6)
     assert torch.unique(selected).numel() == 6
     assert counts == (3, 2, 1)
+    safe = template_safe_range_mask(range_m)
+    assert bool(safe[radial_index].all())
+
+
+def test_template_safe_mask_excludes_range_quota_boundaries() -> None:
+    range_m = torch.arange(0.5, 120.0, 0.5)
+    safe = template_safe_range_mask(range_m)
+    index_30m = int(torch.argmin((range_m - 30.0).abs()))
+    index_60m = int(torch.argmin((range_m - 60.0).abs()))
+
+    assert not bool(safe[index_30m])
+    assert not bool(safe[index_30m - 1])
+    assert not bool(safe[index_60m])
+    assert not bool(safe[index_60m - 1])
+    assert bool(safe[int(torch.argmin((range_m - 20.0).abs()))])
+    assert bool(safe[int(torch.argmin((range_m - 40.0).abs()))])
+    assert bool(safe[int(torch.argmin((range_m - 80.0).abs()))])
 
 
 def _full_candidate_pool() -> ExpandedCandidatePool:
@@ -191,4 +209,3 @@ def test_fixed_weight_rescaling_and_reused_g1f_oracle_lock_export_quotas() -> No
     assert result.selected_xyz_m.shape == (10_000, 3)
     assert selected_counts == EXPORT_QUOTAS
     assert CANDIDATE_PARENT_QUOTAS == (24_000, 6_400, 1_600)
-

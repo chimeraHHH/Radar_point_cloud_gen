@@ -37,6 +37,7 @@ CANDIDATE_PARENT_QUOTAS = (24_000, 6_400, 1_600)
 EXPORT_QUOTAS = (7_500, 2_000, 500)
 LATERAL_NMS_RADIUS_M = 1.0
 RADIAL_NMS_RADIUS_M = 1.0
+COARSE_TEMPLATE_RADIAL_RADIUS_BINS = 2
 CALIBRATION_EPSILON = 1e-6
 ORACLE_ARTIFACT_LABEL = "g1r_r0_unattainable_gt_support_oracle"
 
@@ -321,6 +322,33 @@ def _range_bin_ids(range_m: torch.Tensor) -> torch.Tensor:
     return ids
 
 
+def template_safe_range_mask(
+    range_m: torch.Tensor,
+    *,
+    template_radius_bins: int = COARSE_TEMPLATE_RADIAL_RADIUS_BINS,
+) -> torch.Tensor:
+    """Mark parent cells whose complete G1D range template stays in one bin."""
+
+    if range_m.ndim != 1 or range_m.numel() < 2:
+        raise ValueError("G1R template-safe mask requires a nontrivial range axis")
+    if template_radius_bins < 0:
+        raise ValueError("G1R template radial radius cannot be negative")
+    radial = range_m.detach().cpu().double()
+    if not bool((torch.diff(radial) > 0.0).all()):
+        raise ValueError("G1R requires a strictly increasing range axis")
+    indices = torch.arange(radial.numel())
+    lower_index = (indices - template_radius_bins).clamp_min(0)
+    upper_index = (indices + template_radius_bins).clamp_max(
+        radial.numel() - 1
+    )
+    lower_value = radial[lower_index]
+    upper_value = radial[upper_index]
+    safe = torch.zeros(radial.numel(), dtype=torch.bool)
+    for _, lower, upper in RANGE_BINS_M:
+        safe |= (lower_value >= lower) & (upper_value < upper)
+    return safe
+
+
 def range_aware_proposal_indices(
     score_brae: torch.Tensor,
     range_m: torch.Tensor,
@@ -357,6 +385,7 @@ def range_aware_proposal_indices(
     order = torch.argsort(flat_score, dim=1, descending=True, stable=True)
     radial_axis = range_m.detach().cpu().double()
     radial_bin = _range_bin_ids(range_m)
+    template_safe = template_safe_range_mask(range_m)
     range_count, azimuth_count, elevation_count = spatial_shape
     plane_count = azimuth_count * elevation_count
     transfer_chunk = min(spatial_count, 65_536)
@@ -377,6 +406,8 @@ def range_aware_proposal_indices(
             for raw_flat_index in ranked:
                 flat_index = int(raw_flat_index)
                 radius_index = flat_index // plane_count
+                if not bool(template_safe[radius_index]):
+                    continue
                 bin_index = int(radial_bin[radius_index].item())
                 if bin_counts[bin_index] >= seed_quotas[bin_index]:
                     continue
@@ -579,4 +610,3 @@ def range_count_report(
         label: int(((radius >= lower) & (radius < upper)).sum().item())
         for label, lower, upper in RANGE_BINS_M
     }
-

@@ -64,6 +64,7 @@ def _arm(
         "candidate_count": 32_000,
         "selected_count": 10_000,
         "candidate_parent_range_count": parent,
+        "candidate_actual_range_count": parent,
         "selected_actual_range_count": selected,
         "geometry": _geometry(
             completeness=completeness,
@@ -276,4 +277,3 @@ def test_source_map_covers_all_four_new_files_and_reused_metrics() -> None:
     ):
         assert str((repo / relative).resolve()) in paths
     assert all(record["sha256"] for record in hashes.values())
-
