@@ -67,11 +67,18 @@ ambiguous region are K-Radar adaptations for its 120 m view. Validation queries
 are deterministically seeded by `(sequence, radar_index)` and are never
 resampled for checkpoint comparison.
 
-Occupancy supervision follows the released RaLD weighting:
+Occupancy supervision follows the released RaLD implementation:
 
 ```text
-L_occ = 1.0 * BCE_positive + 0.1 * BCE_empty.
+L_occ = BCEWithLogits(all 625 occupied + 9,375 empty queries).
 ```
+
+RaLD encodes the class balance through the fixed 6.25%/93.75% query sampling
+ratio and applies one unweighted mean BCE over the concatenated labels
+(`engine_ae.py:159,211`; `engine_generation.py:141,227`). G1D must not take
+separate class means or add another positive/negative weight, because doing so
+would erase the released loss normalization and bias a constant predictor
+toward occupied space.
 
 ## Inference queries
 

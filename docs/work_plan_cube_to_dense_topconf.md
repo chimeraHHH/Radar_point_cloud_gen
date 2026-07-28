@@ -20,6 +20,8 @@
 
 > **2026-07-28 G1D 预飞通过：**初始提交 `bd23a4f2` 通过结构预飞，但首次 seed-A 在产生任何 epoch 指标前因重复 CPU NMS 的性能审计被停止。数学等价的离散 proposal-index cache 随后加入；提交 `d0c8c6fb` 在 H200 上通过 `212` 项回归和新预飞。实测 148.37M 参数，625/9,375 正负查询、336 radar tokens、32,000/2,500/10,000 粗选与精修计数全部匹配；cache 确实启用，64 个 Cube 输入通道、64 个局部频谱列、64 个 radar projection 列和 24/24 condition blocks 在第二步均有有限非零梯度。最终预飞归档于 `artifacts/g1/g1d_preflight_d0c8c6fb.json`；seed-A 150-epoch Stage A 已在 H200 GPU2 运行。预飞指标不用于科学门控结论。
 
+> **2026-07-28 G1D RaLD 损失归一化修订：**对官方 RaLD `ffec4b4` 的二次核对确认，其 6.25% occupied / 93.75% empty 查询在拼接后直接进入一次未加权 `BCEWithLogitsLoss`；`d0c8c6fb` 错误地对两类分别求均值并施加 `1.0/0.1`，导致常数预测的理论最优偏向 occupied。该 seed-A 在 epoch 5 出现 occupancy recall/FPR=`1.0/1.0` 后停止于 epoch 7，标记为协议无效的工程运行，不构成 G1D 科学失败，详见 `artifacts/g1/g1d_invalid_d0c8c6f_loss_normalization.json`。G1D 将从采用全 query BCE 的新 source-bound snapshot 重新执行测试、预飞和 Stage A；原预飞仅保留为历史结构证据。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---

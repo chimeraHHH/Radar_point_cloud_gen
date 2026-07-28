@@ -16,6 +16,7 @@ responsible for testing latent diffusion.
 | RaLD mechanism | Upstream source | G1D realization | Verification |
 |---|---|---|---|
 | Occupied and empty arbitrary queries | `datasets/aligned_coloradar/Coloradar_dataset.py:237-294`; `configs/generation/ge_indoor_cfg_aniso_mix_view_cone_unfreeze_enc_ints_only.yml:45-46` | Exactly 625 occupied and 9,375 reliable-empty RAE queries per frame | Per-frame count records, occupancy recall/FPR, sampler tests |
+| Query-ratio-normalized occupancy loss | `engine_ae.py:159,211`; `engine_generation.py:141,227` | One unweighted mean BCE over all 10,000 concatenated query labels | Loss equivalence and constant-logit gradient tests |
 | Static and input-dependent dynamic latents | `model/models_ae.py:322-387` | `Qd` cross-attends radar-proposal tokens; `Proj(Qs + Qd)` | Mixed-latent gradient gate |
 | Post-mix input cross-attention and FFN | `model/models_ae.py:392-396` | Residual proposal cross-attention followed by FFN | Module gradient gate |
 | Arbitrary spatial query decoder | `model/models_ae.py:408-424` | RAE query embeddings cross-attend the latent set and emit occupancy, confidence, and bounded offset | Query decoder gradient and arbitrary-query tests |

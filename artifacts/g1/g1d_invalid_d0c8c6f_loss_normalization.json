@@ -1,0 +1,20 @@
+{
+  "status": "invalid_engineering_run",
+  "eligible_for_scientific_gate": false,
+  "source_commit": "d0c8c6fb7b5f746bb4f106d6ac0cb0eff572f36c",
+  "rald_source_commit": "ffec4b41241391734b1eda5c093de843c909eb8e",
+  "seed": 20260716,
+  "stopped_after_epoch": 7,
+  "stopped_at_utc": "2026-07-28T10:03:36Z",
+  "reason": "The run took separate positive and negative BCE means and applied 1.0/0.1 weights. The released RaLD code applies one unweighted BCEWithLogitsLoss over concatenated queries, so the run erased the intended 6.25/93.75 sample-ratio normalization and biased occupancy toward all-positive predictions.",
+  "observed_epoch_5_diagnostic": {
+    "median_chamfer_m": 7.408042907714844,
+    "mean_outlier_fraction_2m": 0.38803332569538423,
+    "positive_recall": 1.0,
+    "empty_false_positive_rate": 1.0
+  },
+  "server_run": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_d0c8c6f_g1d_rald_query_field/g1d_seed20260716_d0c8c6fb",
+  "server_config_sha256": "ba49d197db7f727ac03dce681f88528550640159f2bd6d4dd0cb43169797c533",
+  "server_train_log_sha256": "65f4bffff27dacd0ec2e2a5484f3a6170dd73975da226c3061e4ea8081c6c99c",
+  "disposition": "Keep logs and checkpoints for audit only. Do not resume, select, compare, or cite them as G1D results. Re-run tests, preflight, and Stage A from a new source-bound snapshot with RaLD-equivalent all-query BCE."
+}

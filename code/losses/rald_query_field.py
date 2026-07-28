@@ -2,8 +2,7 @@
 
 The default objective is
 
-    1.00 * positive BCE
-  + 0.10 * negative BCE
+    1.00 * BCE over all sampled queries
   + 1.00 * geometry Chamfer
   + 0.25 * 2 m outlier hinge
   + 0.10 * confidence existence
@@ -398,8 +397,6 @@ def rald_query_field_loss(
     target_xyz_confidence: torch.Tensor,
     *,
     generated_point_count: int = DEFAULT_QUERY_COUNT,
-    positive_weight: float = 1.0,
-    negative_weight: float = 0.1,
     geometry_weight: float = 1.0,
     outlier_weight: float = 0.25,
     existence_weight: float = 0.10,
@@ -421,8 +418,6 @@ def rald_query_field_loss(
     ):
         raise ValueError("generated_point_count must be an integer of at least two")
     scalar_values = {
-        "positive_weight": positive_weight,
-        "negative_weight": negative_weight,
         "geometry_weight": geometry_weight,
         "outlier_weight": outlier_weight,
         "existence_weight": existence_weight,
@@ -529,6 +524,10 @@ def rald_query_field_loss(
         query_logits[negative_mask],
         labels[negative_mask],
     )
+    occupancy_bce = F.binary_cross_entropy_with_logits(
+        query_logits,
+        labels,
+    )
 
     prediction_to_target = _nearest_assignment(
         generated_xyz,
@@ -566,8 +565,7 @@ def rald_query_field_loss(
     ).square().mean()
 
     total = (
-        positive_weight * positive_bce
-        + negative_weight * negative_bce
+        occupancy_bce
         + geometry_weight * chamfer
         + outlier_weight * outlier_hinge
         + existence_weight * existence
@@ -575,6 +573,7 @@ def rald_query_field_loss(
         + repulsion_weight * repulsion
     )
     components = {
+        "occupancy_bce": occupancy_bce.detach(),
         "occupancy_positive_bce": positive_bce.detach(),
         "occupancy_negative_bce": negative_bce.detach(),
         "geometry_chamfer": chamfer.detach(),

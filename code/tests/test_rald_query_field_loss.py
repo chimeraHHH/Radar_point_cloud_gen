@@ -1,3 +1,5 @@
+import math
+
 import pytest
 import torch
 import torch.nn.functional as F
@@ -239,10 +241,37 @@ def test_query_field_loss_splits_positive_and_negative_bce() -> None:
         result.components["occupancy_negative_bce"],
         expected_negative,
     )
+    expected_all = F.binary_cross_entropy_with_logits(logits, labels)
     torch.testing.assert_close(
-        result.total,
-        expected_positive + 0.1 * expected_negative,
+        result.components["occupancy_bce"],
+        expected_all,
     )
+    torch.testing.assert_close(result.total, expected_all)
+
+
+def test_query_field_occupancy_bce_preserves_rald_sample_ratio() -> None:
+    labels = torch.cat((torch.ones(1), torch.zeros(15)))
+    logits = torch.zeros(16, requires_grad=True)
+    xyz = torch.arange(16, dtype=torch.float32)[:, None].repeat(1, 3)
+    target = torch.cat((xyz[:4], torch.ones(4, 1)), dim=1)
+
+    result = rald_query_field_loss(
+        _loss_output(logits, xyz),
+        labels,
+        target,
+        generated_point_count=16,
+        geometry_weight=0.0,
+        outlier_weight=0.0,
+        existence_weight=0.0,
+        offset_weight=0.0,
+        repulsion_weight=0.0,
+        distance_chunk_size=4,
+    )
+    result.total.backward()
+
+    torch.testing.assert_close(result.total, torch.tensor(math.log(2.0)))
+    assert logits.grad is not None
+    assert float(logits.grad.sum()) > 0.0
 
 
 def test_query_field_loss_gradients_reach_logits_and_generated_xyz() -> None:

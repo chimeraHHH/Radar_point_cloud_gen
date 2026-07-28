@@ -73,8 +73,6 @@ class TrainConfig:
     nms_kernel: tuple[int, int, int]
     offset_bounds_bins: tuple[float, float, float]
     decode_chunk_size: int
-    positive_occupancy_weight: float
-    negative_occupancy_weight: float
     geometry_weight: float
     outlier_weight: float
     existence_weight: float
@@ -299,6 +297,9 @@ def occupancy_report(logits: torch.Tensor, labels: torch.Tensor) -> dict[str, fl
     negative_bce = torch.nn.functional.binary_cross_entropy_with_logits(
         logits[negative], labels[negative]
     )
+    occupancy_bce = torch.nn.functional.binary_cross_entropy_with_logits(
+        logits, labels
+    )
     return {
         "positive_recall": float(prediction[positive].float().mean().item()),
         "empty_false_positive_rate": float(
@@ -306,7 +307,7 @@ def occupancy_report(logits: torch.Tensor, labels: torch.Tensor) -> dict[str, fl
         ),
         "positive_bce": float(positive_bce.item()),
         "negative_bce": float(negative_bce.item()),
-        "weighted_bce": float((positive_bce + 0.1 * negative_bce).item()),
+        "occupancy_bce": float(occupancy_bce.item()),
     }
 
 
@@ -412,8 +413,8 @@ def evaluate(
         shuffled_occupancy = occupancy_report(
             shuffled_output["training_query_occupancy_logit"][0], labels
         )
-        current_weighted_bce = occupancy["weighted_bce"]
-        shuffled_weighted_bce = shuffled_occupancy["weighted_bce"]
+        current_occupancy_bce = occupancy["occupancy_bce"]
+        shuffled_occupancy_bce = shuffled_occupancy["occupancy_bce"]
         current_chamfer = generated["chamfer_m"]
         shuffled_chamfer = shuffled_geometry["chamfer_m"]
         frame = {
@@ -429,7 +430,7 @@ def evaluate(
             "occupancy": occupancy,
             "condition_shuffled_occupancy": shuffled_occupancy,
             "condition_shuffle_occupancy_bce_fraction": float(
-                shuffled_weighted_bce / max(current_weighted_bce, 1e-12) - 1.0
+                shuffled_occupancy_bce / max(current_occupancy_bce, 1e-12) - 1.0
             ),
             "condition_shuffle_chamfer_fraction": float(
                 shuffled_chamfer / max(current_chamfer, 1e-12) - 1.0
@@ -692,8 +693,6 @@ def main() -> None:
         nms_kernel=(5, 5, 3),
         offset_bounds_bins=(8.0, 4.0, 2.0),
         decode_chunk_size=4_096,
-        positive_occupancy_weight=1.0,
-        negative_occupancy_weight=0.1,
         geometry_weight=1.0,
         outlier_weight=0.25,
         existence_weight=0.10,
@@ -861,8 +860,6 @@ def main() -> None:
                     labels,
                     target,
                     generated_point_count=config.point_count,
-                    positive_weight=config.positive_occupancy_weight,
-                    negative_weight=config.negative_occupancy_weight,
                     geometry_weight=config.geometry_weight,
                     outlier_weight=config.outlier_weight,
                     existence_weight=config.existence_weight,
