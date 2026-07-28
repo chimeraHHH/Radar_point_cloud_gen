@@ -28,6 +28,8 @@
 
 > **2026-07-28 G1D v2 预飞通过：**科学 source `4c6150cd` 在 H200 上通过 `214` 项完整回归和 30/30 扩展 preflight 检查。两帧验证严格跨 scene（seq 6↔55），正负 query fractional-coordinate rate 均为 `1.0`，标准化绝对能量最大值为 `1.879/1.899`，RaLD `0.1/1.0` class weights、66 个 query-state 输入列、64 个 Cube 通道、64 个 radar projection 通道和 24/24 condition blocks 均有有限非零梯度。metrics SHA-256 为 `28ab7130798ba984edaf6f8aef1dc5a87309a861acecbad7e7c630678421f324`，归档于 `artifacts/g1/g1d_preflight_4c6150cd.json`。v2 seed-A 已在 H200 GPU2 运行，尚无科学门控结论。
 
+> **2026-07-28 RaLD 核心机制后继冻结：**进一步源码审计确认 G1D 仍是 deterministic `512 x 512` query refiner，直接 local-Cube query state 可绕过全局 condition；它没有 RaLD 的 `512 x 32` target posterior、EDM 噪声建模或 latent-only implicit decoder。为避免把“借鉴 RaLD”退化为堆叠同类 Transformer，在观察 G1D Stage-A 结果前冻结独立 [`G1E RaLD latent-EDM`](g1e_rald_latent_edm_protocol.md)。G1E 先用既有 R1 checkpoints 做 proposal-support D0 诊断；仅当长量程查询分配可将 archived Chamfer 改善至少 30% 且达到 `<=5 m` 时，才依次训练 source-faithful occupancy VAE 与 Full-RAED-conditioned EDM。D0 不读取 test、不使用 CFAR、不加载 learned G1D。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---
@@ -577,7 +579,7 @@ independently gated geometry parent
 - **G1 失败（已触发）**：原 G2/G3 链永久停止；当前只进入独立 G1B，禁止放宽原门槛或把后续分支称为 G1 recovery。
 - **G1B 失败**：关闭当前 occupancy geometry family，不运行 RH/G2R/G3R/G4R；下一路线必须重新提出独立协议。
 - **G1C 未产生科学结果（已触发）**：调度失败后在源码审计阶段被 G1D 取代，不能用于任何性能结论。
-- **G1D 失败**：当前 Cube-to-dense 单帧几何路线终止，不再增加有界修复或接触 P5 test；只保留负结果、实现资产和论文/报告收口。
+- **G1D 失败**：deterministic direct-query family 终止，不再增加 G1D 有界修复。允许执行结果前已冻结的 G1E-D0，因为它只诊断 RaLD latent-only decoder 的长量程 proposal support；D0 失败则全部单帧几何路线终止。
 - **RH 失败**：RaLD-anchor late fusion 关闭，不能仅凭 RH0 结构验证形成方法主张。
 - **G2 失败**：Doppler head 不优于简单回归，重新检查频谱查询和标签定义。
 - **G3 失败**：Cube cycle 没有独立贡献，停止“顶会创新已成立”的表述，重设计闭环或转为应用型工作。
@@ -613,6 +615,7 @@ independently gated geometry parent
 - [x] 完成 G1C 实现与调度修复；在任何科学训练结果产生前，经 RaLD 源码审计判定其仅适合作为 deterministic control。
 - [x] 完成 G1D H200 正式尺寸预飞；结构、查询计数、逐层条件梯度和 source-bound provenance 全部通过。
 - [ ] 按冻结协议完成独立 G1D RaLD query-field Stage A；仅在通过后运行 Stage B 和新命名 G2D/G3D。
+- [ ] 完成 G1E-D0 retrospective proposal-support 诊断；只有 D0 通过才实现并训练 source-faithful `512 x 32` VAE 与 Full-RAED EDM。
 - [x] 建立 RaLD-structured G4R 的预测缓存、token/latent/query 训练、基线、
   preflight、rollout、比较与总队列；严格等待 G3R checkpoint family。
 - [x] 实现 G3L 的 `512 x 32` physical posterior、anchor-only 24-layer decoder、
