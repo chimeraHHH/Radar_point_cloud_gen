@@ -1,0 +1,108 @@
+{
+  "candidate_preflight_gate": {
+    "checks": {
+      "candidate_count_exact": true,
+      "candidate_range_quotas_exact": true,
+      "candidate_voxel_ids_unique": true,
+      "target_confidence_coverage_at_least_30pct": true,
+      "target_occupied_voxel_recall_at_least_20pct": false
+    },
+    "passed": false
+  },
+  "candidate_structure": {
+    "candidate_count": 20000,
+    "candidate_voxel_count_by_range": [
+      16000,
+      3400,
+      600
+    ],
+    "unique_candidate_voxel_count": 20000
+  },
+  "candidate_support": {
+    "frames": [
+      {
+        "represented_target_occupied_voxel_count": 416,
+        "target_confidence_coverage": 0.316908449077859,
+        "target_occupied_voxel_count": 3790,
+        "target_occupied_voxel_recall": 0.10976253298153034,
+        "target_point_count": 10436
+      }
+    ],
+    "minimum_target_confidence_coverage": 0.316908449077859,
+    "minimum_target_occupied_voxel_recall": 0.10976253298153034
+  },
+  "config": {
+    "candidate_voxel_quotas": [
+      16000,
+      3400,
+      600
+    ],
+    "cfar_accessed": false,
+    "cube_only_inference": true,
+    "depth": 4,
+    "evaluation_frame_count": 1,
+    "evaluation_interval_updates": 50,
+    "future_cube_accessed": false,
+    "gradient_clip_norm": 10.0,
+    "hidden_dim": 192,
+    "learning_rate": 0.0003,
+    "maximum_chamfer_m": 1.0,
+    "maximum_completeness_mean_m": 0.75,
+    "maximum_neighbor_radius": 4,
+    "maximum_outlier_fraction_2m": 0.1,
+    "maximum_updates": 500,
+    "minimum_candidate_confidence_coverage": 0.3,
+    "minimum_candidate_occupied_voxel_recall": 0.2,
+    "minimum_export_distance_m": 0.05,
+    "numeric_mode": "fp32_parameters_bf16_cuda_autocast",
+    "output_point_quotas": [
+      8000,
+      1700,
+      300
+    ],
+    "protocol": "rb2_cube_only_voxel_slot_tiny_v1",
+    "required_consecutive_gate_passes": 2,
+    "seed": 20260716,
+    "seed_multiplier": 8,
+    "slots_per_voxel": 4,
+    "target_used_for_candidate_or_export": false,
+    "test_accessed": false,
+    "train_frame_count": 1,
+    "voxel_size_m": 0.4,
+    "weight_decay": 0.0001
+  },
+  "decision": "no_go_cube_only_candidate_support",
+  "provenance": {
+    "cache_arrays_read": [
+      "target_xyz_confidence"
+    ],
+    "cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq01_radar_00232.npz",
+    "cache_sha256": "76380164d2460a5de33cb06e2779a98aae0f9260fe6b77ef92b2332f12ba8fae",
+    "candidate_generation_forbidden_inputs": [
+      "target_xyz_confidence",
+      "target_rae_index",
+      "cfar",
+      "future_cube",
+      "test_partition"
+    ],
+    "candidate_generation_inputs": [
+      "current_cube_drae",
+      "frozen_range_axis",
+      "frozen_azimuth_axis",
+      "frozen_elevation_axis"
+    ],
+    "candidate_indices_sha256": "247a3ea5bf3ce5175a40818aae1f8f47d72d8d647bddd39ed8210bfe660b0544",
+    "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/1/radar_tesseract/tesseract_00232.mat",
+    "cube_sha256": "b21355705b672ec348f5c802fbed8b288077f58ad31d8a2675874f26cd4e4b2e",
+    "device": "NVIDIA H200 NVL",
+    "manifest_sha256": "645307a8bae351db51b55128043dae69bce5b928169d5fa25c1b9c55083de4e4",
+    "normalization_sha256": "4d0bca7d027a1a9f457c526f21a034a406ce4973e2dccee55ddd2d7019b41b77",
+    "partition": "train",
+    "radar_index": 232,
+    "scene_split_sha256": "61596bd50ce0bdab633c9ff0ec5ab5148c2c78a10dfc06a71d0d6f0a6c9427cc",
+    "sequence": 1,
+    "source_commit": "8fe928069169624f2db40fad3d5daba86cb6740f",
+    "torch_version": "2.12.1+cu130"
+  },
+  "training_started": false
+}

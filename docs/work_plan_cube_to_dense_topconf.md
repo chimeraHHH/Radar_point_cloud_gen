@@ -64,6 +64,8 @@
 
 > **2026-07-29 R-A2 tiny memorization 终局 no-go：**source `a7f0335` 在 H200 GPU2 完成冻结八帧、500-update 预算，五次 exact-10k 评估均未通过任一完整门。终点为 `CD=5.1892 m/mean completeness=1.8302 m/outlier=45.2600%`，而冻结要求为 `<=1.0 m/<=0.75 m/<=10%`；matched-condition wins 也从 update 400 的 `87.5%` 回落到 `62.5%`。loss 下降和 far recall 提升没有转化为可靠几何排序，原 R-A2 binary occupancy 配方关闭，不启动五 epoch source-classwise，也不启动已审计 no-go 的 range arm。结合 frozen-pool GT ranking 通过，下一候选改为新命名 Q1/Q2 continuous geometry-quality ranking + optional polar uncertainty；R-B2 voxel-slot 继续作为独立表示路线。完整记录见 `artifacts/g1/ra2_tiny_no_go_2026-07-29.md`。
 
+> **2026-07-29 R-B2 Cube-only candidate preflight no-go：**source `8fe9280` 在冻结的首个 train frame `seq01/radar00232` 上由 current Cube 独立生成 exact `16k/3.4k/0.6k=20k` candidate voxels，配额与 20k unique IDs 全部通过；但只覆盖 `416/3790=10.9763%` target-occupied voxels，低于 `20%` 硬门，尽管 confidence-weighted coverage=`31.6908%` 通过 `30%`。训练在 model/optimizer 初始化前停止。该结果只关闭 max-D score + radius-4 neighborhood 的当前 20k activation，不关闭已由 GT-aided oracle 通过容量门的 voxel-slot 表示。仅授权一次冻结的 Cube-only score/bank-size support sweep；候选配置若不能在不看 GT 的前提下同时通过 `20%/30%`，则关闭当前 activation family。记录见 `artifacts/g1/rb2_candidate_support_no_go_2026-07-29.md`。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---
@@ -660,7 +662,7 @@ independently gated geometry parent
 - [x] 完成 RAE-Max cardinality full、R-B1 range-echo 与 R-B2 voxel-slot 三组并行预飞；cardinality 不是主要因素，R-B1 直接构造 no-go，R-B2 结构门通过。
 - [x] 完成 R-A2 八帧 memorization并判定 no-go；旧 source-classwise 不延长，range/surface-shell arm 已审计 no-go。
 - [ ] 实现 Q1/Q2 continuous geometry-quality ranking 与 optional polar uncertainty tiny gate；必须绑定 cache/Cube provenance并保持 frozen candidate IDs。
-- [ ] 完成 R-B2 `0.40 m x 4-slot` Cube-only 一帧过拟合门；不得把 GT-aided 结构启发式写成模型成绩。
+- [ ] 完成 R-B2 Cube-only candidate support sweep；当前 20k activation preflight no-go，只有新配置先过 `20%/30%` support 门才允许一帧过拟合。
 - [ ] 若新 geometry parent 通过，将 G3L 训练链绑定到该 parent，并实现对应的 G2/G3/G4 后继链。
 - [x] 完成 G4R 45/45 序列下载（约 601 GB）；CRC、时序训练与 family freeze 继续等待 G3D。
 - [ ] 释放 P5 test 并完成 P6 论文证据包。
