@@ -1,0 +1,2502 @@
+{
+  "schema_version": 1,
+  "protocol": "rb1_range_echo_gt_aided_stage0_preflight_v1",
+  "created_at": "2026-07-29T00:39:12.550576+00:00",
+  "mode": "preflight",
+  "oracle_label": "unattainable_gt_aided_structural_diagnostic",
+  "oracle_disclaimer": "Uses target geometry to fit and rank peaks; not deployable and not a strict mathematical upper bound.",
+  "deployable_method": false,
+  "strict_mathematical_upper_bound": false,
+  "representation_family_closure_eligible": false,
+  "training_authorized": false,
+  "scientific_model_result": false,
+  "source_commit": "988eb113a394fb8845d62b769220c83aff70fe6f",
+  "source_hashes": {
+    "code/eval/rb1_range_echo_oracle.py": "b6ca5809ddad4659fbf03e2460a56cb400490800a9eaf424c20bc01c26b9b582",
+    "code/scripts/preflight_rb1_range_echo.py": "4d7540f9645b08956795fa183258c74bb585b865bddd0e4d3f6dce61267ef3f4",
+    "code/tests/test_rb1_range_echo_oracle.py": "b91f881df475cb7e6bc59563675d17d9c8bb2757257564529f9e95aeb1da2e6e",
+    "docs/rb1_range_echo_stage0_protocol.md": "34554baca83ff152949b1038fc212a976c441b1b05ff856379a6575e8a8ca97c"
+  },
+  "inputs": {
+    "manifest_sha256": "645307a8bae351db51b55128043dae69bce5b928169d5fa25c1b9c55083de4e4",
+    "scene_split_sha256": "61596bd50ce0bdab633c9ff0ec5ab5148c2c78a10dfc06a71d0d6f0a6c9427cc",
+    "resources": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/resources",
+    "axis_hashes": {
+      "info_arr.mat": "53f72b22544aa11bc0057f9b8c2177a7a844fddd0e8ce3f753a989d07159767a",
+      "arr_doppler.mat": "f81e56889c2cedc98eb3eb8a4828e382845e3d4758a36f3b8fc0fce4839e0493"
+    },
+    "target_cache_accessed_keys": [
+      "target_xyz_confidence"
+    ],
+    "cube_accessed": false,
+    "cfar_accessed": false,
+    "test_accessed": false,
+    "selected_frame_count": 2,
+    "selected_partitions": [
+      "validation"
+    ],
+    "target_cache_aggregate_sha256": "cb7178733a49d28de30a8abd18f00883a83db13e8dfd8334fcfef2c16b273e1f",
+    "target_cache_files": [
+      {
+        "sequence": 6,
+        "radar_index": 183,
+        "partition": "validation",
+        "relative_name": "seq06_radar_00183.npz",
+        "sha256": "422136ece0fcc38717b4665563ce15b07710433bc7e4732030fbb0b3e32c6e2f"
+      },
+      {
+        "sequence": 12,
+        "radar_index": 259,
+        "partition": "validation",
+        "relative_name": "seq12_radar_00259.npz",
+        "sha256": "5ad610494b5ff775f4f14ec8fc5242c1e6d58571b2c1fef43e5d3316f23ee4c0"
+      }
+    ]
+  },
+  "runtime": {
+    "device": "cpu",
+    "numpy_version": "2.2.6"
+  },
+  "results_by_k": {
+    "4": {
+      "k": 4,
+      "config": {
+        "exact_count": 10000,
+        "range_quotas": {
+          "range_0_30m": 8000,
+          "range_30_60m": 1700,
+          "range_60_120m": 300
+        },
+        "minimum_distance_m": 0.05,
+        "radial_merge_distance_m": 0.05
+      },
+      "frames": [
+        {
+          "sequence": 6,
+          "radar_index": 183,
+          "partition": "validation",
+          "target_count": 17903,
+          "target_array_sha256": "14a507f12808ab9e629e5ec5fb3dceedaf2e0c685ec7e39806cca6b1857a80a2",
+          "far_target_frame": true,
+          "occupied_ray_count": 2254,
+          "echo_count_distribution": {
+            "all_rays_including_zero": {
+              "0": 1705,
+              "1": 350,
+              "2": 381,
+              "3": 406,
+              "4": 390,
+              "5": 313,
+              "6": 226,
+              "7": 106,
+              "8": 48,
+              "9": 23,
+              "10": 6,
+              "11": 5
+            },
+            "occupied_ray_count": 2254,
+            "empty_ray_count": 1705,
+            "maximum_echo_count": 11,
+            "median_echo_count_on_occupied_rays": 3.0,
+            "p95_echo_count_on_occupied_rays": 7.0,
+            "rays_exceeding_k": 727
+          },
+          "k_truncation": {
+            "raw_gt_aided_echo_group_count": 8259,
+            "represented_peak_count": 6798,
+            "slot_count_fraction": 0.8231020704685797,
+            "rays_truncated": 727,
+            "weighted_radial_mae_m": 0.013581403055719182,
+            "weighted_radial_p95_m": 0.08065377591924872,
+            "raw_echo_fraction_within_0p05m": 0.8879357910816831,
+            "raw_echo_fraction_within_0p5m": 1.0
+          },
+          "candidate_capacity": {
+            "total": 6798,
+            "by_range": {
+              "range_0_30m": 5404,
+              "range_30_60m": 1208,
+              "range_60_120m": 186
+            },
+            "outside_frozen_range_count": 0,
+            "raw_quota_capacity_satisfied": false
+          },
+          "sub_bin_offset": {
+            "all_offsets_within_bounds": true,
+            "minimum_offset_m": -0.2313995171691534,
+            "maximum_offset_m": 0.23143870374474673
+          },
+          "candidate_hashes": {
+            "xyz_sha256": "b141318797f2f6e44c09923520f5e00aa1e500f2befa848a4aacc228bd2f90d9",
+            "ray_indices_sha256": "eddf2a9a73ce54e0efb44391f82e6099f77b34a020a4c6c0ca2061ec8f77fbf8",
+            "range_bin_indices_sha256": "c590bd9c043cf3fd6828ebf243977fc41dd817bd3f02fa4ea533e390426c5f51",
+            "sub_bin_offsets_sha256": "a058a7413d01b6eb66cf914a75889f344c70ace1919d6bbe03e8dba43ad0c647"
+          },
+          "geometry_endpoints": {
+            "capped_ray_peak_pool": {
+              "chamfer_m": 0.2735391607123432,
+              "precision_mean_distance_m": 0.12137836531476366,
+              "completeness_mean_distance_m": 0.1521607953975795,
+              "outlier_fraction_2m": 0.0,
+              "prediction_count": 6798,
+              "target_count": 17903,
+              "target_effective_count": 5123.039637568378,
+              "precision_0p5m": 0.9873492203589291,
+              "recall_0p5m": 0.9811439315979569,
+              "fscore_0p5m": 0.9842367955002715,
+              "precision_1p0m": 0.9997057958223007,
+              "recall_1p0m": 0.9995651797397427,
+              "fscore_1p0m": 0.9996354828359985,
+              "precision_2p0m": 1.0,
+              "recall_2p0m": 1.0,
+              "fscore_2p0m": 1.0,
+              "range_0_30m_target_count": 14914,
+              "range_0_30m_completeness_mean_distance_m": 0.11489088720242749,
+              "range_0_30m_precision_mean_distance_m": 0.08668644673081506,
+              "range_0_30m_fscore_1m": 1.0,
+              "range_30_60m_target_count": 2700,
+              "range_30_60m_completeness_mean_distance_m": 0.28328254373963063,
+              "range_30_60m_precision_mean_distance_m": 0.22032724970197473,
+              "range_30_60m_fscore_1m": 1.0,
+              "range_60_120m_target_count": 289,
+              "range_60_120m_completeness_mean_distance_m": 0.592742929661676,
+              "range_60_120m_precision_mean_distance_m": 0.4866733958949096,
+              "range_60_120m_fscore_1m": 0.9831083904110435,
+              "far_target_frame": true
+            }
+          },
+          "capacity_reachable": false,
+          "exact_selection": {
+            "oracle_label": "unattainable_gt_aided_structural_diagnostic",
+            "hard_capacity_failure": true,
+            "copy_padding_jitter_duplicate": false,
+            "required_exact_count": 10000,
+            "required_range_quotas": {
+              "range_0_30m": 8000,
+              "range_30_60m": 1700,
+              "range_60_120m": 300
+            },
+            "minimum_euclidean_distance_m": 0.05,
+            "best_failed_attempt": {
+              "range_order": [
+                "range_0_30m",
+                "range_30_60m",
+                "range_60_120m"
+              ],
+              "selected_by_range": {
+                "range_0_30m": 5404,
+                "range_30_60m": 1208,
+                "range_60_120m": 186
+              },
+              "raw_candidate_by_range": {
+                "range_0_30m": 5404,
+                "range_30_60m": 1208,
+                "range_60_120m": 186
+              },
+              "considered_by_range": {
+                "range_0_30m": 5404,
+                "range_30_60m": 1208,
+                "range_60_120m": 186
+              },
+              "rejected_minimum_distance_by_range": {
+                "range_0_30m": 0,
+                "range_30_60m": 0,
+                "range_60_120m": 0
+              },
+              "rejected_distance_m_by_range": {
+                "range_0_30m": {
+                  "count": 0,
+                  "minimum": null,
+                  "mean": null,
+                  "maximum": null
+                },
+                "range_30_60m": {
+                  "count": 0,
+                  "minimum": null,
+                  "mean": null,
+                  "maximum": null
+                },
+                "range_60_120m": {
+                  "count": 0,
+                  "minimum": null,
+                  "mean": null,
+                  "maximum": null
+                }
+              },
+              "quota_deficit_by_range": {
+                "range_0_30m": 2596,
+                "range_30_60m": 492,
+                "range_60_120m": 114
+              },
+              "selected_count": 6798,
+              "exact_count_reached": false
+            },
+            "attempts": [
+              {
+                "range_order": [
+                  "range_0_30m",
+                  "range_30_60m",
+                  "range_60_120m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 5404,
+                  "range_30_60m": 1208,
+                  "range_60_120m": 186
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 5404,
+                  "range_30_60m": 1208,
+                  "range_60_120m": 186
+                },
+                "considered_by_range": {
+                  "range_0_30m": 5404,
+                  "range_30_60m": 1208,
+                  "range_60_120m": 186
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 2596,
+                  "range_30_60m": 492,
+                  "range_60_120m": 114
+                },
+                "selected_count": 6798,
+                "exact_count_reached": false
+              },
+              {
+                "range_order": [
+                  "range_0_30m",
+                  "range_60_120m",
+                  "range_30_60m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 5404,
+                  "range_30_60m": 1208,
+                  "range_60_120m": 186
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 5404,
+                  "range_30_60m": 1208,
+                  "range_60_120m": 186
+                },
+                "considered_by_range": {
+                  "range_0_30m": 5404,
+                  "range_30_60m": 1208,
+                  "range_60_120m": 186
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 2596,
+                  "range_30_60m": 492,
+                  "range_60_120m": 114
+                },
+                "selected_count": 6798,
+                "exact_count_reached": false
+              },
+              {
+                "range_order": [
+                  "range_30_60m",
+                  "range_0_30m",
+                  "range_60_120m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 5404,
+                  "range_30_60m": 1208,
+                  "range_60_120m": 186
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 5404,
+                  "range_30_60m": 1208,
+                  "range_60_120m": 186
+                },
+                "considered_by_range": {
+                  "range_0_30m": 5404,
+                  "range_30_60m": 1208,
+                  "range_60_120m": 186
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 2596,
+                  "range_30_60m": 492,
+                  "range_60_120m": 114
+                },
+                "selected_count": 6798,
+                "exact_count_reached": false
+              },
+              {
+                "range_order": [
+                  "range_30_60m",
+                  "range_60_120m",
+                  "range_0_30m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 5404,
+                  "range_30_60m": 1208,
+                  "range_60_120m": 186
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 5404,
+                  "range_30_60m": 1208,
+                  "range_60_120m": 186
+                },
+                "considered_by_range": {
+                  "range_0_30m": 5404,
+                  "range_30_60m": 1208,
+                  "range_60_120m": 186
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 2596,
+                  "range_30_60m": 492,
+                  "range_60_120m": 114
+                },
+                "selected_count": 6798,
+                "exact_count_reached": false
+              },
+              {
+                "range_order": [
+                  "range_60_120m",
+                  "range_0_30m",
+                  "range_30_60m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 5404,
+                  "range_30_60m": 1208,
+                  "range_60_120m": 186
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 5404,
+                  "range_30_60m": 1208,
+                  "range_60_120m": 186
+                },
+                "considered_by_range": {
+                  "range_0_30m": 5404,
+                  "range_30_60m": 1208,
+                  "range_60_120m": 186
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 2596,
+                  "range_30_60m": 492,
+                  "range_60_120m": 114
+                },
+                "selected_count": 6798,
+                "exact_count_reached": false
+              },
+              {
+                "range_order": [
+                  "range_60_120m",
+                  "range_30_60m",
+                  "range_0_30m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 5404,
+                  "range_30_60m": 1208,
+                  "range_60_120m": 186
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 5404,
+                  "range_30_60m": 1208,
+                  "range_60_120m": 186
+                },
+                "considered_by_range": {
+                  "range_0_30m": 5404,
+                  "range_30_60m": 1208,
+                  "range_60_120m": 186
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 2596,
+                  "range_30_60m": 492,
+                  "range_60_120m": 114
+                },
+                "selected_count": 6798,
+                "exact_count_reached": false
+              }
+            ],
+            "best_failed_selected_indices_sha256": "a21df1be9d88555329e6b712457615f35d24e4b057604f4f412c4c8a372dac92"
+          }
+        },
+        {
+          "sequence": 12,
+          "radar_index": 259,
+          "partition": "validation",
+          "target_count": 11208,
+          "target_array_sha256": "9fe1593f5aa4954571cc0f6b32dab0fac8456e2bcd2b25f067d4b2044f3521ef",
+          "far_target_frame": true,
+          "occupied_ray_count": 1752,
+          "echo_count_distribution": {
+            "all_rays_including_zero": {
+              "0": 2207,
+              "1": 511,
+              "2": 308,
+              "3": 292,
+              "4": 286,
+              "5": 173,
+              "6": 91,
+              "7": 58,
+              "8": 19,
+              "9": 12,
+              "10": 2
+            },
+            "occupied_ray_count": 1752,
+            "empty_ray_count": 2207,
+            "maximum_echo_count": 10,
+            "median_echo_count_on_occupied_rays": 3.0,
+            "p95_echo_count_on_occupied_rays": 7.0,
+            "rays_exceeding_k": 355
+          },
+          "k_truncation": {
+            "raw_gt_aided_echo_group_count": 5244,
+            "represented_peak_count": 4567,
+            "slot_count_fraction": 0.8709000762776506,
+            "rays_truncated": 355,
+            "weighted_radial_mae_m": 0.010874205037879904,
+            "weighted_radial_p95_m": 0.06948815597032976,
+            "raw_echo_fraction_within_0p05m": 0.9091083024019833,
+            "raw_echo_fraction_within_0p5m": 1.0
+          },
+          "candidate_capacity": {
+            "total": 4567,
+            "by_range": {
+              "range_0_30m": 3944,
+              "range_30_60m": 508,
+              "range_60_120m": 115
+            },
+            "outside_frozen_range_count": 0,
+            "raw_quota_capacity_satisfied": false
+          },
+          "sub_bin_offset": {
+            "all_offsets_within_bounds": true,
+            "minimum_offset_m": -0.23132097970797627,
+            "maximum_offset_m": 0.23137135224034733
+          },
+          "candidate_hashes": {
+            "xyz_sha256": "a9f263ef72db4757730ddfc9a16a772c588162f6437d6d2a15434a5633cf7c70",
+            "ray_indices_sha256": "d352c1dbb3d0a175fcf8f1075cb2069e02c07e5e7813cb6aa76221b28ac687f4",
+            "range_bin_indices_sha256": "2a1b0c5d084aba66e386fc0e2b794f1875f9a4aa091e150994a1b9259f33f88f",
+            "sub_bin_offsets_sha256": "9831e028c755355e22c99420d3dcf9c0bcb59cae86b29467916e2113bc1eaf77"
+          },
+          "geometry_endpoints": {
+            "capped_ray_peak_pool": {
+              "chamfer_m": 0.2096026660441609,
+              "precision_mean_distance_m": 0.09665623232874936,
+              "completeness_mean_distance_m": 0.11294643371541155,
+              "outlier_fraction_2m": 0.0,
+              "prediction_count": 4567,
+              "target_count": 11208,
+              "target_effective_count": 2195.1449655480683,
+              "precision_0p5m": 0.9921173636960806,
+              "recall_0p5m": 0.9945771147220401,
+              "fscore_0p5m": 0.9933457164849638,
+              "precision_1p0m": 1.0,
+              "recall_1p0m": 1.0,
+              "fscore_1p0m": 1.0,
+              "precision_2p0m": 1.0,
+              "recall_2p0m": 1.0,
+              "fscore_2p0m": 1.0,
+              "range_0_30m_target_count": 10247,
+              "range_0_30m_completeness_mean_distance_m": 0.10401319963056278,
+              "range_0_30m_precision_mean_distance_m": 0.07310375210742269,
+              "range_0_30m_fscore_1m": 1.0,
+              "range_30_60m_target_count": 790,
+              "range_30_60m_completeness_mean_distance_m": 0.24062473464123946,
+              "range_30_60m_precision_mean_distance_m": 0.2132360812926859,
+              "range_30_60m_fscore_1m": 1.0,
+              "range_60_120m_target_count": 171,
+              "range_60_120m_completeness_mean_distance_m": 0.5448747588758052,
+              "range_60_120m_precision_mean_distance_m": 0.3894250907568588,
+              "range_60_120m_fscore_1m": 1.0,
+              "far_target_frame": true
+            }
+          },
+          "capacity_reachable": false,
+          "exact_selection": {
+            "oracle_label": "unattainable_gt_aided_structural_diagnostic",
+            "hard_capacity_failure": true,
+            "copy_padding_jitter_duplicate": false,
+            "required_exact_count": 10000,
+            "required_range_quotas": {
+              "range_0_30m": 8000,
+              "range_30_60m": 1700,
+              "range_60_120m": 300
+            },
+            "minimum_euclidean_distance_m": 0.05,
+            "best_failed_attempt": {
+              "range_order": [
+                "range_0_30m",
+                "range_30_60m",
+                "range_60_120m"
+              ],
+              "selected_by_range": {
+                "range_0_30m": 3944,
+                "range_30_60m": 508,
+                "range_60_120m": 115
+              },
+              "raw_candidate_by_range": {
+                "range_0_30m": 3944,
+                "range_30_60m": 508,
+                "range_60_120m": 115
+              },
+              "considered_by_range": {
+                "range_0_30m": 3944,
+                "range_30_60m": 508,
+                "range_60_120m": 115
+              },
+              "rejected_minimum_distance_by_range": {
+                "range_0_30m": 0,
+                "range_30_60m": 0,
+                "range_60_120m": 0
+              },
+              "rejected_distance_m_by_range": {
+                "range_0_30m": {
+                  "count": 0,
+                  "minimum": null,
+                  "mean": null,
+                  "maximum": null
+                },
+                "range_30_60m": {
+                  "count": 0,
+                  "minimum": null,
+                  "mean": null,
+                  "maximum": null
+                },
+                "range_60_120m": {
+                  "count": 0,
+                  "minimum": null,
+                  "mean": null,
+                  "maximum": null
+                }
+              },
+              "quota_deficit_by_range": {
+                "range_0_30m": 4056,
+                "range_30_60m": 1192,
+                "range_60_120m": 185
+              },
+              "selected_count": 4567,
+              "exact_count_reached": false
+            },
+            "attempts": [
+              {
+                "range_order": [
+                  "range_0_30m",
+                  "range_30_60m",
+                  "range_60_120m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 3944,
+                  "range_30_60m": 508,
+                  "range_60_120m": 115
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 3944,
+                  "range_30_60m": 508,
+                  "range_60_120m": 115
+                },
+                "considered_by_range": {
+                  "range_0_30m": 3944,
+                  "range_30_60m": 508,
+                  "range_60_120m": 115
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 4056,
+                  "range_30_60m": 1192,
+                  "range_60_120m": 185
+                },
+                "selected_count": 4567,
+                "exact_count_reached": false
+              },
+              {
+                "range_order": [
+                  "range_0_30m",
+                  "range_60_120m",
+                  "range_30_60m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 3944,
+                  "range_30_60m": 508,
+                  "range_60_120m": 115
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 3944,
+                  "range_30_60m": 508,
+                  "range_60_120m": 115
+                },
+                "considered_by_range": {
+                  "range_0_30m": 3944,
+                  "range_30_60m": 508,
+                  "range_60_120m": 115
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 4056,
+                  "range_30_60m": 1192,
+                  "range_60_120m": 185
+                },
+                "selected_count": 4567,
+                "exact_count_reached": false
+              },
+              {
+                "range_order": [
+                  "range_30_60m",
+                  "range_0_30m",
+                  "range_60_120m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 3944,
+                  "range_30_60m": 508,
+                  "range_60_120m": 115
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 3944,
+                  "range_30_60m": 508,
+                  "range_60_120m": 115
+                },
+                "considered_by_range": {
+                  "range_0_30m": 3944,
+                  "range_30_60m": 508,
+                  "range_60_120m": 115
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 4056,
+                  "range_30_60m": 1192,
+                  "range_60_120m": 185
+                },
+                "selected_count": 4567,
+                "exact_count_reached": false
+              },
+              {
+                "range_order": [
+                  "range_30_60m",
+                  "range_60_120m",
+                  "range_0_30m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 3944,
+                  "range_30_60m": 508,
+                  "range_60_120m": 115
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 3944,
+                  "range_30_60m": 508,
+                  "range_60_120m": 115
+                },
+                "considered_by_range": {
+                  "range_0_30m": 3944,
+                  "range_30_60m": 508,
+                  "range_60_120m": 115
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 4056,
+                  "range_30_60m": 1192,
+                  "range_60_120m": 185
+                },
+                "selected_count": 4567,
+                "exact_count_reached": false
+              },
+              {
+                "range_order": [
+                  "range_60_120m",
+                  "range_0_30m",
+                  "range_30_60m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 3944,
+                  "range_30_60m": 508,
+                  "range_60_120m": 115
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 3944,
+                  "range_30_60m": 508,
+                  "range_60_120m": 115
+                },
+                "considered_by_range": {
+                  "range_0_30m": 3944,
+                  "range_30_60m": 508,
+                  "range_60_120m": 115
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 4056,
+                  "range_30_60m": 1192,
+                  "range_60_120m": 185
+                },
+                "selected_count": 4567,
+                "exact_count_reached": false
+              },
+              {
+                "range_order": [
+                  "range_60_120m",
+                  "range_30_60m",
+                  "range_0_30m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 3944,
+                  "range_30_60m": 508,
+                  "range_60_120m": 115
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 3944,
+                  "range_30_60m": 508,
+                  "range_60_120m": 115
+                },
+                "considered_by_range": {
+                  "range_0_30m": 3944,
+                  "range_30_60m": 508,
+                  "range_60_120m": 115
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 4056,
+                  "range_30_60m": 1192,
+                  "range_60_120m": 185
+                },
+                "selected_count": 4567,
+                "exact_count_reached": false
+              }
+            ],
+            "best_failed_selected_indices_sha256": "d9b85ec8cbd734e40c4e95b0cd9a3fb135b40d5c02c71195fc91444717cbebc8"
+          }
+        }
+      ],
+      "aggregate": {
+        "frame_count": 2,
+        "far_target_frame_count": 2,
+        "capacity_failure_count": 2,
+        "all_frames_capacity_reachable": false,
+        "occupied_ray_count": {
+          "mean": 2003.0,
+          "std": 251.0,
+          "median": 2003.0,
+          "minimum": 1752.0,
+          "maximum": 2254.0,
+          "sample_count": 2
+        },
+        "raw_gt_aided_echo_group_count": {
+          "mean": 6751.5,
+          "std": 1507.5,
+          "median": 6751.5,
+          "minimum": 5244.0,
+          "maximum": 8259.0,
+          "sample_count": 2
+        },
+        "candidate_peak_count": {
+          "mean": 5682.5,
+          "std": 1115.5,
+          "median": 5682.5,
+          "minimum": 4567.0,
+          "maximum": 6798.0,
+          "sample_count": 2
+        },
+        "rays_truncated": {
+          "mean": 541.0,
+          "std": 186.0,
+          "median": 541.0,
+          "minimum": 355.0,
+          "maximum": 727.0,
+          "sample_count": 2
+        },
+        "weighted_radial_mae_m": {
+          "mean": 0.012227804046799542,
+          "std": 0.001353599008919639,
+          "median": 0.012227804046799542,
+          "minimum": 0.010874205037879904,
+          "maximum": 0.013581403055719182,
+          "sample_count": 2
+        },
+        "candidate_capacity_by_range": {
+          "range_0_30m": {
+            "mean": 4674.0,
+            "std": 730.0,
+            "median": 4674.0,
+            "minimum": 3944.0,
+            "maximum": 5404.0,
+            "sample_count": 2
+          },
+          "range_30_60m": {
+            "mean": 858.0,
+            "std": 350.0,
+            "median": 858.0,
+            "minimum": 508.0,
+            "maximum": 1208.0,
+            "sample_count": 2
+          },
+          "range_60_120m": {
+            "mean": 150.5,
+            "std": 35.5,
+            "median": 150.5,
+            "minimum": 115.0,
+            "maximum": 186.0,
+            "sample_count": 2
+          }
+        },
+        "geometry_endpoints": {
+          "capped_ray_peak_pool": {
+            "chamfer_m": {
+              "mean": 0.24157091337825204,
+              "std": 0.03196824733409115,
+              "median": 0.24157091337825204,
+              "sample_count": 2
+            },
+            "completeness_mean_distance_m": {
+              "mean": 0.13255361455649553,
+              "std": 0.019607180841083982,
+              "median": 0.13255361455649553,
+              "sample_count": 2
+            },
+            "fscore_0p5m": {
+              "mean": 0.9887912559926177,
+              "std": 0.004554460492346146,
+              "median": 0.9887912559926177,
+              "sample_count": 2
+            },
+            "fscore_1p0m": {
+              "mean": 0.9998177414179992,
+              "std": 0.0001822585820007716,
+              "median": 0.9998177414179992,
+              "sample_count": 2
+            },
+            "fscore_2p0m": {
+              "mean": 1.0,
+              "std": 0.0,
+              "median": 1.0,
+              "sample_count": 2
+            },
+            "outlier_fraction_2m": {
+              "mean": 0.0,
+              "std": 0.0,
+              "median": 0.0,
+              "sample_count": 2
+            },
+            "precision_0p5m": {
+              "mean": 0.9897332920275048,
+              "std": 0.002384071668575738,
+              "median": 0.9897332920275048,
+              "sample_count": 2
+            },
+            "precision_1p0m": {
+              "mean": 0.9998528979111503,
+              "std": 0.00014710208884965992,
+              "median": 0.9998528979111503,
+              "sample_count": 2
+            },
+            "precision_2p0m": {
+              "mean": 1.0,
+              "std": 0.0,
+              "median": 1.0,
+              "sample_count": 2
+            },
+            "precision_mean_distance_m": {
+              "mean": 0.10901729882175651,
+              "std": 0.012361066493007153,
+              "median": 0.10901729882175651,
+              "sample_count": 2
+            },
+            "range_0_30m_completeness_mean_distance_m": {
+              "mean": 0.10945204341649514,
+              "std": 0.005438843785932353,
+              "median": 0.10945204341649514,
+              "sample_count": 2
+            },
+            "range_0_30m_fscore_1m": {
+              "mean": 1.0,
+              "std": 0.0,
+              "median": 1.0,
+              "sample_count": 2
+            },
+            "range_0_30m_precision_mean_distance_m": {
+              "mean": 0.07989509941911888,
+              "std": 0.006791347311696186,
+              "median": 0.07989509941911888,
+              "sample_count": 2
+            },
+            "range_30_60m_completeness_mean_distance_m": {
+              "mean": 0.261953639190435,
+              "std": 0.021328904549195588,
+              "median": 0.261953639190435,
+              "sample_count": 2
+            },
+            "range_30_60m_fscore_1m": {
+              "mean": 1.0,
+              "std": 0.0,
+              "median": 1.0,
+              "sample_count": 2
+            },
+            "range_30_60m_precision_mean_distance_m": {
+              "mean": 0.2167816654973303,
+              "std": 0.003545584204644417,
+              "median": 0.2167816654973303,
+              "sample_count": 2
+            },
+            "range_60_120m_completeness_mean_distance_m": {
+              "mean": 0.5688088442687406,
+              "std": 0.0239340853929354,
+              "median": 0.5688088442687406,
+              "sample_count": 2
+            },
+            "range_60_120m_fscore_1m": {
+              "mean": 0.9915541952055218,
+              "std": 0.008445804794478262,
+              "median": 0.9915541952055218,
+              "sample_count": 2
+            },
+            "range_60_120m_precision_mean_distance_m": {
+              "mean": 0.43804924332588424,
+              "std": 0.048624152569025386,
+              "median": 0.43804924332588424,
+              "sample_count": 2
+            },
+            "recall_0p5m": {
+              "mean": 0.9878605231599985,
+              "std": 0.0067165915620416294,
+              "median": 0.9878605231599985,
+              "sample_count": 2
+            },
+            "recall_1p0m": {
+              "mean": 0.9997825898698713,
+              "std": 0.00021741013012865906,
+              "median": 0.9997825898698713,
+              "sample_count": 2
+            },
+            "recall_2p0m": {
+              "mean": 1.0,
+              "std": 0.0,
+              "median": 1.0,
+              "sample_count": 2
+            }
+          },
+          "exact_10k_quota_5cm_selection": null
+        },
+        "far_frame_semantics": {
+          "definition": "A frame contributes far-range geometry iff its target has at least one point with 60m <= range < 120m.",
+          "missing_far_frames_are_not_imputed_as_zero": true,
+          "observed_far_target_frame_count": 2,
+          "expected_full_validation_far_target_frame_count": 23,
+          "far_metric_sample_count": 2
+        }
+      }
+    },
+    "6": {
+      "k": 6,
+      "config": {
+        "exact_count": 10000,
+        "range_quotas": {
+          "range_0_30m": 8000,
+          "range_30_60m": 1700,
+          "range_60_120m": 300
+        },
+        "minimum_distance_m": 0.05,
+        "radial_merge_distance_m": 0.05
+      },
+      "frames": [
+        {
+          "sequence": 6,
+          "radar_index": 183,
+          "partition": "validation",
+          "target_count": 17903,
+          "target_array_sha256": "14a507f12808ab9e629e5ec5fb3dceedaf2e0c685ec7e39806cca6b1857a80a2",
+          "far_target_frame": true,
+          "occupied_ray_count": 2254,
+          "echo_count_distribution": {
+            "all_rays_including_zero": {
+              "0": 1705,
+              "1": 350,
+              "2": 381,
+              "3": 406,
+              "4": 390,
+              "5": 313,
+              "6": 226,
+              "7": 106,
+              "8": 48,
+              "9": 23,
+              "10": 6,
+              "11": 5
+            },
+            "occupied_ray_count": 2254,
+            "empty_ray_count": 1705,
+            "maximum_echo_count": 11,
+            "median_echo_count_on_occupied_rays": 3.0,
+            "p95_echo_count_on_occupied_rays": 7.0,
+            "rays_exceeding_k": 188
+          },
+          "k_truncation": {
+            "raw_gt_aided_echo_group_count": 8259,
+            "represented_peak_count": 7939,
+            "slot_count_fraction": 0.961254389151229,
+            "rays_truncated": 188,
+            "weighted_radial_mae_m": 0.0026249991407465896,
+            "weighted_radial_p95_m": 0.017926212936487218,
+            "raw_echo_fraction_within_0p05m": 0.9794187599614284,
+            "raw_echo_fraction_within_0p5m": 1.0
+          },
+          "candidate_capacity": {
+            "total": 7939,
+            "by_range": {
+              "range_0_30m": 6275,
+              "range_30_60m": 1464,
+              "range_60_120m": 200
+            },
+            "outside_frozen_range_count": 0,
+            "raw_quota_capacity_satisfied": false
+          },
+          "sub_bin_offset": {
+            "all_offsets_within_bounds": true,
+            "minimum_offset_m": -0.2313995171691534,
+            "maximum_offset_m": 0.23143870374474673
+          },
+          "candidate_hashes": {
+            "xyz_sha256": "52bfce1f614a0277be25a93f1ea61a5ba1e1b9427058916af5d314111053bce7",
+            "ray_indices_sha256": "a5a28d729f332107db6e868d071606a10ed290b98d53f7f98f4e53e877f8841e",
+            "range_bin_indices_sha256": "47e398e3f980721d324867690d00a2dc182e8756343ecf9e9ed23aa53131f8b6",
+            "sub_bin_offsets_sha256": "950b0c0a50c3e5deece099001f56e6a8ae50ef048aabde29c995525e3f6d1074"
+          },
+          "geometry_endpoints": {
+            "capped_ray_peak_pool": {
+              "chamfer_m": 0.26938241178498656,
+              "precision_mean_distance_m": 0.11993217266699274,
+              "completeness_mean_distance_m": 0.1494502391179938,
+              "outlier_fraction_2m": 0.0,
+              "prediction_count": 7939,
+              "target_count": 17903,
+              "target_effective_count": 5123.039637568378,
+              "precision_0p5m": 0.9887895200906915,
+              "recall_0p5m": 0.9812943561029313,
+              "fscore_0p5m": 0.9850276804593873,
+              "precision_1p0m": 0.9997480791031617,
+              "recall_1p0m": 0.9995651797397427,
+              "fscore_1p0m": 0.9996566210555353,
+              "precision_2p0m": 1.0,
+              "recall_2p0m": 1.0,
+              "fscore_2p0m": 1.0,
+              "range_0_30m_target_count": 14914,
+              "range_0_30m_completeness_mean_distance_m": 0.11223278695194805,
+              "range_0_30m_precision_mean_distance_m": 0.08623616251117304,
+              "range_0_30m_fscore_1m": 1.0,
+              "range_30_60m_target_count": 2700,
+              "range_30_60m_completeness_mean_distance_m": 0.28006913897850066,
+              "range_30_60m_precision_mean_distance_m": 0.21544072234158412,
+              "range_30_60m_fscore_1m": 1.0,
+              "range_60_120m_target_count": 289,
+              "range_60_120m_completeness_mean_distance_m": 0.5922281157445735,
+              "range_60_120m_precision_mean_distance_m": 0.478021907687827,
+              "range_60_120m_fscore_1m": 0.9834799358456675,
+              "far_target_frame": true
+            }
+          },
+          "capacity_reachable": false,
+          "exact_selection": {
+            "oracle_label": "unattainable_gt_aided_structural_diagnostic",
+            "hard_capacity_failure": true,
+            "copy_padding_jitter_duplicate": false,
+            "required_exact_count": 10000,
+            "required_range_quotas": {
+              "range_0_30m": 8000,
+              "range_30_60m": 1700,
+              "range_60_120m": 300
+            },
+            "minimum_euclidean_distance_m": 0.05,
+            "best_failed_attempt": {
+              "range_order": [
+                "range_0_30m",
+                "range_30_60m",
+                "range_60_120m"
+              ],
+              "selected_by_range": {
+                "range_0_30m": 6275,
+                "range_30_60m": 1464,
+                "range_60_120m": 200
+              },
+              "raw_candidate_by_range": {
+                "range_0_30m": 6275,
+                "range_30_60m": 1464,
+                "range_60_120m": 200
+              },
+              "considered_by_range": {
+                "range_0_30m": 6275,
+                "range_30_60m": 1464,
+                "range_60_120m": 200
+              },
+              "rejected_minimum_distance_by_range": {
+                "range_0_30m": 0,
+                "range_30_60m": 0,
+                "range_60_120m": 0
+              },
+              "rejected_distance_m_by_range": {
+                "range_0_30m": {
+                  "count": 0,
+                  "minimum": null,
+                  "mean": null,
+                  "maximum": null
+                },
+                "range_30_60m": {
+                  "count": 0,
+                  "minimum": null,
+                  "mean": null,
+                  "maximum": null
+                },
+                "range_60_120m": {
+                  "count": 0,
+                  "minimum": null,
+                  "mean": null,
+                  "maximum": null
+                }
+              },
+              "quota_deficit_by_range": {
+                "range_0_30m": 1725,
+                "range_30_60m": 236,
+                "range_60_120m": 100
+              },
+              "selected_count": 7939,
+              "exact_count_reached": false
+            },
+            "attempts": [
+              {
+                "range_order": [
+                  "range_0_30m",
+                  "range_30_60m",
+                  "range_60_120m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 6275,
+                  "range_30_60m": 1464,
+                  "range_60_120m": 200
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 6275,
+                  "range_30_60m": 1464,
+                  "range_60_120m": 200
+                },
+                "considered_by_range": {
+                  "range_0_30m": 6275,
+                  "range_30_60m": 1464,
+                  "range_60_120m": 200
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 1725,
+                  "range_30_60m": 236,
+                  "range_60_120m": 100
+                },
+                "selected_count": 7939,
+                "exact_count_reached": false
+              },
+              {
+                "range_order": [
+                  "range_0_30m",
+                  "range_60_120m",
+                  "range_30_60m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 6275,
+                  "range_30_60m": 1464,
+                  "range_60_120m": 200
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 6275,
+                  "range_30_60m": 1464,
+                  "range_60_120m": 200
+                },
+                "considered_by_range": {
+                  "range_0_30m": 6275,
+                  "range_30_60m": 1464,
+                  "range_60_120m": 200
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 1725,
+                  "range_30_60m": 236,
+                  "range_60_120m": 100
+                },
+                "selected_count": 7939,
+                "exact_count_reached": false
+              },
+              {
+                "range_order": [
+                  "range_30_60m",
+                  "range_0_30m",
+                  "range_60_120m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 6275,
+                  "range_30_60m": 1464,
+                  "range_60_120m": 200
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 6275,
+                  "range_30_60m": 1464,
+                  "range_60_120m": 200
+                },
+                "considered_by_range": {
+                  "range_0_30m": 6275,
+                  "range_30_60m": 1464,
+                  "range_60_120m": 200
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 1725,
+                  "range_30_60m": 236,
+                  "range_60_120m": 100
+                },
+                "selected_count": 7939,
+                "exact_count_reached": false
+              },
+              {
+                "range_order": [
+                  "range_30_60m",
+                  "range_60_120m",
+                  "range_0_30m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 6275,
+                  "range_30_60m": 1464,
+                  "range_60_120m": 200
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 6275,
+                  "range_30_60m": 1464,
+                  "range_60_120m": 200
+                },
+                "considered_by_range": {
+                  "range_0_30m": 6275,
+                  "range_30_60m": 1464,
+                  "range_60_120m": 200
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 1725,
+                  "range_30_60m": 236,
+                  "range_60_120m": 100
+                },
+                "selected_count": 7939,
+                "exact_count_reached": false
+              },
+              {
+                "range_order": [
+                  "range_60_120m",
+                  "range_0_30m",
+                  "range_30_60m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 6275,
+                  "range_30_60m": 1464,
+                  "range_60_120m": 200
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 6275,
+                  "range_30_60m": 1464,
+                  "range_60_120m": 200
+                },
+                "considered_by_range": {
+                  "range_0_30m": 6275,
+                  "range_30_60m": 1464,
+                  "range_60_120m": 200
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 1725,
+                  "range_30_60m": 236,
+                  "range_60_120m": 100
+                },
+                "selected_count": 7939,
+                "exact_count_reached": false
+              },
+              {
+                "range_order": [
+                  "range_60_120m",
+                  "range_30_60m",
+                  "range_0_30m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 6275,
+                  "range_30_60m": 1464,
+                  "range_60_120m": 200
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 6275,
+                  "range_30_60m": 1464,
+                  "range_60_120m": 200
+                },
+                "considered_by_range": {
+                  "range_0_30m": 6275,
+                  "range_30_60m": 1464,
+                  "range_60_120m": 200
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 1725,
+                  "range_30_60m": 236,
+                  "range_60_120m": 100
+                },
+                "selected_count": 7939,
+                "exact_count_reached": false
+              }
+            ],
+            "best_failed_selected_indices_sha256": "f035028f33ec98656c1167b05f47bc69e2c0df0d74aca4006a2330b6e696d6b7"
+          }
+        },
+        {
+          "sequence": 12,
+          "radar_index": 259,
+          "partition": "validation",
+          "target_count": 11208,
+          "target_array_sha256": "9fe1593f5aa4954571cc0f6b32dab0fac8456e2bcd2b25f067d4b2044f3521ef",
+          "far_target_frame": true,
+          "occupied_ray_count": 1752,
+          "echo_count_distribution": {
+            "all_rays_including_zero": {
+              "0": 2207,
+              "1": 511,
+              "2": 308,
+              "3": 292,
+              "4": 286,
+              "5": 173,
+              "6": 91,
+              "7": 58,
+              "8": 19,
+              "9": 12,
+              "10": 2
+            },
+            "occupied_ray_count": 1752,
+            "empty_ray_count": 2207,
+            "maximum_echo_count": 10,
+            "median_echo_count_on_occupied_rays": 3.0,
+            "p95_echo_count_on_occupied_rays": 7.0,
+            "rays_exceeding_k": 91
+          },
+          "k_truncation": {
+            "raw_gt_aided_echo_group_count": 5244,
+            "represented_peak_count": 5104,
+            "slot_count_fraction": 0.973302822273074,
+            "rays_truncated": 91,
+            "weighted_radial_mae_m": 0.0024761931660993307,
+            "weighted_radial_p95_m": 0.0,
+            "raw_echo_fraction_within_0p05m": 0.9802479714534097,
+            "raw_echo_fraction_within_0p5m": 1.0
+          },
+          "candidate_capacity": {
+            "total": 5104,
+            "by_range": {
+              "range_0_30m": 4431,
+              "range_30_60m": 548,
+              "range_60_120m": 125
+            },
+            "outside_frozen_range_count": 0,
+            "raw_quota_capacity_satisfied": false
+          },
+          "sub_bin_offset": {
+            "all_offsets_within_bounds": true,
+            "minimum_offset_m": -0.23131980927517404,
+            "maximum_offset_m": 0.23137135224034733
+          },
+          "candidate_hashes": {
+            "xyz_sha256": "133d663f785376d356404ce47a972038e750ab31476d945fe0114da92b7a360a",
+            "ray_indices_sha256": "b44d1f39703c1516f56fc01b87a8b046c1fc754b69fe38189177bd69d2f97b55",
+            "range_bin_indices_sha256": "f613d1321fd808ee53d0a499f752584de6dd7ac06e7996d434cb4df1bbabe0e6",
+            "sub_bin_offsets_sha256": "d76e5e501ea7a7d637379d20483a704a21fbe925acd27e1086b6234be3a4bb8e"
+          },
+          "geometry_endpoints": {
+            "capped_ray_peak_pool": {
+              "chamfer_m": 0.20636248016824185,
+              "precision_mean_distance_m": 0.09605548677266304,
+              "completeness_mean_distance_m": 0.11030699339557881,
+              "outlier_fraction_2m": 0.0,
+              "prediction_count": 5104,
+              "target_count": 11208,
+              "target_effective_count": 2195.1449655480683,
+              "precision_0p5m": 0.9927507836990596,
+              "recall_0p5m": 0.9945923223010286,
+              "fscore_0p5m": 0.9936706997844086,
+              "precision_1p0m": 1.0,
+              "recall_1p0m": 1.0,
+              "fscore_1p0m": 1.0,
+              "precision_2p0m": 1.0,
+              "recall_2p0m": 1.0,
+              "fscore_2p0m": 1.0,
+              "range_0_30m_target_count": 10247,
+              "range_0_30m_completeness_mean_distance_m": 0.10133240351441818,
+              "range_0_30m_precision_mean_distance_m": 0.07365016936142292,
+              "range_0_30m_fscore_1m": 1.0,
+              "range_30_60m_target_count": 790,
+              "range_30_60m_completeness_mean_distance_m": 0.23853959330830443,
+              "range_30_60m_precision_mean_distance_m": 0.21171622629288683,
+              "range_30_60m_fscore_1m": 1.0,
+              "range_60_120m_target_count": 171,
+              "range_60_120m_completeness_mean_distance_m": 0.5444109463641233,
+              "range_60_120m_precision_mean_distance_m": 0.3832224963096419,
+              "range_60_120m_fscore_1m": 1.0,
+              "far_target_frame": true
+            }
+          },
+          "capacity_reachable": false,
+          "exact_selection": {
+            "oracle_label": "unattainable_gt_aided_structural_diagnostic",
+            "hard_capacity_failure": true,
+            "copy_padding_jitter_duplicate": false,
+            "required_exact_count": 10000,
+            "required_range_quotas": {
+              "range_0_30m": 8000,
+              "range_30_60m": 1700,
+              "range_60_120m": 300
+            },
+            "minimum_euclidean_distance_m": 0.05,
+            "best_failed_attempt": {
+              "range_order": [
+                "range_0_30m",
+                "range_30_60m",
+                "range_60_120m"
+              ],
+              "selected_by_range": {
+                "range_0_30m": 4431,
+                "range_30_60m": 548,
+                "range_60_120m": 125
+              },
+              "raw_candidate_by_range": {
+                "range_0_30m": 4431,
+                "range_30_60m": 548,
+                "range_60_120m": 125
+              },
+              "considered_by_range": {
+                "range_0_30m": 4431,
+                "range_30_60m": 548,
+                "range_60_120m": 125
+              },
+              "rejected_minimum_distance_by_range": {
+                "range_0_30m": 0,
+                "range_30_60m": 0,
+                "range_60_120m": 0
+              },
+              "rejected_distance_m_by_range": {
+                "range_0_30m": {
+                  "count": 0,
+                  "minimum": null,
+                  "mean": null,
+                  "maximum": null
+                },
+                "range_30_60m": {
+                  "count": 0,
+                  "minimum": null,
+                  "mean": null,
+                  "maximum": null
+                },
+                "range_60_120m": {
+                  "count": 0,
+                  "minimum": null,
+                  "mean": null,
+                  "maximum": null
+                }
+              },
+              "quota_deficit_by_range": {
+                "range_0_30m": 3569,
+                "range_30_60m": 1152,
+                "range_60_120m": 175
+              },
+              "selected_count": 5104,
+              "exact_count_reached": false
+            },
+            "attempts": [
+              {
+                "range_order": [
+                  "range_0_30m",
+                  "range_30_60m",
+                  "range_60_120m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 4431,
+                  "range_30_60m": 548,
+                  "range_60_120m": 125
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 4431,
+                  "range_30_60m": 548,
+                  "range_60_120m": 125
+                },
+                "considered_by_range": {
+                  "range_0_30m": 4431,
+                  "range_30_60m": 548,
+                  "range_60_120m": 125
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 3569,
+                  "range_30_60m": 1152,
+                  "range_60_120m": 175
+                },
+                "selected_count": 5104,
+                "exact_count_reached": false
+              },
+              {
+                "range_order": [
+                  "range_0_30m",
+                  "range_60_120m",
+                  "range_30_60m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 4431,
+                  "range_30_60m": 548,
+                  "range_60_120m": 125
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 4431,
+                  "range_30_60m": 548,
+                  "range_60_120m": 125
+                },
+                "considered_by_range": {
+                  "range_0_30m": 4431,
+                  "range_30_60m": 548,
+                  "range_60_120m": 125
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 3569,
+                  "range_30_60m": 1152,
+                  "range_60_120m": 175
+                },
+                "selected_count": 5104,
+                "exact_count_reached": false
+              },
+              {
+                "range_order": [
+                  "range_30_60m",
+                  "range_0_30m",
+                  "range_60_120m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 4431,
+                  "range_30_60m": 548,
+                  "range_60_120m": 125
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 4431,
+                  "range_30_60m": 548,
+                  "range_60_120m": 125
+                },
+                "considered_by_range": {
+                  "range_0_30m": 4431,
+                  "range_30_60m": 548,
+                  "range_60_120m": 125
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 3569,
+                  "range_30_60m": 1152,
+                  "range_60_120m": 175
+                },
+                "selected_count": 5104,
+                "exact_count_reached": false
+              },
+              {
+                "range_order": [
+                  "range_30_60m",
+                  "range_60_120m",
+                  "range_0_30m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 4431,
+                  "range_30_60m": 548,
+                  "range_60_120m": 125
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 4431,
+                  "range_30_60m": 548,
+                  "range_60_120m": 125
+                },
+                "considered_by_range": {
+                  "range_0_30m": 4431,
+                  "range_30_60m": 548,
+                  "range_60_120m": 125
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 3569,
+                  "range_30_60m": 1152,
+                  "range_60_120m": 175
+                },
+                "selected_count": 5104,
+                "exact_count_reached": false
+              },
+              {
+                "range_order": [
+                  "range_60_120m",
+                  "range_0_30m",
+                  "range_30_60m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 4431,
+                  "range_30_60m": 548,
+                  "range_60_120m": 125
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 4431,
+                  "range_30_60m": 548,
+                  "range_60_120m": 125
+                },
+                "considered_by_range": {
+                  "range_0_30m": 4431,
+                  "range_30_60m": 548,
+                  "range_60_120m": 125
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 3569,
+                  "range_30_60m": 1152,
+                  "range_60_120m": 175
+                },
+                "selected_count": 5104,
+                "exact_count_reached": false
+              },
+              {
+                "range_order": [
+                  "range_60_120m",
+                  "range_30_60m",
+                  "range_0_30m"
+                ],
+                "selected_by_range": {
+                  "range_0_30m": 4431,
+                  "range_30_60m": 548,
+                  "range_60_120m": 125
+                },
+                "raw_candidate_by_range": {
+                  "range_0_30m": 4431,
+                  "range_30_60m": 548,
+                  "range_60_120m": 125
+                },
+                "considered_by_range": {
+                  "range_0_30m": 4431,
+                  "range_30_60m": 548,
+                  "range_60_120m": 125
+                },
+                "rejected_minimum_distance_by_range": {
+                  "range_0_30m": 0,
+                  "range_30_60m": 0,
+                  "range_60_120m": 0
+                },
+                "rejected_distance_m_by_range": {
+                  "range_0_30m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_30_60m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  },
+                  "range_60_120m": {
+                    "count": 0,
+                    "minimum": null,
+                    "mean": null,
+                    "maximum": null
+                  }
+                },
+                "quota_deficit_by_range": {
+                  "range_0_30m": 3569,
+                  "range_30_60m": 1152,
+                  "range_60_120m": 175
+                },
+                "selected_count": 5104,
+                "exact_count_reached": false
+              }
+            ],
+            "best_failed_selected_indices_sha256": "ec48c6b97f509ef4ea2cda552645e68f19aaaa1673f594b64de595b84a8fe96e"
+          }
+        }
+      ],
+      "aggregate": {
+        "frame_count": 2,
+        "far_target_frame_count": 2,
+        "capacity_failure_count": 2,
+        "all_frames_capacity_reachable": false,
+        "occupied_ray_count": {
+          "mean": 2003.0,
+          "std": 251.0,
+          "median": 2003.0,
+          "minimum": 1752.0,
+          "maximum": 2254.0,
+          "sample_count": 2
+        },
+        "raw_gt_aided_echo_group_count": {
+          "mean": 6751.5,
+          "std": 1507.5,
+          "median": 6751.5,
+          "minimum": 5244.0,
+          "maximum": 8259.0,
+          "sample_count": 2
+        },
+        "candidate_peak_count": {
+          "mean": 6521.5,
+          "std": 1417.5,
+          "median": 6521.5,
+          "minimum": 5104.0,
+          "maximum": 7939.0,
+          "sample_count": 2
+        },
+        "rays_truncated": {
+          "mean": 139.5,
+          "std": 48.5,
+          "median": 139.5,
+          "minimum": 91.0,
+          "maximum": 188.0,
+          "sample_count": 2
+        },
+        "weighted_radial_mae_m": {
+          "mean": 0.00255059615342296,
+          "std": 7.440298732362943e-05,
+          "median": 0.00255059615342296,
+          "minimum": 0.0024761931660993307,
+          "maximum": 0.0026249991407465896,
+          "sample_count": 2
+        },
+        "candidate_capacity_by_range": {
+          "range_0_30m": {
+            "mean": 5353.0,
+            "std": 922.0,
+            "median": 5353.0,
+            "minimum": 4431.0,
+            "maximum": 6275.0,
+            "sample_count": 2
+          },
+          "range_30_60m": {
+            "mean": 1006.0,
+            "std": 458.0,
+            "median": 1006.0,
+            "minimum": 548.0,
+            "maximum": 1464.0,
+            "sample_count": 2
+          },
+          "range_60_120m": {
+            "mean": 162.5,
+            "std": 37.5,
+            "median": 162.5,
+            "minimum": 125.0,
+            "maximum": 200.0,
+            "sample_count": 2
+          }
+        },
+        "geometry_endpoints": {
+          "capped_ray_peak_pool": {
+            "chamfer_m": {
+              "mean": 0.23787244597661422,
+              "std": 0.031509965808372356,
+              "median": 0.23787244597661422,
+              "sample_count": 2
+            },
+            "completeness_mean_distance_m": {
+              "mean": 0.12987861625678632,
+              "std": 0.01957162286120749,
+              "median": 0.12987861625678632,
+              "sample_count": 2
+            },
+            "fscore_0p5m": {
+              "mean": 0.9893491901218979,
+              "std": 0.004321509662510659,
+              "median": 0.9893491901218979,
+              "sample_count": 2
+            },
+            "fscore_1p0m": {
+              "mean": 0.9998283105277677,
+              "std": 0.0001716894722323392,
+              "median": 0.9998283105277677,
+              "sample_count": 2
+            },
+            "fscore_2p0m": {
+              "mean": 1.0,
+              "std": 0.0,
+              "median": 1.0,
+              "sample_count": 2
+            },
+            "outlier_fraction_2m": {
+              "mean": 0.0,
+              "std": 0.0,
+              "median": 0.0,
+              "sample_count": 2
+            },
+            "precision_0p5m": {
+              "mean": 0.9907701518948755,
+              "std": 0.0019806318041840076,
+              "median": 0.9907701518948755,
+              "sample_count": 2
+            },
+            "precision_1p0m": {
+              "mean": 0.9998740395515808,
+              "std": 0.0001259604484191712,
+              "median": 0.9998740395515808,
+              "sample_count": 2
+            },
+            "precision_2p0m": {
+              "mean": 1.0,
+              "std": 0.0,
+              "median": 1.0,
+              "sample_count": 2
+            },
+            "precision_mean_distance_m": {
+              "mean": 0.10799382971982789,
+              "std": 0.011938342947164851,
+              "median": 0.10799382971982789,
+              "sample_count": 2
+            },
+            "range_0_30m_completeness_mean_distance_m": {
+              "mean": 0.10678259523318312,
+              "std": 0.0054501917187649365,
+              "median": 0.10678259523318312,
+              "sample_count": 2
+            },
+            "range_0_30m_fscore_1m": {
+              "mean": 1.0,
+              "std": 0.0,
+              "median": 1.0,
+              "sample_count": 2
+            },
+            "range_0_30m_precision_mean_distance_m": {
+              "mean": 0.07994316593629798,
+              "std": 0.006292996574875059,
+              "median": 0.07994316593629798,
+              "sample_count": 2
+            },
+            "range_30_60m_completeness_mean_distance_m": {
+              "mean": 0.2593043661434026,
+              "std": 0.020764772835098116,
+              "median": 0.2593043661434026,
+              "sample_count": 2
+            },
+            "range_30_60m_fscore_1m": {
+              "mean": 1.0,
+              "std": 0.0,
+              "median": 1.0,
+              "sample_count": 2
+            },
+            "range_30_60m_precision_mean_distance_m": {
+              "mean": 0.21357847431723548,
+              "std": 0.001862248024348645,
+              "median": 0.21357847431723548,
+              "sample_count": 2
+            },
+            "range_60_120m_completeness_mean_distance_m": {
+              "mean": 0.5683195310543484,
+              "std": 0.023908584690225054,
+              "median": 0.5683195310543484,
+              "sample_count": 2
+            },
+            "range_60_120m_fscore_1m": {
+              "mean": 0.9917399679228338,
+              "std": 0.008260032077166246,
+              "median": 0.9917399679228338,
+              "sample_count": 2
+            },
+            "range_60_120m_precision_mean_distance_m": {
+              "mean": 0.43062220199873447,
+              "std": 0.04739970568909255,
+              "median": 0.43062220199873447,
+              "sample_count": 2
+            },
+            "recall_0p5m": {
+              "mean": 0.9879433392019799,
+              "std": 0.006648983099048655,
+              "median": 0.9879433392019799,
+              "sample_count": 2
+            },
+            "recall_1p0m": {
+              "mean": 0.9997825898698713,
+              "std": 0.00021741013012865906,
+              "median": 0.9997825898698713,
+              "sample_count": 2
+            },
+            "recall_2p0m": {
+              "mean": 1.0,
+              "std": 0.0,
+              "median": 1.0,
+              "sample_count": 2
+            }
+          },
+          "exact_10k_quota_5cm_selection": null
+        },
+        "far_frame_semantics": {
+          "definition": "A frame contributes far-range geometry iff its target has at least one point with 60m <= range < 120m.",
+          "missing_far_frames_are_not_imputed_as_zero": true,
+          "observed_far_target_frame_count": 2,
+          "expected_full_validation_far_target_frame_count": 23,
+          "far_metric_sample_count": 2
+        }
+      }
+    }
+  },
+  "decision": {
+    "per_k": {
+      "4": {
+        "checks": {
+          "all_frames_capacity_reachable": false,
+          "no_copy_padding_or_jitter": true
+        },
+        "passed": false
+      },
+      "6": {
+        "checks": {
+          "all_frames_capacity_reachable": false,
+          "no_copy_padding_or_jitter": true
+        },
+        "passed": false
+      }
+    },
+    "passed": false,
+    "hard_capacity_failure": true,
+    "failure_scope": "direct_gt_supported_peak_construction_under_frozen_quotas",
+    "sparse_target_lifting_implemented": false,
+    "representation_family_closure_eligible": false,
+    "training_authorized": false
+  }
+}

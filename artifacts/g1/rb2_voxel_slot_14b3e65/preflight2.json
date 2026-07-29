@@ -1,0 +1,1521 @@
+{
+  "schema_version": 1,
+  "protocol": "rb2_cartesian_voxel_slot_source_bound_preflight_v1",
+  "created_at_utc": "2026-07-29T00:41:36.281254+00:00",
+  "mode": "preflight",
+  "source": {
+    "source_commit": "14b3e65e7f3e1848ece73d6ec16f8f1c9f9b22c0",
+    "tracked_worktree_clean": true,
+    "untracked_files_ignored_by_source_cleanliness_check": true
+  },
+  "source_hashes": {
+    "code/eval/rb2_voxel_slot_oracle.py": {
+      "path": "/home/wangning/Workspace/radar_cube_dense/snapshots/14b3e65/code/eval/rb2_voxel_slot_oracle.py",
+      "sha256": "1af6fdcf5b663191865bded7306247a382af1cd7541893b27adc24967de73f79"
+    },
+    "code/scripts/preflight_rb2_voxel_slot.py": {
+      "path": "/home/wangning/Workspace/radar_cube_dense/snapshots/14b3e65/code/scripts/preflight_rb2_voxel_slot.py",
+      "sha256": "0eb4b824002c0606f260062dd9f1dfb9c37ab4a724dd53ede4fb6375fc9777b0"
+    },
+    "docs/rb2_voxel_slot_stage0_protocol.md": {
+      "path": "/home/wangning/Workspace/radar_cube_dense/snapshots/14b3e65/docs/rb2_voxel_slot_stage0_protocol.md",
+      "sha256": "13db2950fc3b69d82d0061025f5dc04855cbc00beccea6e540a053dc9e674713"
+    }
+  },
+  "data": {
+    "manifest": "/home/wangning/Workspace/radar_cube_dense/snapshots/14b3e65/artifacts/g0/g0_audit_100_manifest.json",
+    "manifest_sha256": "645307a8bae351db51b55128043dae69bce5b928169d5fa25c1b9c55083de4e4",
+    "cache_root": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db",
+    "full_manifest_frame_count": 100,
+    "selected_frame_count": 2,
+    "selected_partitions": {
+      "train": 1,
+      "validation": 1
+    },
+    "frame_source_aggregate_sha256": "7155df2509183dea7f5dc8add9d17851bd2c2cb2cc4eb8e58e7fe3e30a6b80d7",
+    "arrays_accessed": [
+      "target_xyz_confidence"
+    ],
+    "test_accessed": false,
+    "cube_accessed": false,
+    "cfar_accessed": false
+  },
+  "contract": {
+    "artifact_label": "unattainable_gt_aided_voxel_slot_heuristic",
+    "strict_upper_bound": false,
+    "eligible_as_model_result": false,
+    "export_count": 10000,
+    "output_range_quotas": {
+      "range_0_30m": 8000,
+      "range_30_60m": 1700,
+      "range_60_120m": 300
+    },
+    "minimum_pair_distance_m": 0.05,
+    "copy_padding_jitter_free_centers": false,
+    "capacity_shortfall_is_hard_failure": true
+  },
+  "far_frame_semantics": {
+    "far_range_m": [
+      60.0,
+      120.0
+    ],
+    "selected_validation_frame_count": 1,
+    "far_target_validation_frame_count": 1,
+    "formal_geometry_expected_far_target_frame_count": 23,
+    "geometry_aggregate_sample_count_rule": "include every validation frame with far-range GT, including frames with zero same-bin predictions"
+  },
+  "frames": [
+    {
+      "partition": "train",
+      "sequence": 1,
+      "radar_index": 232,
+      "target_source": {
+        "path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq01_radar_00232.npz",
+        "sha256": "76380164d2460a5de33cb06e2779a98aae0f9260fe6b77ef92b2332f12ba8fae",
+        "target_xyz_confidence_sha256": "2ee907121445eb30613124c7fa7408c6145a978a8e8c5606151e6de42412eec9",
+        "target_count": 10436,
+        "npz_arrays_accessed": [
+          "target_xyz_confidence"
+        ],
+        "cube_accessed": false,
+        "cfar_accessed": false
+      },
+      "configs": {
+        "cartesian_0p40m_s4": {
+          "status": "passed",
+          "report": {
+            "schema_version": 1,
+            "protocol": "rb2_cartesian_voxel_slot_gt_aided_oracle_v1",
+            "artifact_label": {
+              "label": "unattainable_gt_aided_voxel_slot_heuristic",
+              "unattainable_gt_aided_heuristic": true,
+              "strict_upper_bound": false,
+              "eligible_as_model_result": false,
+              "ground_truth_used_for_activation": true,
+              "ground_truth_used_for_slot_offsets": true,
+              "ground_truth_used_for_candidate_ranking": true,
+              "ground_truth_used_for_selection": true
+            },
+            "forbidden_operations": {
+              "copy": false,
+              "padding": false,
+              "jitter": false,
+              "free_centers": false
+            },
+            "fov": {
+              "range_min_m": 0.0,
+              "range_max_m": 118.037109,
+              "azimuth_min_deg": -53.0,
+              "azimuth_max_deg": 53.0,
+              "elevation_min_deg": -18.0,
+              "elevation_max_deg": 18.0
+            },
+            "config": {
+              "name": "cartesian_0p40m_s4",
+              "voxel_size_xyz_m": [
+                0.4,
+                0.4,
+                0.4
+              ],
+              "voxel_volume_m3": 0.06400000000000002,
+              "slots_per_voxel": 4,
+              "slot_density_per_m3": 62.499999999999986,
+              "template_resolution": 4,
+              "template_capacity": 64,
+              "minimum_distance_m": 0.05,
+              "slot_boundary_margin_m": 0.025500000000000002,
+              "rationale": "fixed Cartesian support with bounded mutually exclusive slots; cell identity cannot move or collapse into a free center"
+            },
+            "lattice": {
+              "origin_xyz_m": [
+                0.0,
+                -94.2686267507229,
+                -36.475472647888054
+              ],
+              "upper_xyz_m": [
+                118.037109,
+                94.2686267507229,
+                36.475472647888054
+              ],
+              "voxel_size_xyz_m": [
+                0.4,
+                0.4,
+                0.4
+              ],
+              "shape_xyz": [
+                296,
+                472,
+                183
+              ],
+              "total_lattice_voxel_count": 25567296,
+              "support": "fixed_cartesian_lattice_intersected_with_kradar_fov"
+            },
+            "target": {
+              "point_count": 10436,
+              "effective_count": 2881.7692189380905,
+              "xyz_sha256": "712b6f1f479727f9e5976247083ac247ccad9abbf7f0b4af23629b207e056271",
+              "weight_sha256": "9a7e3378b9fb7d92436f02b27f8d59f2703106f2673ea69f44dbd69cf50e4ec3",
+              "has_range_60_120m_target": true
+            },
+            "voxel_capacity": {
+              "target_occupied_voxel_count": 3790,
+              "activated_target_occupied_voxel_count": 3790,
+              "unavailable_target_occupied_voxel_count": 0,
+              "unavailable_target_occupied_voxels": [],
+              "quota_support_voxel_count": 771,
+              "total_activated_voxel_count": 4561,
+              "fixed_candidate_count": 18244,
+              "candidate_capacity_by_range": {
+                "range_0_30m": 8003,
+                "range_30_60m": 6345,
+                "range_60_120m": 3896
+              },
+              "occupied_voxel_target_count_mean": 2.7535620052770446,
+              "occupied_voxel_target_count_max": 68,
+              "slot_saturated_occupied_voxel_count": 755,
+              "slot_saturated_occupied_voxel_fraction": 0.19920844327176782,
+              "target_derived_candidate_slot_count": 7446,
+              "selected_slot_fraction": 0.5481254110940583
+            },
+            "selection": {
+              "method": "gt_distance_stable_true_5cm_range_quota",
+              "candidate_count": 18244,
+              "candidate_capacity_by_range": {
+                "range_0_30m": 8003,
+                "range_30_60m": 6345,
+                "range_60_120m": 3896
+              },
+              "required_output_quotas": {
+                "range_0_30m": 8000,
+                "range_30_60m": 1700,
+                "range_60_120m": 300
+              },
+              "selected_by_range": {
+                "range_0_30m": 8000,
+                "range_30_60m": 1700,
+                "range_60_120m": 300
+              },
+              "rejected_5cm_by_range": {
+                "range_0_30m": 0,
+                "range_30_60m": 0,
+                "range_60_120m": 0
+              },
+              "rejected_5cm_total": 0,
+              "minimum_euclidean_distance_m": 0.05,
+              "observed_minimum_pair_distance_m": 0.050007280869948885,
+              "exact_point_count": 10000,
+              "unique_selected_candidate_count": 10000,
+              "copy_padding_jitter_duplicate": false,
+              "selected_from_target_occupied_voxels": 6919,
+              "selected_from_quota_support_voxels": 3081,
+              "selected_target_derived_slot_count": 5391
+            },
+            "geometry": {
+              "chamfer_m": 0.9562558882914878,
+              "precision_mean_distance_m": 0.07455563493599164,
+              "completeness_mean_distance_m": 0.8817002533554962,
+              "outlier_fraction_2m": 0.0,
+              "prediction_count": 10000,
+              "target_count": 10436,
+              "target_effective_count": 2881.7692189380905,
+              "precision_0p5m": 1.0,
+              "recall_0p5m": 0.9186145168051948,
+              "fscore_0p5m": 0.9575811177899741,
+              "precision_1p0m": 1.0,
+              "recall_1p0m": 0.9306330893102237,
+              "fscore_1p0m": 0.9640703813304269,
+              "precision_2p0m": 1.0,
+              "recall_2p0m": 0.9388625587465419,
+              "fscore_2p0m": 0.9684673671283937,
+              "range_0_30m_precision_mean_distance_m": 0.09319454366998955,
+              "range_0_30m_completeness_mean_distance_m": 0.04117931033894903,
+              "range_0_30m_fscore_1m": 1.0,
+              "range_30_60m_precision_mean_distance_m": 0.0,
+              "range_30_60m_completeness_mean_distance_m": 0.7232523625752212,
+              "range_30_60m_fscore_1m": 0.9438029445634631,
+              "range_60_120m_precision_mean_distance_m": 0.0,
+              "range_60_120m_completeness_mean_distance_m": 6.171346037376005,
+              "range_60_120m_fscore_1m": 0.7776401513094905
+            },
+            "hashes": {
+              "candidate_xyz_sha256": "c3669c11f3f1c4fdfdd3293061dcd08b909de9fd172c2f737dffd2cec85f190c",
+              "candidate_ids_sha256": "86b3fd20109c8895639f6880f711c36230dfd9bab1b17dc93d620f6e4be5df48",
+              "selected_xyz_sha256": "fc640b75bfbd9cb17677e0966880f63a9d2a4fc47c9e92be0e08785ee295dcbc",
+              "selected_candidate_ids_sha256": "fa7e4465709ae1ef945f5007f2e4a376a9120798225799814dbd5317bcc08044"
+            },
+            "checks": {
+              "fixed_slots_per_activated_voxel": true,
+              "unique_voxel_slot_candidate_ids": true,
+              "all_candidates_inside_fixed_cells": true,
+              "all_candidates_inside_kradar_fov": true,
+              "exact_10000": true,
+              "range_quotas_exact": true,
+              "minimum_pair_distance_at_least_5cm": true,
+              "capacity_sufficient": true,
+              "gt_aided_label_explicit": true,
+              "no_copy_padding_jitter_or_free_centers": true
+            },
+            "passed": true
+          },
+          "elapsed_seconds": 1.59252317994833
+        },
+        "cartesian_0p60m_s8": {
+          "status": "passed",
+          "report": {
+            "schema_version": 1,
+            "protocol": "rb2_cartesian_voxel_slot_gt_aided_oracle_v1",
+            "artifact_label": {
+              "label": "unattainable_gt_aided_voxel_slot_heuristic",
+              "unattainable_gt_aided_heuristic": true,
+              "strict_upper_bound": false,
+              "eligible_as_model_result": false,
+              "ground_truth_used_for_activation": true,
+              "ground_truth_used_for_slot_offsets": true,
+              "ground_truth_used_for_candidate_ranking": true,
+              "ground_truth_used_for_selection": true
+            },
+            "forbidden_operations": {
+              "copy": false,
+              "padding": false,
+              "jitter": false,
+              "free_centers": false
+            },
+            "fov": {
+              "range_min_m": 0.0,
+              "range_max_m": 118.037109,
+              "azimuth_min_deg": -53.0,
+              "azimuth_max_deg": 53.0,
+              "elevation_min_deg": -18.0,
+              "elevation_max_deg": 18.0
+            },
+            "config": {
+              "name": "cartesian_0p60m_s8",
+              "voxel_size_xyz_m": [
+                0.6,
+                0.6,
+                0.6
+              ],
+              "voxel_volume_m3": 0.216,
+              "slots_per_voxel": 8,
+              "slot_density_per_m3": 37.03703703703704,
+              "template_resolution": 5,
+              "template_capacity": 125,
+              "minimum_distance_m": 0.05,
+              "slot_boundary_margin_m": 0.025500000000000002,
+              "rationale": "fixed Cartesian support with bounded mutually exclusive slots; cell identity cannot move or collapse into a free center"
+            },
+            "lattice": {
+              "origin_xyz_m": [
+                0.0,
+                -94.2686267507229,
+                -36.475472647888054
+              ],
+              "upper_xyz_m": [
+                118.037109,
+                94.2686267507229,
+                36.475472647888054
+              ],
+              "voxel_size_xyz_m": [
+                0.6,
+                0.6,
+                0.6
+              ],
+              "shape_xyz": [
+                197,
+                315,
+                122
+              ],
+              "total_lattice_voxel_count": 7570710,
+              "support": "fixed_cartesian_lattice_intersected_with_kradar_fov"
+            },
+            "target": {
+              "point_count": 10436,
+              "effective_count": 2881.7692189380905,
+              "xyz_sha256": "712b6f1f479727f9e5976247083ac247ccad9abbf7f0b4af23629b207e056271",
+              "weight_sha256": "9a7e3378b9fb7d92436f02b27f8d59f2703106f2673ea69f44dbd69cf50e4ec3",
+              "has_range_60_120m_target": true
+            },
+            "voxel_capacity": {
+              "target_occupied_voxel_count": 2485,
+              "activated_target_occupied_voxel_count": 2483,
+              "unavailable_target_occupied_voxel_count": 2,
+              "unavailable_target_occupied_voxels": [
+                {
+                  "voxel_index_xyz": [
+                    6,
+                    147,
+                    59
+                  ],
+                  "target_point_count": 1,
+                  "reason": "R-B2 voxel has fewer valid bounded positions than fixed slots",
+                  "detail": {
+                    "voxel_index_xyz": [
+                      6,
+                      147,
+                      59
+                    ],
+                    "valid_position_count": 6,
+                    "required_slot_count": 8,
+                    "required_stratum": null
+                  }
+                },
+                {
+                  "voxel_index_xyz": [
+                    12,
+                    139,
+                    59
+                  ],
+                  "target_point_count": 1,
+                  "reason": "R-B2 voxel has fewer valid bounded positions than fixed slots",
+                  "detail": {
+                    "voxel_index_xyz": [
+                      12,
+                      139,
+                      59
+                    ],
+                    "valid_position_count": 6,
+                    "required_slot_count": 8,
+                    "required_stratum": null
+                  }
+                }
+              ],
+              "quota_support_voxel_count": 311,
+              "total_activated_voxel_count": 2794,
+              "fixed_candidate_count": 22352,
+              "candidate_capacity_by_range": {
+                "range_0_30m": 8003,
+                "range_30_60m": 8134,
+                "range_60_120m": 6215
+              },
+              "occupied_voxel_target_count_mean": 4.199597585513079,
+              "occupied_voxel_target_count_max": 141,
+              "slot_saturated_occupied_voxel_count": 332,
+              "slot_saturated_occupied_voxel_fraction": 0.13360160965794768,
+              "target_derived_candidate_slot_count": 7470,
+              "selected_slot_fraction": 0.44738725841088045
+            },
+            "selection": {
+              "method": "gt_distance_stable_true_5cm_range_quota",
+              "candidate_count": 22352,
+              "candidate_capacity_by_range": {
+                "range_0_30m": 8003,
+                "range_30_60m": 8134,
+                "range_60_120m": 6215
+              },
+              "required_output_quotas": {
+                "range_0_30m": 8000,
+                "range_30_60m": 1700,
+                "range_60_120m": 300
+              },
+              "selected_by_range": {
+                "range_0_30m": 8000,
+                "range_30_60m": 1700,
+                "range_60_120m": 300
+              },
+              "rejected_5cm_by_range": {
+                "range_0_30m": 0,
+                "range_30_60m": 0,
+                "range_60_120m": 0
+              },
+              "rejected_5cm_total": 0,
+              "minimum_euclidean_distance_m": 0.05,
+              "observed_minimum_pair_distance_m": 0.050006036831995025,
+              "exact_point_count": 10000,
+              "unique_selected_candidate_count": 10000,
+              "copy_padding_jitter_duplicate": false,
+              "selected_from_target_occupied_voxels": 7515,
+              "selected_from_quota_support_voxels": 2485,
+              "selected_target_derived_slot_count": 5364
+            },
+            "geometry": {
+              "chamfer_m": 1.2788313196791634,
+              "precision_mean_distance_m": 0.0909573610100994,
+              "completeness_mean_distance_m": 1.187873958669064,
+              "outlier_fraction_2m": 0.0,
+              "prediction_count": 10000,
+              "target_count": 10436,
+              "target_effective_count": 2881.7692189380905,
+              "precision_0p5m": 0.9801,
+              "recall_0p5m": 0.8722984344400007,
+              "fscore_0p5m": 0.923062425123569,
+              "precision_1p0m": 1.0,
+              "recall_1p0m": 0.890260553522912,
+              "fscore_1p0m": 0.9419448042374028,
+              "precision_2p0m": 1.0,
+              "recall_2p0m": 0.901522030921757,
+              "fscore_2p0m": 0.9482109765351989,
+              "range_0_30m_precision_mean_distance_m": 0.11369670126262425,
+              "range_0_30m_completeness_mean_distance_m": 0.05463269925747283,
+              "range_0_30m_fscore_1m": 1.0,
+              "range_30_60m_precision_mean_distance_m": 0.0,
+              "range_30_60m_completeness_mean_distance_m": 1.5947792495893223,
+              "range_30_60m_fscore_1m": 0.8735746417294262,
+              "range_60_120m_precision_mean_distance_m": 0.0,
+              "range_60_120m_completeness_mean_distance_m": 6.560572319524926,
+              "range_60_120m_fscore_1m": 0.7370006052507815
+            },
+            "hashes": {
+              "candidate_xyz_sha256": "a404a39adbc56851d8ada20e8901d760dc4f87ca0bdd0043880db80e4f6f28f1",
+              "candidate_ids_sha256": "fef51865e51d4e24cee18ffe1ca39197ae64744aaeb799b1a397356cc2629813",
+              "selected_xyz_sha256": "2411bc792794ef66a398926ed073fe70c044bf7aa788ad80a5abc861cd95fe92",
+              "selected_candidate_ids_sha256": "7c3a75fdc67f6870b2670c0b5350cdb3f2ca0c958a7c7e7ab70d2640a70f98ac"
+            },
+            "checks": {
+              "fixed_slots_per_activated_voxel": true,
+              "unique_voxel_slot_candidate_ids": true,
+              "all_candidates_inside_fixed_cells": true,
+              "all_candidates_inside_kradar_fov": true,
+              "exact_10000": true,
+              "range_quotas_exact": true,
+              "minimum_pair_distance_at_least_5cm": true,
+              "capacity_sufficient": true,
+              "gt_aided_label_explicit": true,
+              "no_copy_padding_jitter_or_free_centers": true
+            },
+            "passed": true
+          },
+          "elapsed_seconds": 1.5685290400870144
+        }
+      },
+      "test_accessed": false,
+      "cube_accessed": false,
+      "cfar_accessed": false
+    },
+    {
+      "partition": "validation",
+      "sequence": 6,
+      "radar_index": 183,
+      "target_source": {
+        "path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq06_radar_00183.npz",
+        "sha256": "422136ece0fcc38717b4665563ce15b07710433bc7e4732030fbb0b3e32c6e2f",
+        "target_xyz_confidence_sha256": "b535a28789d9be9ac4027c224fe78314aba89dfb5952adea7d916a69fe4571d4",
+        "target_count": 17903,
+        "npz_arrays_accessed": [
+          "target_xyz_confidence"
+        ],
+        "cube_accessed": false,
+        "cfar_accessed": false
+      },
+      "configs": {
+        "cartesian_0p40m_s4": {
+          "status": "passed",
+          "report": {
+            "schema_version": 1,
+            "protocol": "rb2_cartesian_voxel_slot_gt_aided_oracle_v1",
+            "artifact_label": {
+              "label": "unattainable_gt_aided_voxel_slot_heuristic",
+              "unattainable_gt_aided_heuristic": true,
+              "strict_upper_bound": false,
+              "eligible_as_model_result": false,
+              "ground_truth_used_for_activation": true,
+              "ground_truth_used_for_slot_offsets": true,
+              "ground_truth_used_for_candidate_ranking": true,
+              "ground_truth_used_for_selection": true
+            },
+            "forbidden_operations": {
+              "copy": false,
+              "padding": false,
+              "jitter": false,
+              "free_centers": false
+            },
+            "fov": {
+              "range_min_m": 0.0,
+              "range_max_m": 118.037109,
+              "azimuth_min_deg": -53.0,
+              "azimuth_max_deg": 53.0,
+              "elevation_min_deg": -18.0,
+              "elevation_max_deg": 18.0
+            },
+            "config": {
+              "name": "cartesian_0p40m_s4",
+              "voxel_size_xyz_m": [
+                0.4,
+                0.4,
+                0.4
+              ],
+              "voxel_volume_m3": 0.06400000000000002,
+              "slots_per_voxel": 4,
+              "slot_density_per_m3": 62.499999999999986,
+              "template_resolution": 4,
+              "template_capacity": 64,
+              "minimum_distance_m": 0.05,
+              "slot_boundary_margin_m": 0.025500000000000002,
+              "rationale": "fixed Cartesian support with bounded mutually exclusive slots; cell identity cannot move or collapse into a free center"
+            },
+            "lattice": {
+              "origin_xyz_m": [
+                0.0,
+                -94.2686267507229,
+                -36.475472647888054
+              ],
+              "upper_xyz_m": [
+                118.037109,
+                94.2686267507229,
+                36.475472647888054
+              ],
+              "voxel_size_xyz_m": [
+                0.4,
+                0.4,
+                0.4
+              ],
+              "shape_xyz": [
+                296,
+                472,
+                183
+              ],
+              "total_lattice_voxel_count": 25567296,
+              "support": "fixed_cartesian_lattice_intersected_with_kradar_fov"
+            },
+            "target": {
+              "point_count": 17903,
+              "effective_count": 5123.039637568378,
+              "xyz_sha256": "16c6f9bea400a3f6814b3d2109996e9e84b53bab4df127ec27ba3f8d6e0c2443",
+              "weight_sha256": "b5ce764fc05e1bd178a7182d0dfc882e3b31c4675f429bf6e88e4e1756472aff",
+              "has_range_60_120m_target": true
+            },
+            "voxel_capacity": {
+              "target_occupied_voxel_count": 4202,
+              "activated_target_occupied_voxel_count": 4202,
+              "unavailable_target_occupied_voxel_count": 0,
+              "unavailable_target_occupied_voxels": [],
+              "quota_support_voxel_count": 0,
+              "total_activated_voxel_count": 4202,
+              "fixed_candidate_count": 16808,
+              "candidate_capacity_by_range": {
+                "range_0_30m": 10006,
+                "range_30_60m": 5730,
+                "range_60_120m": 1072
+              },
+              "occupied_voxel_target_count_mean": 4.260590195145169,
+              "occupied_voxel_target_count_max": 72,
+              "slot_saturated_occupied_voxel_count": 1545,
+              "slot_saturated_occupied_voxel_fraction": 0.36768205616373156,
+              "target_derived_candidate_slot_count": 10471,
+              "selected_slot_fraction": 0.5949547834364588
+            },
+            "selection": {
+              "method": "gt_distance_stable_true_5cm_range_quota",
+              "candidate_count": 16808,
+              "candidate_capacity_by_range": {
+                "range_0_30m": 10006,
+                "range_30_60m": 5730,
+                "range_60_120m": 1072
+              },
+              "required_output_quotas": {
+                "range_0_30m": 8000,
+                "range_30_60m": 1700,
+                "range_60_120m": 300
+              },
+              "selected_by_range": {
+                "range_0_30m": 8000,
+                "range_30_60m": 1700,
+                "range_60_120m": 300
+              },
+              "rejected_5cm_by_range": {
+                "range_0_30m": 0,
+                "range_30_60m": 0,
+                "range_60_120m": 0
+              },
+              "rejected_5cm_total": 0,
+              "minimum_euclidean_distance_m": 0.05,
+              "observed_minimum_pair_distance_m": 0.05007360643533886,
+              "exact_point_count": 10000,
+              "unique_selected_candidate_count": 10000,
+              "copy_padding_jitter_duplicate": false,
+              "selected_from_target_occupied_voxels": 10000,
+              "selected_from_quota_support_voxels": 0,
+              "selected_target_derived_slot_count": 9528
+            },
+            "geometry": {
+              "chamfer_m": 0.07103157404657663,
+              "precision_mean_distance_m": 0.0043086978376620545,
+              "completeness_mean_distance_m": 0.06672287620891458,
+              "outlier_fraction_2m": 0.0,
+              "prediction_count": 10000,
+              "target_count": 17903,
+              "target_effective_count": 5123.039637568378,
+              "precision_0p5m": 1.0,
+              "recall_0p5m": 0.9945196128761741,
+              "fscore_0p5m": 0.9972522771456115,
+              "precision_1p0m": 1.0,
+              "recall_1p0m": 0.9986907926331074,
+              "fscore_1p0m": 0.999344967529886,
+              "precision_2p0m": 1.0,
+              "recall_2p0m": 0.999424408677422,
+              "fscore_2p0m": 0.9997121214885244,
+              "range_0_30m_precision_mean_distance_m": 0.005151589252656359,
+              "range_0_30m_completeness_mean_distance_m": 0.05982956400913482,
+              "range_0_30m_fscore_1m": 1.0,
+              "range_30_60m_precision_mean_distance_m": 0.0,
+              "range_30_60m_completeness_mean_distance_m": 0.10713751135024716,
+              "range_30_60m_fscore_1m": 0.9960783466260288,
+              "range_60_120m_precision_mean_distance_m": 0.006247547851232199,
+              "range_60_120m_completeness_mean_distance_m": 0.005226586062279089,
+              "range_60_120m_fscore_1m": 1.0
+            },
+            "hashes": {
+              "candidate_xyz_sha256": "5f7dbd01a04147df9951d4f643c1f59a9b8c52d8b6c3ef07010eb7688bbcc8d7",
+              "candidate_ids_sha256": "a135c72d5ec428942a5da55c63d5d920fd43127d00482360d392a5770ffe2952",
+              "selected_xyz_sha256": "6952496d13a2148d1be724ac2e8661f904730ec666cf2cac4a0bc48652fd2921",
+              "selected_candidate_ids_sha256": "4976480726f2965932664e9b0e536dd27421e9e21a0626a1c8b54ba365064a26"
+            },
+            "checks": {
+              "fixed_slots_per_activated_voxel": true,
+              "unique_voxel_slot_candidate_ids": true,
+              "all_candidates_inside_fixed_cells": true,
+              "all_candidates_inside_kradar_fov": true,
+              "exact_10000": true,
+              "range_quotas_exact": true,
+              "minimum_pair_distance_at_least_5cm": true,
+              "capacity_sufficient": true,
+              "gt_aided_label_explicit": true,
+              "no_copy_padding_jitter_or_free_centers": true
+            },
+            "passed": true
+          },
+          "elapsed_seconds": 1.532124140067026
+        },
+        "cartesian_0p60m_s8": {
+          "status": "passed",
+          "report": {
+            "schema_version": 1,
+            "protocol": "rb2_cartesian_voxel_slot_gt_aided_oracle_v1",
+            "artifact_label": {
+              "label": "unattainable_gt_aided_voxel_slot_heuristic",
+              "unattainable_gt_aided_heuristic": true,
+              "strict_upper_bound": false,
+              "eligible_as_model_result": false,
+              "ground_truth_used_for_activation": true,
+              "ground_truth_used_for_slot_offsets": true,
+              "ground_truth_used_for_candidate_ranking": true,
+              "ground_truth_used_for_selection": true
+            },
+            "forbidden_operations": {
+              "copy": false,
+              "padding": false,
+              "jitter": false,
+              "free_centers": false
+            },
+            "fov": {
+              "range_min_m": 0.0,
+              "range_max_m": 118.037109,
+              "azimuth_min_deg": -53.0,
+              "azimuth_max_deg": 53.0,
+              "elevation_min_deg": -18.0,
+              "elevation_max_deg": 18.0
+            },
+            "config": {
+              "name": "cartesian_0p60m_s8",
+              "voxel_size_xyz_m": [
+                0.6,
+                0.6,
+                0.6
+              ],
+              "voxel_volume_m3": 0.216,
+              "slots_per_voxel": 8,
+              "slot_density_per_m3": 37.03703703703704,
+              "template_resolution": 5,
+              "template_capacity": 125,
+              "minimum_distance_m": 0.05,
+              "slot_boundary_margin_m": 0.025500000000000002,
+              "rationale": "fixed Cartesian support with bounded mutually exclusive slots; cell identity cannot move or collapse into a free center"
+            },
+            "lattice": {
+              "origin_xyz_m": [
+                0.0,
+                -94.2686267507229,
+                -36.475472647888054
+              ],
+              "upper_xyz_m": [
+                118.037109,
+                94.2686267507229,
+                36.475472647888054
+              ],
+              "voxel_size_xyz_m": [
+                0.6,
+                0.6,
+                0.6
+              ],
+              "shape_xyz": [
+                197,
+                315,
+                122
+              ],
+              "total_lattice_voxel_count": 7570710,
+              "support": "fixed_cartesian_lattice_intersected_with_kradar_fov"
+            },
+            "target": {
+              "point_count": 17903,
+              "effective_count": 5123.039637568378,
+              "xyz_sha256": "16c6f9bea400a3f6814b3d2109996e9e84b53bab4df127ec27ba3f8d6e0c2443",
+              "weight_sha256": "b5ce764fc05e1bd178a7182d0dfc882e3b31c4675f429bf6e88e4e1756472aff",
+              "has_range_60_120m_target": true
+            },
+            "voxel_capacity": {
+              "target_occupied_voxel_count": 2494,
+              "activated_target_occupied_voxel_count": 2493,
+              "unavailable_target_occupied_voxel_count": 1,
+              "unavailable_target_occupied_voxels": [
+                {
+                  "voxel_index_xyz": [
+                    6,
+                    147,
+                    59
+                  ],
+                  "target_point_count": 1,
+                  "reason": "R-B2 voxel has fewer valid bounded positions than fixed slots",
+                  "detail": {
+                    "voxel_index_xyz": [
+                      6,
+                      147,
+                      59
+                    ],
+                    "valid_position_count": 6,
+                    "required_slot_count": 8,
+                    "required_stratum": null
+                  }
+                }
+              ],
+              "quota_support_voxel_count": 0,
+              "total_activated_voxel_count": 2493,
+              "fixed_candidate_count": 19944,
+              "candidate_capacity_by_range": {
+                "range_0_30m": 10963,
+                "range_30_60m": 7221,
+                "range_60_120m": 1760
+              },
+              "occupied_voxel_target_count_mean": 7.178428227746592,
+              "occupied_voxel_target_count_max": 111,
+              "slot_saturated_occupied_voxel_count": 671,
+              "slot_saturated_occupied_voxel_fraction": 0.2690457097032879,
+              "target_derived_candidate_slot_count": 10344,
+              "selected_slot_fraction": 0.5014039310068191
+            },
+            "selection": {
+              "method": "gt_distance_stable_true_5cm_range_quota",
+              "candidate_count": 19944,
+              "candidate_capacity_by_range": {
+                "range_0_30m": 10963,
+                "range_30_60m": 7221,
+                "range_60_120m": 1760
+              },
+              "required_output_quotas": {
+                "range_0_30m": 8000,
+                "range_30_60m": 1700,
+                "range_60_120m": 300
+              },
+              "selected_by_range": {
+                "range_0_30m": 8000,
+                "range_30_60m": 1700,
+                "range_60_120m": 300
+              },
+              "rejected_5cm_by_range": {
+                "range_0_30m": 0,
+                "range_30_60m": 0,
+                "range_60_120m": 0
+              },
+              "rejected_5cm_total": 0,
+              "minimum_euclidean_distance_m": 0.05,
+              "observed_minimum_pair_distance_m": 0.05001724853025685,
+              "exact_point_count": 10000,
+              "unique_selected_candidate_count": 10000,
+              "copy_padding_jitter_duplicate": false,
+              "selected_from_target_occupied_voxels": 10000,
+              "selected_from_quota_support_voxels": 0,
+              "selected_target_derived_slot_count": 9410
+            },
+            "geometry": {
+              "chamfer_m": 0.13897969148677702,
+              "precision_mean_distance_m": 0.0043807673778613115,
+              "completeness_mean_distance_m": 0.13459892410891572,
+              "outlier_fraction_2m": 0.0,
+              "prediction_count": 10000,
+              "target_count": 17903,
+              "target_effective_count": 5123.039637568378,
+              "precision_0p5m": 1.0,
+              "recall_0p5m": 0.9811242914967637,
+              "fscore_0p5m": 0.9904722239870294,
+              "precision_1p0m": 1.0,
+              "recall_1p0m": 0.9838984876869756,
+              "fscore_1p0m": 0.9918839031266176,
+              "precision_2p0m": 1.0,
+              "recall_2p0m": 0.9864183339058359,
+              "fscore_2p0m": 0.9931627362361991,
+              "range_0_30m_precision_mean_distance_m": 0.005312375466285615,
+              "range_0_30m_completeness_mean_distance_m": 0.07476630779018743,
+              "range_0_30m_fscore_1m": 1.0,
+              "range_30_60m_precision_mean_distance_m": 0.0,
+              "range_30_60m_completeness_mean_distance_m": 0.4399148322404537,
+              "range_30_60m_fscore_1m": 0.9495326904243644,
+              "range_60_120m_precision_mean_distance_m": 0.004362233494427321,
+              "range_60_120m_completeness_mean_distance_m": 0.0031217003510189147,
+              "range_60_120m_fscore_1m": 1.0
+            },
+            "hashes": {
+              "candidate_xyz_sha256": "f673b5c992dc7bd1299bca58476082ebecf7815ee5c9fdc9cc8b1e305289a940",
+              "candidate_ids_sha256": "b3e7c34c451912641dfbf9425865736364e5672b500b3b8b9c3a45860f0f1880",
+              "selected_xyz_sha256": "06ffa887c3c53c30a22822c6a210879db5b1883e75d00c5d7ac5113f76e18753",
+              "selected_candidate_ids_sha256": "418950a1fb2e720d7395639b5ab9ea09d2e15a4ff1f62e32eaca1c40aa010817"
+            },
+            "checks": {
+              "fixed_slots_per_activated_voxel": true,
+              "unique_voxel_slot_candidate_ids": true,
+              "all_candidates_inside_fixed_cells": true,
+              "all_candidates_inside_kradar_fov": true,
+              "exact_10000": true,
+              "range_quotas_exact": true,
+              "minimum_pair_distance_at_least_5cm": true,
+              "capacity_sufficient": true,
+              "gt_aided_label_explicit": true,
+              "no_copy_padding_jitter_or_free_centers": true
+            },
+            "passed": true
+          },
+          "elapsed_seconds": 1.4611370298080146
+        }
+      },
+      "test_accessed": false,
+      "cube_accessed": false,
+      "cfar_accessed": false
+    }
+  ],
+  "aggregates": {
+    "cartesian_0p40m_s4": {
+      "config": {
+        "name": "cartesian_0p40m_s4",
+        "voxel_size_xyz_m": [
+          0.4,
+          0.4,
+          0.4
+        ],
+        "voxel_volume_m3": 0.06400000000000002,
+        "slots_per_voxel": 4,
+        "slot_density_per_m3": 62.499999999999986,
+        "template_resolution": 4,
+        "template_capacity": 64,
+        "minimum_distance_m": 0.05,
+        "slot_boundary_margin_m": 0.025500000000000002,
+        "rationale": "fixed Cartesian support with bounded mutually exclusive slots; cell identity cannot move or collapse into a free center"
+      },
+      "requested_frame_count": 2,
+      "successful_frame_count": 2,
+      "failed_frame_count": 0,
+      "capacity_failures": [],
+      "geometry": {
+        "chamfer_m": {
+          "mean": 0.5136437311690322,
+          "std": 0.4426121571224556,
+          "median": 0.5136437311690322,
+          "minimum": 0.07103157404657663,
+          "maximum": 0.9562558882914878,
+          "sample_count": 2
+        },
+        "completeness_mean_distance_m": {
+          "mean": 0.4742115647822054,
+          "std": 0.4074886885732908,
+          "median": 0.4742115647822054,
+          "minimum": 0.06672287620891458,
+          "maximum": 0.8817002533554962,
+          "sample_count": 2
+        },
+        "fscore_0p5m": {
+          "mean": 0.9774166974677928,
+          "std": 0.019835579677818682,
+          "median": 0.9774166974677928,
+          "minimum": 0.9575811177899741,
+          "maximum": 0.9972522771456115,
+          "sample_count": 2
+        },
+        "fscore_1p0m": {
+          "mean": 0.9817076744301565,
+          "std": 0.017637293099729556,
+          "median": 0.9817076744301565,
+          "minimum": 0.9640703813304269,
+          "maximum": 0.999344967529886,
+          "sample_count": 2
+        },
+        "fscore_2p0m": {
+          "mean": 0.9840897443084591,
+          "std": 0.015622377180065372,
+          "median": 0.9840897443084591,
+          "minimum": 0.9684673671283937,
+          "maximum": 0.9997121214885244,
+          "sample_count": 2
+        },
+        "outlier_fraction_2m": {
+          "mean": 0.0,
+          "std": 0.0,
+          "median": 0.0,
+          "minimum": 0.0,
+          "maximum": 0.0,
+          "sample_count": 2
+        },
+        "precision_0p5m": {
+          "mean": 1.0,
+          "std": 0.0,
+          "median": 1.0,
+          "minimum": 1.0,
+          "maximum": 1.0,
+          "sample_count": 2
+        },
+        "precision_1p0m": {
+          "mean": 1.0,
+          "std": 0.0,
+          "median": 1.0,
+          "minimum": 1.0,
+          "maximum": 1.0,
+          "sample_count": 2
+        },
+        "precision_2p0m": {
+          "mean": 1.0,
+          "std": 0.0,
+          "median": 1.0,
+          "minimum": 1.0,
+          "maximum": 1.0,
+          "sample_count": 2
+        },
+        "precision_mean_distance_m": {
+          "mean": 0.039432166386826846,
+          "std": 0.03512346854916479,
+          "median": 0.039432166386826846,
+          "minimum": 0.0043086978376620545,
+          "maximum": 0.07455563493599164,
+          "sample_count": 2
+        },
+        "range_0_30m_completeness_mean_distance_m": {
+          "mean": 0.050504437174041926,
+          "std": 0.009325126835092894,
+          "median": 0.050504437174041926,
+          "minimum": 0.04117931033894903,
+          "maximum": 0.05982956400913482,
+          "sample_count": 2
+        },
+        "range_0_30m_fscore_1m": {
+          "mean": 1.0,
+          "std": 0.0,
+          "median": 1.0,
+          "minimum": 1.0,
+          "maximum": 1.0,
+          "sample_count": 2
+        },
+        "range_0_30m_precision_mean_distance_m": {
+          "mean": 0.04917306646132295,
+          "std": 0.044021477208666594,
+          "median": 0.04917306646132295,
+          "minimum": 0.005151589252656359,
+          "maximum": 0.09319454366998955,
+          "sample_count": 2
+        },
+        "range_30_60m_completeness_mean_distance_m": {
+          "mean": 0.4151949369627342,
+          "std": 0.30805742561248706,
+          "median": 0.4151949369627342,
+          "minimum": 0.10713751135024716,
+          "maximum": 0.7232523625752212,
+          "sample_count": 2
+        },
+        "range_30_60m_fscore_1m": {
+          "mean": 0.9699406455947459,
+          "std": 0.026137701031282823,
+          "median": 0.9699406455947459,
+          "minimum": 0.9438029445634631,
+          "maximum": 0.9960783466260288,
+          "sample_count": 2
+        },
+        "range_30_60m_precision_mean_distance_m": {
+          "mean": 0.0,
+          "std": 0.0,
+          "median": 0.0,
+          "minimum": 0.0,
+          "maximum": 0.0,
+          "sample_count": 2
+        },
+        "range_60_120m_completeness_mean_distance_m": {
+          "mean": 3.088286311719142,
+          "std": 3.083059725656863,
+          "median": 3.088286311719142,
+          "minimum": 0.005226586062279089,
+          "maximum": 6.171346037376005,
+          "sample_count": 2
+        },
+        "range_60_120m_fscore_1m": {
+          "mean": 0.8888200756547453,
+          "std": 0.11117992434525475,
+          "median": 0.8888200756547453,
+          "minimum": 0.7776401513094905,
+          "maximum": 1.0,
+          "sample_count": 2
+        },
+        "range_60_120m_precision_mean_distance_m": {
+          "mean": 0.0031237739256160997,
+          "std": 0.0031237739256160997,
+          "median": 0.0031237739256160997,
+          "minimum": 0.0,
+          "maximum": 0.006247547851232199,
+          "sample_count": 2
+        },
+        "recall_0p5m": {
+          "mean": 0.9565670648406844,
+          "std": 0.03795254803548964,
+          "median": 0.9565670648406844,
+          "minimum": 0.9186145168051948,
+          "maximum": 0.9945196128761741,
+          "sample_count": 2
+        },
+        "recall_1p0m": {
+          "mean": 0.9646619409716656,
+          "std": 0.03402885166144187,
+          "median": 0.9646619409716656,
+          "minimum": 0.9306330893102237,
+          "maximum": 0.9986907926331074,
+          "sample_count": 2
+        },
+        "recall_2p0m": {
+          "mean": 0.9691434837119819,
+          "std": 0.030280924965440048,
+          "median": 0.9691434837119819,
+          "minimum": 0.9388625587465419,
+          "maximum": 0.999424408677422,
+          "sample_count": 2
+        }
+      },
+      "structure": {
+        "target_occupied_voxel_count": {
+          "mean": 3996.0,
+          "std": 206.0,
+          "median": 3996.0,
+          "minimum": 3790.0,
+          "maximum": 4202.0,
+          "sample_count": 2
+        },
+        "activated_target_occupied_voxel_count": {
+          "mean": 3996.0,
+          "std": 206.0,
+          "median": 3996.0,
+          "minimum": 3790.0,
+          "maximum": 4202.0,
+          "sample_count": 2
+        },
+        "unavailable_target_occupied_voxel_count": {
+          "mean": 0.0,
+          "std": 0.0,
+          "median": 0.0,
+          "minimum": 0.0,
+          "maximum": 0.0,
+          "sample_count": 2
+        },
+        "quota_support_voxel_count": {
+          "mean": 385.5,
+          "std": 385.5,
+          "median": 385.5,
+          "minimum": 0.0,
+          "maximum": 771.0,
+          "sample_count": 2
+        },
+        "total_activated_voxel_count": {
+          "mean": 4381.5,
+          "std": 179.5,
+          "median": 4381.5,
+          "minimum": 4202.0,
+          "maximum": 4561.0,
+          "sample_count": 2
+        },
+        "fixed_candidate_count": {
+          "mean": 17526.0,
+          "std": 718.0,
+          "median": 17526.0,
+          "minimum": 16808.0,
+          "maximum": 18244.0,
+          "sample_count": 2
+        },
+        "slot_saturated_occupied_voxel_fraction": {
+          "mean": 0.2834452497177497,
+          "std": 0.08423680644598187,
+          "median": 0.2834452497177497,
+          "minimum": 0.19920844327176782,
+          "maximum": 0.36768205616373156,
+          "sample_count": 2
+        },
+        "selected_slot_fraction": {
+          "mean": 0.5715400972652586,
+          "std": 0.02341468617120024,
+          "median": 0.5715400972652586,
+          "minimum": 0.5481254110940583,
+          "maximum": 0.5949547834364588,
+          "sample_count": 2
+        }
+      },
+      "selection": {
+        "rejected_5cm_total": {
+          "mean": 0.0,
+          "std": 0.0,
+          "median": 0.0,
+          "minimum": 0.0,
+          "maximum": 0.0,
+          "sample_count": 2
+        },
+        "observed_minimum_pair_distance_m": {
+          "mean": 0.05004044365264387,
+          "std": 3.316278269498846e-05,
+          "median": 0.05004044365264387,
+          "minimum": 0.050007280869948885,
+          "maximum": 0.05007360643533886,
+          "sample_count": 2
+        },
+        "candidate_capacity_minimum_by_range": {
+          "range_0_30m": 8003,
+          "range_30_60m": 5730,
+          "range_60_120m": 1072
+        },
+        "selected_by_range_all_frames": {
+          "range_0_30m": [
+            8000
+          ],
+          "range_30_60m": [
+            1700
+          ],
+          "range_60_120m": [
+            300
+          ]
+        }
+      },
+      "checks": {
+        "all_requested_frames_succeeded": true,
+        "all_exact_10000": true,
+        "all_range_quotas_exact": true,
+        "all_minimum_pair_distance_at_least_5cm": true,
+        "all_fixed_slots_and_cells_valid": true,
+        "all_gt_aided_labels_explicit": true,
+        "no_copy_padding_jitter_or_free_centers": true
+      },
+      "passed": true
+    },
+    "cartesian_0p60m_s8": {
+      "config": {
+        "name": "cartesian_0p60m_s8",
+        "voxel_size_xyz_m": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "voxel_volume_m3": 0.216,
+        "slots_per_voxel": 8,
+        "slot_density_per_m3": 37.03703703703704,
+        "template_resolution": 5,
+        "template_capacity": 125,
+        "minimum_distance_m": 0.05,
+        "slot_boundary_margin_m": 0.025500000000000002,
+        "rationale": "fixed Cartesian support with bounded mutually exclusive slots; cell identity cannot move or collapse into a free center"
+      },
+      "requested_frame_count": 2,
+      "successful_frame_count": 2,
+      "failed_frame_count": 0,
+      "capacity_failures": [],
+      "geometry": {
+        "chamfer_m": {
+          "mean": 0.7089055055829703,
+          "std": 0.5699258140961933,
+          "median": 0.7089055055829703,
+          "minimum": 0.13897969148677702,
+          "maximum": 1.2788313196791634,
+          "sample_count": 2
+        },
+        "completeness_mean_distance_m": {
+          "mean": 0.66123644138899,
+          "std": 0.5266375172800741,
+          "median": 0.66123644138899,
+          "minimum": 0.13459892410891572,
+          "maximum": 1.187873958669064,
+          "sample_count": 2
+        },
+        "fscore_0p5m": {
+          "mean": 0.9567673245552992,
+          "std": 0.03370489943173022,
+          "median": 0.9567673245552992,
+          "minimum": 0.923062425123569,
+          "maximum": 0.9904722239870294,
+          "sample_count": 2
+        },
+        "fscore_1p0m": {
+          "mean": 0.9669143536820102,
+          "std": 0.024969549444607386,
+          "median": 0.9669143536820102,
+          "minimum": 0.9419448042374028,
+          "maximum": 0.9918839031266176,
+          "sample_count": 2
+        },
+        "fscore_2p0m": {
+          "mean": 0.970686856385699,
+          "std": 0.02247587985050009,
+          "median": 0.970686856385699,
+          "minimum": 0.9482109765351989,
+          "maximum": 0.9931627362361991,
+          "sample_count": 2
+        },
+        "outlier_fraction_2m": {
+          "mean": 0.0,
+          "std": 0.0,
+          "median": 0.0,
+          "minimum": 0.0,
+          "maximum": 0.0,
+          "sample_count": 2
+        },
+        "precision_0p5m": {
+          "mean": 0.99005,
+          "std": 0.009950000000000014,
+          "median": 0.99005,
+          "minimum": 0.9801,
+          "maximum": 1.0,
+          "sample_count": 2
+        },
+        "precision_1p0m": {
+          "mean": 1.0,
+          "std": 0.0,
+          "median": 1.0,
+          "minimum": 1.0,
+          "maximum": 1.0,
+          "sample_count": 2
+        },
+        "precision_2p0m": {
+          "mean": 1.0,
+          "std": 0.0,
+          "median": 1.0,
+          "minimum": 1.0,
+          "maximum": 1.0,
+          "sample_count": 2
+        },
+        "precision_mean_distance_m": {
+          "mean": 0.04766906419398035,
+          "std": 0.043288296816119044,
+          "median": 0.04766906419398035,
+          "minimum": 0.0043807673778613115,
+          "maximum": 0.0909573610100994,
+          "sample_count": 2
+        },
+        "range_0_30m_completeness_mean_distance_m": {
+          "mean": 0.06469950352383014,
+          "std": 0.010066804266357303,
+          "median": 0.06469950352383014,
+          "minimum": 0.05463269925747283,
+          "maximum": 0.07476630779018743,
+          "sample_count": 2
+        },
+        "range_0_30m_fscore_1m": {
+          "mean": 1.0,
+          "std": 0.0,
+          "median": 1.0,
+          "minimum": 1.0,
+          "maximum": 1.0,
+          "sample_count": 2
+        },
+        "range_0_30m_precision_mean_distance_m": {
+          "mean": 0.059504538364454934,
+          "std": 0.05419216289816932,
+          "median": 0.059504538364454934,
+          "minimum": 0.005312375466285615,
+          "maximum": 0.11369670126262425,
+          "sample_count": 2
+        },
+        "range_30_60m_completeness_mean_distance_m": {
+          "mean": 1.017347040914888,
+          "std": 0.5774322086744343,
+          "median": 1.017347040914888,
+          "minimum": 0.4399148322404537,
+          "maximum": 1.5947792495893223,
+          "sample_count": 2
+        },
+        "range_30_60m_fscore_1m": {
+          "mean": 0.9115536660768953,
+          "std": 0.03797902434746908,
+          "median": 0.9115536660768953,
+          "minimum": 0.8735746417294262,
+          "maximum": 0.9495326904243644,
+          "sample_count": 2
+        },
+        "range_30_60m_precision_mean_distance_m": {
+          "mean": 0.0,
+          "std": 0.0,
+          "median": 0.0,
+          "minimum": 0.0,
+          "maximum": 0.0,
+          "sample_count": 2
+        },
+        "range_60_120m_completeness_mean_distance_m": {
+          "mean": 3.2818470099379726,
+          "std": 3.2787253095869535,
+          "median": 3.2818470099379726,
+          "minimum": 0.0031217003510189147,
+          "maximum": 6.560572319524926,
+          "sample_count": 2
+        },
+        "range_60_120m_fscore_1m": {
+          "mean": 0.8685003026253908,
+          "std": 0.13149969737460926,
+          "median": 0.8685003026253908,
+          "minimum": 0.7370006052507815,
+          "maximum": 1.0,
+          "sample_count": 2
+        },
+        "range_60_120m_precision_mean_distance_m": {
+          "mean": 0.0021811167472136606,
+          "std": 0.0021811167472136606,
+          "median": 0.0021811167472136606,
+          "minimum": 0.0,
+          "maximum": 0.004362233494427321,
+          "sample_count": 2
+        },
+        "recall_0p5m": {
+          "mean": 0.9267113629683822,
+          "std": 0.05441292852838153,
+          "median": 0.9267113629683822,
+          "minimum": 0.8722984344400007,
+          "maximum": 0.9811242914967637,
+          "sample_count": 2
+        },
+        "recall_1p0m": {
+          "mean": 0.9370795206049438,
+          "std": 0.046818967082031815,
+          "median": 0.9370795206049438,
+          "minimum": 0.890260553522912,
+          "maximum": 0.9838984876869756,
+          "sample_count": 2
+        },
+        "recall_2p0m": {
+          "mean": 0.9439701824137965,
+          "std": 0.042448151492039454,
+          "median": 0.9439701824137965,
+          "minimum": 0.901522030921757,
+          "maximum": 0.9864183339058359,
+          "sample_count": 2
+        }
+      },
+      "structure": {
+        "target_occupied_voxel_count": {
+          "mean": 2489.5,
+          "std": 4.5,
+          "median": 2489.5,
+          "minimum": 2485.0,
+          "maximum": 2494.0,
+          "sample_count": 2
+        },
+        "activated_target_occupied_voxel_count": {
+          "mean": 2488.0,
+          "std": 5.0,
+          "median": 2488.0,
+          "minimum": 2483.0,
+          "maximum": 2493.0,
+          "sample_count": 2
+        },
+        "unavailable_target_occupied_voxel_count": {
+          "mean": 1.5,
+          "std": 0.5,
+          "median": 1.5,
+          "minimum": 1.0,
+          "maximum": 2.0,
+          "sample_count": 2
+        },
+        "quota_support_voxel_count": {
+          "mean": 155.5,
+          "std": 155.5,
+          "median": 155.5,
+          "minimum": 0.0,
+          "maximum": 311.0,
+          "sample_count": 2
+        },
+        "total_activated_voxel_count": {
+          "mean": 2643.5,
+          "std": 150.5,
+          "median": 2643.5,
+          "minimum": 2493.0,
+          "maximum": 2794.0,
+          "sample_count": 2
+        },
+        "fixed_candidate_count": {
+          "mean": 21148.0,
+          "std": 1204.0,
+          "median": 21148.0,
+          "minimum": 19944.0,
+          "maximum": 22352.0,
+          "sample_count": 2
+        },
+        "slot_saturated_occupied_voxel_fraction": {
+          "mean": 0.20132365968061777,
+          "std": 0.06772205002267011,
+          "median": 0.20132365968061777,
+          "minimum": 0.13360160965794768,
+          "maximum": 0.2690457097032879,
+          "sample_count": 2
+        },
+        "selected_slot_fraction": {
+          "mean": 0.4743955947088498,
+          "std": 0.027008336297969338,
+          "median": 0.4743955947088498,
+          "minimum": 0.44738725841088045,
+          "maximum": 0.5014039310068191,
+          "sample_count": 2
+        }
+      },
+      "selection": {
+        "rejected_5cm_total": {
+          "mean": 0.0,
+          "std": 0.0,
+          "median": 0.0,
+          "minimum": 0.0,
+          "maximum": 0.0,
+          "sample_count": 2
+        },
+        "observed_minimum_pair_distance_m": {
+          "mean": 0.05001164268112594,
+          "std": 5.605849130913693e-06,
+          "median": 0.05001164268112594,
+          "minimum": 0.050006036831995025,
+          "maximum": 0.05001724853025685,
+          "sample_count": 2
+        },
+        "candidate_capacity_minimum_by_range": {
+          "range_0_30m": 8003,
+          "range_30_60m": 7221,
+          "range_60_120m": 1760
+        },
+        "selected_by_range_all_frames": {
+          "range_0_30m": [
+            8000
+          ],
+          "range_30_60m": [
+            1700
+          ],
+          "range_60_120m": [
+            300
+          ]
+        }
+      },
+      "checks": {
+        "all_requested_frames_succeeded": true,
+        "all_exact_10000": true,
+        "all_range_quotas_exact": true,
+        "all_minimum_pair_distance_at_least_5cm": true,
+        "all_fixed_slots_and_cells_valid": true,
+        "all_gt_aided_labels_explicit": true,
+        "no_copy_padding_jitter_or_free_centers": true
+      },
+      "passed": true
+    }
+  },
+  "runtime": {
+    "device": "cpu",
+    "gpu_started": false,
+    "elapsed_seconds": 6.163549710065126,
+    "numpy_version": "2.2.6"
+  },
+  "checks": {
+    "mode_frame_count_exact": true,
+    "manifest_frozen_76_train_24_validation": true,
+    "test_untouched": true,
+    "cube_untouched": true,
+    "cfar_untouched": true,
+    "only_target_array_accessed": true,
+    "all_configs_passed": true,
+    "geometry_mode_has_23_far_target_validation_frames": true
+  },
+  "passed": true
+}

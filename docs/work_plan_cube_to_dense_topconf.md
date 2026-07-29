@@ -56,6 +56,10 @@
 
 > **2026-07-29 R-A1 冻结候选池失败定位：**source `eb0a5f5` 在完整 24 个 validation frame 上 bit-exact 重建 epoch-20 的 700k Q0+Q1 候选及 current-confidence exact-10k 输出。当前臂复现 `CD=4.00895 m/outlier=31.8129%`；只在候选生成后用 validation GT 最近距离做不可部署排序，同一候选池达到 `CD=0.64102 m/outlier=2.2804%/far completeness=0.70414 m`，通过全部绝对几何检查。候选池 target-to-candidate mean 仅 `0.14858 m`，但 current confidence 与负几何距离的 Pearson 仅 `0.29389`。正式结论为 `confidence_ranking_bottleneck_indicated`：不延长 R-A1 原配方，只授权 R-A2 的 8-frame memorization、RaLD source-classwise control 和 range/surface-shell supervision 小试；GT 排序不是方法结果，也不解锁 Doppler、cycle、temporal 或 test。记录见 `artifacts/g1/wce_failure_diag_eb0a5f5/decision_2026-07-29.md`。
 
+> **2026-07-29 RAE-Max cardinality 诊断终局：**source `2183e48` 在三种子各 24 个 validation frame 上 bit-exact 复现 archived logits 与 exact-10k 输出，并只读比较 `2.5k/5k/7.5k/10k`。点数从 10k 降到 7.5k 时 mean outlier 从 `25.6971%` 降至 `23.0726%`、Chamfer 几乎不变（`2.93058 -> 2.93113 m`），但 completeness 恶化 `0.16319 m`，未通过冻结的 `<=0.10 m` 容差；更低点数进一步损伤 completeness 与远距覆盖。正式判定为 exact-10k 既非主要因素也非有界贡献因素，不能以减少输出点数修复当前 geometry parent。
+
+> **2026-07-29 R-B1/R-B2 并行结构门终局：**source `988eb11` 的 R-B1 GT-aided 直接 range-echo 构造在两帧上对 `K=4/6` 均无法达到 10k 和 `8k/1.7k/0.3k` 分段配额，训练不授权；该 no-go 仅限直接 GT-supported peak construction，不关闭另行定义 sparse lifting 后的表示族。source `14b3e65` 的 R-B2 GT-aided Cartesian voxel-slot 启发式则在 100/100 帧通过 exact-10k、配额、固定槽位和真 5 cm 间距结构门；完整 24/23 帧上 `0.40 m x 4 slots` 达到 `CD=0.72268 m/outlier=1.5417%/far completeness=0.24981 m`，优于 `0.60 m x 8 slots`。这些不是模型结果或严格上界，只授权前者的 Cube-only 一帧过拟合实现，推理时禁止 GT 激活、排序和选择。完整边界与签名见 `artifacts/g1/parallel_geometry_diagnostics_decision_2026-07-29.md`。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---
@@ -649,10 +653,11 @@ independently gated geometry parent
 - [x] 完成 G3L VAE/EDM 训练器、固定单样本评估、condition-shuffle 与三种子 gate；因 G1B no-go 不启动旧 G3L 训练。
 - [x] 完成 R-A1 RaLD-WCE 20-epoch Stage-0；结构与条件依赖通过，但绝对几何 no-go，不解锁 Doppler head。
 - [x] 完成 WCE 冻结候选池失败因子 full-24 诊断；确认候选支持充分而 confidence/选择目标失配，原 R-A1 不延长。
-- [ ] 完成 RAE-Max cardinality full、R-B1 range-echo 与 R-B2 voxel-slot 三组并行预飞；仅晋升通过冻结结构门的路线。
+- [x] 完成 RAE-Max cardinality full、R-B1 range-echo 与 R-B2 voxel-slot 三组并行预飞；cardinality 不是主要因素，R-B1 直接构造 no-go，R-B2 结构门通过。
 - [ ] 按 WCE 诊断结论运行 R-A2 八帧 memorization、RaLD source-classwise control 和 range/surface-shell supervision 小试；任一长训仍需重新过门。
+- [ ] 完成 R-B2 `0.40 m x 4-slot` Cube-only 一帧过拟合门；不得把 GT-aided 结构启发式写成模型成绩。
 - [ ] 若新 geometry parent 通过，将 G3L 训练链绑定到该 parent，并实现对应的 G2/G3/G4 后继链。
 - [x] 完成 G4R 45/45 序列下载（约 601 GB）；CRC、时序训练与 family freeze 继续等待 G3D。
 - [ ] 释放 P5 test 并完成 P6 论文证据包。
 
-> 当前最高优先级是完成 **R-A2 小试与 R-B1/R-B2 表示预飞**，再选择一个可证伪的独立 geometry Stage-0。G4 数据已完成 45/45 序列下载，但不在新单帧 family 冻结前训练。
+> 当前最高优先级是完成 **R-A2 三组监督小试与 R-B2 Cube-only 一帧过拟合门**，然后按冻结结果只晋升一个 geometry Stage-0。G4 数据已完成 45/45 序列下载，但不在新单帧 family 冻结前训练。
