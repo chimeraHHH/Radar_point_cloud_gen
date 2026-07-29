@@ -54,6 +54,8 @@
 
 > **2026-07-29 R-A1 RaLD-WCE 正式终局：**source `f2a9489` 完成冻结的 20-epoch H200 Stage-0，epoch 20 以 selection score=`4.1452` 被选中。结构门全部通过：matched/wrong 均 exact-10k、最小点距 `5.00008 cm`、无复制或 jitter 填充、峰值 reserved `9.06 GiB`。模型也建立了真实条件依赖，wrong-Cube 使 Chamfer 恶化 `12.987%`；但 mean Chamfer=`4.0090 m`、mean outlier=`31.8129%`、matched wins=`66.67%`，未通过 `2.50 m/25%/75%` 三项科学门。R-A1 关闭且不解锁 Doppler head。precision mean=`2.4550 m` 明显差于 completeness mean=`1.5540 m`，后续只允许先做 candidate/ranking、positive-capacity、residual-off、range-quota 与 cardinality 的只读诊断；同时以新命名 R-B1 range-echo 和 R-B2 Cartesian voxel-slot 做表示容量上限，未经结构门不得训练。完整记录见 `artifacts/g1/wce_formal_failure_2026-07-29.md`。
 
+> **2026-07-29 R-A1 冻结候选池失败定位：**source `eb0a5f5` 在完整 24 个 validation frame 上 bit-exact 重建 epoch-20 的 700k Q0+Q1 候选及 current-confidence exact-10k 输出。当前臂复现 `CD=4.00895 m/outlier=31.8129%`；只在候选生成后用 validation GT 最近距离做不可部署排序，同一候选池达到 `CD=0.64102 m/outlier=2.2804%/far completeness=0.70414 m`，通过全部绝对几何检查。候选池 target-to-candidate mean 仅 `0.14858 m`，但 current confidence 与负几何距离的 Pearson 仅 `0.29389`。正式结论为 `confidence_ranking_bottleneck_indicated`：不延长 R-A1 原配方，只授权 R-A2 的 8-frame memorization、RaLD source-classwise control 和 range/surface-shell supervision 小试；GT 排序不是方法结果，也不解锁 Doppler、cycle、temporal 或 test。记录见 `artifacts/g1/wce_failure_diag_eb0a5f5/decision_2026-07-29.md`。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---
@@ -646,9 +648,11 @@ independently gated geometry parent
   Full-RAED-conditioned 24-layer EDM、18-step sampler 与组件测试。
 - [x] 完成 G3L VAE/EDM 训练器、固定单样本评估、condition-shuffle 与三种子 gate；因 G1B no-go 不启动旧 G3L 训练。
 - [x] 完成 R-A1 RaLD-WCE 20-epoch Stage-0；结构与条件依赖通过，但绝对几何 no-go，不解锁 Doppler head。
-- [ ] 完成 WCE 失败因子、RAE-Max cardinality、R-B1 range-echo 与 R-B2 voxel-slot 四组并行预飞；仅晋升通过冻结结构门的路线。
+- [x] 完成 WCE 冻结候选池失败因子 full-24 诊断；确认候选支持充分而 confidence/选择目标失配，原 R-A1 不延长。
+- [ ] 完成 RAE-Max cardinality full、R-B1 range-echo 与 R-B2 voxel-slot 三组并行预飞；仅晋升通过冻结结构门的路线。
+- [ ] 按 WCE 诊断结论运行 R-A2 八帧 memorization、RaLD source-classwise control 和 range/surface-shell supervision 小试；任一长训仍需重新过门。
 - [ ] 若新 geometry parent 通过，将 G3L 训练链绑定到该 parent，并实现对应的 G2/G3/G4 后继链。
 - [x] 完成 G4R 45/45 序列下载（约 601 GB）；CRC、时序训练与 family freeze 继续等待 G3D。
 - [ ] 释放 P5 test 并完成 P6 论文证据包。
 
-> 当前最高优先级是完成 **WCE 失败因子与 R-B1/R-B2 表示预飞**，再选择一个可证伪的独立 geometry Stage-0。G4 数据已完成 45/45 序列下载，但不在新单帧 family 冻结前训练。
+> 当前最高优先级是完成 **R-A2 小试与 R-B1/R-B2 表示预飞**，再选择一个可证伪的独立 geometry Stage-0。G4 数据已完成 45/45 序列下载，但不在新单帧 family 冻结前训练。
