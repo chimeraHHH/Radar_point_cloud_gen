@@ -15,6 +15,19 @@ R-A1 model, training script, loss, or evaluator. The three authorized modes are:
 All modes remain XYZ plus confidence only. No Doppler head, EDM, future frame,
 test frame, or new scientific claim is authorized.
 
+> **2026-07-29 eligibility addendum:** the read-only full-cohort audit in
+> `docs/ra2_range_sampler_audit.md` found that the frozen
+> `range_class_sampler` is not launch-eligible. Nine of 76 train frames lack a
+> required positive range class, every one of the 67 otherwise sampleable
+> frames has continuous jitter crossing a frozen range boundary, and the
+> index-space shell is not a clean metric hard-negative shell. The
+> `range_class_sampler` arm is therefore cancelled under this protocol. The
+> already-started non-resumed `tiny_memorization` run may complete because it
+> uses the source-classwise sampler; its evidence must be accompanied by the
+> independently audited ordered cache digest. Any later `source_classwise` or
+> replacement range pilot must first bind cache/Cube provenance in its resume
+> contract.
+
 ## Frozen data and access boundary
 
 - Development manifest: the existing 76 train and 24 validation frames.

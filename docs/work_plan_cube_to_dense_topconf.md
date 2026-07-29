@@ -60,6 +60,8 @@
 
 > **2026-07-29 R-B1/R-B2 并行结构门终局：**source `988eb11` 的 R-B1 GT-aided 直接 range-echo 构造在两帧上对 `K=4/6` 均无法达到 10k 和 `8k/1.7k/0.3k` 分段配额，训练不授权；该 no-go 仅限直接 GT-supported peak construction，不关闭另行定义 sparse lifting 后的表示族。source `14b3e65` 的 R-B2 GT-aided Cartesian voxel-slot 启发式则在 100/100 帧通过 exact-10k、配额、固定槽位和真 5 cm 间距结构门；完整 24/23 帧上 `0.40 m x 4 slots` 达到 `CD=0.72268 m/outlier=1.5417%/far completeness=0.24981 m`，优于 `0.60 m x 8 slots`。这些不是模型结果或严格上界，只授权前者的 Cube-only 一帧过拟合实现，推理时禁止 GT 激活、排序和选择。完整边界与签名见 `artifacts/g1/parallel_geometry_diagnostics_decision_2026-07-29.md`。
 
+> **2026-07-29 R-A2 range sampler 只读审计 no-go：**snapshot `a7f0335` 的完整 76/24 cohort 审计确认，当前 `range_class_sampler` 不能启动。9/76 个 train frame 缺少 60--120 m positive class，其中一帧同时缺少 30--60 m；67 个可采样帧全部出现 jitter 后连续坐标跨 range label，共 `2,542/1,072,000=0.237%`；index-space shell negative 中 `21.0%` 距 target 不超过 1 m，而 global negative 为 `2.85%`。此外 100 个旧 cache 均缺 provenance arrays，已以 ordered byte digest `dd9d296c...06e4f` 固定当前数据。未修改的 range pilot 取消；replacement 必须使用 range-availability mask、boundary-safe jitter、metric/ray-aware shell、等量 control 和 cache/Cube provenance binding。当前 source-style tiny 可完成，但不得据此授权旧 range arm。签名 JSON 为 `artifacts/g1/ra2_range_sampler_audit_a7f0335.json`。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---
@@ -654,7 +656,7 @@ independently gated geometry parent
 - [x] 完成 R-A1 RaLD-WCE 20-epoch Stage-0；结构与条件依赖通过，但绝对几何 no-go，不解锁 Doppler head。
 - [x] 完成 WCE 冻结候选池失败因子 full-24 诊断；确认候选支持充分而 confidence/选择目标失配，原 R-A1 不延长。
 - [x] 完成 RAE-Max cardinality full、R-B1 range-echo 与 R-B2 voxel-slot 三组并行预飞；cardinality 不是主要因素，R-B1 直接构造 no-go，R-B2 结构门通过。
-- [ ] 按 WCE 诊断结论运行 R-A2 八帧 memorization、RaLD source-classwise control 和 range/surface-shell supervision 小试；任一长训仍需重新过门。
+- [ ] 完成 R-A2 八帧 memorization；旧 range/surface-shell arm 已审计 no-go，任何 source-classwise/Q1 后继必须先绑定 cache/Cube provenance 并重新冻结对照。
 - [ ] 完成 R-B2 `0.40 m x 4-slot` Cube-only 一帧过拟合门；不得把 GT-aided 结构启发式写成模型成绩。
 - [ ] 若新 geometry parent 通过，将 G3L 训练链绑定到该 parent，并实现对应的 G2/G3/G4 后继链。
 - [x] 完成 G4R 45/45 序列下载（约 601 GB）；CRC、时序训练与 family freeze 继续等待 G3D。
