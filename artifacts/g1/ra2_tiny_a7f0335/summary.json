@@ -1,0 +1,22 @@
+{
+  "auxiliary_radar_point_array_accessed": false,
+  "doppler_head_evaluated": false,
+  "elapsed_seconds": 2673.5693143100943,
+  "evaluation_updates_completed": [
+    100,
+    200,
+    300,
+    400,
+    500
+  ],
+  "future_cube_accessed": false,
+  "mode": "tiny_memorization",
+  "peak_allocated_bytes": 8941826048,
+  "peak_reserved_bytes": 9372172288,
+  "protocol": "g1_ra2_rald_wce_pilot_v1",
+  "schema_version": 1,
+  "source_commit": "a7f0335a8eca86f9f36686a5d0ae86046dc0b88d",
+  "status": "architecture_optimization_no_go_at_500_updates",
+  "test_partition_accessed": false,
+  "updates_completed": 500
+}

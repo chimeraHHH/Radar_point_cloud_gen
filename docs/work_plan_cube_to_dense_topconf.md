@@ -62,6 +62,8 @@
 
 > **2026-07-29 R-A2 range sampler 只读审计 no-go：**snapshot `a7f0335` 的完整 76/24 cohort 审计确认，当前 `range_class_sampler` 不能启动。9/76 个 train frame 缺少 60--120 m positive class，其中一帧同时缺少 30--60 m；67 个可采样帧全部出现 jitter 后连续坐标跨 range label，共 `2,542/1,072,000=0.237%`；index-space shell negative 中 `21.0%` 距 target 不超过 1 m，而 global negative 为 `2.85%`。此外 100 个旧 cache 均缺 provenance arrays，已以 ordered byte digest `dd9d296c...06e4f` 固定当前数据。未修改的 range pilot 取消；replacement 必须使用 range-availability mask、boundary-safe jitter、metric/ray-aware shell、等量 control 和 cache/Cube provenance binding。当前 source-style tiny 可完成，但不得据此授权旧 range arm。签名 JSON 为 `artifacts/g1/ra2_range_sampler_audit_a7f0335.json`。
 
+> **2026-07-29 R-A2 tiny memorization 终局 no-go：**source `a7f0335` 在 H200 GPU2 完成冻结八帧、500-update 预算，五次 exact-10k 评估均未通过任一完整门。终点为 `CD=5.1892 m/mean completeness=1.8302 m/outlier=45.2600%`，而冻结要求为 `<=1.0 m/<=0.75 m/<=10%`；matched-condition wins 也从 update 400 的 `87.5%` 回落到 `62.5%`。loss 下降和 far recall 提升没有转化为可靠几何排序，原 R-A2 binary occupancy 配方关闭，不启动五 epoch source-classwise，也不启动已审计 no-go 的 range arm。结合 frozen-pool GT ranking 通过，下一候选改为新命名 Q1/Q2 continuous geometry-quality ranking + optional polar uncertainty；R-B2 voxel-slot 继续作为独立表示路线。完整记录见 `artifacts/g1/ra2_tiny_no_go_2026-07-29.md`。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---
@@ -656,7 +658,8 @@ independently gated geometry parent
 - [x] 完成 R-A1 RaLD-WCE 20-epoch Stage-0；结构与条件依赖通过，但绝对几何 no-go，不解锁 Doppler head。
 - [x] 完成 WCE 冻结候选池失败因子 full-24 诊断；确认候选支持充分而 confidence/选择目标失配，原 R-A1 不延长。
 - [x] 完成 RAE-Max cardinality full、R-B1 range-echo 与 R-B2 voxel-slot 三组并行预飞；cardinality 不是主要因素，R-B1 直接构造 no-go，R-B2 结构门通过。
-- [ ] 完成 R-A2 八帧 memorization；旧 range/surface-shell arm 已审计 no-go，任何 source-classwise/Q1 后继必须先绑定 cache/Cube provenance 并重新冻结对照。
+- [x] 完成 R-A2 八帧 memorization并判定 no-go；旧 source-classwise 不延长，range/surface-shell arm 已审计 no-go。
+- [ ] 实现 Q1/Q2 continuous geometry-quality ranking 与 optional polar uncertainty tiny gate；必须绑定 cache/Cube provenance并保持 frozen candidate IDs。
 - [ ] 完成 R-B2 `0.40 m x 4-slot` Cube-only 一帧过拟合门；不得把 GT-aided 结构启发式写成模型成绩。
 - [ ] 若新 geometry parent 通过，将 G3L 训练链绑定到该 parent，并实现对应的 G2/G3/G4 后继链。
 - [x] 完成 G4R 45/45 序列下载（约 601 GB）；CRC、时序训练与 family freeze 继续等待 G3D。

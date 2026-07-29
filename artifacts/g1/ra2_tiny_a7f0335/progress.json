@@ -1,0 +1,3518 @@
+{
+  "protocol": "g1_ra2_rald_wce_pilot_v1",
+  "schema_version": 1,
+  "state": {
+    "consecutive_tiny_passes": 0,
+    "evaluation_updates_completed": [
+      100,
+      200,
+      300,
+      400,
+      500
+    ],
+    "loss_history": [
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.7701987624168396,
+        "total": 0.8095555305480957,
+        "update": 1,
+        "wrong_margin": 0.049216628074645996
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.3888571560382843,
+        "total": 0.4199734330177307,
+        "update": 2,
+        "wrong_margin": 0.05012306571006775
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.33456364274024963,
+        "total": 0.3646322190761566,
+        "update": 3,
+        "wrong_margin": 0.04999271035194397
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.35078537464141846,
+        "total": 0.3807608485221863,
+        "update": 4,
+        "wrong_margin": 0.04992115497589111
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.3530667722225189,
+        "total": 0.3830379545688629,
+        "update": 5,
+        "wrong_margin": 0.04995402693748474
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.3432239890098572,
+        "total": 0.3733302354812622,
+        "update": 6,
+        "wrong_margin": 0.05010110139846802
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.3067280948162079,
+        "total": 0.3366318941116333,
+        "update": 7,
+        "wrong_margin": 0.04999902844429016
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.30531078577041626,
+        "total": 0.3351319134235382,
+        "update": 8,
+        "wrong_margin": 0.04994291067123413
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.32281923294067383,
+        "total": 0.35294032096862793,
+        "update": 9,
+        "wrong_margin": 0.049827516078948975
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.2919291853904724,
+        "total": 0.3217169940471649,
+        "update": 10,
+        "wrong_margin": 0.050043314695358276
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.28207284212112427,
+        "total": 0.3118640184402466,
+        "update": 11,
+        "wrong_margin": 0.05002191662788391
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.2646251618862152,
+        "total": 0.29420432448387146,
+        "update": 12,
+        "wrong_margin": 0.04993942379951477
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.3046359419822693,
+        "total": 0.3345057964324951,
+        "update": 13,
+        "wrong_margin": 0.0500015914440155
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.24617904424667358,
+        "total": 0.27575406432151794,
+        "update": 14,
+        "wrong_margin": 0.050005123019218445
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.2604725658893585,
+        "total": 0.2899046838283539,
+        "update": 15,
+        "wrong_margin": 0.04998460412025452
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.23652982711791992,
+        "total": 0.265851229429245,
+        "update": 16,
+        "wrong_margin": 0.05001214146614075
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.209614560008049,
+        "total": 0.23860926926136017,
+        "update": 17,
+        "wrong_margin": 0.04996529221534729
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.21759235858917236,
+        "total": 0.2467995584011078,
+        "update": 18,
+        "wrong_margin": 0.05001363158226013
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.2051609456539154,
+        "total": 0.234078511595726,
+        "update": 19,
+        "wrong_margin": 0.049777716398239136
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.26734697818756104,
+        "total": 0.29699021577835083,
+        "update": 20,
+        "wrong_margin": 0.04984915256500244
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.21397975087165833,
+        "total": 0.2432577759027481,
+        "update": 21,
+        "wrong_margin": 0.05005650222301483
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.28022849559783936,
+        "total": 0.30965524911880493,
+        "update": 22,
+        "wrong_margin": 0.04929465055465698
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.19442389905452728,
+        "total": 0.2232665866613388,
+        "update": 23,
+        "wrong_margin": 0.04996991157531738
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1764308214187622,
+        "total": 0.20500339567661285,
+        "update": 24,
+        "wrong_margin": 0.049703165888786316
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.17637237906455994,
+        "total": 0.20499125123023987,
+        "update": 25,
+        "wrong_margin": 0.04965175688266754
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.27080994844436646,
+        "total": 0.30002057552337646,
+        "update": 26,
+        "wrong_margin": 0.04874947667121887
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.13200289011001587,
+        "total": 0.16024348139762878,
+        "update": 27,
+        "wrong_margin": 0.04996152222156525
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.28766289353370667,
+        "total": 0.3166610598564148,
+        "update": 28,
+        "wrong_margin": 0.04835638403892517
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1516675055027008,
+        "total": 0.18042531609535217,
+        "update": 29,
+        "wrong_margin": 0.05005590617656708
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.14990901947021484,
+        "total": 0.17829352617263794,
+        "update": 30,
+        "wrong_margin": 0.0493520051240921
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.18041394650936127,
+        "total": 0.20931854844093323,
+        "update": 31,
+        "wrong_margin": 0.05000960826873779
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.175230473279953,
+        "total": 0.20409336686134338,
+        "update": 32,
+        "wrong_margin": 0.0499882698059082
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.13847650587558746,
+        "total": 0.16733919084072113,
+        "update": 33,
+        "wrong_margin": 0.05039793252944946
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1334008276462555,
+        "total": 0.1619570404291153,
+        "update": 34,
+        "wrong_margin": 0.050046250224113464
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11104010045528412,
+        "total": 0.13913904130458832,
+        "update": 35,
+        "wrong_margin": 0.049720555543899536
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.29467684030532837,
+        "total": 0.32098475098609924,
+        "update": 36,
+        "wrong_margin": 0.04297533631324768
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.17224201560020447,
+        "total": 0.20089557766914368,
+        "update": 37,
+        "wrong_margin": 0.049375131726264954
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.16195830702781677,
+        "total": 0.1909342259168625,
+        "update": 38,
+        "wrong_margin": 0.049977824091911316
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1557326465845108,
+        "total": 0.1840677410364151,
+        "update": 39,
+        "wrong_margin": 0.049316033720970154
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.2746690511703491,
+        "total": 0.2983202338218689,
+        "update": 40,
+        "wrong_margin": 0.03771132230758667
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.15072005987167358,
+        "total": 0.17909318208694458,
+        "update": 41,
+        "wrong_margin": 0.049700260162353516
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.14802414178848267,
+        "total": 0.17661221325397491,
+        "update": 42,
+        "wrong_margin": 0.04977445304393768
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11438058316707611,
+        "total": 0.14283782243728638,
+        "update": 43,
+        "wrong_margin": 0.05054256319999695
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.17251351475715637,
+        "total": 0.202627032995224,
+        "update": 44,
+        "wrong_margin": 0.05242282152175903
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.2677648663520813,
+        "total": 0.2966691851615906,
+        "update": 45,
+        "wrong_margin": 0.04762628674507141
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.13822120428085327,
+        "total": 0.16597528755664825,
+        "update": 46,
+        "wrong_margin": 0.048312485218048096
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.2504807710647583,
+        "total": 0.28120580315589905,
+        "update": 47,
+        "wrong_margin": 0.05226436257362366
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.13998591899871826,
+        "total": 0.16727137565612793,
+        "update": 48,
+        "wrong_margin": 0.04765816032886505
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.13490119576454163,
+        "total": 0.15952162444591522,
+        "update": 49,
+        "wrong_margin": 0.04211603105068207
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1622781753540039,
+        "total": 0.19255822896957397,
+        "update": 50,
+        "wrong_margin": 0.053093865513801575
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.2733154296875,
+        "total": 0.28658342361450195,
+        "update": 51,
+        "wrong_margin": 0.01709422469139099
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.16530105471611023,
+        "total": 0.19618314504623413,
+        "update": 52,
+        "wrong_margin": 0.054067954421043396
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.22543160617351532,
+        "total": 0.24617622792720795,
+        "update": 53,
+        "wrong_margin": 0.032626792788505554
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.15803761780261993,
+        "total": 0.18705198168754578,
+        "update": 54,
+        "wrong_margin": 0.050248563289642334
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.14767758548259735,
+        "total": 0.1760602444410324,
+        "update": 55,
+        "wrong_margin": 0.04939474165439606
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.16765449941158295,
+        "total": 0.19639264047145844,
+        "update": 56,
+        "wrong_margin": 0.04960937798023224
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.14553634822368622,
+        "total": 0.1751774251461029,
+        "update": 57,
+        "wrong_margin": 0.051727429032325745
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.15580511093139648,
+        "total": 0.18561877310276031,
+        "update": 58,
+        "wrong_margin": 0.0522761195898056
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11149150133132935,
+        "total": 0.13965582847595215,
+        "update": 59,
+        "wrong_margin": 0.04990464448928833
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.27045902609825134,
+        "total": 0.2903067469596863,
+        "update": 60,
+        "wrong_margin": 0.030058085918426514
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09527585655450821,
+        "total": 0.12318652868270874,
+        "update": 61,
+        "wrong_margin": 0.0497017428278923
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.13812370598316193,
+        "total": 0.166514590382576,
+        "update": 62,
+        "wrong_margin": 0.04969385266304016
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.13440804183483124,
+        "total": 0.16299444437026978,
+        "update": 63,
+        "wrong_margin": 0.04984505474567413
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.24223396182060242,
+        "total": 0.26421451568603516,
+        "update": 64,
+        "wrong_margin": 0.034303635358810425
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08630462735891342,
+        "total": 0.1138124167919159,
+        "update": 65,
+        "wrong_margin": 0.04920133948326111
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.13613975048065186,
+        "total": 0.1649438887834549,
+        "update": 66,
+        "wrong_margin": 0.05092458426952362
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.16361147165298462,
+        "total": 0.1963195651769638,
+        "update": 67,
+        "wrong_margin": 0.057938799262046814
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.12472608685493469,
+        "total": 0.15349081158638,
+        "update": 68,
+        "wrong_margin": 0.05051779747009277
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1297568678855896,
+        "total": 0.15783058106899261,
+        "update": 69,
+        "wrong_margin": 0.04923522472381592
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.22304880619049072,
+        "total": 0.24637003242969513,
+        "update": 70,
+        "wrong_margin": 0.037413761019706726
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.12312909960746765,
+        "total": 0.15146313607692719,
+        "update": 71,
+        "wrong_margin": 0.04984952509403229
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.23446685075759888,
+        "total": 0.24793396890163422,
+        "update": 72,
+        "wrong_margin": 0.017912358045578003
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.14535832405090332,
+        "total": 0.17363512516021729,
+        "update": 73,
+        "wrong_margin": 0.04950582981109619
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.21062518656253815,
+        "total": 0.2197168618440628,
+        "update": 74,
+        "wrong_margin": 0.009873777627944946
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.15454363822937012,
+        "total": 0.1814451515674591,
+        "update": 75,
+        "wrong_margin": 0.04622100293636322
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1118471696972847,
+        "total": 0.13735997676849365,
+        "update": 76,
+        "wrong_margin": 0.044515371322631836
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.22866615653038025,
+        "total": 0.23917411267757416,
+        "update": 77,
+        "wrong_margin": 0.011790961027145386
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11317656189203262,
+        "total": 0.14473265409469604,
+        "update": 78,
+        "wrong_margin": 0.05663694441318512
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.15780502557754517,
+        "total": 0.18059875071048737,
+        "update": 79,
+        "wrong_margin": 0.03801782429218292
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1111997440457344,
+        "total": 0.1404717117547989,
+        "update": 80,
+        "wrong_margin": 0.05185583233833313
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.13687622547149658,
+        "total": 0.15916608273983002,
+        "update": 81,
+        "wrong_margin": 0.03720366954803467
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.15334677696228027,
+        "total": 0.1812548041343689,
+        "update": 82,
+        "wrong_margin": 0.04815541207790375
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07522259652614594,
+        "total": 0.10261310636997223,
+        "update": 83,
+        "wrong_margin": 0.04923325031995773
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11762707680463791,
+        "total": 0.14581510424613953,
+        "update": 84,
+        "wrong_margin": 0.04972274601459503
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.13814416527748108,
+        "total": 0.16660329699516296,
+        "update": 85,
+        "wrong_margin": 0.05008062720298767
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11140267550945282,
+        "total": 0.13961076736450195,
+        "update": 86,
+        "wrong_margin": 0.0498841255903244
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.2689308822154999,
+        "total": 0.28351008892059326,
+        "update": 87,
+        "wrong_margin": 0.019455134868621826
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.25792425870895386,
+        "total": 0.27133873105049133,
+        "update": 88,
+        "wrong_margin": 0.016920000314712524
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1865002065896988,
+        "total": 0.21785719692707062,
+        "update": 89,
+        "wrong_margin": 0.053704991936683655
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1643855720758438,
+        "total": 0.18490566313266754,
+        "update": 90,
+        "wrong_margin": 0.03339472413063049
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.16978251934051514,
+        "total": 0.19722019135951996,
+        "update": 91,
+        "wrong_margin": 0.047326117753982544
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.0950808972120285,
+        "total": 0.1198364719748497,
+        "update": 92,
+        "wrong_margin": 0.0436604768037796
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.13876935839653015,
+        "total": 0.16573521494865417,
+        "update": 93,
+        "wrong_margin": 0.046955838799476624
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.20157325267791748,
+        "total": 0.2145848572254181,
+        "update": 94,
+        "wrong_margin": 0.01772695779800415
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10011161118745804,
+        "total": 0.12819457054138184,
+        "update": 95,
+        "wrong_margin": 0.04986006021499634
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.23002177476882935,
+        "total": 0.2350659817457199,
+        "update": 96,
+        "wrong_margin": 0.0013257861137390137
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11597778648138046,
+        "total": 0.14432214200496674,
+        "update": 97,
+        "wrong_margin": 0.04996868968009949
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10071435570716858,
+        "total": 0.12883806228637695,
+        "update": 98,
+        "wrong_margin": 0.04980960488319397
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.19395512342453003,
+        "total": 0.20103873312473297,
+        "update": 99,
+        "wrong_margin": 0.005699783563613892
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06567776203155518,
+        "total": 0.09296087175607681,
+        "update": 100,
+        "wrong_margin": 0.04915950447320938
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11880310624837875,
+        "total": 0.14671073853969574,
+        "update": 101,
+        "wrong_margin": 0.04930555075407028
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1431608349084854,
+        "total": 0.17406494915485382,
+        "update": 102,
+        "wrong_margin": 0.05505284667015076
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.15339329838752747,
+        "total": 0.18592946231365204,
+        "update": 103,
+        "wrong_margin": 0.05768568813800812
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.22093087434768677,
+        "total": 0.2272772490978241,
+        "update": 104,
+        "wrong_margin": 0.003233104944229126
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.20917385816574097,
+        "total": 0.22165004909038544,
+        "update": 105,
+        "wrong_margin": 0.01579304039478302
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.22653275728225708,
+        "total": 0.23104731738567352,
+        "update": 106,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.13719625771045685,
+        "total": 0.16791731119155884,
+        "update": 107,
+        "wrong_margin": 0.05418989062309265
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.12588238716125488,
+        "total": 0.15502680838108063,
+        "update": 108,
+        "wrong_margin": 0.0514867901802063
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09910830855369568,
+        "total": 0.12717768549919128,
+        "update": 109,
+        "wrong_margin": 0.04989534616470337
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08728781342506409,
+        "total": 0.11512567847967148,
+        "update": 110,
+        "wrong_margin": 0.049923375248909
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07695348560810089,
+        "total": 0.10368096828460693,
+        "update": 111,
+        "wrong_margin": 0.047825247049331665
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1476929634809494,
+        "total": 0.17318370938301086,
+        "update": 112,
+        "wrong_margin": 0.04360552132129669
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.24288758635520935,
+        "total": 0.24718424677848816,
+        "update": 113,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.14293694496154785,
+        "total": 0.17110466957092285,
+        "update": 114,
+        "wrong_margin": 0.04900117218494415
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1266881227493286,
+        "total": 0.15457482635974884,
+        "update": 115,
+        "wrong_margin": 0.04863850772380829
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11169110238552094,
+        "total": 0.1403563767671585,
+        "update": 116,
+        "wrong_margin": 0.05041682720184326
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07999936491250992,
+        "total": 0.1084345206618309,
+        "update": 117,
+        "wrong_margin": 0.05088352411985397
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10332825779914856,
+        "total": 0.13180427253246307,
+        "update": 118,
+        "wrong_margin": 0.05076919496059418
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.12458719313144684,
+        "total": 0.14368517696857452,
+        "update": 119,
+        "wrong_margin": 0.03161129355430603
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.20172208547592163,
+        "total": 0.2059241384267807,
+        "update": 120,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.19613029062747955,
+        "total": 0.20017480850219727,
+        "update": 121,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.20614133775234222,
+        "total": 0.21025000512599945,
+        "update": 122,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10219112038612366,
+        "total": 0.13008730113506317,
+        "update": 123,
+        "wrong_margin": 0.04971952736377716
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.14385069906711578,
+        "total": 0.1704746037721634,
+        "update": 124,
+        "wrong_margin": 0.046019554138183594
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10235552489757538,
+        "total": 0.13041403889656067,
+        "update": 125,
+        "wrong_margin": 0.04992234706878662
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1116727888584137,
+        "total": 0.12918461859226227,
+        "update": 126,
+        "wrong_margin": 0.028678521513938904
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1271784007549286,
+        "total": 0.1383274793624878,
+        "update": 127,
+        "wrong_margin": 0.01537717878818512
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09082150459289551,
+        "total": 0.11582361161708832,
+        "update": 128,
+        "wrong_margin": 0.04393759369850159
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.230546772480011,
+        "total": 0.24907730519771576,
+        "update": 129,
+        "wrong_margin": 0.02735966444015503
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10599982738494873,
+        "total": 0.12835946679115295,
+        "update": 130,
+        "wrong_margin": 0.03827207535505295
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11748704314231873,
+        "total": 0.14593450725078583,
+        "update": 131,
+        "wrong_margin": 0.05020265281200409
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06553077697753906,
+        "total": 0.09380001574754715,
+        "update": 132,
+        "wrong_margin": 0.05104313790798187
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.12350431829690933,
+        "total": 0.15098837018013,
+        "update": 133,
+        "wrong_margin": 0.048630036413669586
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.2711895704269409,
+        "total": 0.2759111225605011,
+        "update": 134,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09163995832204819,
+        "total": 0.11943984776735306,
+        "update": 135,
+        "wrong_margin": 0.049505867063999176
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09528273344039917,
+        "total": 0.11811935901641846,
+        "update": 136,
+        "wrong_margin": 0.03938078135251999
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.12997105717658997,
+        "total": 0.1583040952682495,
+        "update": 137,
+        "wrong_margin": 0.04958663880825043
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.194234699010849,
+        "total": 0.19849368929862976,
+        "update": 138,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09801805019378662,
+        "total": 0.1261117309331894,
+        "update": 139,
+        "wrong_margin": 0.04979759454727173
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08109711855649948,
+        "total": 0.10932181030511856,
+        "update": 140,
+        "wrong_margin": 0.05061149597167969
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1295510083436966,
+        "total": 0.1331941783428192,
+        "update": 141,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.19797305762767792,
+        "total": 0.20203089714050293,
+        "update": 142,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07523304969072342,
+        "total": 0.10057055950164795,
+        "update": 143,
+        "wrong_margin": 0.045105546712875366
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.12001744657754898,
+        "total": 0.12646088004112244,
+        "update": 144,
+        "wrong_margin": 0.006262555718421936
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07871026545763016,
+        "total": 0.1072029173374176,
+        "update": 145,
+        "wrong_margin": 0.05122499167919159
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.12282416224479675,
+        "total": 0.1262507438659668,
+        "update": 146,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.19749325513839722,
+        "total": 0.20160624384880066,
+        "update": 147,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09796769917011261,
+        "total": 0.10101514309644699,
+        "update": 148,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.18341630697250366,
+        "total": 0.1874914914369583,
+        "update": 149,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.05957147851586342,
+        "total": 0.08618122339248657,
+        "update": 150,
+        "wrong_margin": 0.04785449057817459
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09824275970458984,
+        "total": 0.12656356394290924,
+        "update": 151,
+        "wrong_margin": 0.05039019137620926
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.14348722994327545,
+        "total": 0.1693526804447174,
+        "update": 152,
+        "wrong_margin": 0.0442623496055603
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.13331598043441772,
+        "total": 0.15872392058372498,
+        "update": 153,
+        "wrong_margin": 0.043557390570640564
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08926425129175186,
+        "total": 0.11262302845716476,
+        "update": 154,
+        "wrong_margin": 0.04077501595020294
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.0989014208316803,
+        "total": 0.12623408436775208,
+        "update": 155,
+        "wrong_margin": 0.04858933389186859
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09166333824396133,
+        "total": 0.11284451186656952,
+        "update": 156,
+        "wrong_margin": 0.036435388028621674
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.12979534268379211,
+        "total": 0.15951485931873322,
+        "update": 157,
+        "wrong_margin": 0.05240154266357422
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.2192065715789795,
+        "total": 0.25375959277153015,
+        "update": 158,
+        "wrong_margin": 0.06058622896671295
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.23624509572982788,
+        "total": 0.2649978995323181,
+        "update": 159,
+        "wrong_margin": 0.04827889800071716
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09488614648580551,
+        "total": 0.12281454354524612,
+        "update": 160,
+        "wrong_margin": 0.049752406775951385
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09406031668186188,
+        "total": 0.12201967090368271,
+        "update": 161,
+        "wrong_margin": 0.04967150092124939
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11552245169878006,
+        "total": 0.14282432198524475,
+        "update": 162,
+        "wrong_margin": 0.04800458997488022
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1311386674642563,
+        "total": 0.1597067266702652,
+        "update": 163,
+        "wrong_margin": 0.0498666912317276
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.19768594205379486,
+        "total": 0.2260090857744217,
+        "update": 164,
+        "wrong_margin": 0.04856349527835846
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.21990258991718292,
+        "total": 0.246696338057518,
+        "update": 165,
+        "wrong_margin": 0.04489797353744507
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11117412149906158,
+        "total": 0.13905389606952667,
+        "update": 166,
+        "wrong_margin": 0.049257874488830566
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08418402075767517,
+        "total": 0.11219748854637146,
+        "update": 167,
+        "wrong_margin": 0.05001012235879898
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.12282861769199371,
+        "total": 0.15114782750606537,
+        "update": 168,
+        "wrong_margin": 0.04973895847797394
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1112186461687088,
+        "total": 0.1392367035150528,
+        "update": 169,
+        "wrong_margin": 0.04949462413787842
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.12443358451128006,
+        "total": 0.15293553471565247,
+        "update": 170,
+        "wrong_margin": 0.049789562821388245
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07940025627613068,
+        "total": 0.10726069658994675,
+        "update": 171,
+        "wrong_margin": 0.04999273270368576
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.23557811975479126,
+        "total": 0.26148760318756104,
+        "update": 172,
+        "wrong_margin": 0.04297351837158203
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10853295028209686,
+        "total": 0.13603328168392181,
+        "update": 173,
+        "wrong_margin": 0.048447415232658386
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10896119475364685,
+        "total": 0.13724353909492493,
+        "update": 174,
+        "wrong_margin": 0.05005807429552078
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07556359469890594,
+        "total": 0.10327758640050888,
+        "update": 175,
+        "wrong_margin": 0.049868904054164886
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.215562641620636,
+        "total": 0.2417730987071991,
+        "update": 176,
+        "wrong_margin": 0.04405887424945831
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09717972576618195,
+        "total": 0.12467192858457565,
+        "update": 177,
+        "wrong_margin": 0.048686861991882324
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10105131566524506,
+        "total": 0.12925687432289124,
+        "update": 178,
+        "wrong_margin": 0.05004863440990448
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09359928965568542,
+        "total": 0.1215505376458168,
+        "update": 179,
+        "wrong_margin": 0.0496576726436615
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.23452042043209076,
+        "total": 0.2571738362312317,
+        "update": 180,
+        "wrong_margin": 0.03637212514877319
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.19847115874290466,
+        "total": 0.22395485639572144,
+        "update": 181,
+        "wrong_margin": 0.042394667863845825
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.12106470763683319,
+        "total": 0.1490522027015686,
+        "update": 182,
+        "wrong_margin": 0.04907409846782684
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08313652873039246,
+        "total": 0.11091085523366928,
+        "update": 183,
+        "wrong_margin": 0.04984263330698013
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08725666999816895,
+        "total": 0.11531637609004974,
+        "update": 184,
+        "wrong_margin": 0.05016935616731644
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.18002837896347046,
+        "total": 0.20570823550224304,
+        "update": 185,
+        "wrong_margin": 0.043390482664108276
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07706510275602341,
+        "total": 0.10463503748178482,
+        "update": 186,
+        "wrong_margin": 0.0496598482131958
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1802610456943512,
+        "total": 0.201469287276268,
+        "update": 187,
+        "wrong_margin": 0.03458090126514435
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.12372404336929321,
+        "total": 0.15039443969726562,
+        "update": 188,
+        "wrong_margin": 0.04642532765865326
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10117683559656143,
+        "total": 0.12826089560985565,
+        "update": 189,
+        "wrong_margin": 0.04801018536090851
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10061156749725342,
+        "total": 0.1261654943227768,
+        "update": 190,
+        "wrong_margin": 0.04484140872955322
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07255251705646515,
+        "total": 0.10023072361946106,
+        "update": 191,
+        "wrong_margin": 0.04998941719532013
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11143197119235992,
+        "total": 0.1398131102323532,
+        "update": 192,
+        "wrong_margin": 0.050034523010253906
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.0951816588640213,
+        "total": 0.12286821007728577,
+        "update": 193,
+        "wrong_margin": 0.04929007589817047
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.23720252513885498,
+        "total": 0.24417506158351898,
+        "update": 194,
+        "wrong_margin": 0.005150139331817627
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.072938933968544,
+        "total": 0.10072857141494751,
+        "update": 195,
+        "wrong_margin": 0.04997745156288147
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06978856027126312,
+        "total": 0.09760317206382751,
+        "update": 196,
+        "wrong_margin": 0.04992053657770157
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11479867994785309,
+        "total": 0.14190508425235748,
+        "update": 197,
+        "wrong_margin": 0.04745453596115112
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08297477662563324,
+        "total": 0.11047767102718353,
+        "update": 198,
+        "wrong_margin": 0.04918265342712402
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.18924346566200256,
+        "total": 0.19710324704647064,
+        "update": 199,
+        "wrong_margin": 0.007782682776451111
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.108211949467659,
+        "total": 0.1367141157388687,
+        "update": 200,
+        "wrong_margin": 0.05047091841697693
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10860081017017365,
+        "total": 0.13704322278499603,
+        "update": 201,
+        "wrong_margin": 0.05036240071058273
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11088114231824875,
+        "total": 0.1381685435771942,
+        "update": 202,
+        "wrong_margin": 0.047873690724372864
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09081520885229111,
+        "total": 0.11921746283769608,
+        "update": 203,
+        "wrong_margin": 0.050982266664505005
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.2308606505393982,
+        "total": 0.23525495827198029,
+        "update": 204,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06388552486896515,
+        "total": 0.09144807606935501,
+        "update": 205,
+        "wrong_margin": 0.04984547197818756
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10601426661014557,
+        "total": 0.11989263445138931,
+        "update": 206,
+        "wrong_margin": 0.021229803562164307
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08670930564403534,
+        "total": 0.10445942729711533,
+        "update": 207,
+        "wrong_margin": 0.029486574232578278
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.20887942612171173,
+        "total": 0.24426567554473877,
+        "update": 208,
+        "wrong_margin": 0.061752527952194214
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06248605623841286,
+        "total": 0.0817091315984726,
+        "update": 209,
+        "wrong_margin": 0.03317377716302872
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.18923068046569824,
+        "total": 0.19339872896671295,
+        "update": 210,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06129895895719528,
+        "total": 0.08843863010406494,
+        "update": 211,
+        "wrong_margin": 0.048955321311950684
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09254714846611023,
+        "total": 0.12438928335905075,
+        "update": 212,
+        "wrong_margin": 0.05769774317741394
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11056668311357498,
+        "total": 0.1387462615966797,
+        "update": 213,
+        "wrong_margin": 0.04992176592350006
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10009735822677612,
+        "total": 0.13261984288692474,
+        "update": 214,
+        "wrong_margin": 0.058830201625823975
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09623795002698898,
+        "total": 0.12433639913797379,
+        "update": 215,
+        "wrong_margin": 0.04988580197095871
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.23573753237724304,
+        "total": 0.2402481883764267,
+        "update": 216,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09733489900827408,
+        "total": 0.12443305552005768,
+        "update": 217,
+        "wrong_margin": 0.048047006130218506
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.19400545954704285,
+        "total": 0.20926153659820557,
+        "update": 218,
+        "wrong_margin": 0.022268489003181458
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.18732482194900513,
+        "total": 0.19437874853610992,
+        "update": 219,
+        "wrong_margin": 0.005990698933601379
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11394508183002472,
+        "total": 0.14314036071300507,
+        "update": 220,
+        "wrong_margin": 0.05159115791320801
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.0862995982170105,
+        "total": 0.11333536356687546,
+        "update": 221,
+        "wrong_margin": 0.04793538898229599
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07758462429046631,
+        "total": 0.10416232794523239,
+        "update": 222,
+        "wrong_margin": 0.047295764088630676
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11216969788074493,
+        "total": 0.13975900411605835,
+        "update": 223,
+        "wrong_margin": 0.048590973019599915
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11319616436958313,
+        "total": 0.12247784435749054,
+        "update": 224,
+        "wrong_margin": 0.011820361018180847
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.19192978739738464,
+        "total": 0.19590774178504944,
+        "update": 225,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.12022972851991653,
+        "total": 0.13371805846691132,
+        "update": 226,
+        "wrong_margin": 0.02023032307624817
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.18748390674591064,
+        "total": 0.19139623641967773,
+        "update": 227,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06647466123104095,
+        "total": 0.09430915862321854,
+        "update": 228,
+        "wrong_margin": 0.05033571273088455
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10328978300094604,
+        "total": 0.12034164369106293,
+        "update": 229,
+        "wrong_margin": 0.02775682508945465
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10982590913772583,
+        "total": 0.13514016568660736,
+        "update": 230,
+        "wrong_margin": 0.04428151249885559
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.16038770973682404,
+        "total": 0.1864420473575592,
+        "update": 231,
+        "wrong_margin": 0.04439893364906311
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06421776115894318,
+        "total": 0.09129361808300018,
+        "update": 232,
+        "wrong_margin": 0.04883493483066559
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.05519641935825348,
+        "total": 0.0827953889966011,
+        "update": 233,
+        "wrong_margin": 0.050069376826286316
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1674938052892685,
+        "total": 0.1712486445903778,
+        "update": 234,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08922474086284637,
+        "total": 0.11681711673736572,
+        "update": 235,
+        "wrong_margin": 0.04924274981021881
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10652761161327362,
+        "total": 0.1357312947511673,
+        "update": 236,
+        "wrong_margin": 0.05184267461299896
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09839379787445068,
+        "total": 0.12540793418884277,
+        "update": 237,
+        "wrong_margin": 0.04752311110496521
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.14901503920555115,
+        "total": 0.18206429481506348,
+        "update": 238,
+        "wrong_margin": 0.05826851725578308
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1094348132610321,
+        "total": 0.13741029798984528,
+        "update": 239,
+        "wrong_margin": 0.04928073287010193
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.2230883538722992,
+        "total": 0.23278632760047913,
+        "update": 240,
+        "wrong_margin": 0.010220736265182495
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06280501931905746,
+        "total": 0.09041974693536758,
+        "update": 241,
+        "wrong_margin": 0.049673765897750854
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1144438087940216,
+        "total": 0.12849506735801697,
+        "update": 242,
+        "wrong_margin": 0.021571993827819824
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.18751242756843567,
+        "total": 0.19155248999595642,
+        "update": 243,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11078575253486633,
+        "total": 0.13827623426914215,
+        "update": 244,
+        "wrong_margin": 0.0484360009431839
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.17494674026966095,
+        "total": 0.1899471879005432,
+        "update": 245,
+        "wrong_margin": 0.02192935347557068
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.0871722400188446,
+        "total": 0.11415661871433258,
+        "update": 246,
+        "wrong_margin": 0.04804104566574097
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.0629899725317955,
+        "total": 0.0901135504245758,
+        "update": 247,
+        "wrong_margin": 0.04894930124282837
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10985291004180908,
+        "total": 0.13682040572166443,
+        "update": 248,
+        "wrong_margin": 0.047407180070877075
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.16147848963737488,
+        "total": 0.16525836288928986,
+        "update": 249,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10024920850992203,
+        "total": 0.12790973484516144,
+        "update": 250,
+        "wrong_margin": 0.04914351552724838
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.0704643651843071,
+        "total": 0.09839070588350296,
+        "update": 251,
+        "wrong_margin": 0.05041404068470001
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09779462963342667,
+        "total": 0.12510858476161957,
+        "update": 252,
+        "wrong_margin": 0.04834367334842682
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08857356011867523,
+        "total": 0.1157742515206337,
+        "update": 253,
+        "wrong_margin": 0.048447564244270325
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06090863049030304,
+        "total": 0.08757832646369934,
+        "update": 254,
+        "wrong_margin": 0.048133380711078644
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11516577005386353,
+        "total": 0.11858344823122025,
+        "update": 255,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.183557391166687,
+        "total": 0.18754948675632477,
+        "update": 256,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.05025133490562439,
+        "total": 0.07733418047428131,
+        "update": 257,
+        "wrong_margin": 0.04942949116230011
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.0509047731757164,
+        "total": 0.07837452739477158,
+        "update": 258,
+        "wrong_margin": 0.05003979802131653
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.19411468505859375,
+        "total": 0.19819815456867218,
+        "update": 259,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10383938997983932,
+        "total": 0.1070999950170517,
+        "update": 260,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.16232788562774658,
+        "total": 0.16606329381465912,
+        "update": 261,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08929899334907532,
+        "total": 0.11503565311431885,
+        "update": 262,
+        "wrong_margin": 0.04543580114841461
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07487568259239197,
+        "total": 0.10220548510551453,
+        "update": 263,
+        "wrong_margin": 0.049033477902412415
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11258696019649506,
+        "total": 0.13949015736579895,
+        "update": 264,
+        "wrong_margin": 0.047079816460609436
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.0780179500579834,
+        "total": 0.10442930459976196,
+        "update": 265,
+        "wrong_margin": 0.046986207365989685
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11606352031230927,
+        "total": 0.11953144520521164,
+        "update": 266,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.17007899284362793,
+        "total": 0.17387256026268005,
+        "update": 267,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.05216113105416298,
+        "total": 0.08000024408102036,
+        "update": 268,
+        "wrong_margin": 0.05083749443292618
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.17399293184280396,
+        "total": 0.17796382308006287,
+        "update": 269,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09645912796258926,
+        "total": 0.12464052438735962,
+        "update": 270,
+        "wrong_margin": 0.050039537250995636
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07839030027389526,
+        "total": 0.1074451431632042,
+        "update": 271,
+        "wrong_margin": 0.05234243720769882
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.052721910178661346,
+        "total": 0.07986830174922943,
+        "update": 272,
+        "wrong_margin": 0.04941333085298538
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.05260053277015686,
+        "total": 0.07938075065612793,
+        "update": 273,
+        "wrong_margin": 0.04865176975727081
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08179095387458801,
+        "total": 0.10522603243589401,
+        "update": 274,
+        "wrong_margin": 0.04086834937334061
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1743398755788803,
+        "total": 0.1783873289823532,
+        "update": 275,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08144181221723557,
+        "total": 0.10865571349859238,
+        "update": 276,
+        "wrong_margin": 0.048593878746032715
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09990981966257095,
+        "total": 0.12724292278289795,
+        "update": 277,
+        "wrong_margin": 0.04833712428808212
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09955467283725739,
+        "total": 0.11238930374383926,
+        "update": 278,
+        "wrong_margin": 0.01911938190460205
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.16327044367790222,
+        "total": 0.16725465655326843,
+        "update": 279,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.05056210607290268,
+        "total": 0.07695746421813965,
+        "update": 280,
+        "wrong_margin": 0.047952473163604736
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.04658994823694229,
+        "total": 0.07364940643310547,
+        "update": 281,
+        "wrong_margin": 0.04950859770178795
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08896475285291672,
+        "total": 0.11645709723234177,
+        "update": 282,
+        "wrong_margin": 0.04904527962207794
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08999674022197723,
+        "total": 0.1186492070555687,
+        "update": 283,
+        "wrong_margin": 0.05143946409225464
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.16773131489753723,
+        "total": 0.1716005504131317,
+        "update": 284,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1042853444814682,
+        "total": 0.1074540913105011,
+        "update": 285,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08492044359445572,
+        "total": 0.11319556087255478,
+        "update": 286,
+        "wrong_margin": 0.05085182189941406
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.16204933822155,
+        "total": 0.16586977243423462,
+        "update": 287,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.05070238560438156,
+        "total": 0.07562550157308578,
+        "update": 288,
+        "wrong_margin": 0.044906310737133026
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.16747930645942688,
+        "total": 0.1713644564151764,
+        "update": 289,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08017183840274811,
+        "total": 0.09665414690971375,
+        "update": 290,
+        "wrong_margin": 0.027060233056545258
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.05438150092959404,
+        "total": 0.0793139860033989,
+        "update": 291,
+        "wrong_margin": 0.04484546557068825
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.04760606586933136,
+        "total": 0.07367168366909027,
+        "update": 292,
+        "wrong_margin": 0.04734859615564346
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1615561842918396,
+        "total": 0.16532032191753387,
+        "update": 293,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08820653706789017,
+        "total": 0.11521390825510025,
+        "update": 294,
+        "wrong_margin": 0.047984592616558075
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07865802943706512,
+        "total": 0.10748868435621262,
+        "update": 295,
+        "wrong_margin": 0.05220649391412735
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09729297459125519,
+        "total": 0.10255654156208038,
+        "update": 296,
+        "wrong_margin": 0.004358962178230286
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10600531101226807,
+        "total": 0.10924044996500015,
+        "update": 297,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07390319555997849,
+        "total": 0.09467606246471405,
+        "update": 298,
+        "wrong_margin": 0.035860076546669006
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.16623803973197937,
+        "total": 0.16993850469589233,
+        "update": 299,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10767585039138794,
+        "total": 0.1323830485343933,
+        "update": 300,
+        "wrong_margin": 0.04274962842464447
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07617694139480591,
+        "total": 0.10362332314252853,
+        "update": 301,
+        "wrong_margin": 0.04907277971506119
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.15324735641479492,
+        "total": 0.15695233643054962,
+        "update": 302,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.05286955460906029,
+        "total": 0.07805947214365005,
+        "update": 303,
+        "wrong_margin": 0.04551514983177185
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.0505279079079628,
+        "total": 0.07572559267282486,
+        "update": 304,
+        "wrong_margin": 0.045419611036777496
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.045599039644002914,
+        "total": 0.0714317336678505,
+        "update": 305,
+        "wrong_margin": 0.0467001274228096
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.15967324376106262,
+        "total": 0.16350911557674408,
+        "update": 306,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07007084786891937,
+        "total": 0.0914439707994461,
+        "update": 307,
+        "wrong_margin": 0.03725185990333557
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1576637327671051,
+        "total": 0.16147971153259277,
+        "update": 308,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10389019548892975,
+        "total": 0.1080317273736,
+        "update": 309,
+        "wrong_margin": 0.0016174018383026123
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08590392768383026,
+        "total": 0.11153572052717209,
+        "update": 310,
+        "wrong_margin": 0.045261651277542114
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07296621799468994,
+        "total": 0.1006365567445755,
+        "update": 311,
+        "wrong_margin": 0.04986625164747238
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.04351469501852989,
+        "total": 0.07062771171331406,
+        "update": 312,
+        "wrong_margin": 0.04958125203847885
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.17097914218902588,
+        "total": 0.17479278147220612,
+        "update": 313,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1632106900215149,
+        "total": 0.167007178068161,
+        "update": 314,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06916051357984543,
+        "total": 0.09711593389511108,
+        "update": 315,
+        "wrong_margin": 0.05058124661445618
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.042772889137268066,
+        "total": 0.0688941478729248,
+        "update": 316,
+        "wrong_margin": 0.04748214781284332
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.0751013457775116,
+        "total": 0.09757313132286072,
+        "update": 317,
+        "wrong_margin": 0.039165034890174866
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08778910338878632,
+        "total": 0.11353394389152527,
+        "update": 318,
+        "wrong_margin": 0.045326054096221924
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.0909065306186676,
+        "total": 0.09405901283025742,
+        "update": 319,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.04691139981150627,
+        "total": 0.07305477559566498,
+        "update": 320,
+        "wrong_margin": 0.04745802283287048
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.041773002594709396,
+        "total": 0.06743697077035904,
+        "update": 321,
+        "wrong_margin": 0.046647489070892334
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.03783711418509483,
+        "total": 0.06288570165634155,
+        "update": 322,
+        "wrong_margin": 0.0454491563141346
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.17911198735237122,
+        "total": 0.1833716779947281,
+        "update": 323,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08127415180206299,
+        "total": 0.10817241668701172,
+        "update": 324,
+        "wrong_margin": 0.04815104603767395
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06683884561061859,
+        "total": 0.09442587196826935,
+        "update": 325,
+        "wrong_margin": 0.050079748034477234
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.18896350264549255,
+        "total": 0.1933046281337738,
+        "update": 326,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08164693415164948,
+        "total": 0.10955362021923065,
+        "update": 327,
+        "wrong_margin": 0.04991832375526428
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09337778389453888,
+        "total": 0.10644032806158066,
+        "update": 328,
+        "wrong_margin": 0.02002539485692978
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1713898777961731,
+        "total": 0.17530077695846558,
+        "update": 329,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09387759864330292,
+        "total": 0.11838974058628082,
+        "update": 330,
+        "wrong_margin": 0.042792096734046936
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07168855518102646,
+        "total": 0.08251531422138214,
+        "update": 331,
+        "wrong_margin": 0.016132593154907227
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.0810285359621048,
+        "total": 0.1112055629491806,
+        "update": 332,
+        "wrong_margin": 0.05462945997714996
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11773869395256042,
+        "total": 0.12131740897893906,
+        "update": 333,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.16245585680007935,
+        "total": 0.1664229929447174,
+        "update": 334,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.043674372136592865,
+        "total": 0.06892761588096619,
+        "update": 335,
+        "wrong_margin": 0.04560070484876633
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.04385799169540405,
+        "total": 0.07105821371078491,
+        "update": 336,
+        "wrong_margin": 0.04951788857579231
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.11188093572854996,
+        "total": 0.14188659191131592,
+        "update": 337,
+        "wrong_margin": 0.05366282910108566
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.17146509885787964,
+        "total": 0.17524991929531097,
+        "update": 338,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08347136527299881,
+        "total": 0.11096131801605225,
+        "update": 339,
+        "wrong_margin": 0.04914194345474243
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.045825082808732986,
+        "total": 0.07139323651790619,
+        "update": 340,
+        "wrong_margin": 0.046275462955236435
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.16179627180099487,
+        "total": 0.1655598282814026,
+        "update": 341,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07153460383415222,
+        "total": 0.08551102131605148,
+        "update": 342,
+        "wrong_margin": 0.02242960035800934
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.04525447636842728,
+        "total": 0.06991386413574219,
+        "update": 343,
+        "wrong_margin": 0.0445888489484787
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08351977914571762,
+        "total": 0.11125681549310684,
+        "update": 344,
+        "wrong_margin": 0.04992697387933731
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.12231720983982086,
+        "total": 0.12582141160964966,
+        "update": 345,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07293098419904709,
+        "total": 0.10043546557426453,
+        "update": 346,
+        "wrong_margin": 0.049539417028427124
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06254716217517853,
+        "total": 0.08040764182806015,
+        "update": 347,
+        "wrong_margin": 0.03056296706199646
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.03645068407058716,
+        "total": 0.06267621368169785,
+        "update": 348,
+        "wrong_margin": 0.047901563346385956
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08235698938369751,
+        "total": 0.11139555275440216,
+        "update": 349,
+        "wrong_margin": 0.052240729331970215
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.14925514161586761,
+        "total": 0.15291255712509155,
+        "update": 350,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.04388364404439926,
+        "total": 0.07263968139886856,
+        "update": 351,
+        "wrong_margin": 0.05283915996551514
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1666707992553711,
+        "total": 0.1704857349395752,
+        "update": 352,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.065919890999794,
+        "total": 0.09434033185243607,
+        "update": 353,
+        "wrong_margin": 0.051483578979969025
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07559951394796371,
+        "total": 0.10179881006479263,
+        "update": 354,
+        "wrong_margin": 0.04669850319623947
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.04441045969724655,
+        "total": 0.06935527920722961,
+        "update": 355,
+        "wrong_margin": 0.045126765966415405
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07345564663410187,
+        "total": 0.08853406459093094,
+        "update": 356,
+        "wrong_margin": 0.024577081203460693
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.15887893736362457,
+        "total": 0.1625804752111435,
+        "update": 357,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.043695639818906784,
+        "total": 0.06941231340169907,
+        "update": 358,
+        "wrong_margin": 0.046945832669734955
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1555054634809494,
+        "total": 0.15922226011753082,
+        "update": 359,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08697375655174255,
+        "total": 0.08993883430957794,
+        "update": 360,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06291946023702621,
+        "total": 0.09005235880613327,
+        "update": 361,
+        "wrong_margin": 0.04914621263742447
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.03524147719144821,
+        "total": 0.0606207475066185,
+        "update": 362,
+        "wrong_margin": 0.046626977622509
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07700410485267639,
+        "total": 0.10198728740215302,
+        "update": 363,
+        "wrong_margin": 0.04429902136325836
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08180534839630127,
+        "total": 0.0847308337688446,
+        "update": 364,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.15402831137180328,
+        "total": 0.15788419544696808,
+        "update": 365,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08958259969949722,
+        "total": 0.1132306158542633,
+        "update": 366,
+        "wrong_margin": 0.04147230088710785
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.0399247370660305,
+        "total": 0.06411302834749222,
+        "update": 367,
+        "wrong_margin": 0.04416331648826599
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.15871702134609222,
+        "total": 0.16257284581661224,
+        "update": 368,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06206657737493515,
+        "total": 0.08953551948070526,
+        "update": 369,
+        "wrong_margin": 0.0497826486825943
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08466678112745285,
+        "total": 0.08763585239648819,
+        "update": 370,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.043356116861104965,
+        "total": 0.06846421957015991,
+        "update": 371,
+        "wrong_margin": 0.04571928083896637
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.15191222727298737,
+        "total": 0.15550999343395233,
+        "update": 372,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.15805833041667938,
+        "total": 0.16169925034046173,
+        "update": 373,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06561733782291412,
+        "total": 0.07562696188688278,
+        "update": 374,
+        "wrong_margin": 0.014618530869483948
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08320744335651398,
+        "total": 0.10706707835197449,
+        "update": 375,
+        "wrong_margin": 0.04199206829071045
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.039782796055078506,
+        "total": 0.06220382824540138,
+        "update": 376,
+        "wrong_margin": 0.04028115049004555
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.05592554807662964,
+        "total": 0.06335056573152542,
+        "update": 377,
+        "wrong_margin": 0.009811758995056152
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07600850611925125,
+        "total": 0.10325774550437927,
+        "update": 378,
+        "wrong_margin": 0.04906828701496124
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.14863543212413788,
+        "total": 0.1522120237350464,
+        "update": 379,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.03155538812279701,
+        "total": 0.04913463070988655,
+        "update": 380,
+        "wrong_margin": 0.03094552457332611
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.040317095816135406,
+        "total": 0.06314190477132797,
+        "update": 381,
+        "wrong_margin": 0.04133389890193939
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10425955802202225,
+        "total": 0.10750287771224976,
+        "update": 382,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.14998310804367065,
+        "total": 0.15365715324878693,
+        "update": 383,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.10933374613523483,
+        "total": 0.13033625483512878,
+        "update": 384,
+        "wrong_margin": 0.03562358021736145
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08553123474121094,
+        "total": 0.10007376223802567,
+        "update": 385,
+        "wrong_margin": 0.02332422137260437
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08965222537517548,
+        "total": 0.1290336400270462,
+        "update": 386,
+        "wrong_margin": 0.07279768586158752
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1626770794391632,
+        "total": 0.1663232296705246,
+        "update": 387,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.037395965307950974,
+        "total": 0.0682186484336853,
+        "update": 388,
+        "wrong_margin": 0.05741811543703079
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.0749393180012703,
+        "total": 0.10627540946006775,
+        "update": 389,
+        "wrong_margin": 0.057221800088882446
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06951716542243958,
+        "total": 0.0956714004278183,
+        "update": 390,
+        "wrong_margin": 0.04684942960739136
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.17727580666542053,
+        "total": 0.18114110827445984,
+        "update": 391,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.05183865875005722,
+        "total": 0.0762370303273201,
+        "update": 392,
+        "wrong_margin": 0.043866921216249466
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08378736674785614,
+        "total": 0.11006924510002136,
+        "update": 393,
+        "wrong_margin": 0.0466056689620018
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1480046808719635,
+        "total": 0.15174634754657745,
+        "update": 394,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08423609286546707,
+        "total": 0.10464518517255783,
+        "update": 395,
+        "wrong_margin": 0.034997180104255676
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.15040041506290436,
+        "total": 0.15422643721103668,
+        "update": 396,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06585899740457535,
+        "total": 0.08988920599222183,
+        "update": 397,
+        "wrong_margin": 0.043011970818042755
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07572899013757706,
+        "total": 0.10199762880802155,
+        "update": 398,
+        "wrong_margin": 0.04696910083293915
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.04711597412824631,
+        "total": 0.07332759350538254,
+        "update": 399,
+        "wrong_margin": 0.047874998301267624
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09548906236886978,
+        "total": 0.09846758097410202,
+        "update": 400,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09745493531227112,
+        "total": 0.10050541162490845,
+        "update": 401,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.16752924025058746,
+        "total": 0.1712571382522583,
+        "update": 402,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.05998148396611214,
+        "total": 0.08723914623260498,
+        "update": 403,
+        "wrong_margin": 0.049474261701107025
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.049962032586336136,
+        "total": 0.0744495764374733,
+        "update": 404,
+        "wrong_margin": 0.044436074793338776
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07165755331516266,
+        "total": 0.08930230885744095,
+        "update": 405,
+        "wrong_margin": 0.029686450958251953
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.14894716441631317,
+        "total": 0.15263429284095764,
+        "update": 406,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.0379226915538311,
+        "total": 0.06423331797122955,
+        "update": 407,
+        "wrong_margin": 0.04828993231058121
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07356755435466766,
+        "total": 0.09995637089014053,
+        "update": 408,
+        "wrong_margin": 0.04725564271211624
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06220204383134842,
+        "total": 0.09068082273006439,
+        "update": 409,
+        "wrong_margin": 0.051901474595069885
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.15073974430561066,
+        "total": 0.1543911248445511,
+        "update": 410,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.040381528437137604,
+        "total": 0.06718099862337112,
+        "update": 411,
+        "wrong_margin": 0.04918532818555832
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.0745721310377121,
+        "total": 0.10160648077726364,
+        "update": 412,
+        "wrong_margin": 0.04855549335479736
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.03344085067510605,
+        "total": 0.05940942093729973,
+        "update": 413,
+        "wrong_margin": 0.04780542105436325
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.054798148572444916,
+        "total": 0.07557996362447739,
+        "update": 414,
+        "wrong_margin": 0.03663700073957443
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.0829044058918953,
+        "total": 0.08586326986551285,
+        "update": 415,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.16717301309108734,
+        "total": 0.17100389301776886,
+        "update": 416,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07473651319742203,
+        "total": 0.07753387093544006,
+        "update": 417,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06821618974208832,
+        "total": 0.09282489120960236,
+        "update": 418,
+        "wrong_margin": 0.04401445388793945
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.14290714263916016,
+        "total": 0.14632445573806763,
+        "update": 419,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1524430364370346,
+        "total": 0.1560748964548111,
+        "update": 420,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.03169745206832886,
+        "total": 0.058115798979997635,
+        "update": 421,
+        "wrong_margin": 0.04888107255101204
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06732089817523956,
+        "total": 0.09709180891513824,
+        "update": 422,
+        "wrong_margin": 0.05454836040735245
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07542553544044495,
+        "total": 0.09226521849632263,
+        "update": 423,
+        "wrong_margin": 0.02835410088300705
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.03759881481528282,
+        "total": 0.061071060597896576,
+        "update": 424,
+        "wrong_margin": 0.04267919436097145
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.03719330579042435,
+        "total": 0.06102491170167923,
+        "update": 425,
+        "wrong_margin": 0.04338093474507332
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.15661311149597168,
+        "total": 0.16046291589736938,
+        "update": 426,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06966586410999298,
+        "total": 0.09402873367071152,
+        "update": 427,
+        "wrong_margin": 0.04343114793300629
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06440388411283493,
+        "total": 0.07737414538860321,
+        "update": 428,
+        "wrong_margin": 0.02077750861644745
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.03182435780763626,
+        "total": 0.057231444865465164,
+        "update": 429,
+        "wrong_margin": 0.0465165451169014
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.15511660277843475,
+        "total": 0.15892961621284485,
+        "update": 430,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06761694699525833,
+        "total": 0.09718921780586243,
+        "update": 431,
+        "wrong_margin": 0.054063767194747925
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07809342443943024,
+        "total": 0.0872260108590126,
+        "update": 432,
+        "wrong_margin": 0.012646302580833435
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.02640284039080143,
+        "total": 0.05169486254453659,
+        "update": 433,
+        "wrong_margin": 0.04684743285179138
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.029667193070054054,
+        "total": 0.0534149706363678,
+        "update": 434,
+        "wrong_margin": 0.043389350175857544
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08228272199630737,
+        "total": 0.08510853350162506,
+        "update": 435,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08031700551509857,
+        "total": 0.10175476223230362,
+        "update": 436,
+        "wrong_margin": 0.03721863031387329
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.0636938065290451,
+        "total": 0.0680818259716034,
+        "update": 437,
+        "wrong_margin": 0.0037641972303390503
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.05473756790161133,
+        "total": 0.08135466277599335,
+        "update": 438,
+        "wrong_margin": 0.04836222901940346
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.15718702971935272,
+        "total": 0.16087450087070465,
+        "update": 439,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1419290453195572,
+        "total": 0.14555050432682037,
+        "update": 440,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.14174240827560425,
+        "total": 0.1452479213476181,
+        "update": 441,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.026441197842359543,
+        "total": 0.05135088786482811,
+        "update": 442,
+        "wrong_margin": 0.04611010476946831
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06792503595352173,
+        "total": 0.09176402539014816,
+        "update": 443,
+        "wrong_margin": 0.04239639639854431
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.05520656704902649,
+        "total": 0.08330763876438141,
+        "update": 444,
+        "wrong_margin": 0.05148883908987045
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08448400348424911,
+        "total": 0.08741550147533417,
+        "update": 445,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1508278250694275,
+        "total": 0.15458521246910095,
+        "update": 446,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.030681826174259186,
+        "total": 0.05470672994852066,
+        "update": 447,
+        "wrong_margin": 0.04392964392900467
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06511659920215607,
+        "total": 0.07875610888004303,
+        "update": 448,
+        "wrong_margin": 0.022430285811424255
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.04878021776676178,
+        "total": 0.07613801211118698,
+        "update": 449,
+        "wrong_margin": 0.0498933270573616
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06396005302667618,
+        "total": 0.0876346156001091,
+        "update": 450,
+        "wrong_margin": 0.04210363328456879
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.15142925083637238,
+        "total": 0.1550530642271042,
+        "update": 451,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08213621377944946,
+        "total": 0.08503344655036926,
+        "update": 452,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.04076637327671051,
+        "total": 0.059963397681713104,
+        "update": 453,
+        "wrong_margin": 0.034232787787914276
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06368111073970795,
+        "total": 0.06625126302242279,
+        "update": 454,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.03150400519371033,
+        "total": 0.05596158653497696,
+        "update": 455,
+        "wrong_margin": 0.04482966288924217
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.144979789853096,
+        "total": 0.14843861758708954,
+        "update": 456,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.13843686878681183,
+        "total": 0.14189697802066803,
+        "update": 457,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06661772727966309,
+        "total": 0.08757703006267548,
+        "update": 458,
+        "wrong_margin": 0.036918699741363525
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07696615159511566,
+        "total": 0.07968218624591827,
+        "update": 459,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.02533647045493126,
+        "total": 0.04694126173853874,
+        "update": 460,
+        "wrong_margin": 0.03943433612585068
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.028779659420251846,
+        "total": 0.055379677563905716,
+        "update": 461,
+        "wrong_margin": 0.04932910203933716
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.05639753118157387,
+        "total": 0.08394520729780197,
+        "update": 462,
+        "wrong_margin": 0.05041065439581871
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.0604262575507164,
+        "total": 0.0629001334309578,
+        "update": 463,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.19312304258346558,
+        "total": 0.19760626554489136,
+        "update": 464,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.06684276461601257,
+        "total": 0.08704841136932373,
+        "update": 465,
+        "wrong_margin": 0.03513561189174652
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.04878862202167511,
+        "total": 0.0760570764541626,
+        "update": 466,
+        "wrong_margin": 0.04985708370804787
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.02352563850581646,
+        "total": 0.047227416187524796,
+        "update": 467,
+        "wrong_margin": 0.04369713366031647
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.16268910467624664,
+        "total": 0.1661689728498459,
+        "update": 468,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.16660922765731812,
+        "total": 0.17027968168258667,
+        "update": 469,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.05444109067320824,
+        "total": 0.06926820427179337,
+        "update": 470,
+        "wrong_margin": 0.02488681674003601
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08299057185649872,
+        "total": 0.08968757838010788,
+        "update": 471,
+        "wrong_margin": 0.007505267858505249
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.03232021629810333,
+        "total": 0.050242919474840164,
+        "update": 472,
+        "wrong_margin": 0.03188552334904671
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.14204169809818268,
+        "total": 0.14555230736732483,
+        "update": 473,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.03135433420538902,
+        "total": 0.045628663152456284,
+        "update": 474,
+        "wrong_margin": 0.02477635070681572
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07798367738723755,
+        "total": 0.09590869396924973,
+        "update": 475,
+        "wrong_margin": 0.030268266797065735
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.14911505579948425,
+        "total": 0.15270937979221344,
+        "update": 476,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.024621181190013885,
+        "total": 0.04275988042354584,
+        "update": 477,
+        "wrong_margin": 0.03260248899459839
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.09980949759483337,
+        "total": 0.10294628143310547,
+        "update": 478,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.05226143077015877,
+        "total": 0.05457576736807823,
+        "update": 479,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.05359397828578949,
+        "total": 0.07638813555240631,
+        "update": 480,
+        "wrong_margin": 0.04103577882051468
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.029455095529556274,
+        "total": 0.05777119845151901,
+        "update": 481,
+        "wrong_margin": 0.052771586924791336
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.05234580487012863,
+        "total": 0.07804275304079056,
+        "update": 482,
+        "wrong_margin": 0.04681636393070221
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1467759907245636,
+        "total": 0.150303453207016,
+        "update": 483,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.028360096737742424,
+        "total": 0.04198627173900604,
+        "update": 484,
+        "wrong_margin": 0.023401260375976562
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.13940350711345673,
+        "total": 0.14287102222442627,
+        "update": 485,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07532335072755814,
+        "total": 0.09699635207653046,
+        "update": 486,
+        "wrong_margin": 0.037893787026405334
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.08207826316356659,
+        "total": 0.08488541841506958,
+        "update": 487,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07160498201847076,
+        "total": 0.07427383959293365,
+        "update": 488,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.03801879286766052,
+        "total": 0.039989251643419266,
+        "update": 489,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.13412392139434814,
+        "total": 0.13746921718120575,
+        "update": 490,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.1340821087360382,
+        "total": 0.1374930888414383,
+        "update": 491,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07398021221160889,
+        "total": 0.07661975175142288,
+        "update": 492,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.0741017684340477,
+        "total": 0.10744120925664902,
+        "update": 493,
+        "wrong_margin": 0.061484627425670624
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.05070261284708977,
+        "total": 0.0533902607858181,
+        "update": 494,
+        "wrong_margin": 0.0007141530513763428
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.030825266614556313,
+        "total": 0.03482544794678688,
+        "update": 495,
+        "wrong_margin": 0.004002489149570465
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.15162411332130432,
+        "total": 0.2173665165901184,
+        "update": 496,
+        "wrong_margin": 0.12421384453773499
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.07048188894987106,
+        "total": 0.07304640859365463,
+        "update": 497,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.13787958025932312,
+        "total": 0.1414007544517517,
+        "update": 498,
+        "wrong_margin": 0.0
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.030929069966077805,
+        "total": 0.04499394819140434,
+        "update": 499,
+        "wrong_margin": 0.02417656034231186
+      },
+      {
+        "learning_rate": 0.0001,
+        "occupancy": 0.026974251493811607,
+        "total": 0.049499984830617905,
+        "update": 500,
+        "wrong_margin": 0.04127785563468933
+      }
+    ],
+    "status": "architecture_optimization_no_go_at_500_updates",
+    "updates_completed": 500
+  }
+}

@@ -1,0 +1,189 @@
+{
+  "architecture": {
+    "candidate_coordinate_interface": "external_normalized_rae_only",
+    "condition_latents_are_only_cube_path": true,
+    "confidence_source": "sigmoid_occupancy_logit",
+    "depth": 6,
+    "doppler_head_implemented": false,
+    "edm_implemented": false,
+    "exact_10000_selection_implemented": false,
+    "forbidden_pre_selection_sources": [
+      "local_cube_spectrum",
+      "local_cube_energy",
+      "local_cube_neighborhood",
+      "candidate_source",
+      "proposal_score",
+      "target_geometry"
+    ],
+    "geometry_decoder_inputs": [
+      "normalized_rae_fourier_features",
+      "condition_latents"
+    ],
+    "geometry_stage_boundary": "continuous_field_before_exact_10000_selection",
+    "global_radar_token_count": 336,
+    "latent_count": 512,
+    "low_threshold_radar_query_path_implemented": false,
+    "low_threshold_radar_role_if_added": "coordinates_only",
+    "model_dim": 512,
+    "model_family": "RaLD-WCE",
+    "pre_selection_local_cube_access": false,
+    "protocol": "rald_wce_condition_exclusive_field_stage0_v1",
+    "same_query_wrong_condition_supported": true,
+    "stage": "R-A1 Stage 0"
+  },
+  "data_access_contract": {
+    "auxiliary_radar_point_array_accessed": false,
+    "cache_arrays_read": [
+      "target_xyz_confidence",
+      "target_rae_index"
+    ],
+    "future_cube_accessed": false,
+    "partitions": [
+      "train",
+      "validation"
+    ],
+    "test_partition_accessed": false
+  },
+  "manifest_counts": {
+    "future_cube_frame_count": 0,
+    "test_frame_count": 0,
+    "train_frame_count": 76,
+    "validation_frame_count": 24
+  },
+  "protocol": "g1_ra2_rald_wce_pilot_v1",
+  "resume_contract": {
+    "baseline_hashes": null,
+    "config": {
+      "auxiliary_radar_point_array_accessed": false,
+      "checkpoint_interval_updates": 25,
+      "decode_chunk_size": 8192,
+      "depth": 6,
+      "doppler_head": false,
+      "epochs": null,
+      "evaluation_updates": [
+        100,
+        200,
+        300,
+        400,
+        500
+      ],
+      "future_cube_accessed": false,
+      "gradient_clip_norm": 10.0,
+      "head_dim": 64,
+      "heads": 8,
+      "latent_count": 512,
+      "learning_rate": 0.0001,
+      "maximum_updates": 500,
+      "minimum_export_distance_m": 0.05,
+      "minimum_learning_rate": 1e-06,
+      "mode": "tiny_memorization",
+      "model_dim": 512,
+      "negative_query_count": 9375,
+      "numeric_mode": "fp32_parameters_bf16_cuda_autocast",
+      "occupancy_query_count": 10000,
+      "output_range_quotas": [
+        8000,
+        1700,
+        300
+      ],
+      "positive_query_count": 625,
+      "protocol": "g1_ra2_rald_wce_pilot_v1",
+      "q0_range_quotas": [
+        166667,
+        166667,
+        166666
+      ],
+      "q1_anchor_quotas": [
+        20000,
+        4250,
+        750
+      ],
+      "q1_samples_per_anchor": 8,
+      "range_negative_global_per_class": null,
+      "range_negative_per_class": null,
+      "range_negative_shell_per_class": null,
+      "range_positive_quotas": null,
+      "seed": 20260716,
+      "test_accessed": false,
+      "train_frame_count": 8,
+      "validation_frame_count": 8,
+      "weight_decay": 0.05
+    },
+    "input_hashes": {
+      "dense_geometry_evaluator_sha256": "e1f970c1e827c7801c7c9018378603b89a7709b0b4bf261e740eab1575631e68",
+      "exact_wce_evaluator_sha256": "07dc5885d47effc6c0d41b7f2fc8f7f41c59f89a4ab1f2b73b2de44f667b8962",
+      "manifest_sha256": "645307a8bae351db51b55128043dae69bce5b928169d5fa25c1b9c55083de4e4",
+      "normalization_sha256": "4d0bca7d027a1a9f457c526f21a034a406ce4973e2dccee55ddd2d7019b41b77",
+      "scene_split_sha256": "61596bd50ce0bdab633c9ff0ec5ab5148c2c78a10dfc06a71d0d6f0a6c9427cc"
+    },
+    "protocol": "g1_ra2_rald_wce_pilot_v1",
+    "source_commit": "a7f0335a8eca86f9f36686a5d0ae86046dc0b88d",
+    "source_hashes": {
+      "/home/wangning/Workspace/radar_cube_dense/snapshots/a7f0335/code/eval/dense_geometry.py": "e1f970c1e827c7801c7c9018378603b89a7709b0b4bf261e740eab1575631e68",
+      "/home/wangning/Workspace/radar_cube_dense/snapshots/a7f0335/code/eval/rald_wce_stage0.py": "07dc5885d47effc6c0d41b7f2fc8f7f41c59f89a4ab1f2b73b2de44f667b8962",
+      "/home/wangning/Workspace/radar_cube_dense/snapshots/a7f0335/code/losses/rald_wce_pilot.py": "6493148a4a2d6ff5a0e148b70a8922e1d48f3a87363fc11173eaef11a3cb43b8",
+      "/home/wangning/Workspace/radar_cube_dense/snapshots/a7f0335/code/models/rald_wce_field.py": "616c1737305803e65fc676d1721d69e7744d92cd20ae098f48b8a21a387134ef",
+      "/home/wangning/Workspace/radar_cube_dense/snapshots/a7f0335/code/scripts/train_rald_wce_pilot.py": "caca90e03c8283255b1fa55a30979942cfabf08330cfb5f542696acc98ed68b8"
+    },
+    "tiny_frame_ids": [
+      {
+        "has_far_target": 0,
+        "radar_index": 205,
+        "sequence": 58,
+        "target_count": 247
+      },
+      {
+        "has_far_target": 0,
+        "radar_index": 404,
+        "sequence": 58,
+        "target_count": 285
+      },
+      {
+        "has_far_target": 1,
+        "radar_index": 404,
+        "sequence": 57,
+        "target_count": 635
+      },
+      {
+        "has_far_target": 1,
+        "radar_index": 402,
+        "sequence": 53,
+        "target_count": 906
+      },
+      {
+        "has_far_target": 1,
+        "radar_index": 204,
+        "sequence": 53,
+        "target_count": 2124
+      },
+      {
+        "has_far_target": 1,
+        "radar_index": 405,
+        "sequence": 50,
+        "target_count": 2588
+      },
+      {
+        "has_far_target": 1,
+        "radar_index": 232,
+        "sequence": 1,
+        "target_count": 10436
+      },
+      {
+        "has_far_target": 1,
+        "radar_index": 430,
+        "sequence": 1,
+        "target_count": 11096
+      }
+    ]
+  },
+  "resume_contract_sha256": "4824402317100c2f0e2c14c54be7b6eee2e7517595f18081f21bab4dae02612b",
+  "runtime": {
+    "bf16_autocast": true,
+    "device_argument": "cuda:0",
+    "device_name": "NVIDIA H200 NVL",
+    "parameter_count": 48775780,
+    "torch_version": "2.12.1+cu130"
+  },
+  "schema_version": 1,
+  "source_commit": "a7f0335a8eca86f9f36686a5d0ae86046dc0b88d"
+}
