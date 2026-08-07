@@ -1,0 +1,950 @@
+{
+  "arms": [
+    {
+      "arm": {
+        "bank_scale": 1,
+        "candidate_count": 20000,
+        "candidate_quotas": [
+          16000,
+          3400,
+          600
+        ],
+        "name": "max_d_bank20k_r4",
+        "neighborhood_radius": 4,
+        "score_mode": "max_d",
+        "seed_multiplier": 8
+      },
+      "frames": [
+        {
+          "candidate_indices_sha256": "247a3ea5bf3ce5175a40818aae1f8f47d72d8d647bddd39ed8210bfe660b0544",
+          "candidate_structure": {
+            "candidate_count": 20000,
+            "candidate_count_by_range": [
+              16000,
+              3400,
+              600
+            ],
+            "checks": {
+              "candidate_count_exact": true,
+              "range_quotas_exact": true,
+              "voxel_ids_unique": true
+            },
+            "passed": true,
+            "unique_candidate_voxel_count": 20000
+          },
+          "elapsed_seconds": 0.42496583005413413,
+          "memory": {
+            "baseline_allocated_bytes": 260216320,
+            "baseline_reserved_bytes": 262144000,
+            "candidate_tensor_bytes": 480000,
+            "incremental_peak_allocated_bytes": 520093696,
+            "incremental_peak_reserved_bytes": 528482304,
+            "peak_allocated_bytes": 780310016,
+            "peak_reserved_bytes": 790626304,
+            "process_max_rss_kib": 1777492
+          },
+          "radar_index": 232,
+          "represented_target_occupied_voxel_count": 416,
+          "sequence": 1,
+          "target_confidence_coverage": 0.31690844893455505,
+          "target_confidence_covered": 913.2569580078125,
+          "target_confidence_total": 2881.76904296875,
+          "target_occupied_voxel_count": 3790,
+          "target_occupied_voxel_recall": 0.1097625344991684,
+          "target_point_count": 10436
+        }
+      ],
+      "gate": {
+        "checks": {
+          "candidate_construction_passed_on_every_frame": true,
+          "minimum_frame_confidence_coverage_at_least_30pct": true,
+          "minimum_frame_occupied_voxel_recall_at_least_20pct": false
+        },
+        "confidence_coverage": {
+          "maximum": 0.31690844893455505,
+          "mean": 0.31690844893455505,
+          "median": 0.31690844893455505,
+          "minimum": 0.31690844893455505
+        },
+        "construction_failure_count": 0,
+        "occupied_voxel_recall": {
+          "maximum": 0.1097625344991684,
+          "mean": 0.1097625344991684,
+          "median": 0.1097625344991684,
+          "minimum": 0.1097625344991684
+        },
+        "passed": false
+      },
+      "memory": {
+        "maximum_incremental_peak_allocated_bytes": 520093696,
+        "maximum_incremental_peak_reserved_bytes": 528482304
+      },
+      "runtime": {
+        "maximum_seconds_per_frame": 0.42496583005413413,
+        "mean_seconds_per_frame": 0.42496583005413413,
+        "total_seconds": 0.42496583005413413
+      }
+    },
+    {
+      "arm": {
+        "bank_scale": 1,
+        "candidate_count": 20000,
+        "candidate_quotas": [
+          16000,
+          3400,
+          600
+        ],
+        "name": "sum_d_bank20k_r4",
+        "neighborhood_radius": 4,
+        "score_mode": "sum_d",
+        "seed_multiplier": 8
+      },
+      "frames": [
+        {
+          "candidate_indices_sha256": "f2e7fd8ee9a24b77e95c62666129a644e4ac26203c445528e1fbe2ce53a75bc8",
+          "candidate_structure": {
+            "candidate_count": 20000,
+            "candidate_count_by_range": [
+              16000,
+              3400,
+              600
+            ],
+            "checks": {
+              "candidate_count_exact": true,
+              "range_quotas_exact": true,
+              "voxel_ids_unique": true
+            },
+            "passed": true,
+            "unique_candidate_voxel_count": 20000
+          },
+          "elapsed_seconds": 0.1838738899677992,
+          "memory": {
+            "baseline_allocated_bytes": 260216320,
+            "baseline_reserved_bytes": 262144000,
+            "candidate_tensor_bytes": 480000,
+            "incremental_peak_allocated_bytes": 264100864,
+            "incremental_peak_reserved_bytes": 289406976,
+            "peak_allocated_bytes": 524317184,
+            "peak_reserved_bytes": 551550976,
+            "process_max_rss_kib": 1777492
+          },
+          "radar_index": 232,
+          "represented_target_occupied_voxel_count": 427,
+          "sequence": 1,
+          "target_confidence_coverage": 0.31035128235816956,
+          "target_confidence_covered": 894.3607177734375,
+          "target_confidence_total": 2881.76904296875,
+          "target_occupied_voxel_count": 3790,
+          "target_occupied_voxel_recall": 0.11266490817070007,
+          "target_point_count": 10436
+        }
+      ],
+      "gate": {
+        "checks": {
+          "candidate_construction_passed_on_every_frame": true,
+          "minimum_frame_confidence_coverage_at_least_30pct": true,
+          "minimum_frame_occupied_voxel_recall_at_least_20pct": false
+        },
+        "confidence_coverage": {
+          "maximum": 0.31035128235816956,
+          "mean": 0.31035128235816956,
+          "median": 0.31035128235816956,
+          "minimum": 0.31035128235816956
+        },
+        "construction_failure_count": 0,
+        "occupied_voxel_recall": {
+          "maximum": 0.11266490817070007,
+          "mean": 0.11266490817070007,
+          "median": 0.11266490817070007,
+          "minimum": 0.11266490817070007
+        },
+        "passed": false
+      },
+      "memory": {
+        "maximum_incremental_peak_allocated_bytes": 264100864,
+        "maximum_incremental_peak_reserved_bytes": 289406976
+      },
+      "runtime": {
+        "maximum_seconds_per_frame": 0.1838738899677992,
+        "mean_seconds_per_frame": 0.1838738899677992,
+        "total_seconds": 0.1838738899677992
+      }
+    },
+    {
+      "arm": {
+        "bank_scale": 1,
+        "candidate_count": 20000,
+        "candidate_quotas": [
+          16000,
+          3400,
+          600
+        ],
+        "name": "log_sum_d_bank20k_r4",
+        "neighborhood_radius": 4,
+        "score_mode": "log_sum_d",
+        "seed_multiplier": 8
+      },
+      "frames": [
+        {
+          "candidate_indices_sha256": "b258fa3722e05384785e891525a1bce2f3d92dd8c7421dc6da43e1cd3633e6c5",
+          "candidate_structure": {
+            "candidate_count": 20000,
+            "candidate_count_by_range": [
+              16000,
+              3400,
+              600
+            ],
+            "checks": {
+              "candidate_count_exact": true,
+              "range_quotas_exact": true,
+              "voxel_ids_unique": true
+            },
+            "passed": true,
+            "unique_candidate_voxel_count": 20000
+          },
+          "elapsed_seconds": 0.07862890977412462,
+          "memory": {
+            "baseline_allocated_bytes": 260216320,
+            "baseline_reserved_bytes": 262144000,
+            "candidate_tensor_bytes": 480000,
+            "incremental_peak_allocated_bytes": 524147712,
+            "incremental_peak_reserved_bytes": 551550976,
+            "peak_allocated_bytes": 784364032,
+            "peak_reserved_bytes": 813694976,
+            "process_max_rss_kib": 1777492
+          },
+          "radar_index": 232,
+          "represented_target_occupied_voxel_count": 318,
+          "sequence": 1,
+          "target_confidence_coverage": 0.2360578328371048,
+          "target_confidence_covered": 680.26416015625,
+          "target_confidence_total": 2881.76904296875,
+          "target_occupied_voxel_count": 3790,
+          "target_occupied_voxel_recall": 0.08390501141548157,
+          "target_point_count": 10436
+        }
+      ],
+      "gate": {
+        "checks": {
+          "candidate_construction_passed_on_every_frame": true,
+          "minimum_frame_confidence_coverage_at_least_30pct": false,
+          "minimum_frame_occupied_voxel_recall_at_least_20pct": false
+        },
+        "confidence_coverage": {
+          "maximum": 0.2360578328371048,
+          "mean": 0.2360578328371048,
+          "median": 0.2360578328371048,
+          "minimum": 0.2360578328371048
+        },
+        "construction_failure_count": 0,
+        "occupied_voxel_recall": {
+          "maximum": 0.08390501141548157,
+          "mean": 0.08390501141548157,
+          "median": 0.08390501141548157,
+          "minimum": 0.08390501141548157
+        },
+        "passed": false
+      },
+      "memory": {
+        "maximum_incremental_peak_allocated_bytes": 524147712,
+        "maximum_incremental_peak_reserved_bytes": 551550976
+      },
+      "runtime": {
+        "maximum_seconds_per_frame": 0.07862890977412462,
+        "mean_seconds_per_frame": 0.07862890977412462,
+        "total_seconds": 0.07862890977412462
+      }
+    },
+    {
+      "arm": {
+        "bank_scale": 2,
+        "candidate_count": 40000,
+        "candidate_quotas": [
+          32000,
+          6800,
+          1200
+        ],
+        "name": "max_d_bank40k_r4",
+        "neighborhood_radius": 4,
+        "score_mode": "max_d",
+        "seed_multiplier": 8
+      },
+      "frames": [
+        {
+          "candidate_indices_sha256": "dad98e0ff5043d0ad1bf67f681468f8bd0562303aa7f8354c49bd56cce7e6289",
+          "candidate_structure": {
+            "candidate_count": 40000,
+            "candidate_count_by_range": [
+              32000,
+              6800,
+              1200
+            ],
+            "checks": {
+              "candidate_count_exact": true,
+              "range_quotas_exact": true,
+              "voxel_ids_unique": true
+            },
+            "passed": true,
+            "unique_candidate_voxel_count": 40000
+          },
+          "elapsed_seconds": 0.10285662999376655,
+          "memory": {
+            "baseline_allocated_bytes": 260216320,
+            "baseline_reserved_bytes": 262144000,
+            "candidate_tensor_bytes": 960000,
+            "incremental_peak_allocated_bytes": 520093696,
+            "incremental_peak_reserved_bytes": 528482304,
+            "peak_allocated_bytes": 780310016,
+            "peak_reserved_bytes": 790626304,
+            "process_max_rss_kib": 1777492
+          },
+          "radar_index": 232,
+          "represented_target_occupied_voxel_count": 598,
+          "sequence": 1,
+          "target_confidence_coverage": 0.39507371187210083,
+          "target_confidence_covered": 1138.51123046875,
+          "target_confidence_total": 2881.76904296875,
+          "target_occupied_voxel_count": 3790,
+          "target_occupied_voxel_recall": 0.157783642411232,
+          "target_point_count": 10436
+        }
+      ],
+      "gate": {
+        "checks": {
+          "candidate_construction_passed_on_every_frame": true,
+          "minimum_frame_confidence_coverage_at_least_30pct": true,
+          "minimum_frame_occupied_voxel_recall_at_least_20pct": false
+        },
+        "confidence_coverage": {
+          "maximum": 0.39507371187210083,
+          "mean": 0.39507371187210083,
+          "median": 0.39507371187210083,
+          "minimum": 0.39507371187210083
+        },
+        "construction_failure_count": 0,
+        "occupied_voxel_recall": {
+          "maximum": 0.157783642411232,
+          "mean": 0.157783642411232,
+          "median": 0.157783642411232,
+          "minimum": 0.157783642411232
+        },
+        "passed": false
+      },
+      "memory": {
+        "maximum_incremental_peak_allocated_bytes": 520093696,
+        "maximum_incremental_peak_reserved_bytes": 528482304
+      },
+      "runtime": {
+        "maximum_seconds_per_frame": 0.10285662999376655,
+        "mean_seconds_per_frame": 0.10285662999376655,
+        "total_seconds": 0.10285662999376655
+      }
+    },
+    {
+      "arm": {
+        "bank_scale": 2,
+        "candidate_count": 40000,
+        "candidate_quotas": [
+          32000,
+          6800,
+          1200
+        ],
+        "name": "sum_d_bank40k_r4",
+        "neighborhood_radius": 4,
+        "score_mode": "sum_d",
+        "seed_multiplier": 8
+      },
+      "frames": [
+        {
+          "candidate_indices_sha256": "20b10e7a9c5d505312a144dc1bb064b1ddf415a3f18dc6a767d57a057c030070",
+          "candidate_structure": {
+            "candidate_count": 40000,
+            "candidate_count_by_range": [
+              32000,
+              6800,
+              1200
+            ],
+            "checks": {
+              "candidate_count_exact": true,
+              "range_quotas_exact": true,
+              "voxel_ids_unique": true
+            },
+            "passed": true,
+            "unique_candidate_voxel_count": 40000
+          },
+          "elapsed_seconds": 0.1908803298138082,
+          "memory": {
+            "baseline_allocated_bytes": 260216320,
+            "baseline_reserved_bytes": 262144000,
+            "candidate_tensor_bytes": 960000,
+            "incremental_peak_allocated_bytes": 264100864,
+            "incremental_peak_reserved_bytes": 289406976,
+            "peak_allocated_bytes": 524317184,
+            "peak_reserved_bytes": 551550976,
+            "process_max_rss_kib": 1777492
+          },
+          "radar_index": 232,
+          "represented_target_occupied_voxel_count": 576,
+          "sequence": 1,
+          "target_confidence_coverage": 0.38201767206192017,
+          "target_confidence_covered": 1100.88671875,
+          "target_confidence_total": 2881.76904296875,
+          "target_occupied_voxel_count": 3790,
+          "target_occupied_voxel_recall": 0.15197889506816864,
+          "target_point_count": 10436
+        }
+      ],
+      "gate": {
+        "checks": {
+          "candidate_construction_passed_on_every_frame": true,
+          "minimum_frame_confidence_coverage_at_least_30pct": true,
+          "minimum_frame_occupied_voxel_recall_at_least_20pct": false
+        },
+        "confidence_coverage": {
+          "maximum": 0.38201767206192017,
+          "mean": 0.38201767206192017,
+          "median": 0.38201767206192017,
+          "minimum": 0.38201767206192017
+        },
+        "construction_failure_count": 0,
+        "occupied_voxel_recall": {
+          "maximum": 0.15197889506816864,
+          "mean": 0.15197889506816864,
+          "median": 0.15197889506816864,
+          "minimum": 0.15197889506816864
+        },
+        "passed": false
+      },
+      "memory": {
+        "maximum_incremental_peak_allocated_bytes": 264100864,
+        "maximum_incremental_peak_reserved_bytes": 289406976
+      },
+      "runtime": {
+        "maximum_seconds_per_frame": 0.1908803298138082,
+        "mean_seconds_per_frame": 0.1908803298138082,
+        "total_seconds": 0.1908803298138082
+      }
+    },
+    {
+      "arm": {
+        "bank_scale": 2,
+        "candidate_count": 40000,
+        "candidate_quotas": [
+          32000,
+          6800,
+          1200
+        ],
+        "name": "log_sum_d_bank40k_r4",
+        "neighborhood_radius": 4,
+        "score_mode": "log_sum_d",
+        "seed_multiplier": 8
+      },
+      "frames": [
+        {
+          "candidate_indices_sha256": "5f09abb248fa7fd3efb57cdda592fe9d57c2f48078f4a0662651c01fd847c15f",
+          "candidate_structure": {
+            "candidate_count": 40000,
+            "candidate_count_by_range": [
+              32000,
+              6800,
+              1200
+            ],
+            "checks": {
+              "candidate_count_exact": true,
+              "range_quotas_exact": true,
+              "voxel_ids_unique": true
+            },
+            "passed": true,
+            "unique_candidate_voxel_count": 40000
+          },
+          "elapsed_seconds": 0.10462713008746505,
+          "memory": {
+            "baseline_allocated_bytes": 260216320,
+            "baseline_reserved_bytes": 262144000,
+            "candidate_tensor_bytes": 960000,
+            "incremental_peak_allocated_bytes": 524147712,
+            "incremental_peak_reserved_bytes": 549453824,
+            "peak_allocated_bytes": 784364032,
+            "peak_reserved_bytes": 811597824,
+            "process_max_rss_kib": 1777492
+          },
+          "radar_index": 232,
+          "represented_target_occupied_voxel_count": 408,
+          "sequence": 1,
+          "target_confidence_coverage": 0.2830767035484314,
+          "target_confidence_covered": 815.76171875,
+          "target_confidence_total": 2881.76904296875,
+          "target_occupied_voxel_count": 3790,
+          "target_occupied_voxel_recall": 0.1076517179608345,
+          "target_point_count": 10436
+        }
+      ],
+      "gate": {
+        "checks": {
+          "candidate_construction_passed_on_every_frame": true,
+          "minimum_frame_confidence_coverage_at_least_30pct": false,
+          "minimum_frame_occupied_voxel_recall_at_least_20pct": false
+        },
+        "confidence_coverage": {
+          "maximum": 0.2830767035484314,
+          "mean": 0.2830767035484314,
+          "median": 0.2830767035484314,
+          "minimum": 0.2830767035484314
+        },
+        "construction_failure_count": 0,
+        "occupied_voxel_recall": {
+          "maximum": 0.1076517179608345,
+          "mean": 0.1076517179608345,
+          "median": 0.1076517179608345,
+          "minimum": 0.1076517179608345
+        },
+        "passed": false
+      },
+      "memory": {
+        "maximum_incremental_peak_allocated_bytes": 524147712,
+        "maximum_incremental_peak_reserved_bytes": 549453824
+      },
+      "runtime": {
+        "maximum_seconds_per_frame": 0.10462713008746505,
+        "mean_seconds_per_frame": 0.10462713008746505,
+        "total_seconds": 0.10462713008746505
+      }
+    },
+    {
+      "arm": {
+        "bank_scale": 4,
+        "candidate_count": 80000,
+        "candidate_quotas": [
+          64000,
+          13600,
+          2400
+        ],
+        "name": "max_d_bank80k_r4",
+        "neighborhood_radius": 4,
+        "score_mode": "max_d",
+        "seed_multiplier": 8
+      },
+      "frames": [
+        {
+          "candidate_indices_sha256": "04e6c219dc0415c5aabba575701696a8a527735937ada85aff0c119ce0872a61",
+          "candidate_structure": {
+            "candidate_count": 80000,
+            "candidate_count_by_range": [
+              64000,
+              13600,
+              2400
+            ],
+            "checks": {
+              "candidate_count_exact": true,
+              "range_quotas_exact": true,
+              "voxel_ids_unique": true
+            },
+            "passed": true,
+            "unique_candidate_voxel_count": 80000
+          },
+          "elapsed_seconds": 0.2056622300297022,
+          "memory": {
+            "baseline_allocated_bytes": 260216320,
+            "baseline_reserved_bytes": 262144000,
+            "candidate_tensor_bytes": 1920000,
+            "incremental_peak_allocated_bytes": 520093696,
+            "incremental_peak_reserved_bytes": 530579456,
+            "peak_allocated_bytes": 780310016,
+            "peak_reserved_bytes": 792723456,
+            "process_max_rss_kib": 1777492
+          },
+          "radar_index": 232,
+          "represented_target_occupied_voxel_count": 871,
+          "sequence": 1,
+          "target_confidence_coverage": 0.4910624027252197,
+          "target_confidence_covered": 1415.12841796875,
+          "target_confidence_total": 2881.76904296875,
+          "target_occupied_voxel_count": 3790,
+          "target_occupied_voxel_recall": 0.2298153042793274,
+          "target_point_count": 10436
+        }
+      ],
+      "gate": {
+        "checks": {
+          "candidate_construction_passed_on_every_frame": true,
+          "minimum_frame_confidence_coverage_at_least_30pct": true,
+          "minimum_frame_occupied_voxel_recall_at_least_20pct": true
+        },
+        "confidence_coverage": {
+          "maximum": 0.4910624027252197,
+          "mean": 0.4910624027252197,
+          "median": 0.4910624027252197,
+          "minimum": 0.4910624027252197
+        },
+        "construction_failure_count": 0,
+        "occupied_voxel_recall": {
+          "maximum": 0.2298153042793274,
+          "mean": 0.2298153042793274,
+          "median": 0.2298153042793274,
+          "minimum": 0.2298153042793274
+        },
+        "passed": true
+      },
+      "memory": {
+        "maximum_incremental_peak_allocated_bytes": 520093696,
+        "maximum_incremental_peak_reserved_bytes": 530579456
+      },
+      "runtime": {
+        "maximum_seconds_per_frame": 0.2056622300297022,
+        "mean_seconds_per_frame": 0.2056622300297022,
+        "total_seconds": 0.2056622300297022
+      }
+    },
+    {
+      "arm": {
+        "bank_scale": 4,
+        "candidate_count": 80000,
+        "candidate_quotas": [
+          64000,
+          13600,
+          2400
+        ],
+        "name": "sum_d_bank80k_r4",
+        "neighborhood_radius": 4,
+        "score_mode": "sum_d",
+        "seed_multiplier": 8
+      },
+      "frames": [
+        {
+          "candidate_indices_sha256": "4f21693916f45acadbf0d4b35a52e16975f3324a0cd838e66b0ec34bcd4ad249",
+          "candidate_structure": {
+            "candidate_count": 80000,
+            "candidate_count_by_range": [
+              64000,
+              13600,
+              2400
+            ],
+            "checks": {
+              "candidate_count_exact": true,
+              "range_quotas_exact": true,
+              "voxel_ids_unique": true
+            },
+            "passed": true,
+            "unique_candidate_voxel_count": 80000
+          },
+          "elapsed_seconds": 0.13537464989349246,
+          "memory": {
+            "baseline_allocated_bytes": 260216320,
+            "baseline_reserved_bytes": 262144000,
+            "candidate_tensor_bytes": 1920000,
+            "incremental_peak_allocated_bytes": 264100864,
+            "incremental_peak_reserved_bytes": 291504128,
+            "peak_allocated_bytes": 524317184,
+            "peak_reserved_bytes": 553648128,
+            "process_max_rss_kib": 1777492
+          },
+          "radar_index": 232,
+          "represented_target_occupied_voxel_count": 764,
+          "sequence": 1,
+          "target_confidence_coverage": 0.44586560130119324,
+          "target_confidence_covered": 1284.8817138671875,
+          "target_confidence_total": 2881.76904296875,
+          "target_occupied_voxel_count": 3790,
+          "target_occupied_voxel_recall": 0.2015831172466278,
+          "target_point_count": 10436
+        }
+      ],
+      "gate": {
+        "checks": {
+          "candidate_construction_passed_on_every_frame": true,
+          "minimum_frame_confidence_coverage_at_least_30pct": true,
+          "minimum_frame_occupied_voxel_recall_at_least_20pct": true
+        },
+        "confidence_coverage": {
+          "maximum": 0.44586560130119324,
+          "mean": 0.44586560130119324,
+          "median": 0.44586560130119324,
+          "minimum": 0.44586560130119324
+        },
+        "construction_failure_count": 0,
+        "occupied_voxel_recall": {
+          "maximum": 0.2015831172466278,
+          "mean": 0.2015831172466278,
+          "median": 0.2015831172466278,
+          "minimum": 0.2015831172466278
+        },
+        "passed": true
+      },
+      "memory": {
+        "maximum_incremental_peak_allocated_bytes": 264100864,
+        "maximum_incremental_peak_reserved_bytes": 291504128
+      },
+      "runtime": {
+        "maximum_seconds_per_frame": 0.13537464989349246,
+        "mean_seconds_per_frame": 0.13537464989349246,
+        "total_seconds": 0.13537464989349246
+      }
+    },
+    {
+      "arm": {
+        "bank_scale": 4,
+        "candidate_count": 80000,
+        "candidate_quotas": [
+          64000,
+          13600,
+          2400
+        ],
+        "name": "log_sum_d_bank80k_r4",
+        "neighborhood_radius": 4,
+        "score_mode": "log_sum_d",
+        "seed_multiplier": 8
+      },
+      "frames": [
+        {
+          "candidate_indices_sha256": "32ba8b69c2c6a05ab9d5522a5cb284ec191a1af4c1bd38dab723dbf82a70771e",
+          "candidate_structure": {
+            "candidate_count": 80000,
+            "candidate_count_by_range": [
+              64000,
+              13600,
+              2400
+            ],
+            "checks": {
+              "candidate_count_exact": true,
+              "range_quotas_exact": true,
+              "voxel_ids_unique": true
+            },
+            "passed": true,
+            "unique_candidate_voxel_count": 80000
+          },
+          "elapsed_seconds": 0.22784103034064174,
+          "memory": {
+            "baseline_allocated_bytes": 260216320,
+            "baseline_reserved_bytes": 262144000,
+            "candidate_tensor_bytes": 1920000,
+            "incremental_peak_allocated_bytes": 524147712,
+            "incremental_peak_reserved_bytes": 551550976,
+            "peak_allocated_bytes": 784364032,
+            "peak_reserved_bytes": 813694976,
+            "process_max_rss_kib": 1777492
+          },
+          "radar_index": 232,
+          "represented_target_occupied_voxel_count": 583,
+          "sequence": 1,
+          "target_confidence_coverage": 0.35934704542160034,
+          "target_confidence_covered": 1035.55517578125,
+          "target_confidence_total": 2881.76904296875,
+          "target_occupied_voxel_count": 3790,
+          "target_occupied_voxel_recall": 0.15382586419582367,
+          "target_point_count": 10436
+        }
+      ],
+      "gate": {
+        "checks": {
+          "candidate_construction_passed_on_every_frame": true,
+          "minimum_frame_confidence_coverage_at_least_30pct": true,
+          "minimum_frame_occupied_voxel_recall_at_least_20pct": false
+        },
+        "confidence_coverage": {
+          "maximum": 0.35934704542160034,
+          "mean": 0.35934704542160034,
+          "median": 0.35934704542160034,
+          "minimum": 0.35934704542160034
+        },
+        "construction_failure_count": 0,
+        "occupied_voxel_recall": {
+          "maximum": 0.15382586419582367,
+          "mean": 0.15382586419582367,
+          "median": 0.15382586419582367,
+          "minimum": 0.15382586419582367
+        },
+        "passed": false
+      },
+      "memory": {
+        "maximum_incremental_peak_allocated_bytes": 524147712,
+        "maximum_incremental_peak_reserved_bytes": 551550976
+      },
+      "runtime": {
+        "maximum_seconds_per_frame": 0.22784103034064174,
+        "mean_seconds_per_frame": 0.22784103034064174,
+        "total_seconds": 0.22784103034064174
+      }
+    }
+  ],
+  "decision": {
+    "claim_boundary": "Ground truth selected a diagnostic support arm. This is not a trained-model result, validation score, or generalization claim.",
+    "decision": "cube_activation_support_gate_pass",
+    "eligible_arms_at_minimum_bank": [
+      "max_d_bank80k_r4",
+      "sum_d_bank80k_r4"
+    ],
+    "minimum_passing_candidate_count": 80000,
+    "mode": "one-frame",
+    "training_authorized": false
+  },
+  "evidence_boundary": "This read-only GT-aided support diagnosis measures whether frozen Cube-only activation covers target voxels. It is not a model, training, validation, test, or point-cloud geometry result.",
+  "frozen_gate": {
+    "minimum_target_confidence_coverage": 0.3,
+    "minimum_target_occupied_voxel_recall": 0.2,
+    "no_passing_arm_decision": "close_current_cube_activation_family",
+    "scope": "all selected train frames independently",
+    "selection_rule": "report every passing arm at the smallest candidate count; do not choose one score using target metrics"
+  },
+  "frozen_grid": [
+    {
+      "bank_scale": 1,
+      "candidate_count": 20000,
+      "candidate_quotas": [
+        16000,
+        3400,
+        600
+      ],
+      "name": "max_d_bank20k_r4",
+      "neighborhood_radius": 4,
+      "score_mode": "max_d",
+      "seed_multiplier": 8
+    },
+    {
+      "bank_scale": 1,
+      "candidate_count": 20000,
+      "candidate_quotas": [
+        16000,
+        3400,
+        600
+      ],
+      "name": "sum_d_bank20k_r4",
+      "neighborhood_radius": 4,
+      "score_mode": "sum_d",
+      "seed_multiplier": 8
+    },
+    {
+      "bank_scale": 1,
+      "candidate_count": 20000,
+      "candidate_quotas": [
+        16000,
+        3400,
+        600
+      ],
+      "name": "log_sum_d_bank20k_r4",
+      "neighborhood_radius": 4,
+      "score_mode": "log_sum_d",
+      "seed_multiplier": 8
+    },
+    {
+      "bank_scale": 2,
+      "candidate_count": 40000,
+      "candidate_quotas": [
+        32000,
+        6800,
+        1200
+      ],
+      "name": "max_d_bank40k_r4",
+      "neighborhood_radius": 4,
+      "score_mode": "max_d",
+      "seed_multiplier": 8
+    },
+    {
+      "bank_scale": 2,
+      "candidate_count": 40000,
+      "candidate_quotas": [
+        32000,
+        6800,
+        1200
+      ],
+      "name": "sum_d_bank40k_r4",
+      "neighborhood_radius": 4,
+      "score_mode": "sum_d",
+      "seed_multiplier": 8
+    },
+    {
+      "bank_scale": 2,
+      "candidate_count": 40000,
+      "candidate_quotas": [
+        32000,
+        6800,
+        1200
+      ],
+      "name": "log_sum_d_bank40k_r4",
+      "neighborhood_radius": 4,
+      "score_mode": "log_sum_d",
+      "seed_multiplier": 8
+    },
+    {
+      "bank_scale": 4,
+      "candidate_count": 80000,
+      "candidate_quotas": [
+        64000,
+        13600,
+        2400
+      ],
+      "name": "max_d_bank80k_r4",
+      "neighborhood_radius": 4,
+      "score_mode": "max_d",
+      "seed_multiplier": 8
+    },
+    {
+      "bank_scale": 4,
+      "candidate_count": 80000,
+      "candidate_quotas": [
+        64000,
+        13600,
+        2400
+      ],
+      "name": "sum_d_bank80k_r4",
+      "neighborhood_radius": 4,
+      "score_mode": "sum_d",
+      "seed_multiplier": 8
+    },
+    {
+      "bank_scale": 4,
+      "candidate_count": 80000,
+      "candidate_quotas": [
+        64000,
+        13600,
+        2400
+      ],
+      "name": "log_sum_d_bank80k_r4",
+      "neighborhood_radius": 4,
+      "score_mode": "log_sum_d",
+      "seed_multiplier": 8
+    }
+  ],
+  "mode": "one-frame",
+  "protocol": "rb2_cube_only_candidate_support_bounded_sweep_v1",
+  "provenance": {
+    "candidate_inputs": [
+      "current_cube_drae",
+      "frozen_range_axis",
+      "frozen_azimuth_axis",
+      "frozen_elevation_axis"
+    ],
+    "device": "NVIDIA H200 NVL",
+    "diagnosed_parent_source_commit": "8fe928069169624f2db40fad3d5daba86cb6740f",
+    "forbidden_inputs": [
+      "test_partition",
+      "validation_partition",
+      "cfar",
+      "future_cube",
+      "target_for_candidate_generation"
+    ],
+    "frame_count": 1,
+    "frames": [
+      {
+        "cache_arrays_read": [
+          "target_xyz_confidence"
+        ],
+        "cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq01_radar_00232.npz",
+        "cache_sha256": "76380164d2460a5de33cb06e2779a98aae0f9260fe6b77ef92b2332f12ba8fae",
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/1/radar_tesseract/tesseract_00232.mat",
+        "cube_sha256": "b21355705b672ec348f5c802fbed8b288077f58ad31d8a2675874f26cd4e4b2e",
+        "partition": "train",
+        "radar_index": 232,
+        "sequence": 1
+      }
+    ],
+    "manifest_sha256": "645307a8bae351db51b55128043dae69bce5b928169d5fa25c1b9c55083de4e4",
+    "normalization_sha256": "4d0bca7d027a1a9f457c526f21a034a406ce4973e2dccee55ddd2d7019b41b77",
+    "report_only_inputs": [
+      "target_xyz_confidence"
+    ],
+    "scene_split_sha256": "61596bd50ce0bdab633c9ff0ec5ab5148c2c78a10dfc06a71d0d6f0a6c9427cc",
+    "source_commit": "fec8f81e0c40f2523615ea414efd0268e58c1279",
+    "torch_version": "2.12.1+cu130"
+  },
+  "total_elapsed_seconds": 6.457931240089238
+}

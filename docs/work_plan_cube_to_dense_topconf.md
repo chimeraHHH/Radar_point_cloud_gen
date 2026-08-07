@@ -66,6 +66,8 @@
 
 > **2026-07-29 R-B2 Cube-only candidate preflight no-go：**source `8fe9280` 在冻结的首个 train frame `seq01/radar00232` 上由 current Cube 独立生成 exact `16k/3.4k/0.6k=20k` candidate voxels，配额与 20k unique IDs 全部通过；但只覆盖 `416/3790=10.9763%` target-occupied voxels，低于 `20%` 硬门，尽管 confidence-weighted coverage=`31.6908%` 通过 `30%`。训练在 model/optimizer 初始化前停止。该结果只关闭 max-D score + radius-4 neighborhood 的当前 20k activation，不关闭已由 GT-aided oracle 通过容量门的 voxel-slot 表示。仅授权一次冻结的 Cube-only score/bank-size support sweep；候选配置若不能在不看 GT 的前提下同时通过 `20%/30%`，则关闭当前 activation family。记录见 `artifacts/g1/rb2_candidate_support_no_go_2026-07-29.md`。
 
+> **2026-08-07 R-B2 Cube-only support sweep 终局：**execution source `fec8f81` 在 H200 GPU0 完成冻结的 `3 score modes x 3 bank sizes` 单帧预飞和完整 76-train-frame 只读审计。80k `max_d` 单帧以 recall/coverage=`22.9815%/49.1062%` 过门，且完整审计的 occupied-voxel recall 在 76/76 帧均 `>=20%`；但 3 帧 confidence coverage 低于 `30%`，最差为 `14.6397%`，因此没有任何 arm 满足逐帧双门。正式判定为 `close_current_cube_activation_family`：不启动 R-B2 memorization，不以扩大 bank 事后修门；GT-aided voxel-slot 容量结论保留，但当前 score-plus-fixed-neighborhood 激活家族关闭。签名结果见 `artifacts/g1/rb2_candidate_support_fec8f81/`。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---
@@ -662,9 +664,9 @@ independently gated geometry parent
 - [x] 完成 RAE-Max cardinality full、R-B1 range-echo 与 R-B2 voxel-slot 三组并行预飞；cardinality 不是主要因素，R-B1 直接构造 no-go，R-B2 结构门通过。
 - [x] 完成 R-A2 八帧 memorization并判定 no-go；旧 source-classwise 不延长，range/surface-shell arm 已审计 no-go。
 - [ ] 实现 Q1/Q2 continuous geometry-quality ranking 与 optional polar uncertainty tiny gate；必须绑定 cache/Cube provenance并保持 frozen candidate IDs。
-- [ ] 完成 R-B2 Cube-only candidate support sweep；当前 20k activation preflight no-go，只有新配置先过 `20%/30%` support 门才允许一帧过拟合。
+- [x] 完成 R-B2 Cube-only candidate support sweep；80k `max_d` 的 recall 在 76/76 帧过门，但 3 帧 confidence coverage 失败，当前 activation family 关闭且不启动一帧过拟合。
 - [ ] 若新 geometry parent 通过，将 G3L 训练链绑定到该 parent，并实现对应的 G2/G3/G4 后继链。
 - [x] 完成 G4R 45/45 序列下载（约 601 GB）；CRC、时序训练与 family freeze 继续等待 G3D。
 - [ ] 释放 P5 test 并完成 P6 论文证据包。
 
-> 当前最高优先级是完成 **R-A2 三组监督小试与 R-B2 Cube-only 一帧过拟合门**，然后按冻结结果只晋升一个 geometry Stage-0。G4 数据已完成 45/45 序列下载，但不在新单帧 family 冻结前训练。
+> 当前最高优先级是完成 **Q1 continuous geometry-quality ranking 八帧 tiny gate**；Q2 polar uncertainty 只在 Q1 的冻结晋升规则允许时执行。R-B2 当前 Cube-only activation family 已关闭。G4 数据已完成 45/45 序列下载，但不在新单帧 family 冻结前训练。
