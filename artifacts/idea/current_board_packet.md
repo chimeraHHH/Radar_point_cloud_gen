@@ -1,7 +1,7 @@
 # Cube-to-dense current board packet
 
-> Refreshed 2026-08-07 after source `380f3ea` VRH-F0 terminal. Test access
-> is false.
+> Refreshed 2026-08-08 after source `380f3ea` VRH-F0 terminal and external
+> activation of the STDA-F0 protocol. Test access is false.
 
 ## Incumbent
 
@@ -52,8 +52,8 @@ unattainable GT-nearest score. VRH-F0 then tested an ordered variable-return
 process. It certified active later-return selection but did not improve the
 shared fitted stream: sequential geometry was worse than flat exposure, three
 frames failed exact count, and every frame failed the complete first/later
-gate. The next question is whether sparse set-level transport can allocate
-geometry without:
+gate. The next question is whether sparse target-demand set assignment can
+allocate geometry without:
 
 1. inheriting a deleted checkpoint identity;
 2. reading target geometry at inference;
@@ -74,19 +74,25 @@ geometry without:
 
 ## Selected live mechanism
 
-**Sparse ray-range partial transport** is now the only eligible geometry
-capacity route, but its protocol is not yet frozen. It must couple point budget
-and range coverage on a sparse ray-range graph without constructing a dense
-`700k x target` matrix. The first gate is a zero-training hard-rounding oracle,
-not a learned transport model.
+**STDA-F0 parity-packed sparse target-demand assignment** is now the only
+eligible geometry capacity route. Four initial auditors rejected the original
+ray-range partial-transport name: the graph is Euclidean XYZ KNN, RAE is only
+evaluation metadata, and direct sparse assignment is established prior art.
+After six hostile revision rounds, the corrected all-76 protocol is externally
+frozen at SHA-256
+`a1bacd619ab462b92e8b0fbfccf142e9999ab18130996762f6964a3ccd2edf84`.
 
-The protocol must freeze source support, sparse edge construction, mass and
-cardinality semantics, true 5 cm hard rounding, per-frame geometry and strata
-gates, a target-free deployment API, and explicit runtime/memory limits before
-implementation. It must compare its rounded result with the same unattainable
-pointwise oracle and cannot use GT-derived range quotas or masks at deployment.
-Only a complete train-only capacity and resource pass may authorize a learned
-Cube-conditioned transport scorer.
+The revised oracle commits target-independent support for all 76 train frames
+in a process that exits before target access. A second process fits exactly
+10,000 canonical GT-demand slots, builds one fixed `K=256` graph, and compares
+global assignment with packed-pointwise and round-robin greedy controls. Strict
+float32 5 cm, absolute geometry, target-bearing range, representation-neutral
+first/later, replay, resource, and atomic publication gates all apply per frame.
+
+STDA remains non-deployable and is not a paper novelty. Its implementation is
+now authorized, but only complete assignment-utility and resource evidence can
+authorize a separately frozen Cube-conditioned learnability gate; protocol
+freeze alone cannot unlock downstream work.
 
 Q-Local training, fixed-neighborhood support, fixed per-ray `K`, hard per-frame
 range quotas, pointwise global export, and the frozen VRH-F0 recipe are closed.

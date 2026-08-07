@@ -1,7 +1,7 @@
 # Cube-to-dense objective contract
 
-> Refreshed 2026-08-07 after the Q-Local-F0R terminal decision. Test access
-> remains false.
+> Refreshed 2026-08-08 after the VRH-F0 terminal decision and external
+> activation of the STDA-F0 protocol. Test access remains false.
 
 ## Real objective
 
@@ -22,9 +22,9 @@ test evaluation.
 
 There is no authorized geometry parent. The next question is therefore:
 
-> Can a variable-count ordered return process, with renewal after each return,
-> preserve target-bearing middle/far structure while producing exact-10k,
-> true-5-cm geometry without hard range quotas or GT at deployment?
+> Can a target-demand-coupled set assignment expose an exact-10k, strict-5-cm
+> subset that preserves target-bearing range and first/later structure after
+> pointwise ranking and sequential renewal both failed?
 
 The deleted R-A1 checkpoint cannot be recovered. The new replay may be used
 only as an explicitly fresh baseline or candidate generator; it cannot inherit
@@ -57,6 +57,15 @@ the original-parent identity or the failed Q1-R authorization.
   spacing on 12/12, but retained every target-bearing range stratum on only
   2/12. Pointwise GT-nearest global ranking therefore has strong aggregate
   support but an explicit near-range allocation collapse.
+- VRH-F0 certified real renewal activity on one shared stream, but sequential
+  exposure was worse than flat exposure: mean CD `0.5494/0.1095 m`, strata
+  retention `3/12` versus `4/12`, and complete first/later success `0/12` in
+  both arms. The frozen renewal recipe is closed.
+- Four independent auditors rejected the proposed ray-range/partial-transport
+  wording because the actual graph is Euclidean XYZ assignment and the
+  primitive is prior art. After six hostile revision rounds, the corrected
+  STDA-F0 protocol received `FREEZE` for SHA-256 `a1bacd619ab462b92e8b0fbfccf142e9999ab18130996762f6964a3ccd2edf84`.
+  It remains a non-deployable graph-constrained capacity oracle.
 
 ## Frozen development gate
 
@@ -120,13 +129,16 @@ The following do not authorize promotion:
 ## Search and experiment budget
 
 The completed idea pass compared direct radar generation, RaLD, fixed-count set
-prediction, ray/range allocation, and quality/ranking mechanisms. Q-Local-F0R
-is terminal after its scientific no-go. The live falsification is now the
-source-bound `VRH-F0` paired capacity protocol: one target-independent
-`2R x 2A x 2E` frustum lattice, structurally separated model marks and GT audit
-sidecar, renewal/STOP decoding, and sequential-frontier versus flat-exposure
-utility control.
-Sparse ray-range transport remains third priority and is not run in parallel.
+prediction, ray/range allocation, quality/ranking, and renewal mechanisms.
+Q-Local-F0R and VRH-F0 are terminal scientific no-gos for their frozen recipes.
+The live falsification is the externally frozen `STDA-F0` protocol: all 76
+training frames, a target-free parity-packed support commitment, physically
+separate GT-demand fitting, fixed `K=256` graph-constrained assignment, matched
+pointwise/greedy controls, and absolute geometry/range/first-later gates.
+
+STDA is an internal capacity test, not a novel transport claim. Its zero-training
+implementation is authorized only from the freeze commit; learned allocation
+remains prohibited until the complete capacity gate passes.
 
 Before a training route is authorized, it needs a source-bound falsification
 that completes in at most two H200 GPU-hours and states:

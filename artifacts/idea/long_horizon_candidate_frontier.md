@@ -22,7 +22,7 @@ authorized from this recipe.
 
 | Priority | Candidate | Required first gate | Reason |
 |---:|---|---|---|
-| 1 | Sparse ray-range partial transport | Frozen zero-training hard-rounding oracle; exact 10k/5 cm; <=0.15 m CD and <=2 pp outlier gap to the pointwise oracle; <=2 s/frame and <=60 GiB | Directly couples set allocation after pointwise and renewal exporters failed |
+| 1 | STDA-F0 sparse target-demand assignment | Frozen zero-training all-76 oracle; exact 10k/strict 5 cm; absolute geometry/range/first-later gates; matched pointwise and greedy controls | Internal graph-constrained capacity test after pointwise and renewal exporters failed; no OT or ray-range novelty claim |
 | 2 | Copy-anchored Doppler refresh | Paired one-step evaluator; XYZ remains bitwise `copy_dopp`; current Cube may update only Doppler/confidence | Preserves the strongest known geometric scaffold while testing current-observation refresh |
 | 3 | Trust-region RaLD refiner | Zero gate, bounded XYZ residual, no-harm hinge against paired `copy_dopp` | Tests generative correction without allowing full-set geometric destruction |
 | 4 | Selective renewal mixer | Persistent copied points plus Cube-supported births; dynamic-only or confidence-gated replacement | Makes birth/death explicit and limits refinement to uncertain/dynamic subsets |

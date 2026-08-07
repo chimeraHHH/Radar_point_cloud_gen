@@ -9,6 +9,15 @@
 > on only 2/12. The variable multi-return renewal-hazard fallback is therefore
 > activated; Q-Local training is closed.
 
+> 2026-08-08 audit addendum: VRH-F0 later closed with active but non-useful
+> renewal. Four independent audits then rejected the proposed "sparse ray-range
+> partial transport" label: its actual mechanism was Euclidean graph-constrained
+> assignment, and support-subset/partial-assignment precedents include Riaz et
+> al., HOT-POT, Chapel et al., Schmitzer, and related point-cloud matching work.
+> The successor is renamed `STDA-F0` and treated only as a non-deployable
+> capacity tool, never as the paper's algorithmic novelty. See
+> `artifacts/idea/stda_f0_prefreeze_audit_round1.md`.
+
 ## Decision question
 
 The fresh replay reproduces the actionable R-A1 failure without reproducing the

@@ -6,15 +6,18 @@
 > was `0.5494/0.1095 m`, strata retention was `3/12` vs `4/12`, and both arms
 > failed every frame-level first/later gate. Terminal status is
 > `vrh_f0_capacity_no_go`; no learned renewal model was trained. The only
-> eligible successor is now a separately frozen sparse ray-range partial-
-> transport hard-rounding oracle. Validation and test remain untouched.
+> eligible successor is now the frozen STDA-F0 sparse target-demand bipartite-
+> assignment oracle. Four initial auditors rejected the earlier ray-range/
+> partial-transport label as technically inaccurate and non-novel; a six-round
+> hostile revision audit then returned `FREEZE` for the corrected protocol.
+> Validation and test remain untouched.
 
 ## Current successor frontier
 
 | Priority | Mechanism | First gate | Anti-relabel boundary |
 |---|---|---|---|
 | Closed | Variable multi-return renewal hazard | Complete H200 paired oracle executed | Activity passed but utility failed; the frozen lattice/frontier recipe cannot be trained or fused into the successor |
-| 1 | Sparse ray-range partial transport | Separately frozen zero-training hard-rounding oracle within runtime/memory limits | Must couple set allocation without a dense `700k x target` matrix, GT-derived deployment quotas, or GT at deployment |
+| 1 | STDA-F0 parity-packed sparse target-demand assignment | Frozen zero-training 76-frame capacity oracle within fixed runtime/memory limits | Graph-constrained XYZ assignment only; target-free support precedes GT, matched controls are mandatory, and no OT/ray-range/deployment novelty is claimed |
 
 No learned successor starts before its own capacity gate passes.
 
