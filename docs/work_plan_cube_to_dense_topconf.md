@@ -68,6 +68,8 @@
 
 > **2026-08-07 R-B2 Cube-only support sweep 终局：**execution source `fec8f81` 在 H200 GPU0 完成冻结的 `3 score modes x 3 bank sizes` 单帧预飞和完整 76-train-frame 只读审计。80k `max_d` 单帧以 recall/coverage=`22.9815%/49.1062%` 过门，且完整审计的 occupied-voxel recall 在 76/76 帧均 `>=20%`；但 3 帧 confidence coverage 低于 `30%`，最差为 `14.6397%`，因此没有任何 arm 满足逐帧双门。正式判定为 `close_current_cube_activation_family`：不启动 R-B2 memorization，不以扩大 bank 事后修门；GT-aided voxel-slot 容量结论保留，但当前 score-plus-fixed-neighborhood 激活家族关闭。签名结果见 `artifacts/g1/rb2_candidate_support_fec8f81/`。
 
+> **2026-08-07 Q1-R replay-parent certificate 终局 no-go：**原 R-A1 checkpoint 已删除，故 source `f2a9489` 在物理 H200 GPU2 以相同 seed/config/input 完成新的 20-epoch replay；certifier source `e159a22` 随后完成 full-24 failure diagnosis 和逐帧重算证书。已实现的 source/data/runtime、24/24 固定 Q0、24/24 replay-specific Q0/Q1 diagnosis、current-confidence hash control 和全部禁止访问检查均通过；但 replay 相对归档端点的 median completeness、far completeness、condition effect 和 matched-win 差异分别为 `0.05487 m/0.28856 m/5.0608 pp/12.5 pp`，超过预注册的 `0.02 m/0.10 m/1 pp/4.1667 pp` 容差。证书因此为 `replay_parent_not_authorized_for_q1r_tiny`。不得事后放宽门槛，不启动 Q1-R 八帧训练或条件式 Q2；同一 replay pool 的 GT 排序仍达到 `CD=0.63755 m/outlier=2.2771%`，只保留为 ranking bottleneck 机制证据。证书后的独立静态终审另发现 GT-nearest raw-input binding、冻结八帧评估契约和完整 terminal evaluation chain 三项 P1，以及 capacity-failure 原子性、GPU UUID/PCI provenance 和对抗性测试三项 P2；这些缺口不改变由四项数值容差直接决定的 no-go，但 `e159a22` 不得作为未来质量排序实验的可复用授权器。完整记录见 `artifacts/g1/q1r_replay_parent_no_go_2026-08-07.md` 和 `artifacts/g1/q1r_e159a22_final_static_audit_2026-08-07.md`。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---
@@ -663,10 +665,11 @@ independently gated geometry parent
 - [x] 完成 WCE 冻结候选池失败因子 full-24 诊断；确认候选支持充分而 confidence/选择目标失配，原 R-A1 不延长。
 - [x] 完成 RAE-Max cardinality full、R-B1 range-echo 与 R-B2 voxel-slot 三组并行预飞；cardinality 不是主要因素，R-B1 直接构造 no-go，R-B2 结构门通过。
 - [x] 完成 R-A2 八帧 memorization并判定 no-go；旧 source-classwise 不延长，range/surface-shell arm 已审计 no-go。
-- [ ] 实现 Q1/Q2 continuous geometry-quality ranking 与 optional polar uncertainty tiny gate；必须绑定 cache/Cube provenance并保持 frozen candidate IDs。
+- [x] 完成 Q1-R continuous geometry-quality 实现、父模型 replay、full-24 diagnosis 与证书；replay 未通过冻结端点等价门，八帧训练按协议跳过，条件式 Q2 不授权。
+- [x] 完成 Q1-R 证书实现的独立静态终审；归档 3 项 P1/3 项 P2，确认不改变数值型 no-go，并禁止把 `e159a22` 复用为未来授权基线。
 - [x] 完成 R-B2 Cube-only candidate support sweep；80k `max_d` 的 recall 在 76/76 帧过门，但 3 帧 confidence coverage 失败，当前 activation family 关闭且不启动一帧过拟合。
 - [ ] 若新 geometry parent 通过，将 G3L 训练链绑定到该 parent，并实现对应的 G2/G3/G4 后继链。
-- [x] 完成 G4R 45/45 序列下载（约 601 GB）；CRC、时序训练与 family freeze 继续等待 G3D。
+- [x] 完成 G4R 45/45 序列下载（约 600.8 GiB，约 645.1 GB）；CRC、时序训练与 family freeze 继续等待新的合格几何父模型。
 - [ ] 释放 P5 test 并完成 P6 论文证据包。
 
-> 当前最高优先级是完成 **Q1 continuous geometry-quality ranking 八帧 tiny gate**；Q2 polar uncertainty 只在 Q1 的冻结晋升规则允许时执行。R-B2 当前 Cube-only activation family 已关闭。G4 数据已完成 45/45 序列下载，但不在新单帧 family 冻结前训练。
+> 当前已无获授权的 fixed-10k 几何训练分支：Q1-R 因 replay-parent 证书 no-go 在训练前停止，Q2 和全部下游物理/时序路线保持锁定。下一研究动作必须先重新定义一个新命名、独立冻结的几何分支，并保留未触碰 test；不得把当前 replay 追溯认定为原 R-A1 checkpoint。

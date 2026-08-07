@@ -1,0 +1,20 @@
+{"epoch": 1, "learning_rate": 0.0001, "mean_train_loss": 0.19298724222340083, "update_count": 76, "elapsed_seconds": 446.88203107984737}
+{"epoch": 2, "learning_rate": 9.932488451843476e-05, "mean_train_loss": 0.14749431178758018, "update_count": 76, "elapsed_seconds": 977.8653972502798}
+{"epoch": 3, "learning_rate": 9.731795346418142e-05, "mean_train_loss": 0.13682831470903598, "update_count": 76, "elapsed_seconds": 1335.5719068502076}
+{"epoch": 4, "learning_rate": 9.403395068472121e-05, "mean_train_loss": 0.13075767305532568, "update_count": 76, "elapsed_seconds": 1686.6187114398926}
+{"epoch": 5, "learning_rate": 8.956245521512149e-05, "mean_train_loss": 0.12662362640625552, "update_count": 76, "elapsed_seconds": 2089.67387796985, "metrics_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_f2a9489_ra1_wce_replay_20260807/metrics_epoch005.json", "selection_score": 4.513306434576711, "promotion_passed": false}
+{"epoch": 6, "learning_rate": 8.40254377954742e-05, "mean_train_loss": 0.12426076094178777, "update_count": 76, "elapsed_seconds": 2627.4161936002783}
+{"epoch": 7, "learning_rate": 7.757393382706015e-05, "mean_train_loss": 0.12220626133248995, "update_count": 76, "elapsed_seconds": 2979.6699570701458}
+{"epoch": 8, "learning_rate": 7.038392352032199e-05, "mean_train_loss": 0.12095059925004055, "update_count": 76, "elapsed_seconds": 3332.4290922200307}
+{"epoch": 9, "learning_rate": 6.265153161346956e-05, "mean_train_loss": 0.11985041490314823, "update_count": 76, "elapsed_seconds": 3683.482923100237}
+{"epoch": 10, "learning_rate": 5.458767760088046e-05, "mean_train_loss": 0.11506668095918078, "update_count": 76, "elapsed_seconds": 4036.6248916899785, "metrics_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_f2a9489_ra1_wce_replay_20260807/metrics_epoch010.json", "selection_score": 4.365407295525074, "promotion_passed": false}
+{"epoch": 11, "learning_rate": 4.6412322399119556e-05, "mean_train_loss": 0.11710930203920916, "update_count": 76, "elapsed_seconds": 4532.227822590154}
+{"epoch": 12, "learning_rate": 3.834846838653045e-05, "mean_train_loss": 0.11091559174421586, "update_count": 76, "elapsed_seconds": 4888.440936489962}
+{"epoch": 13, "learning_rate": 3.0616076479678025e-05, "mean_train_loss": 0.1085009595967437, "update_count": 76, "elapsed_seconds": 5239.890761540271}
+{"epoch": 14, "learning_rate": 2.3426066172939882e-05, "mean_train_loss": 0.1062771275786585, "update_count": 76, "elapsed_seconds": 5595.225059470162}
+{"epoch": 15, "learning_rate": 1.697456220452583e-05, "mean_train_loss": 0.10417534452617953, "update_count": 76, "elapsed_seconds": 5950.72438800009, "metrics_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_f2a9489_ra1_wce_replay_20260807/metrics_epoch015.json", "selection_score": 4.425235868121186, "promotion_passed": false}
+{"epoch": 16, "learning_rate": 1.1437544784878526e-05, "mean_train_loss": 0.10326872359177, "update_count": 76, "elapsed_seconds": 6447.345329340082}
+{"epoch": 17, "learning_rate": 6.966049315278797e-06, "mean_train_loss": 0.10182920931593369, "update_count": 76, "elapsed_seconds": 6799.432032709941}
+{"epoch": 18, "learning_rate": 3.6820465358185858e-06, "mean_train_loss": 0.10152007058556926, "update_count": 76, "elapsed_seconds": 7153.596680810209}
+{"epoch": 19, "learning_rate": 1.675115481565245e-06, "mean_train_loss": 0.10080670886427949, "update_count": 76, "elapsed_seconds": 7505.497678540181}
+{"epoch": 20, "learning_rate": 1e-06, "mean_train_loss": 0.1004051597494828, "update_count": 76, "elapsed_seconds": 7856.847144890111, "metrics_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_f2a9489_ra1_wce_replay_20260807/metrics_epoch020.json", "selection_score": 4.161774121845762, "promotion_passed": false}

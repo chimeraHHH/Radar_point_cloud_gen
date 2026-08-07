@@ -1,0 +1,299 @@
+{
+  "frame_count": 24,
+  "far_target_frame_count": 23,
+  "current_confidence": {
+    "chamfer_m": {
+      "mean": 4.026065806547801,
+      "std": 1.3088874252256992,
+      "median": 3.5194696187973022,
+      "sample_count": 24
+    },
+    "completeness_mean_distance_m": {
+      "mean": 1.550090207407872,
+      "std": 0.7225254989797841,
+      "median": 1.4531790614128113,
+      "sample_count": 24
+    },
+    "fscore_0p5m": {
+      "mean": 0.3445994857077797,
+      "std": 0.13993626854894528,
+      "median": 0.3591877967119217,
+      "sample_count": 24
+    },
+    "fscore_1p0m": {
+      "mean": 0.5115293891479572,
+      "std": 0.14591640025989439,
+      "median": 0.5607315003871918,
+      "sample_count": 24
+    },
+    "fscore_2p0m": {
+      "mean": 0.6934701936940352,
+      "std": 0.11407762900548,
+      "median": 0.7290596067905426,
+      "sample_count": 24
+    },
+    "outlier_fraction_2m": {
+      "mean": 0.3178541576489806,
+      "std": 0.1593068116640245,
+      "median": 0.2872999906539917,
+      "sample_count": 24
+    },
+    "precision_0p5m": {
+      "mean": 0.3171749943867326,
+      "std": 0.16500931064058025,
+      "median": 0.2967499792575836,
+      "sample_count": 24
+    },
+    "precision_1p0m": {
+      "mean": 0.48351665399968624,
+      "std": 0.18361349013829348,
+      "median": 0.4852999895811081,
+      "sample_count": 24
+    },
+    "precision_2p0m": {
+      "mean": 0.6821458215514818,
+      "std": 0.15930681797813911,
+      "median": 0.7126999795436859,
+      "sample_count": 24
+    },
+    "precision_mean_distance_m": {
+      "mean": 2.4759756103157997,
+      "std": 1.3643213538334702,
+      "median": 2.2396490573883057,
+      "sample_count": 24
+    },
+    "range_0_30m_completeness_mean_distance_m": {
+      "mean": 1.2058436249693234,
+      "std": 0.6315037936055258,
+      "median": 1.2390839457511902,
+      "sample_count": 24
+    },
+    "range_0_30m_fscore_1m": {
+      "mean": 0.5939178255697092,
+      "std": 0.16072818946922707,
+      "median": 0.641515851020813,
+      "sample_count": 24
+    },
+    "range_0_30m_precision_mean_distance_m": {
+      "mean": 1.227968902637561,
+      "std": 0.7528078551903503,
+      "median": 1.1816036105155945,
+      "sample_count": 24
+    },
+    "range_30_60m_completeness_mean_distance_m": {
+      "mean": 2.52560277689587,
+      "std": 0.8639747728103887,
+      "median": 2.435928702354431,
+      "sample_count": 22
+    },
+    "range_30_60m_fscore_1m": {
+      "mean": 0.12784965423105116,
+      "std": 0.08826171556932078,
+      "median": 0.14596205204725266,
+      "sample_count": 22
+    },
+    "range_30_60m_precision_mean_distance_m": {
+      "mean": 5.3259453773498535,
+      "std": 2.179935274527522,
+      "median": 4.740570306777954,
+      "sample_count": 22
+    },
+    "range_60_120m_completeness_mean_distance_m": {
+      "mean": 11.409669943477796,
+      "std": 8.015928017176236,
+      "median": 9.448838233947754,
+      "sample_count": 23
+    },
+    "range_60_120m_fscore_1m": {
+      "mean": 0.016541002024693982,
+      "std": 0.025363961218384964,
+      "median": 0.0035260661970824003,
+      "sample_count": 23
+    },
+    "range_60_120m_precision_mean_distance_m": {
+      "mean": 12.178513112275496,
+      "std": 6.940016048697225,
+      "median": 9.329568862915039,
+      "sample_count": 23
+    },
+    "recall_0p5m": {
+      "mean": 0.4867328604062398,
+      "std": 0.20868787650756013,
+      "median": 0.46903176605701447,
+      "sample_count": 24
+    },
+    "recall_1p0m": {
+      "mean": 0.6245080083608627,
+      "std": 0.1800969128576054,
+      "median": 0.6325537860393524,
+      "sample_count": 24
+    },
+    "recall_2p0m": {
+      "mean": 0.7464687898755074,
+      "std": 0.11814009501795981,
+      "median": 0.7372424304485321,
+      "sample_count": 24
+    }
+  },
+  "validation_gt_nearest_score": {
+    "chamfer_m": {
+      "mean": 0.6375468485057354,
+      "std": 0.8765201822477792,
+      "median": 0.3988591134548187,
+      "sample_count": 24
+    },
+    "completeness_mean_distance_m": {
+      "mean": 0.16157321662952503,
+      "std": 0.04967375641255454,
+      "median": 0.15433475375175476,
+      "sample_count": 24
+    },
+    "fscore_0p5m": {
+      "mean": 0.8969943175713221,
+      "std": 0.11024338913649843,
+      "median": 0.9271612167358398,
+      "sample_count": 24
+    },
+    "fscore_1p0m": {
+      "mean": 0.9728628297646841,
+      "std": 0.03289647275241458,
+      "median": 0.9873488545417786,
+      "sample_count": 24
+    },
+    "fscore_2p0m": {
+      "mean": 0.9870412250359853,
+      "std": 0.030024833986656358,
+      "median": 0.9986249804496765,
+      "sample_count": 24
+    },
+    "outlier_fraction_2m": {
+      "mean": 0.022770832215125363,
+      "std": 0.05458358311226756,
+      "median": 0.0,
+      "sample_count": 24
+    },
+    "precision_0p5m": {
+      "mean": 0.8599791489541531,
+      "std": 0.15722822094681094,
+      "median": 0.901449978351593,
+      "sample_count": 24
+    },
+    "precision_1p0m": {
+      "mean": 0.9546791488925616,
+      "std": 0.061268899094964586,
+      "median": 0.978549987077713,
+      "sample_count": 24
+    },
+    "precision_2p0m": {
+      "mean": 0.9772291580835978,
+      "std": 0.05458359283216941,
+      "median": 1.0,
+      "sample_count": 24
+    },
+    "precision_mean_distance_m": {
+      "mean": 0.4759736346701781,
+      "std": 0.8949956271018753,
+      "median": 0.22811315208673477,
+      "sample_count": 24
+    },
+    "range_0_30m_completeness_mean_distance_m": {
+      "mean": 0.12359339495499928,
+      "std": 0.024829258525964855,
+      "median": 0.12149826437234879,
+      "sample_count": 24
+    },
+    "range_0_30m_fscore_1m": {
+      "mean": 0.9986865222454071,
+      "std": 0.0016815051734501,
+      "median": 0.9994977414608002,
+      "sample_count": 24
+    },
+    "range_0_30m_precision_mean_distance_m": {
+      "mean": 0.1717973326643308,
+      "std": 0.11933338438759603,
+      "median": 0.11800655350089073,
+      "sample_count": 24
+    },
+    "range_30_60m_completeness_mean_distance_m": {
+      "mean": 0.29775337942621927,
+      "std": 0.03720371615876132,
+      "median": 0.29644814133644104,
+      "sample_count": 22
+    },
+    "range_30_60m_fscore_1m": {
+      "mean": 0.9234955188902941,
+      "std": 0.17008195253313685,
+      "median": 0.998280942440033,
+      "sample_count": 22
+    },
+    "range_30_60m_precision_mean_distance_m": {
+      "mean": 0.5336527553471652,
+      "std": 0.3056950569429655,
+      "median": 0.430473655462265,
+      "sample_count": 22
+    },
+    "range_60_120m_completeness_mean_distance_m": {
+      "mean": 0.7045661962550619,
+      "std": 0.16397798086715992,
+      "median": 0.6892715692520142,
+      "sample_count": 23
+    },
+    "range_60_120m_fscore_1m": {
+      "mean": 0.5794947514229495,
+      "std": 0.35171274692421545,
+      "median": 0.6471961140632629,
+      "sample_count": 23
+    },
+    "range_60_120m_precision_mean_distance_m": {
+      "mean": 1.4063588536303977,
+      "std": 1.1177803279256275,
+      "median": 0.9612642526626587,
+      "sample_count": 23
+    },
+    "recall_0p5m": {
+      "mean": 0.9612156972289085,
+      "std": 0.028683224166816318,
+      "median": 0.9678812623023987,
+      "sample_count": 24
+    },
+    "recall_1p0m": {
+      "mean": 0.9941052868962288,
+      "std": 0.006081856634805609,
+      "median": 0.9969185888767242,
+      "sample_count": 24
+    },
+    "recall_2p0m": {
+      "mean": 0.9987793664137522,
+      "std": 0.001825705347867393,
+      "median": 0.9997925162315369,
+      "sample_count": 24
+    }
+  },
+  "decision": {
+    "formal_failure_factor_decision_eligible": true,
+    "branch": "confidence_ranking_bottleneck_indicated",
+    "current_confidence_geometry_checks": {
+      "mean_chamfer_at_most_2p50m": false,
+      "median_completeness_at_most_2p4946m": true,
+      "mean_outlier_fraction_at_most_25pct": false,
+      "mean_far_completeness_at_most_46p9407m": true
+    },
+    "validation_gt_nearest_score_geometry_checks": {
+      "mean_chamfer_at_most_2p50m": true,
+      "median_completeness_at_most_2p4946m": true,
+      "mean_outlier_fraction_at_most_25pct": true,
+      "mean_far_completeness_at_most_46p9407m": true
+    },
+    "count_checks": {
+      "exact_24_validation_frames": true,
+      "exact_23_far_target_frames": true
+    },
+    "current_confidence_geometry_passed": false,
+    "validation_gt_nearest_score_geometry_passed": true,
+    "validation_gt_nearest_score_unattainable": true,
+    "validation_gt_nearest_score_strict_upper_bound": false,
+    "coverage_aware_oracle_implemented": false,
+    "method_promotion_eligible": false,
+    "interpretation": "A GT-nearest rescue isolates confidence ranking as a bottleneck. Failure to rescue does not prove that no GT-guided or coverage-aware subset exists."
+  }
+}

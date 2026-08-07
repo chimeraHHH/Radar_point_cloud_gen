@@ -1,0 +1,159 @@
+{
+  "checks": {
+    "candidate_query_contract_preserved": true,
+    "cfar_accessed": false,
+    "checkpoint_modified": false,
+    "diagnosis_aggregate_recomputed": true,
+    "diagnosis_hash_geometry_chain_recomputed": true,
+    "diagnostic_source_and_input_binding": true,
+    "doppler_head_evaluated": false,
+    "formal_metrics_recomputed": true,
+    "formal_stage0_decision_preserved": false,
+    "future_cube_accessed": false,
+    "physical_gpu_policy": true,
+    "replay_diagnosis_bound": true,
+    "source_config_data_seed_epoch_match": true,
+    "test_partition_accessed": false,
+    "training_started": false,
+    "validation_frame_contract_preserved": true,
+    "validation_gt_ranking_oracle_passed": true
+  },
+  "claim_boundary": "This certificate authorizes only an eight-train-frame Q1-R memorization gate on a source/config/data-equivalent replay. It does not identify the replay as the deleted original checkpoint unless exact_original_checkpoint is true. Fixed Q0 hashes must match the archive; learned occupancy-dependent Q1 hashes must instead be reproduced exactly by the replay-bound diagnosis. The certificate does not unlock validation, test, Doppler, cycle, or temporal claims. Legacy formal peak-memory values are pinned from the source-bound endpoint decision because the old artifact did not store independent raw peak-byte fields.",
+  "comparison": {
+    "archived_q1_query_hash_exact_match_required": false,
+    "diagnosis_formal_hash_control_pass_count": 24,
+    "diagnosis_frame_count": 24,
+    "diagnosis_replay_q0_query_hash_match_count": 24,
+    "diagnosis_replay_q1_query_hash_match_count": 24,
+    "diagnostic_source_hashes": {
+      "actual": {
+        "code/cube_dense/kradar.py": "ec518a8172ef0992a29072ca387f7a6d9620b231fa744a6eb8893647a67d07f3",
+        "code/eval/dense_geometry.py": "e1f970c1e827c7801c7c9018378603b89a7709b0b4bf261e740eab1575631e68",
+        "code/eval/g1a_wide_support.py": "6bd10a4c8fce55207848f531ce01b91df9a5f672c11a1e997a017d4ff3bb836c",
+        "code/eval/rald_wce_failure_factors.py": "0d7256dad08556dfc23e456226dc99091145ee382c1f12aa95f44606a2fff229",
+        "code/eval/rald_wce_stage0.py": "07dc5885d47effc6c0d41b7f2fc8f7f41c59f89a4ab1f2b73b2de44f667b8962",
+        "code/models/rald_wce_field.py": "616c1737305803e65fc676d1721d69e7744d92cd20ae098f48b8a21a387134ef",
+        "code/scripts/diagnose_rald_wce_failure_factors.py": "2616dd3cab8908845d851d54a9283c5f2e2087d86950d2758eec1f5a31dacdcf"
+      },
+      "expected": {
+        "code/cube_dense/kradar.py": "ec518a8172ef0992a29072ca387f7a6d9620b231fa744a6eb8893647a67d07f3",
+        "code/eval/dense_geometry.py": "e1f970c1e827c7801c7c9018378603b89a7709b0b4bf261e740eab1575631e68",
+        "code/eval/g1a_wide_support.py": "6bd10a4c8fce55207848f531ce01b91df9a5f672c11a1e997a017d4ff3bb836c",
+        "code/eval/rald_wce_failure_factors.py": "0d7256dad08556dfc23e456226dc99091145ee382c1f12aa95f44606a2fff229",
+        "code/eval/rald_wce_stage0.py": "07dc5885d47effc6c0d41b7f2fc8f7f41c59f89a4ab1f2b73b2de44f667b8962",
+        "code/models/rald_wce_field.py": "616c1737305803e65fc676d1721d69e7744d92cd20ae098f48b8a21a387134ef",
+        "code/scripts/diagnose_rald_wce_failure_factors.py": "2616dd3cab8908845d851d54a9283c5f2e2087d86950d2758eec1f5a31dacdcf"
+      },
+      "passed": true
+    },
+    "formal_source_hashes": {
+      "code/cube_dense/dataset.py": {
+        "archived_sha256": "bd2fa60cf72b0acf5195e14a4b6e7110f9f035430e4b0c2ed71fc64c003f6f32",
+        "replay_sha256": "bd2fa60cf72b0acf5195e14a4b6e7110f9f035430e4b0c2ed71fc64c003f6f32"
+      },
+      "code/eval/dense_geometry.py": {
+        "archived_sha256": "e1f970c1e827c7801c7c9018378603b89a7709b0b4bf261e740eab1575631e68",
+        "replay_sha256": "e1f970c1e827c7801c7c9018378603b89a7709b0b4bf261e740eab1575631e68"
+      },
+      "code/eval/rald_wce_stage0.py": {
+        "archived_sha256": "07dc5885d47effc6c0d41b7f2fc8f7f41c59f89a4ab1f2b73b2de44f667b8962",
+        "replay_sha256": "07dc5885d47effc6c0d41b7f2fc8f7f41c59f89a4ab1f2b73b2de44f667b8962"
+      },
+      "code/losses/rald_wce.py": {
+        "archived_sha256": "a80f2bbe89189782b81be3066a6fe5bed1fade290ef7c1d55258abc0227508f9",
+        "replay_sha256": "a80f2bbe89189782b81be3066a6fe5bed1fade290ef7c1d55258abc0227508f9"
+      },
+      "code/models/rald_wce_field.py": {
+        "archived_sha256": "616c1737305803e65fc676d1721d69e7744d92cd20ae098f48b8a21a387134ef",
+        "replay_sha256": "616c1737305803e65fc676d1721d69e7744d92cd20ae098f48b8a21a387134ef"
+      },
+      "code/scripts/train_rald_wce_stage0.py": {
+        "archived_sha256": "fec3d9e77b8164170cde6640bc515a4ba3a027938b754a5bc3219b60ddcfa4d2",
+        "replay_sha256": "fec3d9e77b8164170cde6640bc515a4ba3a027938b754a5bc3219b60ddcfa4d2"
+      }
+    },
+    "formal_value_tolerances": {
+      "chamfer_mean_m": {
+        "absolute_difference": 0.017113208770751953,
+        "absolute_tolerance": 0.02,
+        "archived": 4.008952597777049,
+        "passed": true,
+        "replay": 4.026065806547801
+      },
+      "completeness_median_m": {
+        "absolute_difference": 0.054874300956726074,
+        "absolute_tolerance": 0.02,
+        "archived": 1.5080533623695374,
+        "passed": false,
+        "replay": 1.4531790614128113
+      },
+      "condition_wrong_minus_matched_chamfer_fraction_mean": {
+        "absolute_difference": 0.05060788101452626,
+        "absolute_tolerance": 0.01,
+        "archived": 0.12987396951364436,
+        "passed": false,
+        "replay": 0.07926608849911809
+      },
+      "far_completeness_mean_m": {
+        "absolute_difference": 0.28856409632641267,
+        "absolute_tolerance": 0.1,
+        "archived": 11.121105847151384,
+        "passed": false,
+        "replay": 11.409669943477796
+      },
+      "matched_condition_win_fraction": {
+        "absolute_difference": 0.125,
+        "absolute_tolerance": 0.04166666666766666,
+        "archived": 0.6666666666666666,
+        "passed": false,
+        "replay": 0.7916666666666666
+      },
+      "outlier_fraction_mean": {
+        "absolute_difference": 0.0002749999985098839,
+        "absolute_tolerance": 0.002,
+        "archived": 0.3181291576474905,
+        "passed": true,
+        "replay": 0.3178541576489806
+      }
+    },
+    "replay_is_original_checkpoint": false,
+    "runtime": {
+      "archived_device_name": "NVIDIA H200 NVL",
+      "archived_torch_version": "2.12.1+cu130",
+      "diagnosis_device_name": "NVIDIA H200 NVL",
+      "diagnosis_physical_gpu_policy": true,
+      "diagnosis_torch_version": "2.12.1+cu130",
+      "h200_and_torch_version_match": true,
+      "replay_device_name": "NVIDIA H200 NVL",
+      "replay_torch_version": "2.12.1+cu130"
+    },
+    "validation_frame_count": 24,
+    "validation_q0_query_hash_match_count": 24,
+    "validation_q1_query_hash_match_count": 0
+  },
+  "identity": {
+    "certifier_source_commit": "e159a22c5343e81c0cf29351da07290a686edba5",
+    "exact_original_checkpoint": false,
+    "formal_epoch": 20,
+    "formal_source_commit": "f2a9489d40323d1ef45d85de958f4aea8126e1c8",
+    "original_checkpoint_sha256": "5be30e0f1ca23ea3b603abb0f5e330efd3599167362a8e23ab3a5967c411a2a0",
+    "replay_checkpoint_sha256": "c0ebb4c1509c3d36b6834bd39977cb1cda2fcaff1747eabc97ebb41af0f06ce4",
+    "replay_failure_diagnosis_sha256": "4f5324950c6fe2b806d697cca7953503a44f250927b6fa537d136e0fc1d9f1a9",
+    "replay_metrics_sha256": "d9c0d6c41b74392b123b11e770bc122aba2ec30a835b45c157a21ad96fd14d7a",
+    "replay_run_manifest_sha256": "26ebab679d112e07c5bb364b8799cffc24b573c4abc6a71623705a4cfe962e9f"
+  },
+  "inputs": {
+    "archived_metrics_sha256": "ae5bca6273fd3e8c18672b5e3704536a43bb897b81b389f07862ead7922df5a6",
+    "archived_run_manifest_sha256": "8651214e62eaa03d41cf5116a5a6a8605b9ad506dd3b30a24c7e961c232ee68a",
+    "expected_archived_metrics_sha256": "ae5bca6273fd3e8c18672b5e3704536a43bb897b81b389f07862ead7922df5a6",
+    "expected_archived_run_manifest_sha256": "8651214e62eaa03d41cf5116a5a6a8605b9ad506dd3b30a24c7e961c232ee68a",
+    "replay_checkpoint_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_f2a9489_ra1_wce_replay_20260807/checkpoint_epoch020.pt",
+    "replay_failure_diagnosis_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/q1r_replay_parent_e159a22/full24.json",
+    "replay_metrics_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_f2a9489_ra1_wce_replay_20260807/metrics_epoch020.json",
+    "replay_run_manifest_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_f2a9489_ra1_wce_replay_20260807/run_manifest.json"
+  },
+  "protocol": "g1_q1r_replay_parent_certificate_v1",
+  "q1r_tiny_authorized": false,
+  "schema_version": 1,
+  "status": "replay_parent_not_authorized_for_q1r_tiny"
+}
