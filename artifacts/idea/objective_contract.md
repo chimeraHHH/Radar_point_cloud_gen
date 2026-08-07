@@ -1,7 +1,7 @@
 # Cube-to-dense objective contract
 
-> Refreshed 2026-08-07 after the Q-Local-F0 and fixed-range-quota terminal
-> decisions. Test access remains false.
+> Refreshed 2026-08-07 after the Q-Local-F0R terminal decision. Test access
+> remains false.
 
 ## Real objective
 
@@ -22,9 +22,9 @@ test evaluation.
 
 There is no authorized geometry parent. The next question is therefore:
 
-> After removing only the mathematically contradictory per-frame range quotas,
-> does the unchanged Fresh-WCE 700k field contain an exact-10k, true-5-cm
-> subset that passes every per-frame geometry and target-stratum retention gate?
+> Can a variable-count ordered return process, with renewal after each return,
+> preserve target-bearing middle/far structure while producing exact-10k,
+> true-5-cm geometry without hard range quotas or GT at deployment?
 
 The deleted R-A1 checkpoint cannot be recovered. The new replay may be used
 only as an explicitly fresh baseline or candidate generator; it cannot inherit
@@ -53,6 +53,10 @@ the original-parent identity or the failed Q1-R authorization.
 - The 76-frame strict radial audit proves the hard `8000/1700/300` allocation
   impossible on train frames `47:94` and `58:404`, independently of network,
   candidate field, angular error, spacing, and completeness.
+- Q-Local-F0R removed those quotas and passed per-frame CD, outlier, count, and
+  spacing on 12/12, but retained every target-bearing range stratum on only
+  2/12. Pointwise GT-nearest global ranking therefore has strong aggregate
+  support but an explicit near-range allocation collapse.
 
 ## Frozen development gate
 
@@ -116,12 +120,11 @@ The following do not authorize promotion:
 ## Search and experiment budget
 
 The completed idea pass compared direct radar generation, RaLD, fixed-count set
-prediction, ray/range allocation, and quality/ranking mechanisms. Q-Local-F0
-is terminal under its original exporter. The live falsification is
-Q-Local-F0R, which preserves its scorer and 700k field while changing only the
-retired output quotas to global selection. A variable multi-return ray-hazard
-field is authorized only if the F0R same-field oracle fails. Sparse ray-range
-transport remains third priority and is not run in parallel.
+prediction, ray/range allocation, and quality/ranking mechanisms. Q-Local-F0R
+is terminal after its scientific no-go. The live falsification is now a
+variable multi-return renewal-hazard field that couples ordered returns within
+each azimuth/elevation ray. Sparse ray-range transport remains third priority
+and is not run in parallel.
 
 Before a training route is authorized, it needs a source-bound falsification
 that completes in at most two H200 GPU-hours and states:

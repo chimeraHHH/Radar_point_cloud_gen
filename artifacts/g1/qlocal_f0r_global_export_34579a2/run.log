@@ -1,0 +1,30 @@
+{
+  "status": "qlocal_f0r_capacity_no_go",
+  "passed": false,
+  "output": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/qlocal_f0r_global_export_34579a2/preflight.json",
+  "elapsed_seconds": 456.337045640219
+}
+Command exited with non-zero status 2
+	Command being timed: "/home/wangning/miniforge3/envs/hym_radar/bin/python -u code/scripts/preflight_qlocal_global_export.py --data-root /home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene --cache-root /home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db --manifest artifacts/g0/g0_audit_100_manifest.json --scene-split artifacts/g0/g0_scene_split.json --normalization /home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_0e5fe84_g1_recovery/g1_cube_normalization_train.json --fresh-parent-checkpoint /home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_f2a9489_ra1_wce_replay_20260807/checkpoint_epoch020.pt --fresh-parent-metrics /home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_f2a9489_ra1_wce_replay_20260807/metrics_epoch020.json --fresh-parent-run-manifest /home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_f2a9489_ra1_wce_replay_20260807/run_manifest.json --archived-qlocal-preflight artifacts/g1/qlocal_f0_preflight_bf1a166/preflight.json --output-dir /home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/qlocal_f0r_global_export_34579a2 --source-commit 34579a245efecb0a10baeec3bcd1929a4744d502 --device cuda:0"
+	User time (seconds): 261.25
+	System time (seconds): 24.35
+	Percent of CPU this job got: 62%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 7:38.68
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 3356200
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 690
+	Minor (reclaiming a frame) page faults: 3436505
+	Voluntary context switches: 58624
+	Involuntary context switches: 4008
+	Swaps: 0
+	File system inputs: 237032
+	File system outputs: 1208
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 2

@@ -1,7 +1,7 @@
 # Cube-to-dense current board packet
 
-> Refreshed 2026-08-07 after source `dc63dfc` fixed-range audit. Test access is
-> false.
+> Refreshed 2026-08-07 after source `34579a2` Q-Local-F0R terminal. Test access
+> is false.
 
 ## Incumbent
 
@@ -32,6 +32,7 @@ mechanism. It does not authorize reuse of the deleted R-A1 identity.
 | Q1-R | Replay failed four original-endpoint equivalence tolerances | Quality hypothesis untested; old-parent route closed |
 | Q-Local-F0 | 10/12 fixed-export oracle frames passed; `47:514` and `58:404` failed | Scorer untrained; terminal under the original exporter only |
 | Fixed range quotas | 76-frame audit found strict CD lower-bound failures on `47:94` and `58:404` | Hard `8000/1700/300` per-frame allocation retired from all successors |
+| Q-Local-F0R | CD/outlier/structure passed 12/12 after global export, but target-stratum retention passed only 2/12 | Pointwise global ranking on the frozen 700k field closed; scorer untrained |
 | R-B2 | 80k `max_d` recall passed on 76/76, confidence coverage failed on 3 frames | Current score-plus-fixed-neighborhood activation closed |
 | G1T | Ego/Doppler union changed geometry by less than `0.05%` and remained very poor | Current no-train history proposal route closed |
 
@@ -42,13 +43,18 @@ support can exist. On two independently trained R-A1 pools, an unattainable
 geometric score selects an excellent exact-10k subset, while binary occupancy
 confidence fails badly.
 
-The unresolved question is whether radar-only evidence can predict that utility
-without:
+F0R now sharpens the unresolved question. The candidate field can support low
+aggregate error, but an independent per-point utility score followed by one
+global exact-count export spends almost all capacity on dense near surfaces.
+Ten of 12 frames lose target-bearing middle/far strata even under an
+unattainable GT-nearest score. The next question is whether an ordered
+variable-return process can allocate geometry without:
 
 1. inheriting a deleted checkpoint identity;
 2. reading target geometry at inference;
 3. collapsing target-bearing range coverage or point diversity;
-4. bypassing the global Cube condition through local energy alone.
+4. reverting to fixed per-ray return counts or hard range quotas;
+5. bypassing the global Cube condition through local energy alone.
 
 ## Closed assumptions
 
@@ -63,21 +69,23 @@ without:
 
 ## Selected live mechanism
 
-**Q-Local-F0R** freezes the Q-Local-F0 Fresh-WCE field, its 700k candidate
-coordinates, Q0/Q1, base confidence, six-bin scorer/loss, and the same eight fit
-plus four unseen-train frames. It changes only the output allocation from hard
-`8000/1700/300` per-frame quotas to one global stable order followed by true
-5 cm greedy exact-10k selection.
+**Variable multi-return renewal hazard** is now the only authorized geometry
+capacity route. It replaces independent candidate ranking with an ordered
+radial process on each azimuth/elevation ray: a return terminates the current
+survival interval, then renews the process so the same ray can emit a
+data-dependent number of later returns. This is a representation change, not a
+new threshold for the closed R-B1 fixed-`K=4/6` peak extractor.
 
-The first gate is zero-training and non-deployable: a GT-nearest global oracle
-must pass every frame's CD/outlier/structure checks while preserving
-completeness and recall in every target-bearing range stratum. Scorer training
-remains prohibited until that gate passes.
+The first gate remains zero-training and train-only. Before implementation, a
+separate protocol must freeze the ray lattice, legal target-aided capacity
+construction, global exact-10k/true-5-cm export, per-frame geometry gates, and
+target-stratum anti-collapse checks. A deployable field may use only current
+Cube evidence; GT is restricted to the non-deployable capacity oracle and
+metrics.
 
-If and only if F0R fails scientifically, the outside-family fallback is a
-variable multi-return renewal-hazard representation. Sparse ray-range transport
-is deferred behind its own hard-rounding oracle. Adaptive fixed-neighborhood
-support is closed with R-B2 and is no longer listed as live.
+Sparse ray-range partial transport remains third priority behind its own
+hard-rounding oracle. Q-Local training, fixed-neighborhood support, fixed
+per-ray `K`, and hard per-frame range quotas are closed.
 
 ## Stale routes not to reopen
 
@@ -88,6 +96,8 @@ support is closed with R-B2 and is no longer listed as live.
 - G1G with only a different patch count or radius;
 - R-A2 binary occupancy with a different class sampler;
 - Q1-R under the original-parent claim;
+- Q-Local pointwise scoring plus one unconstrained global export on the frozen
+  Fresh-WCE field;
 - R-B2 with only a larger fixed bank or neighborhood;
 - G1T with only a longer history;
 - any downstream Doppler/temporal run before a new parent passes.

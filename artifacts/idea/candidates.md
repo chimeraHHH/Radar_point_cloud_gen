@@ -1,15 +1,21 @@
 # Cube-to-dense candidate frontier
 
-> 2026-08-07 successor addendum: Q-Local-F0 reached
-> `qlocal_f0_capacity_no_go` under its frozen hard-range exporter, and a
-> separate 76-frame proof reached `fixed_range_quota_contract_no_go`. The live
-> route is Q-Local-F0R: preserve the fresh WCE 700k field and local Full-RAED
-> scorer/loss, remove only hard per-frame range quotas, and first run the
-> source-bound global exact-10k capacity oracle in
-> `docs/qlocal_f0r_global_export_capacity_protocol.md`. A variable multi-return
-> renewal-hazard field is authorized only after F0R scientific no-go; sparse
-> ray-range transport remains third priority. None has accessed validation or
-> test.
+> 2026-08-07 successor addendum: source `34579a2` completed Q-Local-F0R on
+> H200 GPU0. All 12 train-only frames passed exact-10k/5 cm, Chamfer, outlier,
+> and structural gates, but only 2/12 retained every target-bearing range
+> stratum. Terminal status is `qlocal_f0r_capacity_no_go`; the scorer was not
+> trained. The live route is now a separately frozen variable multi-return
+> renewal-hazard capacity oracle. Sparse ray-range transport remains third
+> priority. Validation and test remain untouched by these capacity decisions.
+
+## Current successor frontier
+
+| Priority | Mechanism | First gate | Anti-relabel boundary |
+|---|---|---|---|
+| 1 | Variable multi-return renewal hazard | Train-only zero-training capacity oracle; exact 10k/5 cm, per-frame geometry, and target-stratum retention | Return count must be data-dependent and renewed after a hit; fixed `K=4/6`, pointwise global ranking, and hard range quotas are prohibited |
+| 2 | Sparse ray-range partial transport | Separately frozen hard-rounding oracle within runtime/memory limits | Must couple set allocation without a dense `700k x target` matrix or GT at deployment |
+
+No learned successor starts before its own capacity gate passes.
 
 > Frozen on 2026-07-28. Test access is false. The existing G1D v2 run continues
 > unchanged and does not select settings for these candidates.

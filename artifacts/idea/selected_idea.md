@@ -1,58 +1,68 @@
 # Selected geometry idea
 
-> Successor revised on 2026-08-07 after the Q-Local-F0 capacity no-go and the
-> fixed-range-quota contract no-go. Test access is false.
+> Successor revised on 2026-08-07 after the source-`34579a2` Q-Local-F0R
+> scientific no-go. Test access is false.
 
-## Live primary route: Q-Local-F0R
+## Closed predecessor: Q-Local-F0R
 
-Q-Local-F0 is terminal under its frozen `8000/1700/300` exporter: the
-source-bound GT-nearest oracle passed only 10/12 train frames, so its scorer was
-not trained. A separate 76-frame radial lower-bound audit then proved that the
-hard per-frame quotas are themselves incompatible with the geometry contract
-on frames `47:94` and `58:404`.
+F0R removed only the mathematically contradictory per-frame range quotas from
+the unchanged Fresh-WCE 700k field. Its formal H200 GPU0 GT-nearest oracle
+passed exact 10k, true 5 cm, `CD <=0.8 m`, and outlier `<=5%` on all 12
+train-only frames. It nevertheless retained every target-bearing range stratum
+on only 2/12 frames. Ten frames spent almost the entire budget on dense near
+returns and lost middle/far coverage.
 
-Q-Local-F0R is the narrowest valid successor. It keeps the source-`f2a9489`
-Fresh-WCE checkpoint, all 700k candidate coordinates, Q0/Q1, residual, base
-confidence, Q-Local scorer/loss, cohort, exact 10k, and true 5 cm spacing. It
-changes only the exporter: one stable global score order across `[0,120)` m,
-followed by greedy 5 cm selection.
+Terminal status is `qlocal_f0r_capacity_no_go`; the Q-Local scorer was never
+trained. This rejects independent pointwise quality followed by one global
+capacity export on this frozen field. It does not reject the untrained scorer
+in general or the existence of strong aggregate candidate support.
 
-The first run is the zero-training capacity gate in
-`docs/qlocal_f0r_global_export_capacity_protocol.md`. It uses the same eight fit
-and four unseen-train frames. All 12 frames must pass `CD <=0.8 m`, outlier
-`<=5%`, exact 10k, true 5 cm, and per-target-stratum retention against the
-archived fixed-quota oracle.
+## Live primary route: variable multi-return renewal hazard
+
+The successor represents each azimuth/elevation ray as an ordered radial
+survival process. A predicted return ends the current survival interval; a
+renewal/reset state then permits another return later on the same ray. The
+number of returns is data-dependent rather than a fixed `K`, and return
+allocation is coupled within a ray rather than decided independently for every
+Cartesian candidate.
+
+The first experiment is a separately frozen, zero-training, train-only capacity
+oracle. It must establish that the representation can simultaneously support:
+
+- exactly 10,000 unique points with true minimum spacing at least 5 cm;
+- per-frame Chamfer `<=0.8 m` and 2 m outlier fraction `<=5%` on the frozen
+  capacity cohort;
+- explicit completeness and recall retention in every target-bearing range
+  stratum;
+- a target-free deployable exporter contract, with GT restricted to the
+  non-deployable capacity construction and metrics;
+- a variable number of ordered returns, with no fixed `K=4/6`, hard
+  `8000/1700/300` quotas, copy, padding, jitter, or best-of-k repair.
 
 ## Why this route is first
 
-1. It removes one output constraint already proven impossible instead of
-   changing the representation prematurely.
-2. It leaves candidate support and the unresolved local Full-RAED scoring
-   hypothesis bit-identical.
-3. It has a decisive zero-training result before any optimizer or checkpoint is
-   created.
-4. Its target-stratum retention gate prevents winning by discarding real
-   middle/far targets.
+1. F0R localizes the remaining failure to set-level range allocation rather
+   than aggregate Chamfer or candidate count.
+2. Renewal is the smallest representation change that can preserve multiple
+   ordered surfaces along one radar ray after an earlier return.
+3. It is outside the closed binary occupancy, arbitrary-query,
+   fixed-neighborhood, and pointwise global-ranking families.
+4. A capacity oracle can reject it before any network, optimizer, or checkpoint
+   is created.
 
-## Outside-family fallback
+## Deferred fallback
 
-Only if Q-Local-F0R fails its frozen scientific gate, run a zero-training
-representation oracle for a variable multi-return renewal-hazard field. Fixed
-per-ray `K=4/6`, larger arbitrary-query pools, another binary occupancy model,
-hard per-frame range quotas, and fixed-neighborhood activation remain closed.
-
-Sparse ray-range partial transport is third priority and requires a separate
-hard-rounding oracle before implementation. It is not fused with Q-Local.
+Sparse ray-range partial transport is third priority. It requires a separately
+frozen hard-rounding oracle and is not fused with renewal hazard before either
+mechanism has independent evidence.
 
 ## Decision boundary
 
-- F0R 12/12 capacity pass: freeze a separate 500-update Q-Local training run
-  using the same global exporter and recompute every learned baseline with it.
-- F0R scientific failure: close scoring on this fresh 700k field and move to
-  variable multi-return renewal hazard.
-- F0R implementation-invalid: repair and rerun the identical gate; do not route
-  scientifically.
-- Later learning or unseen-control failure by update 500/7200 GPU-s: close this
-  scorer architecture without tuning; move to variable ray hazard.
-- No downstream Doppler, cycle, temporal, or test work starts until a 76/24
+- capacity pass on every frozen frame: freeze a bounded one-frame
+  renewal-hazard memorization/scorer gate with a target-free Cube interface;
+- scientific capacity failure: close this representation and route to the
+  separately frozen sparse ray-range transport oracle;
+- implementation-invalid: repair and rerun the identical capacity gate; do not
+  route scientifically;
+- no downstream Doppler, cycle, temporal, or test work starts until a 76/24
   geometry parent passes the complete frozen gate.
