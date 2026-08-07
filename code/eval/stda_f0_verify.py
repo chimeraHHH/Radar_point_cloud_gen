@@ -10,6 +10,7 @@ from bisect import bisect_right
 from collections import defaultdict
 from dataclasses import dataclass
 import hashlib
+import io
 import json
 import math
 import struct
@@ -25,6 +26,57 @@ PROTOCOL_FREEZE_COMMIT = "eb839e1e806c44dd1668051085a307faf4fe83a0"
 DEMAND_COUNT = 10_000
 GRAPH_K = 256
 UNMATCHED_SENTINEL = 2**63 - 1
+
+CONTROL_EXPORT_REPLAY_SCHEMA = "stda_f0_independent_control_export_replay_v1"
+
+_SOLVER_INPUT_SCHEMA = {
+    "support_stable_candidate_id.npy": ("<i8", 1),
+    "support_grid_cell.npy": ("<i8", 2),
+    "support_xyz.npy": ("<f4", 2),
+    "support_base_confidence.npy": ("<f4", 1),
+    "support_color.npy": ("<u1", 1),
+    "graph_indptr.npy": ("<i8", 1),
+    "graph_indices.npy": ("<i4", 1),
+    "graph_data.npy": ("<i8", 1),
+    "graph_edge_squared_distance_m2.npy": ("<f8", 1),
+    "graph_edge_distance_m.npy": ("<f8", 1),
+    "demand_slot_id.npy": ("<i8", 1),
+}
+_CONTROL_INPUT_SCHEMA = {
+    "demand_slot_atom_id.npy": ("<i8", 1),
+    "demand_atom_id.npy": ("<i8", 1),
+    "demand_atom_xyz.npy": ("<f8", 2),
+    "demand_atom_weight.npy": ("<f8", 1),
+    "pointwise_nearest_atom_id.npy": ("<i8", 1),
+    "pointwise_squared_distance.npy": ("<f8", 1),
+    "pointwise_distance_m.npy": ("<f8", 1),
+}
+_CONTROL_RESULT_SCHEMA = {
+    "decision_slot_row.npy": ("<i8", 1),
+    "decision_slot_id.npy": ("<i8", 1),
+    "decision_support_rank.npy": ("<i8", 1),
+    "decision_support_id.npy": ("<i8", 1),
+    "decision_edge_cost.npy": ("<i8", 1),
+    "decision_selected_support_rank.npy": ("<i8", 1),
+    "decision_selected_support_id.npy": ("<i8", 1),
+    "packed_pointwise_selected_support_rank.npy": ("<i8", 1),
+    "packed_pointwise_selected_support_id.npy": ("<i8", 1),
+    "packed_pointwise_nearest_atom_id.npy": ("<i8", 1),
+    "packed_pointwise_squared_distance.npy": ("<f8", 1),
+    "packed_pointwise_distance_m.npy": ("<f8", 1),
+    "round_robin_greedy_round_index.npy": ("<i8", 1),
+    "round_robin_greedy_atom_id.npy": ("<i8", 1),
+    "round_robin_greedy_slot_row.npy": ("<i8", 1),
+    "round_robin_greedy_slot_id.npy": ("<i8", 1),
+    "round_robin_greedy_support_rank.npy": ("<i8", 1),
+    "round_robin_greedy_support_id.npy": ("<i8", 1),
+    "round_robin_greedy_edge_cost.npy": ("<i8", 1),
+    "round_robin_greedy_selected_support_rank.npy": ("<i8", 1),
+    "round_robin_greedy_selected_support_id.npy": ("<i8", 1),
+    "round_robin_greedy_ordered_atom_id.npy": ("<i8", 1),
+    "round_robin_greedy_order_digest_bytes.npy": ("<u1", 2),
+}
+_EXPORT_ARMS = ("decision", "packed_pointwise", "round_robin_greedy")
 
 STRUCTURAL_REPORT_SCHEMA = "stda_f0_structural_report_v1"
 STRUCTURAL_REPLAY_SCHEMA = "stda_f0_independent_structural_replay_v1"
@@ -492,6 +544,1186 @@ def verify_hall_certificate(
         "hall_deficit": deficit,
         "reachable_slots_sha256": sha256_bytes(canonical_slots.tobytes()),
         "reachable_support_sha256": sha256_bytes(reconstructed.tobytes()),
+        "checks": checks,
+        "passed": all(checks.values()),
+    }
+
+
+def _round_hash_arrays(domain: bytes, *arrays: np.ndarray) -> str:
+    digest = hashlib.sha256(domain + b"\0")
+    digest.update(struct.pack("<I", len(arrays)))
+    for values in arrays:
+        array = np.ascontiguousarray(values)
+        dtype = array.dtype.str.encode("ascii")
+        digest.update(struct.pack("<I", len(dtype)))
+        digest.update(dtype)
+        digest.update(struct.pack("<I", array.ndim))
+        digest.update(struct.pack("<" + "Q" * array.ndim, *array.shape))
+        digest.update(array.tobytes(order="C"))
+    return digest.hexdigest()
+
+
+def _round_hash_hex_fields(domain: bytes, *fields: str) -> str:
+    digest = hashlib.sha256(domain + b"\0")
+    for field in fields:
+        encoded = field.encode("ascii")
+        digest.update(struct.pack("<I", len(encoded)))
+        digest.update(encoded)
+    return digest.hexdigest()
+
+
+def _load_npy_bytes(
+    payload: bytes,
+    *,
+    filename: str,
+    dtype: str,
+    ndim: int,
+) -> np.ndarray:
+    if not isinstance(payload, bytes):
+        raise TypeError(f"STDA-F0 {filename} must be immutable bytes")
+    stream = io.BytesIO(payload)
+    try:
+        loaded = np.load(stream, allow_pickle=False)
+    except (OSError, ValueError, TypeError) as error:
+        raise ValueError(f"STDA-F0 {filename} is not a safe NPY array") from error
+    if stream.read(1) != b"":
+        raise ValueError(f"STDA-F0 {filename} has trailing bytes")
+    if not isinstance(loaded, np.ndarray):
+        raise TypeError(f"STDA-F0 {filename} did not decode to an array")
+    if loaded.dtype != np.dtype(dtype):
+        raise ValueError(
+            f"STDA-F0 {filename} dtype {loaded.dtype.str} does not equal {dtype}"
+        )
+    if loaded.ndim != ndim:
+        raise ValueError(
+            f"STDA-F0 {filename} rank {loaded.ndim} does not equal {ndim}"
+        )
+    if not loaded.flags.c_contiguous:
+        raise ValueError(f"STDA-F0 {filename} is not C-contiguous")
+    return np.frombuffer(
+        loaded.tobytes(order="C"), dtype=np.dtype(dtype)
+    ).reshape(loaded.shape)
+
+
+def _load_required_arrays(
+    payloads: Mapping[str, bytes],
+    schema: Mapping[str, tuple[str, int]],
+    *,
+    label: str,
+) -> dict[str, np.ndarray]:
+    missing = sorted(set(schema) - set(payloads))
+    if missing:
+        raise ValueError(f"STDA-F0 {label} is missing files: {missing}")
+    return {
+        filename: _load_npy_bytes(
+            payloads[filename],
+            filename=filename,
+            dtype=dtype,
+            ndim=ndim,
+        )
+        for filename, (dtype, ndim) in schema.items()
+    }
+
+
+def _file_set_binding(
+    payloads: Mapping[str, bytes],
+    expected_sha256: Any,
+    *,
+    label: str,
+) -> dict[str, Any]:
+    if not isinstance(expected_sha256, Mapping):
+        raise ValueError(f"STDA-F0 {label} SHA binding must be a mapping")
+    expected_names = set(expected_sha256)
+    observed_names = set(payloads)
+    file_reports: dict[str, dict[str, Any]] = {}
+    hashes_valid = True
+    for filename in sorted(observed_names | expected_names):
+        payload = payloads.get(filename)
+        expected = expected_sha256.get(filename)
+        observed = sha256_bytes(payload) if isinstance(payload, bytes) else None
+        valid_expected = (
+            isinstance(expected, str)
+            and len(expected) == 64
+            and all(character in "0123456789abcdef" for character in expected)
+        )
+        matched = isinstance(payload, bytes) and valid_expected and observed == expected
+        hashes_valid &= matched
+        file_reports[filename] = {
+            "bytes": len(payload) if isinstance(payload, bytes) else None,
+            "observed_sha256": observed,
+            "expected_sha256": expected,
+            "matched": matched,
+        }
+    checks = {
+        "exact_file_names": observed_names == expected_names,
+        "all_payloads_are_bytes": all(
+            isinstance(value, bytes) for value in payloads.values()
+        ),
+        "all_file_hashes_match": hashes_valid,
+    }
+    return {
+        "label": label,
+        "checks": checks,
+        "files": file_reports,
+        "passed": all(checks.values()),
+    }
+
+
+def _validate_replay_inputs(
+    solver: Mapping[str, np.ndarray],
+    controls: Mapping[str, np.ndarray],
+    *,
+    required_export_count: int,
+    expected_graph_k: int | None,
+) -> dict[str, Any]:
+    stable_id = solver["support_stable_candidate_id.npy"]
+    grid_cell = solver["support_grid_cell.npy"]
+    xyz = solver["support_xyz.npy"]
+    confidence = solver["support_base_confidence.npy"]
+    color = solver["support_color.npy"]
+    support_count = int(stable_id.size)
+    support_row_bytes = [
+        xyz[row].tobytes(order="C") for row in range(support_count)
+    ]
+    support_checks = {
+        "positive_required_count": type(required_export_count) is int
+        and required_export_count > 0,
+        "support_has_required_capacity": support_count >= required_export_count,
+        "support_shapes": (
+            stable_id.shape == (support_count,)
+            and grid_cell.shape == (support_count, 3)
+            and xyz.shape == (support_count, 3)
+            and confidence.shape == (support_count,)
+            and color.shape == (support_count,)
+        ),
+        "stable_ids_strictly_increasing": support_count > 0
+        and bool(np.all(stable_id[1:] > stable_id[:-1])),
+        "support_finite": bool(
+            np.isfinite(xyz).all() and np.isfinite(confidence).all()
+        ),
+        "support_unique_xyz_bytes": len(set(support_row_bytes)) == support_count,
+        "support_unique_grid_cells": (
+            np.unique(grid_cell, axis=0).shape[0] == support_count
+        ),
+        "support_exact_grid_cells": np.array_equal(
+            grid_cell,
+            np.asarray(
+                [[_exact_cell(value) for value in point] for point in xyz],
+                dtype="<i8",
+            ),
+        ),
+        "support_one_parity_color": (
+            support_count > 0
+            and np.unique(color).size == 1
+            and bool(np.all(color <= 7))
+            and np.array_equal(
+                color,
+                (
+                    4 * np.mod(grid_cell[:, 0], 2)
+                    + 2 * np.mod(grid_cell[:, 1], 2)
+                    + np.mod(grid_cell[:, 2], 2)
+                ).astype("<u1"),
+            )
+        ),
+    }
+
+    indptr = solver["graph_indptr.npy"]
+    indices = solver["graph_indices.npy"]
+    data = solver["graph_data.npy"]
+    squared = solver["graph_edge_squared_distance_m2.npy"]
+    distance = solver["graph_edge_distance_m.npy"]
+    slot_id = solver["demand_slot_id.npy"]
+    slot_count = int(slot_id.size)
+    valid_indptr = (
+        indptr.shape == (slot_count + 1,)
+        and int(indptr[0]) == 0
+        and bool(np.all(np.diff(indptr) >= 0))
+    )
+    edge_count = int(indptr[-1]) if valid_indptr else -1
+    edge_shapes = (
+        edge_count >= 0
+        and indices.shape
+        == data.shape
+        == squared.shape
+        == distance.shape
+        == (edge_count,)
+    )
+    row_columns_sorted = valid_indptr and edge_shapes
+    if row_columns_sorted:
+        for row in range(slot_count):
+            start = int(indptr[row])
+            stop = int(indptr[row + 1])
+            columns = indices[start:stop]
+            if not bool(np.all(columns[1:] > columns[:-1])):
+                row_columns_sorted = False
+                break
+    expected_degrees = (
+        expected_graph_k is None
+        or (
+            type(expected_graph_k) is int
+            and expected_graph_k > 0
+            and valid_indptr
+            and bool(np.all(np.diff(indptr) == expected_graph_k))
+        )
+    )
+    sqrt_replay = False
+    if edge_shapes and bool(np.isfinite(squared).all()) and bool(np.all(squared >= 0.0)):
+        replayed = np.fromiter(
+            (math.sqrt(float(value)) for value in squared),
+            dtype="<f8",
+            count=edge_count,
+        )
+        sqrt_replay = np.array_equal(replayed, distance)
+    graph_checks = {
+        "slot_count": slot_count == required_export_count,
+        "slot_ids_canonical": np.array_equal(
+            slot_id, np.arange(slot_count, dtype="<i8")
+        ),
+        "valid_indptr": valid_indptr,
+        "edge_array_shapes": edge_shapes,
+        "expected_degree": expected_degrees,
+        "support_indices_in_bounds": edge_shapes
+        and bool(np.all(indices >= 0))
+        and bool(np.all(indices < support_count)),
+        "row_columns_strictly_increasing": row_columns_sorted,
+        "positive_exact_integer_costs": edge_shapes
+        and bool(np.all(data > 0))
+        and bool(np.all(data < 2**53)),
+        "edge_distance_sqrt_replay": sqrt_replay,
+    }
+
+    slot_atom = controls["demand_slot_atom_id.npy"]
+    atom_id = controls["demand_atom_id.npy"]
+    atom_xyz = controls["demand_atom_xyz.npy"]
+    atom_weight = controls["demand_atom_weight.npy"]
+    nearest_atom = controls["pointwise_nearest_atom_id.npy"]
+    point_squared = controls["pointwise_squared_distance.npy"]
+    point_distance = controls["pointwise_distance_m.npy"]
+    atom_count = int(atom_id.size)
+    atom_positions = np.searchsorted(atom_id, slot_atom)
+    known_slot_atoms = bool(np.all(atom_positions < atom_count))
+    if known_slot_atoms and slot_atom.size:
+        known_slot_atoms = np.array_equal(atom_id[atom_positions], slot_atom)
+    nearest_positions = np.searchsorted(atom_id, nearest_atom)
+    known_nearest_atoms = bool(np.all(nearest_positions < atom_count))
+    if known_nearest_atoms and nearest_atom.size:
+        known_nearest_atoms = np.array_equal(atom_id[nearest_positions], nearest_atom)
+    point_sqrt = False
+    if (
+        point_squared.shape == (support_count,)
+        and bool(np.isfinite(point_squared).all())
+        and bool(np.all(point_squared >= 0.0))
+    ):
+        replayed_point_distance = np.fromiter(
+            (math.sqrt(float(value)) for value in point_squared),
+            dtype="<f8",
+            count=support_count,
+        )
+        point_sqrt = np.array_equal(replayed_point_distance, point_distance)
+    control_checks = {
+        "greedy_shapes": (
+            slot_atom.shape == (slot_count,)
+            and atom_count > 0
+            and atom_xyz.shape == (atom_count, 3)
+            and atom_weight.shape == (atom_count,)
+        ),
+        "atom_ids_strictly_increasing": atom_count > 0
+        and bool(np.all(atom_id[1:] > atom_id[:-1])),
+        "slot_atoms_known": known_slot_atoms,
+        "atom_values_valid": bool(
+            np.isfinite(atom_xyz).all()
+            and np.isfinite(atom_weight).all()
+            and np.all(atom_weight > 0.0)
+        ),
+        "atom_xyz_exact_float32_promotion": np.array_equal(
+            atom_xyz.astype("<f4").astype("<f8"), atom_xyz
+        ),
+        "pointwise_shapes": (
+            nearest_atom.shape
+            == point_squared.shape
+            == point_distance.shape
+            == (support_count,)
+        ),
+        "pointwise_atoms_known": known_nearest_atoms,
+        "pointwise_values_valid": bool(
+            np.all(nearest_atom >= 0)
+            and np.isfinite(point_squared).all()
+            and np.isfinite(point_distance).all()
+            and np.all(point_squared >= 0.0)
+            and np.all(point_distance >= 0.0)
+        ),
+        "pointwise_distance_sqrt_replay": point_sqrt,
+    }
+    digests = {
+        "round_support_sha256": _round_hash_arrays(
+            b"stda_f0_packed_support_v1",
+            stable_id,
+            grid_cell,
+            xyz,
+            confidence,
+            color,
+        ),
+        "round_graph_sha256": _round_hash_arrays(
+            b"stda_f0_assignment_graph_v1",
+            indptr,
+            indices,
+            data,
+            squared,
+            distance,
+            slot_id,
+            np.asarray([support_count], dtype="<i8"),
+        ),
+        "round_greedy_sidecar_sha256": _round_hash_arrays(
+            b"stda_f0_greedy_sidecar_v1",
+            slot_atom,
+            atom_id,
+            atom_xyz,
+            atom_weight,
+        ),
+        "round_pointwise_sidecar_sha256": _round_hash_arrays(
+            b"stda_f0_pointwise_sidecar_v1",
+            nearest_atom,
+            point_squared,
+            point_distance,
+        ),
+    }
+    checks = {
+        "support": all(support_checks.values()),
+        "graph": all(graph_checks.values()),
+        "controls": all(control_checks.values()),
+    }
+    return {
+        "support_count": support_count,
+        "slot_count": slot_count,
+        "support_checks": support_checks,
+        "graph_checks": graph_checks,
+        "control_checks": control_checks,
+        "digests": digests,
+        "checks": checks,
+        "passed": all(checks.values()),
+    }
+
+
+def _expected_report_mapping(value: Any, *, label: str) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping):
+        raise ValueError(f"STDA-F0 {label} report must be a mapping")
+    return value
+
+
+def _decision_replay(
+    solver: Mapping[str, np.ndarray],
+    results: Mapping[str, np.ndarray],
+    expected_report: Mapping[str, Any],
+    *,
+    required_count: int,
+) -> tuple[dict[str, Any], np.ndarray]:
+    stable_id = solver["support_stable_candidate_id.npy"]
+    support_xyz = solver["support_xyz.npy"]
+    indptr = solver["graph_indptr.npy"]
+    indices = solver["graph_indices.npy"]
+    data = solver["graph_data.npy"]
+    graph_slot_id = solver["demand_slot_id.npy"]
+    slot_row = results["decision_slot_row.npy"]
+    slot_id = results["decision_slot_id.npy"]
+    support_rank = results["decision_support_rank.npy"]
+    support_id = results["decision_support_id.npy"]
+    edge_cost = results["decision_edge_cost.npy"]
+    selected_rank = results["decision_selected_support_rank.npy"]
+    selected_id = results["decision_selected_support_id.npy"]
+    trace_shape = all(
+        array.shape == (required_count,)
+        for array in (slot_row, slot_id, support_rank, support_id, edge_cost)
+    )
+    selected_shape = selected_rank.shape == selected_id.shape == (required_count,)
+    all_slots_once = trace_shape and np.array_equal(
+        slot_row, np.arange(required_count, dtype="<i8")
+    ) and np.array_equal(slot_id, graph_slot_id)
+    ranks_in_bounds = trace_shape and bool(
+        np.all(support_rank >= 0) and np.all(support_rank < stable_id.size)
+    )
+    candidate_capacity = ranks_in_bounds and (
+        np.unique(support_rank).size == required_count
+    )
+    support_id_binding = ranks_in_bounds and np.array_equal(
+        support_id, stable_id[support_rank]
+    )
+    edge_membership = bool(all_slots_once and ranks_in_bounds)
+    edge_cost_binding = bool(all_slots_once and ranks_in_bounds)
+    replayed_cost: list[int] = []
+    if edge_membership:
+        for row, rank in zip(slot_row.tolist(), support_rank.tolist(), strict=True):
+            cost = _edge_lookup(int(row), int(rank), indptr, indices, data)
+            if cost is None:
+                edge_membership = False
+                replayed_cost.append(-1)
+            else:
+                replayed_cost.append(cost)
+        edge_cost_binding = np.array_equal(
+            edge_cost, np.asarray(replayed_cost, dtype="<i8")
+        )
+    canonical_rank = (
+        np.sort(support_rank) if trace_shape else np.empty(0, dtype="<i8")
+    )
+    canonical_selection = (
+        selected_shape
+        and candidate_capacity
+        and np.array_equal(selected_rank, canonical_rank)
+        and np.array_equal(selected_id, stable_id[selected_rank])
+    )
+    export_xyz = (
+        np.ascontiguousarray(support_xyz[selected_rank], dtype="<f4")
+        if canonical_selection
+        else np.empty((0, 3), dtype="<f4")
+    )
+    objective = sum(int(value) for value in edge_cost.tolist()) if trace_shape else -1
+    assignment_sha256 = _round_hash_arrays(
+        b"stda_f0_decision_assignment_v1",
+        slot_row,
+        slot_id,
+        support_rank,
+        support_id,
+        edge_cost,
+    )
+    selected_id_sha256 = _round_hash_arrays(
+        b"stda_f0_decision_selected_ids_v1", selected_id
+    )
+    export_sha256 = _round_hash_arrays(
+        b"stda_f0_decision_export_v1", export_xyz
+    )
+    objective_sha256 = _round_hash_arrays(
+        b"stda_f0_decision_objective_v1",
+        np.asarray([objective], dtype="<i8"),
+    )
+    digest_sha256 = _round_hash_hex_fields(
+        b"stda_f0_decision_result_v1",
+        assignment_sha256,
+        selected_id_sha256,
+        export_sha256,
+        objective_sha256,
+    )
+    hashes = {
+        "assignment_sha256": assignment_sha256,
+        "selected_id_sha256": selected_id_sha256,
+        "export_sha256": export_sha256,
+        "objective_sha256": objective_sha256,
+        "digest_sha256": digest_sha256,
+    }
+    hash_checks = {
+        key: expected_report.get(key) == value for key, value in hashes.items()
+    }
+    checks = {
+        "trace_shape": trace_shape,
+        "selected_shape": selected_shape,
+        "all_slots_once": all_slots_once,
+        "support_ranks_in_bounds": ranks_in_bounds,
+        "support_capacity_one": candidate_capacity,
+        "support_id_binding": support_id_binding,
+        "edge_membership": edge_membership,
+        "edge_cost_binding": edge_cost_binding,
+        "canonical_selection": canonical_selection,
+        "objective_matches": expected_report.get("objective") == objective,
+        "hashes_match": all(hash_checks.values()),
+    }
+    return (
+        {
+            "checks": checks,
+            "hash_checks": hash_checks,
+            "computed_hashes": hashes,
+            "objective": objective,
+            "selected_count": int(selected_rank.size),
+            "passed": all(checks.values()),
+        },
+        export_xyz,
+    )
+
+
+def _packed_pointwise_replay(
+    solver: Mapping[str, np.ndarray],
+    controls: Mapping[str, np.ndarray],
+    results: Mapping[str, np.ndarray],
+    expected_report: Mapping[str, Any],
+    *,
+    required_count: int,
+) -> tuple[dict[str, Any], np.ndarray]:
+    stable_id = solver["support_stable_candidate_id.npy"]
+    support_xyz = solver["support_xyz.npy"]
+    nearest_sidecar = controls["pointwise_nearest_atom_id.npy"]
+    squared_sidecar = controls["pointwise_squared_distance.npy"]
+    distance_sidecar = controls["pointwise_distance_m.npy"]
+    selected_rank = results["packed_pointwise_selected_support_rank.npy"]
+    selected_id = results["packed_pointwise_selected_support_id.npy"]
+    nearest_atom = results["packed_pointwise_nearest_atom_id.npy"]
+    squared_distance = results["packed_pointwise_squared_distance.npy"]
+    distance_m = results["packed_pointwise_distance_m.npy"]
+    shapes = all(
+        array.shape == (required_count,)
+        for array in (
+            selected_rank,
+            selected_id,
+            nearest_atom,
+            squared_distance,
+            distance_m,
+        )
+    )
+    ranks_in_bounds = shapes and bool(
+        np.all(selected_rank >= 0) and np.all(selected_rank < stable_id.size)
+    )
+    candidate_capacity = ranks_in_bounds and (
+        np.unique(selected_rank).size == required_count
+    )
+    expected_order = np.lexsort((stable_id, squared_sidecar))[:required_count]
+    frozen_order = shapes and np.array_equal(selected_rank, expected_order)
+    sidecar_binding = ranks_in_bounds and all(
+        (
+            np.array_equal(selected_id, stable_id[selected_rank]),
+            np.array_equal(nearest_atom, nearest_sidecar[selected_rank]),
+            np.array_equal(squared_distance, squared_sidecar[selected_rank]),
+            np.array_equal(distance_m, distance_sidecar[selected_rank]),
+        )
+    )
+    export_xyz = (
+        np.ascontiguousarray(support_xyz[selected_rank], dtype="<f4")
+        if ranks_in_bounds
+        else np.empty((0, 3), dtype="<f4")
+    )
+    selection_sha256 = _round_hash_arrays(
+        b"stda_f0_packed_pointwise_selection_v1",
+        selected_rank,
+        selected_id,
+        nearest_atom,
+        squared_distance,
+        distance_m,
+    )
+    selected_id_sha256 = _round_hash_arrays(
+        b"stda_f0_packed_pointwise_selected_ids_v1", selected_id
+    )
+    export_sha256 = _round_hash_arrays(
+        b"stda_f0_packed_pointwise_export_v1", export_xyz
+    )
+    digest_sha256 = _round_hash_hex_fields(
+        b"stda_f0_packed_pointwise_result_v1",
+        selection_sha256,
+        selected_id_sha256,
+        export_sha256,
+    )
+    hashes = {
+        "selection_sha256": selection_sha256,
+        "selected_id_sha256": selected_id_sha256,
+        "export_sha256": export_sha256,
+        "digest_sha256": digest_sha256,
+    }
+    hash_checks = {
+        key: expected_report.get(key) == value for key, value in hashes.items()
+    }
+    checks = {
+        "exact_count": shapes,
+        "support_ranks_in_bounds": ranks_in_bounds,
+        "support_capacity_one": candidate_capacity,
+        "frozen_squared_distance_then_id_order": frozen_order,
+        "selected_sidecars_bound": sidecar_binding,
+        "export_bound_to_shared_support": ranks_in_bounds,
+        "hashes_match": all(hash_checks.values()),
+    }
+    return (
+        {
+            "checks": checks,
+            "hash_checks": hash_checks,
+            "computed_hashes": hashes,
+            "selected_count": int(selected_rank.size),
+            "passed": all(checks.values()),
+        },
+        export_xyz,
+    )
+
+
+def _independent_greedy_atom_order(
+    slot_atom_id: np.ndarray,
+    atom_id: np.ndarray,
+    atom_xyz: np.ndarray,
+    atom_weight: np.ndarray,
+    *,
+    sequence: int,
+    radar_index: int,
+) -> tuple[bytes, np.ndarray, np.ndarray, str]:
+    if sequence < 0 or radar_index < 0:
+        raise ValueError("STDA-F0 frame indices must be nonnegative")
+    frame_key = f"seq{sequence:02d}/radar{radar_index:05d}".encode("ascii")
+    keyed: list[tuple[bytes, int]] = []
+    for atom_value in np.unique(slot_atom_id).tolist():
+        canonical_atom_id = int(atom_value)
+        row = int(np.searchsorted(atom_id, canonical_atom_id))
+        if row >= atom_id.size or int(atom_id[row]) != canonical_atom_id:
+            raise ValueError("STDA-F0 greedy slot refers to an unknown atom")
+        atom_byte_key = (
+            np.asarray(atom_xyz[row], dtype="<f4").tobytes(order="C")
+            + np.asarray([atom_weight[row]], dtype="<f8").tobytes(order="C")
+        )
+        order_digest = hashlib.sha256(
+            b"stda_f0_greedy_atom_order_v1\0"
+            + frame_key
+            + b"\0"
+            + atom_byte_key
+        ).digest()
+        keyed.append((order_digest, canonical_atom_id))
+    keyed.sort(key=lambda item: (item[0], item[1]))
+    ordered_atom_id = np.asarray([item[1] for item in keyed], dtype="<i8")
+    ordered_digest_bytes = np.frombuffer(
+        b"".join(item[0] for item in keyed), dtype="<u1"
+    ).reshape(len(keyed), 32)
+    digest_sha256 = _round_hash_arrays(
+        b"stda_f0_greedy_atom_order_commitment_v1",
+        np.frombuffer(frame_key, dtype="<u1"),
+        ordered_atom_id,
+        ordered_digest_bytes,
+    )
+    return frame_key, ordered_atom_id, ordered_digest_bytes, digest_sha256
+
+
+def _simulate_round_robin_greedy(
+    stable_id: np.ndarray,
+    indptr: np.ndarray,
+    indices: np.ndarray,
+    data: np.ndarray,
+    graph_slot_id: np.ndarray,
+    slot_atom_id: np.ndarray,
+    ordered_atom_id: np.ndarray,
+) -> dict[str, np.ndarray]:
+    rows_by_atom: dict[int, np.ndarray] = {}
+    cursors: dict[int, int] = {}
+    for atom_value in ordered_atom_id.tolist():
+        atom = int(atom_value)
+        rows = np.flatnonzero(slot_atom_id == atom)
+        rows = rows[np.argsort(graph_slot_id[rows], kind="stable")]
+        rows_by_atom[atom] = rows
+        cursors[atom] = 0
+    unused = np.ones(stable_id.size, dtype=bool)
+    trace_round: list[int] = []
+    trace_atom: list[int] = []
+    trace_slot_row: list[int] = []
+    trace_slot_id: list[int] = []
+    trace_support_rank: list[int] = []
+    trace_support_id: list[int] = []
+    trace_edge_cost: list[int] = []
+    consumed = 0
+    round_index = 0
+    atom_count = int(ordered_atom_id.size)
+    if graph_slot_id.size and atom_count == 0:
+        raise ValueError("STDA-F0 greedy replay has slots but no active atoms")
+    while consumed < graph_slot_id.size:
+        consumed_before = consumed
+        for offset in range(atom_count):
+            atom = int(ordered_atom_id[(round_index + offset) % atom_count])
+            atom_rows = rows_by_atom[atom]
+            cursor = cursors[atom]
+            if cursor >= atom_rows.size:
+                continue
+            slot_row = int(atom_rows[cursor])
+            cursors[atom] = cursor + 1
+            consumed += 1
+            start = int(indptr[slot_row])
+            stop = int(indptr[slot_row + 1])
+            best_position: int | None = None
+            best_key: tuple[int, int] | None = None
+            for position in range(start, stop):
+                support_rank = int(indices[position])
+                if not unused[support_rank]:
+                    continue
+                key = (int(data[position]), support_rank)
+                if best_key is None or key < best_key:
+                    best_key = key
+                    best_position = position
+            if best_position is None:
+                support_rank = -1
+                support_identifier = -1
+                edge_cost = -1
+            else:
+                support_rank = int(indices[best_position])
+                support_identifier = int(stable_id[support_rank])
+                edge_cost = int(data[best_position])
+                unused[support_rank] = False
+            trace_round.append(round_index)
+            trace_atom.append(atom)
+            trace_slot_row.append(slot_row)
+            trace_slot_id.append(int(graph_slot_id[slot_row]))
+            trace_support_rank.append(support_rank)
+            trace_support_id.append(support_identifier)
+            trace_edge_cost.append(edge_cost)
+        if consumed == consumed_before:
+            raise AssertionError("STDA-F0 greedy replay stopped before all slots")
+        round_index += 1
+    return {
+        "round_index": np.asarray(trace_round, dtype="<i8"),
+        "atom_id": np.asarray(trace_atom, dtype="<i8"),
+        "slot_row": np.asarray(trace_slot_row, dtype="<i8"),
+        "slot_id": np.asarray(trace_slot_id, dtype="<i8"),
+        "support_rank": np.asarray(trace_support_rank, dtype="<i8"),
+        "support_id": np.asarray(trace_support_id, dtype="<i8"),
+        "edge_cost": np.asarray(trace_edge_cost, dtype="<i8"),
+    }
+
+
+def _round_robin_greedy_replay(
+    solver: Mapping[str, np.ndarray],
+    controls: Mapping[str, np.ndarray],
+    results: Mapping[str, np.ndarray],
+    expected_report: Mapping[str, Any],
+    *,
+    sequence: int,
+    radar_index: int,
+) -> tuple[dict[str, Any], np.ndarray]:
+    stable_id = solver["support_stable_candidate_id.npy"]
+    support_xyz = solver["support_xyz.npy"]
+    indptr = solver["graph_indptr.npy"]
+    indices = solver["graph_indices.npy"]
+    data = solver["graph_data.npy"]
+    graph_slot_id = solver["demand_slot_id.npy"]
+    slot_atom_id = controls["demand_slot_atom_id.npy"]
+    atom_id = controls["demand_atom_id.npy"]
+    atom_xyz = controls["demand_atom_xyz.npy"]
+    atom_weight = controls["demand_atom_weight.npy"]
+    _, ordered_atom_id, ordered_digest_bytes, atom_order_sha256 = (
+        _independent_greedy_atom_order(
+            slot_atom_id,
+            atom_id,
+            atom_xyz,
+            atom_weight,
+            sequence=sequence,
+            radar_index=radar_index,
+        )
+    )
+    expected_trace = _simulate_round_robin_greedy(
+        stable_id,
+        indptr,
+        indices,
+        data,
+        graph_slot_id,
+        slot_atom_id,
+        ordered_atom_id,
+    )
+    observed_trace = {
+        "round_index": results["round_robin_greedy_round_index.npy"],
+        "atom_id": results["round_robin_greedy_atom_id.npy"],
+        "slot_row": results["round_robin_greedy_slot_row.npy"],
+        "slot_id": results["round_robin_greedy_slot_id.npy"],
+        "support_rank": results["round_robin_greedy_support_rank.npy"],
+        "support_id": results["round_robin_greedy_support_id.npy"],
+        "edge_cost": results["round_robin_greedy_edge_cost.npy"],
+    }
+    trace_shape = all(
+        values.shape == (graph_slot_id.size,) for values in observed_trace.values()
+    )
+    all_slots_once = trace_shape and (
+        np.unique(observed_trace["slot_row"]).size == graph_slot_id.size
+        and set(int(value) for value in observed_trace["slot_row"].tolist())
+        == set(range(graph_slot_id.size))
+    )
+    order_binding = (
+        np.array_equal(
+            results["round_robin_greedy_ordered_atom_id.npy"], ordered_atom_id
+        )
+        and np.array_equal(
+            results["round_robin_greedy_order_digest_bytes.npy"],
+            ordered_digest_bytes,
+        )
+    )
+    trace_checks = {
+        key: np.array_equal(observed_trace[key], expected_trace[key])
+        for key in expected_trace
+    }
+    selected_success = observed_trace["support_rank"][
+        observed_trace["support_rank"] >= 0
+    ]
+    support_capacity = np.unique(selected_success).size == selected_success.size
+    reported_edges_valid = trace_shape
+    if reported_edges_valid:
+        for slot_row, support_rank, support_identifier, edge_cost in zip(
+            observed_trace["slot_row"].tolist(),
+            observed_trace["support_rank"].tolist(),
+            observed_trace["support_id"].tolist(),
+            observed_trace["edge_cost"].tolist(),
+            strict=True,
+        ):
+            if support_rank == -1:
+                if support_identifier != -1 or edge_cost != -1:
+                    reported_edges_valid = False
+                    break
+                continue
+            if support_rank < 0 or support_rank >= stable_id.size:
+                reported_edges_valid = False
+                break
+            expected_cost = _edge_lookup(
+                int(slot_row), int(support_rank), indptr, indices, data
+            )
+            if (
+                expected_cost is None
+                or int(stable_id[support_rank]) != support_identifier
+                or expected_cost != edge_cost
+            ):
+                reported_edges_valid = False
+                break
+    expected_selected_rank = np.sort(selected_success).astype("<i8", copy=False)
+    selected_rank = results["round_robin_greedy_selected_support_rank.npy"]
+    selected_id = results["round_robin_greedy_selected_support_id.npy"]
+    canonical_selection = (
+        np.array_equal(selected_rank, expected_selected_rank)
+        and bool(np.all(selected_rank >= 0))
+        and bool(np.all(selected_rank < stable_id.size))
+        and np.array_equal(selected_id, stable_id[selected_rank])
+    )
+    export_xyz = (
+        np.ascontiguousarray(support_xyz[selected_rank], dtype="<f4")
+        if canonical_selection
+        else np.empty((0, 3), dtype="<f4")
+    )
+    failed_slot_count = int((observed_trace["support_rank"] < 0).sum())
+    full_capacity = failed_slot_count == 0 and bool(
+        np.all(observed_trace["support_rank"] >= 0)
+    )
+    assignment_sha256 = _round_hash_arrays(
+        b"stda_f0_greedy_assignment_v1",
+        observed_trace["round_index"],
+        observed_trace["atom_id"],
+        observed_trace["slot_row"],
+        observed_trace["slot_id"],
+        observed_trace["support_rank"],
+        observed_trace["support_id"],
+        observed_trace["edge_cost"],
+    )
+    selected_id_sha256 = _round_hash_arrays(
+        b"stda_f0_greedy_selected_ids_v1", selected_id
+    )
+    export_sha256 = _round_hash_arrays(
+        b"stda_f0_greedy_export_v1", export_xyz
+    )
+    digest_sha256 = _round_hash_hex_fields(
+        b"stda_f0_greedy_result_v1",
+        atom_order_sha256,
+        assignment_sha256,
+        selected_id_sha256,
+        export_sha256,
+    )
+    hashes = {
+        "atom_order_sha256": atom_order_sha256,
+        "assignment_sha256": assignment_sha256,
+        "selected_id_sha256": selected_id_sha256,
+        "export_sha256": export_sha256,
+        "digest_sha256": digest_sha256,
+    }
+    hash_checks = {
+        key: expected_report.get(key) == value for key, value in hashes.items()
+    }
+    checks = {
+        "trace_shape": trace_shape,
+        "all_slots_consumed_once": all_slots_once,
+        "atom_order_and_digest_bytes": order_binding,
+        "forward_rotation_and_slot_order": all(
+            trace_checks[key]
+            for key in ("round_index", "atom_id", "slot_row", "slot_id")
+        ),
+        "minimum_unused_edge_choice": all(
+            trace_checks[key]
+            for key in ("support_rank", "support_id", "edge_cost")
+        ),
+        "reported_edge_membership_and_cost": reported_edges_valid,
+        "support_capacity_one": support_capacity,
+        "canonical_selection": canonical_selection,
+        "failed_slots_preserved": (
+            expected_report.get("failed_slot_count") == failed_slot_count
+        ),
+        "full_capacity_reported_exactly": (
+            expected_report.get("full_capacity") is full_capacity
+        ),
+        "hashes_match": all(hash_checks.values()),
+    }
+    return (
+        {
+            "checks": checks,
+            "trace_checks": trace_checks,
+            "hash_checks": hash_checks,
+            "computed_hashes": hashes,
+            "failed_slot_count": failed_slot_count,
+            "full_capacity": full_capacity,
+            "selected_count": int(selected_rank.size),
+            "passed": all(checks.values()),
+        },
+        export_xyz,
+    )
+
+
+def verify_export_pair(
+    binary_payload: bytes,
+    npy_payload: bytes,
+    *,
+    arm: str,
+    expected_xyz: np.ndarray,
+    expected_report: Mapping[str, Any],
+    required_count: int = DEMAND_COUNT,
+) -> dict[str, Any]:
+    """Verify one immutable XYZ NPY/BIN pair and its oracle file records."""
+
+    if arm not in _EXPORT_ARMS:
+        raise ValueError(f"STDA-F0 export arm is not frozen: {arm}")
+    if not isinstance(binary_payload, bytes) or not isinstance(npy_payload, bytes):
+        raise TypeError("STDA-F0 export artifacts must be immutable bytes")
+    expected = _as_le_array(expected_xyz, "<f4")
+    if expected.ndim != 2 or expected.shape[1:] != (3,):
+        raise ValueError("STDA-F0 expected export must have shape (N,3)")
+    binary_xyz = _float32_rows_from_bytes(binary_payload, None)
+    npy_xyz = _load_npy_bytes(
+        npy_payload,
+        filename=f"{arm}.npy",
+        dtype="<f4",
+        ndim=2,
+    )
+    npy_shape_valid = npy_xyz.shape[1:] == (3,)
+    npy_raw = npy_xyz.tobytes(order="C") if npy_shape_valid else b""
+    binary_sha256 = sha256_bytes(binary_payload)
+    npy_sha256 = sha256_bytes(npy_payload)
+    spacing = verify_exact_spacing_bytes(binary_payload)
+    bin_record = expected_report.get("bin")
+    npy_record = expected_report.get("npy")
+    bin_record_valid = isinstance(bin_record, Mapping) and all(
+        (
+            bin_record.get("path") == f"exports/{arm}.bin",
+            bin_record.get("bytes") == len(binary_payload),
+            bin_record.get("sha256") == binary_sha256,
+        )
+    )
+    npy_record_valid = isinstance(npy_record, Mapping) and all(
+        (
+            npy_record.get("path") == f"exports/{arm}.npy",
+            npy_record.get("bytes") == len(npy_payload),
+            npy_record.get("sha256") == npy_sha256,
+        )
+    )
+    checks = {
+        "arm_name": expected_report.get("arm") == arm,
+        "dtype": expected_report.get("dtype") == "<f4",
+        "binary_xyz_shape": binary_xyz.ndim == 2 and binary_xyz.shape[1:] == (3,),
+        "npy_xyz_shape": npy_shape_valid,
+        "required_count": int(binary_xyz.shape[0]) == required_count,
+        "report_count": expected_report.get("count") == int(binary_xyz.shape[0]),
+        "finite_xyz": bool(
+            np.isfinite(binary_xyz).all() and np.isfinite(npy_xyz).all()
+        ),
+        "unique_xyz_bytes": bool(spacing["unique_xyz_bytes"]),
+        "strict_spacing_5cm": bool(spacing["strict_spacing_5cm"]),
+        "npy_bin_raw_bytes_identical": npy_shape_valid and npy_raw == binary_payload,
+        "bound_to_replayed_selection": binary_payload
+        == expected.tobytes(order="C"),
+        "binary_file_record": bin_record_valid,
+        "npy_file_record": npy_record_valid,
+        "raw_xyz_sha256": expected_report.get("raw_xyz_sha256")
+        == binary_sha256,
+    }
+    return {
+        "arm": arm,
+        "point_count": int(binary_xyz.shape[0]),
+        "expected_replay_count": required_count,
+        "binary_sha256": binary_sha256,
+        "npy_sha256": npy_sha256,
+        "spacing": spacing,
+        "checks": checks,
+        "passed": all(checks.values()),
+    }
+
+
+def verify_control_export_replay(
+    *,
+    sequence: int,
+    radar_index: int,
+    solver_inputs: Mapping[str, bytes],
+    control_inputs: Mapping[str, bytes],
+    round_results: Mapping[str, bytes],
+    exports: Mapping[str, bytes],
+    oracle_report: Mapping[str, Any],
+    required_export_count: int = DEMAND_COUNT,
+    expected_graph_k: int | None = GRAPH_K,
+) -> dict[str, Any]:
+    """Independently replay the two controls and bind all three exports.
+
+    Inputs are immutable file payloads keyed by the filenames serialized by the
+    oracle. The formal call uses the default 10,000 slots and K=256; smaller
+    explicit values exist only for deterministic synthetic protocol tests.
+    """
+
+    if not all(
+        isinstance(value, Mapping)
+        for value in (
+            solver_inputs,
+            control_inputs,
+            round_results,
+            exports,
+            oracle_report,
+        )
+    ):
+        raise TypeError("STDA-F0 replay inputs and report must be mappings")
+    if sequence < 0 or radar_index < 0:
+        raise ValueError("STDA-F0 frame indices must be nonnegative")
+    if type(required_export_count) is not int or required_export_count <= 0:
+        raise ValueError("STDA-F0 required export count must be positive")
+    if expected_graph_k is not None and (
+        type(expected_graph_k) is not int or expected_graph_k <= 0
+    ):
+        raise ValueError("STDA-F0 expected graph degree must be positive or None")
+
+    round_binding = _expected_report_mapping(
+        oracle_report.get("round_input_binding"), label="round input binding"
+    )
+    solver_file_binding = _file_set_binding(
+        solver_inputs,
+        round_binding.get("solver_input_files_sha256"),
+        label="solver_inputs",
+    )
+    control_file_binding = _file_set_binding(
+        control_inputs,
+        round_binding.get("control_input_files_sha256"),
+        label="control_inputs",
+    )
+    result_file_binding = _file_set_binding(
+        round_results,
+        oracle_report.get("result_array_files_sha256"),
+        label="round_results",
+    )
+    solver = _load_required_arrays(
+        solver_inputs, _SOLVER_INPUT_SCHEMA, label="solver_inputs"
+    )
+    controls = _load_required_arrays(
+        control_inputs, _CONTROL_INPUT_SCHEMA, label="control_inputs"
+    )
+    results = _load_required_arrays(
+        round_results, _CONTROL_RESULT_SCHEMA, label="round_results"
+    )
+    input_replay = _validate_replay_inputs(
+        solver,
+        controls,
+        required_export_count=required_export_count,
+        expected_graph_k=expected_graph_k,
+    )
+    input_digest_checks = {
+        name: round_binding.get(name) == value
+        for name, value in input_replay["digests"].items()
+    }
+    decision_report = _expected_report_mapping(
+        oracle_report.get("decision"), label="decision"
+    )
+    pointwise_report = _expected_report_mapping(
+        oracle_report.get("packed_pointwise"), label="packed pointwise"
+    )
+    greedy_report = _expected_report_mapping(
+        oracle_report.get("round_robin_greedy"), label="round-robin greedy"
+    )
+    decision_replay, decision_xyz = _decision_replay(
+        solver,
+        results,
+        decision_report,
+        required_count=required_export_count,
+    )
+    pointwise_replay, pointwise_xyz = _packed_pointwise_replay(
+        solver,
+        controls,
+        results,
+        pointwise_report,
+        required_count=required_export_count,
+    )
+    greedy_replay, greedy_xyz = _round_robin_greedy_replay(
+        solver,
+        controls,
+        results,
+        greedy_report,
+        sequence=sequence,
+        radar_index=radar_index,
+    )
+
+    expected_export_names = {
+        f"{arm}.{suffix}" for arm in _EXPORT_ARMS for suffix in ("bin", "npy")
+    }
+    missing_exports = sorted(expected_export_names - set(exports))
+    if missing_exports:
+        raise ValueError(f"STDA-F0 exports are missing files: {missing_exports}")
+    export_reports = _expected_report_mapping(
+        oracle_report.get("exports"), label="exports"
+    )
+    expected_xyz = {
+        "decision": decision_xyz,
+        "packed_pointwise": pointwise_xyz,
+        "round_robin_greedy": greedy_xyz,
+    }
+    export_replays: dict[str, dict[str, Any]] = {}
+    for arm in _EXPORT_ARMS:
+        arm_report = _expected_report_mapping(
+            export_reports.get(arm), label=f"{arm} export"
+        )
+        replay_count = (
+            greedy_replay["selected_count"]
+            if arm == "round_robin_greedy"
+            else required_export_count
+        )
+        export_replays[arm] = verify_export_pair(
+            exports[f"{arm}.bin"],
+            exports[f"{arm}.npy"],
+            arm=arm,
+            expected_xyz=expected_xyz[arm],
+            expected_report=arm_report,
+            required_count=replay_count,
+        )
+        export_replays[arm]["scientific_exact_required_count"] = (
+            export_replays[arm]["point_count"] == required_export_count
+        )
+
+    frame_report = oracle_report.get("frame")
+    frame_checks = {
+        "mapping": isinstance(frame_report, Mapping),
+        "sequence": isinstance(frame_report, Mapping)
+        and frame_report.get("sequence") == sequence,
+        "radar_index": isinstance(frame_report, Mapping)
+        and frame_report.get("radar_index") == radar_index,
+        "frame_key": isinstance(frame_report, Mapping)
+        and frame_report.get("frame_key")
+        == f"seq{sequence:02d}/radar{radar_index:05d}",
+    }
+    checks = {
+        "protocol_sha256": oracle_report.get("protocol_sha256")
+        == PROTOCOL_SHA256,
+        "protocol_freeze_commit": oracle_report.get("protocol_freeze_commit")
+        == PROTOCOL_FREEZE_COMMIT,
+        "frame": all(frame_checks.values()),
+        "exact_export_file_names": set(exports) == expected_export_names,
+        "solver_file_binding": solver_file_binding["passed"],
+        "control_file_binding": control_file_binding["passed"],
+        "result_file_binding": result_file_binding["passed"],
+        "input_semantics": input_replay["passed"],
+        "input_digests": all(input_digest_checks.values()),
+        "decision_replay": decision_replay["passed"],
+        "packed_pointwise_replay": pointwise_replay["passed"],
+        "round_robin_greedy_replay": greedy_replay["passed"],
+        "all_export_pairs": all(
+            report["passed"] for report in export_replays.values()
+        ),
+    }
+    return {
+        "schema": CONTROL_EXPORT_REPLAY_SCHEMA,
+        "protocol_sha256": PROTOCOL_SHA256,
+        "protocol_freeze_commit": PROTOCOL_FREEZE_COMMIT,
+        "frame": {
+            "sequence": sequence,
+            "radar_index": radar_index,
+            "frame_key": f"seq{sequence:02d}/radar{radar_index:05d}",
+        },
+        "required_export_count": required_export_count,
+        "expected_graph_k": expected_graph_k,
+        "file_bindings": {
+            "solver_inputs": solver_file_binding,
+            "control_inputs": control_file_binding,
+            "round_results": result_file_binding,
+        },
+        "input_replay": input_replay,
+        "input_digest_checks": input_digest_checks,
+        "decision": decision_replay,
+        "packed_pointwise": pointwise_replay,
+        "round_robin_greedy": greedy_replay,
+        "exports": export_replays,
+        "frame_checks": frame_checks,
         "checks": checks,
         "passed": all(checks.values()),
     }
