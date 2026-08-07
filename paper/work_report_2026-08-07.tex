@@ -276,8 +276,11 @@ G4 时序数据 & \done & 45 序列、2,160 帧、6,660 文件、约 600.8 GiB�
 
 \subsection{与传统雷达点云增强的关系}
 
-传统雷达增强通常把任务写成单帧稀疏点或单帧 BEV 的去噪、补全或超分辨率。
-本项目的更准确定位是：
+大量雷达增强工作把任务写成稀疏点或 BEV 的去噪、补全与超分辨率，但相关领域
+并非只有单帧方法：RadarHD 已用当前帧与 40 个历史帧重建当前稠密点云，
+Radar-Mamba、RadarMP 和 DoppDrive 也分别覆盖历史特征增强、相邻 Cube 的点与
+scene flow 联合估计以及 Doppler 驱动的历史点聚合。因此，本项目不能把
+“首次使用多帧”或“首次用 Doppler 增强雷达点云”作为创新。更准确的定位是：
 \begin{quote}
 \textbf{传统方法把雷达增强看成单帧几何稠密化；本项目把它定义为完整
 RAED 测量条件下的雷达状态生成问题。}模型不仅输出当前位置，还应输出
@@ -285,8 +288,8 @@ RAED 测量条件下的雷达状态生成问题。}模型不仅输出当前位�
 同时接受当前 Cube 的观测纠正。
 \end{quote}
 
-“使用历史帧”本身不能作为创新。Radar-Mamba、RadarMP、DoppDrive、
-RMap、CMFlow 等已经覆盖多帧增强、scene flow 或历史聚合。
+“使用历史帧”本身不能作为创新。RadarHD、Radar-Mamba、RadarMP、DoppDrive、
+RMap、CMFlow 等已经覆盖时序重建、特征增强、scene flow 或历史聚合。
 可防守的差异应同时满足以下四点：
 \begin{itemize}
   \item 当前完整 Cube 始终是主观测，而不是只从上一帧自回归；
@@ -1073,6 +1076,11 @@ distributional localization parameterization &
 Cube-level flow/reliability proposals &
 几何 parent 通过后，用作时序 proposal prior \\
 
+\href{https://arxiv.org/abs/2206.09273}{RadarHD} &
+当前雷达图像与 40 个历史帧（2 s）联合重建当前稠密点云 &
+历史持久性与当前观测融合 &
+直接否定“雷达增强此前只有单帧”的表述；作为 temporal reconstruction control \\
+
 \href{https://palm.seu.edu.cn/zhangml/files/MM\%2725.pdf}{Radar-Mamba} &
 当前与历史雷达特征的点增强 &
 高效时序状态编码 &
@@ -1088,6 +1096,17 @@ Doppler-driven 历史点径向传播与逐点 age gate &
 spatial-Doppler 或 BEV diffusion &
 多模态生成与 consistency distillation &
 代价高，不能优先修复已定位的 ranking 故障 \\
+
+\href{https://arxiv.org/abs/2512.14235}{4D-RaDiff} /
+\href{https://arxiv.org/abs/2512.17897}{RadarGen} &
+由 box/LiDAR 或多视角图像条件生成带雷达属性的点云 &
+属性生成、条件生成与雷达仿真评估协议 &
+否定“首次生成 Doppler 雷达点”的表述；与 Cube 测量闭环任务作明确区分 \\
+
+\href{https://arxiv.org/abs/2608.04130}{Radar4D-VLM} &
+十帧 4D radar sweep 的场景与运动推理 &
+时序 radar-only 状态编码与径向速度 token &
+说明时序雷达状态推理正在快速发展；不等同于 dense point-state forecasting \\
 
 \href{https://openaccess.thecvf.com/content/ICCV2023/papers/Huang_Neural_LiDAR_Fields_for_Novel_View_Synthesis_ICCV_2023_paper.pdf}{Neural LiDAR Fields} &
 beam divergence、ray drop 与第二回波截断 rendering &
@@ -1110,6 +1129,13 @@ sensor-aligned range 表征 &
 相关表示参考，不替代 VRH 的 variable multi-return capacity gate \\
 \bottomrule
 \end{longtable}
+
+本轮一级文献检索尚未发现一个完全匹配的任务：以历史生成状态和当前完整
+RAED Cube 为条件，自回归地产生下一时刻稠密
+$\{\xyz,q(v_r),\text{confidence}\}$ 状态，并同时约束 Cube 重投影和
+位移--径向速度闭环。但这只是截至本报告日期的限定检索结果，不是文献不存在的
+证明，也不能写成 ``first''。投稿前必须沿 RaLD、RadarMP、DoppDrive、SDDiff、
+RaUF、4D-RaDiff 和 Radar4D-VLM 的引用图再次复核。
 
 \section{当前收敛路线与执行门}
 
@@ -1482,6 +1508,7 @@ RaLD 审计 commit &
   \item \path{docs/work_plan_cube_to_dense_topconf.md}
   \item \path{docs/literature_rald_and_alternatives_2026-07-29.md}
   \item \path{artifacts/idea/literature_survey_2026-08-07.md}
+  \item \path{artifacts/idea/literature_positioning_2026-08-07.md}
   \item \path{docs/qlocal_distributional_risk_tiny_protocol.md}
   \item \path{docs/fixed_range_quota_feasibility_audit.md}
   \item \path{docs/qlocal_f0r_global_export_capacity_protocol.md}
@@ -1540,6 +1567,7 @@ RaLD 审计 commit &
   \item 本报告没有用旧 TruckScenes 指标验证当前 K-Radar 主线。
   \item 本报告没有引用旧 far-completeness censored evaluator 作为当前正式门。
   \item 本报告没有声称 RaLD、RadarMP 或 DoppDrive 没有覆盖相邻任务。
+  \item 本报告没有声称首次多帧雷达增强、首次生成 Doppler 雷达点或首次联合 spatial--Doppler 建模；未检索到完全匹配任务只作为限定检索结果。
   \item 本报告没有解锁 Doppler、cycle、temporal 或 test 评估。
 \end{itemize}
 

@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import ctypes
 from dataclasses import asdict, dataclass
+import errno
 import hashlib
 import json
 import os
@@ -18,7 +19,7 @@ import tempfile
 import threading
 import time
 import traceback
-from typing import Any, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 
 PROTOCOL = "stda_f0_sparse_target_demand_assignment"
@@ -56,10 +57,14 @@ MAX_CUDA_BYTES = 60 * 1024**3
 MAX_ALLOCATION_NS = 30_000_000_000
 MAX_FRAME_NS = 120_000_000_000
 MAX_TRANSACTION_NS = 7_200_000_000_000
+MONITOR_SAMPLE_INTERVAL_NS = 2_000_000
+MAX_MONITOR_SAMPLE_INTERVAL_NS = 50_000_000
 TRANSACTION_DOMAIN = b"stda_f0_transaction_v1\0"
 FAILURE_DOMAIN = b"stda_f0_failure_v1\0"
 BUNDLE_DOMAIN = b"stda_f0_bundle_v2\0"
 FORMAL_LAUNCH_TOKEN = "STDA-F0-ALL-76-A1BACD61"
+AT_FDCWD = -100
+RENAME_NOREPLACE = 1
 _EVENT_LOG_PATH: Path | None = None
 TERMINAL_STATUSES = (
     "stda_f0_implementation_invalid",
@@ -70,6 +75,83 @@ TERMINAL_STATUSES = (
     "stda_f0_packed_support_only",
     "stda_f0_demand_allocation_only",
     "stda_f0_assignment_utility_passed",
+)
+RESOURCE_FAILURE_CODES = frozenset(("child_timeout", "transaction_timeout"))
+
+SUPPORT_CHILD_SOURCE_PATHS = (
+    "code/scripts/stda_f0_support_phase.py",
+    "code/cube_dense/__init__.py",
+    "code/cube_dense/kradar.py",
+    "code/eval/stda_f0_candidate.py",
+    "code/eval/stda_f0_support.py",
+    "code/eval/stda_f0_verify.py",
+    "code/eval/rald_wce_stage0.py",
+    "code/models/rald_wce_field.py",
+    "code/models/rald_matched.py",
+    "code/models/cube_cycle.py",
+    "code/models/cube_doppler.py",
+    "code/models/cube_occupancy.py",
+    "code/models/point_to_cube.py",
+)
+SUPPORT_ORCHESTRATOR_SOURCE_PATHS = (
+    "docs/stda_f0_sparse_target_demand_assignment_protocol.md",
+    "artifacts/idea/stda_f0_freeze_record.json",
+    "artifacts/idea/stda_f0_prefreeze_audit_round6.md",
+    "code/eval/stda_f0_candidate.py",
+    "code/eval/stda_f0_support.py",
+    "code/eval/stda_f0_fit.py",
+    "code/eval/stda_f0_round.py",
+    "code/eval/stda_f0_structure.py",
+    "code/eval/stda_f0_verify.py",
+    "code/scripts/stda_f0_support_phase.py",
+    "code/scripts/stda_f0_oracle_phase.py",
+    "code/scripts/stda_f0_assignment_replay.py",
+    "code/scripts/stda_f0_verify_phase.py",
+    "code/scripts/stda_f0_metric_phase.py",
+    "code/scripts/stda_f0_bundle_verify.py",
+    "code/scripts/preflight_stda_f0_capacity.py",
+)
+SUPPORT_RUNTIME_SOURCE_PATHS = tuple(
+    dict.fromkeys((*SUPPORT_CHILD_SOURCE_PATHS, *SUPPORT_ORCHESTRATOR_SOURCE_PATHS))
+)
+ORACLE_CHILD_SOURCE_PATHS = (
+    "code/scripts/stda_f0_oracle_phase.py",
+    "code/scripts/stda_f0_assignment_replay.py",
+    "code/cube_dense/__init__.py",
+    "code/cube_dense/kradar.py",
+    "code/eval/stda_f0_support.py",
+    "code/eval/stda_f0_fit.py",
+    "code/eval/stda_f0_round.py",
+    "code/eval/stda_f0_structure.py",
+    "code/eval/vrh_f0_support.py",
+    "docs/stda_f0_sparse_target_demand_assignment_protocol.md",
+)
+ORACLE_RUNTIME_SOURCE_PATHS = tuple(
+    dict.fromkeys((*ORACLE_CHILD_SOURCE_PATHS, *SUPPORT_ORCHESTRATOR_SOURCE_PATHS))
+)
+VERIFY_CHILD_SOURCE_PATHS = (
+    "code/eval/stda_f0_verify.py",
+    "code/scripts/stda_f0_verify_phase.py",
+)
+MANDATORY_CPU_TEST_PATHS = (
+    "code/tests/test_stda_f0_support.py",
+    "code/tests/test_stda_f0_fit.py",
+    "code/tests/test_stda_f0_round.py",
+    "code/tests/test_stda_f0_structure.py",
+    "code/tests/test_stda_f0_verify.py",
+    "code/tests/test_stda_f0_oracle_phase.py",
+    "code/tests/test_stda_f0_verify_phase.py",
+    "code/tests/test_stda_f0_support_phase.py",
+    "code/tests/test_stda_f0_capacity.py",
+)
+MANDATORY_CANDIDATE_TEST_PATHS = ("code/tests/test_stda_f0_candidate.py",)
+MANDATORY_METRIC_TEST_PATHS = ("code/tests/test_stda_f0_metric_phase.py",)
+MANDATORY_TEST_PATHS = tuple(
+    dict.fromkeys(
+        MANDATORY_CPU_TEST_PATHS
+        + MANDATORY_CANDIDATE_TEST_PATHS
+        + MANDATORY_METRIC_TEST_PATHS
+    )
 )
 
 
@@ -140,8 +222,42 @@ def atomic_write_json(path: Path, document: Any) -> bytes:
     return payload
 
 
+def _rename_noreplace(staging: Path, destination: Path) -> None:
+    """Atomically rename within one directory and fail if destination exists."""
+
+    staging = Path(staging)
+    destination = Path(destination)
+    if staging.parent.resolve() != destination.parent.resolve():
+        raise OSError(errno.EXDEV, "renameat2 publication must stay in one directory")
+    libc = ctypes.CDLL(None, use_errno=True)
+    renameat2 = getattr(libc, "renameat2", None)
+    if renameat2 is None:
+        raise OSError(errno.ENOSYS, "libc renameat2 is unavailable")
+    renameat2.argtypes = (
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_uint,
+    )
+    renameat2.restype = ctypes.c_int
+    result = renameat2(
+        AT_FDCWD,
+        os.fsencode(staging),
+        AT_FDCWD,
+        os.fsencode(destination),
+        RENAME_NOREPLACE,
+    )
+    if result == 0:
+        return
+    error_number = ctypes.get_errno()
+    if error_number == errno.EEXIST:
+        raise FileExistsError(error_number, os.strerror(error_number), destination)
+    raise OSError(error_number, os.strerror(error_number), destination)
+
+
 def exclusive_write_bytes(path: Path, payload: bytes) -> None:
-    """Atomically publish new immutable bytes without replacing prior evidence."""
+    """Publish immutable bytes through one fsynced renameat2 no-replace commit."""
 
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary_name = tempfile.mkstemp(
@@ -149,24 +265,38 @@ def exclusive_write_bytes(path: Path, payload: bytes) -> None:
         dir=path.parent,
     )
     temporary = Path(temporary_name)
-    linked = False
+    committed = False
+    expected_sha256 = sha256_bytes(payload)
     try:
         with os.fdopen(descriptor, "wb", closefd=True) as handle:
             handle.write(payload)
             handle.flush()
             os.fsync(handle.fileno())
-        os.link(temporary, path)
-        linked = True
-        temporary.unlink()
         fsync_directory(path.parent)
-        if path.read_bytes() != payload:
+        replay = temporary.read_bytes()
+        if len(replay) != len(payload) or sha256_bytes(replay) != expected_sha256:
+            raise IOError(f"exclusive staging replay changed bytes: {path}")
+        try:
+            os.lstat(path)
+        except FileNotFoundError:
+            pass
+        else:
+            raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), path)
+        _rename_noreplace(temporary, path)
+        committed = True
+        fsync_directory(path.parent)
+        published = path.read_bytes()
+        if (
+            len(published) != len(payload)
+            or sha256_bytes(published) != expected_sha256
+        ):
             raise IOError(f"exclusive write replay changed bytes: {path}")
     except BaseException:
         temporary.unlink(missing_ok=True)
-        if linked:
-            path.unlink(missing_ok=True)
-            fsync_directory(path.parent)
         raise
+    finally:
+        if not committed:
+            temporary.unlink(missing_ok=True)
 
 
 def canonical_json_file(path: Path) -> dict[str, Any]:
@@ -357,6 +487,23 @@ def parse_gpu_inventory() -> dict[int, dict[str, Any]]:
     return rows
 
 
+def cuda_driver_version(physical_index: int) -> str:
+    output = subprocess.check_output(
+        (
+            "nvidia-smi",
+            f"--id={physical_index}",
+            "--query-gpu=driver_version",
+            "--format=csv,noheader",
+        ),
+        text=True,
+        stderr=subprocess.STDOUT,
+    ).strip()
+    rows = [line.strip() for line in output.splitlines() if line.strip()]
+    if len(rows) != 1:
+        raise StageFailure("preflight", "cuda_driver_parse", output)
+    return rows[0]
+
+
 def require_allowed_h200(physical_index: int) -> dict[str, Any]:
     if physical_index not in (0, 2):
         raise StageFailure("preflight", "gpu_index_forbidden", str(physical_index))
@@ -368,7 +515,11 @@ def require_allowed_h200(physical_index: int) -> dict[str, Any]:
         raise StageFailure("preflight", "gpu_not_h200", str(selected))
     if physical_index == 1 or "RTX" in selected["name"].upper():
         raise StageFailure("preflight", "rtx_forbidden", str(selected))
-    return {**selected, "inventory": inventory}
+    return {
+        **selected,
+        "driver_version": cuda_driver_version(physical_index),
+        "inventory": inventory,
+    }
 
 
 def child_environment(
@@ -408,6 +559,52 @@ def child_environment(
         if os.environ.get(key):
             environment[key] = os.environ[key]
     return environment
+
+
+def interpreter_isolation_report() -> dict[str, Any]:
+    checks = {
+        "isolated_flag": bool(sys.flags.isolated),
+        "no_site_flag": bool(sys.flags.no_site),
+    }
+    return {
+        "python_executable": str(Path(sys.executable).resolve()),
+        "sys_flags_isolated": int(sys.flags.isolated),
+        "sys_flags_no_site": int(sys.flags.no_site),
+        "checks": checks,
+        "passed": all(checks.values()),
+    }
+
+
+def require_orchestrator_isolation() -> dict[str, Any]:
+    report = interpreter_isolation_report()
+    if report["passed"] is not True:
+        raise StageFailure(
+            "preflight",
+            "orchestrator_not_isolated_no_site",
+            str(report["checks"]),
+        )
+    return report
+
+
+def _explicit_site_packages() -> Path:
+    path = (
+        Path(sys.prefix)
+        / "lib"
+        / f"python{sys.version_info.major}.{sys.version_info.minor}"
+        / "site-packages"
+    ).resolve(strict=True)
+    if not path.is_dir():
+        raise StageFailure("preflight", "site_packages_absent", str(path))
+    return path
+
+
+def _isolated_python_bootstrap(*, repo: Path, statement: str) -> str:
+    search_paths = [str(_explicit_site_packages()), str((repo / "code").resolve())]
+    return (
+        "import sys;"
+        f"sys.path[:0]={search_paths!r};"
+        f"{statement}"
+    )
 
 
 def process_tree(root_pid: int) -> set[int]:
@@ -480,19 +677,16 @@ class NvmlBinding:
             ),
             "nvmlDeviceGetHandleByUUID",
         )
-        self.functions = []
-        for name in (
+        self.function = getattr(
+            self.library,
             "nvmlDeviceGetComputeRunningProcesses",
-            "nvmlDeviceGetGraphicsRunningProcesses",
-        ):
-            function = getattr(self.library, name)
-            function.argtypes = (
-                ctypes.c_void_p,
-                ctypes.POINTER(ctypes.c_uint),
-                ctypes.POINTER(self.ProcessInfo),
-            )
-            function.restype = ctypes.c_int
-            self.functions.append(function)
+        )
+        self.function.argtypes = (
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_uint),
+            ctypes.POINTER(self.ProcessInfo),
+        )
+        self.function.restype = ctypes.c_int
 
     @classmethod
     def _require(cls, result: int, operation: str) -> None:
@@ -501,28 +695,21 @@ class NvmlBinding:
 
     def process_memory(self) -> dict[int, int]:
         observed: dict[int, int] = {}
-        for function in self.functions:
-            count = ctypes.c_uint(0)
-            result = function(self.handle, ctypes.byref(count), None)
-            if result == self.NVML_SUCCESS and count.value == 0:
+        capacity = 64
+        while True:
+            array = (self.ProcessInfo * capacity)()
+            count = ctypes.c_uint(capacity)
+            result = self.function(self.handle, ctypes.byref(count), array)
+            if result == self.NVML_ERROR_INSUFFICIENT_SIZE:
+                capacity = max(capacity * 2, int(count.value))
                 continue
-            if result != self.NVML_ERROR_INSUFFICIENT_SIZE:
-                self._require(result, function.__name__)
-            capacity = max(1, int(count.value))
-            while True:
-                array = (self.ProcessInfo * capacity)()
-                count = ctypes.c_uint(capacity)
-                result = function(self.handle, ctypes.byref(count), array)
-                if result == self.NVML_ERROR_INSUFFICIENT_SIZE:
-                    capacity = max(capacity * 2, int(count.value))
-                    continue
-                self._require(result, function.__name__)
-                for index in range(int(count.value)):
-                    pid = int(array[index].pid)
-                    used = int(array[index].usedGpuMemory)
-                    if used != self.NVML_VALUE_NOT_AVAILABLE:
-                        observed[pid] = max(observed.get(pid, 0), used)
-                break
+            self._require(result, self.function.__name__)
+            for index in range(int(count.value)):
+                pid = int(array[index].pid)
+                used = int(array[index].usedGpuMemory)
+                if used != self.NVML_VALUE_NOT_AVAILABLE:
+                    observed[pid] = max(observed.get(pid, 0), used)
+            break
         return observed
 
     def close(self) -> None:
@@ -537,15 +724,29 @@ class ProcessTreeMonitor:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._active: tuple[str, int, bool] | None = None
+        self._owned_child_pids: set[int] = set()
         self._phase_peaks: dict[str, PhasePeak] = {}
         self._errors: list[str] = []
         self.sample_count = 0
+        self.periodic_sample_count = 0
         self.peak_rss_bytes = 0
         self.peak_swap_bytes = 0
         self.peak_nvml_bytes = 0
         self.maximum_process_count = 0
         self.maximum_interval_ns = 0
+        self.maximum_sample_duration_ns = 0
+        self.maximum_process_tree_sample_ns = 0
+        self.maximum_nvml_query_ns = 0
         self.cuda_overlap_detected = False
+        self.maximum_cuda_pid_count = 0
+        self.multiple_cuda_pid_sample_count = 0
+        self.unexpected_tree_cuda_pid_sample_count = 0
+        self.foreign_cuda_pid_sample_count = 0
+        self.observed_cuda_pids: dict[int, int] = {}
+        self.foreign_cuda_pids: dict[int, int] = {}
+        self.unexpected_tree_cuda_pids: dict[int, int] = {}
+        self._started_ns: int | None = None
+        self._last_periodic_sample_ns: int | None = None
         try:
             self._nvml = NvmlBinding(gpu_uuid)
         except Exception as error:
@@ -554,6 +755,11 @@ class ProcessTreeMonitor:
     def start(self) -> None:
         if self._thread is not None:
             raise RuntimeError("process monitor already started")
+        try:
+            self._nvml.process_memory()
+        except Exception as error:
+            raise StageFailure("preflight", "nvml_warmup_failed", repr(error)) from error
+        self._started_ns = time.perf_counter_ns()
         self._thread = threading.Thread(target=self._run, name="stda-resource-monitor", daemon=True)
         self._thread.start()
 
@@ -564,6 +770,7 @@ class ProcessTreeMonitor:
                     self.cuda_overlap_detected = True
                 raise RuntimeError(f"overlapping STDA phases: {self._active} / {name}")
             self._active = (name, child_pid, cuda_visible)
+            self._owned_child_pids.add(child_pid)
             self._phase_peaks.setdefault(name, PhasePeak())
 
     def leave_phase(self, name: str, child_pid: int) -> None:
@@ -576,23 +783,79 @@ class ProcessTreeMonitor:
                 raise RuntimeError(f"STDA phase registry mismatch: {self._active}")
             self._active = None
 
-    def _nvml_bytes(self, pids: set[int]) -> int:
-        memory = self._nvml.process_memory()
-        return sum(used for pid, used in memory.items() if pid in pids)
+    @staticmethod
+    def _record_cuda_pids(
+        destination: dict[int, int],
+        pids: set[int],
+        memory: Mapping[int, int],
+    ) -> None:
+        for pid in pids:
+            destination[pid] = max(destination.get(pid, 0), int(memory[pid]))
 
-    def _sample(self) -> None:
+    def _sample(self, *, periodic: bool) -> None:
+        sample_started_ns = time.perf_counter_ns()
         tree = process_tree(self.root_pid)
         rss_swap = [process_memory(pid) for pid in tree]
         rss = sum(value[0] for value in rss_swap)
         swap = sum(value[1] for value in rss_swap)
-        nvml = self._nvml_bytes(tree)
+        tree_completed_ns = time.perf_counter_ns()
+        nvml_processes = self._nvml.process_memory()
+        nvml_completed_ns = time.perf_counter_ns()
+        all_cuda_pids = set(nvml_processes)
+        tree_cuda_pids = all_cuda_pids & tree
+        foreign_cuda_pids = all_cuda_pids - tree
+        nvml = sum(int(nvml_processes[pid]) for pid in tree_cuda_pids)
+        with self._lock:
+            active = self._active
+        expected_cuda_pids: set[int] = set()
+        if active is not None and active[2]:
+            expected_cuda_pids = process_tree(active[1])
+        unexpected_tree_cuda_pids = tree_cuda_pids - expected_cuda_pids
         with self._lock:
             self.sample_count += 1
+            if periodic:
+                self.periodic_sample_count += 1
             self.peak_rss_bytes = max(self.peak_rss_bytes, rss)
             self.peak_swap_bytes = max(self.peak_swap_bytes, swap)
             self.peak_nvml_bytes = max(self.peak_nvml_bytes, nvml)
             self.maximum_process_count = max(self.maximum_process_count, len(tree))
-            active = self._active
+            self.maximum_sample_duration_ns = max(
+                self.maximum_sample_duration_ns,
+                nvml_completed_ns - sample_started_ns,
+            )
+            self.maximum_process_tree_sample_ns = max(
+                self.maximum_process_tree_sample_ns,
+                tree_completed_ns - sample_started_ns,
+            )
+            self.maximum_nvml_query_ns = max(
+                self.maximum_nvml_query_ns,
+                nvml_completed_ns - tree_completed_ns,
+            )
+            self.maximum_cuda_pid_count = max(
+                self.maximum_cuda_pid_count,
+                len(all_cuda_pids),
+            )
+            if len(all_cuda_pids) > 1:
+                self.multiple_cuda_pid_sample_count += 1
+            if foreign_cuda_pids:
+                self.foreign_cuda_pid_sample_count += 1
+            if unexpected_tree_cuda_pids:
+                self.unexpected_tree_cuda_pid_sample_count += 1
+            self._record_cuda_pids(
+                self.observed_cuda_pids,
+                all_cuda_pids,
+                nvml_processes,
+            )
+            self._record_cuda_pids(
+                self.foreign_cuda_pids,
+                foreign_cuda_pids,
+                nvml_processes,
+            )
+            self._record_cuda_pids(
+                self.unexpected_tree_cuda_pids,
+                unexpected_tree_cuda_pids,
+                nvml_processes,
+            )
             if active is not None:
                 name, child_pid, _ = active
                 peak = self._phase_peaks[name]
@@ -604,40 +867,85 @@ class ProcessTreeMonitor:
                 child_tree = process_tree(child_pid)
                 peak.child_descendant_seen |= len(child_tree) > 1
 
+    def _sample_guarded(self, *, periodic: bool) -> None:
+        try:
+            self._sample(periodic=periodic)
+        except Exception:
+            with self._lock:
+                self._errors.append(traceback.format_exc())
+
     def _run(self) -> None:
         previous = time.perf_counter_ns()
+        self._last_periodic_sample_ns = previous
         deadline = time.monotonic()
         while not self._stop.is_set():
-            try:
-                self._sample()
-            except Exception:
-                with self._lock:
-                    self._errors.append(traceback.format_exc())
+            self._sample_guarded(periodic=True)
             current = time.perf_counter_ns()
             with self._lock:
                 self.maximum_interval_ns = max(self.maximum_interval_ns, current - previous)
+                self._last_periodic_sample_ns = current
             previous = current
-            deadline += 0.05
+            deadline += MONITOR_SAMPLE_INTERVAL_NS / 1_000_000_000
             self._stop.wait(max(0.0, deadline - time.monotonic()))
 
     def stop(self) -> dict[str, Any]:
         self._stop.set()
         if self._thread is not None:
             self._thread.join(timeout=5.0)
+            if self._thread.is_alive():
+                self._errors.append("resource monitor thread did not stop")
+        stopped_ns = time.perf_counter_ns()
+        if self._last_periodic_sample_ns is not None:
+            self.maximum_interval_ns = max(
+                self.maximum_interval_ns,
+                stopped_ns - self._last_periodic_sample_ns,
+            )
         try:
             self._nvml.close()
         except Exception:
             self._errors.append(traceback.format_exc())
         with self._lock:
+            duration_ns = (
+                0 if self._started_ns is None else stopped_ns - self._started_ns
+            )
+            minimum_periodic_samples = max(
+                1,
+                duration_ns // MAX_MONITOR_SAMPLE_INTERVAL_NS,
+            )
             return {
-                "sample_interval_target_ns": 50_000_000,
+                "sample_interval_target_ns": MONITOR_SAMPLE_INTERVAL_NS,
+                "maximum_allowed_sample_interval_ns": MAX_MONITOR_SAMPLE_INTERVAL_NS,
+                "monitor_duration_ns": duration_ns,
                 "sample_count": self.sample_count,
+                "periodic_sample_count": self.periodic_sample_count,
+                "minimum_periodic_sample_count": minimum_periodic_samples,
                 "maximum_interval_ns": self.maximum_interval_ns,
+                "maximum_sample_duration_ns": self.maximum_sample_duration_ns,
+                "maximum_process_tree_sample_ns": (
+                    self.maximum_process_tree_sample_ns
+                ),
+                "maximum_nvml_query_ns": self.maximum_nvml_query_ns,
                 "peak_process_tree_rss_bytes": self.peak_rss_bytes,
                 "peak_process_tree_swap_bytes": self.peak_swap_bytes,
                 "peak_summed_process_tree_nvml_bytes": self.peak_nvml_bytes,
                 "maximum_process_count": self.maximum_process_count,
                 "cuda_overlap_detected": self.cuda_overlap_detected,
+                "maximum_cuda_pid_count": self.maximum_cuda_pid_count,
+                "multiple_cuda_pid_sample_count": self.multiple_cuda_pid_sample_count,
+                "unexpected_tree_cuda_pid_sample_count": (
+                    self.unexpected_tree_cuda_pid_sample_count
+                ),
+                "foreign_cuda_pid_sample_count": self.foreign_cuda_pid_sample_count,
+                "observed_cuda_pids": {
+                    str(pid): used for pid, used in sorted(self.observed_cuda_pids.items())
+                },
+                "foreign_cuda_pids": {
+                    str(pid): used for pid, used in sorted(self.foreign_cuda_pids.items())
+                },
+                "unexpected_tree_cuda_pids": {
+                    str(pid): used
+                    for pid, used in sorted(self.unexpected_tree_cuda_pids.items())
+                },
                 "phase_peaks": {name: asdict(value) for name, value in self._phase_peaks.items()},
                 "monitor_errors": list(self._errors),
             }
@@ -797,7 +1105,7 @@ def run_local_bundle_verifier(
     environment: Mapping[str, str],
 ) -> dict[str, Any]:
     output = subprocess.check_output(
-        (sys.executable, "-B", str(verifier), str(root)),
+        (sys.executable, "-I", "-S", "-B", str(verifier), str(root)),
         env=dict(environment),
         text=True,
         stderr=subprocess.STDOUT,
@@ -849,6 +1157,9 @@ def run_l40s_bundle_verifier(
             "LANG=C",
             "TZ=UTC",
             "python3",
+            "-I",
+            "-S",
+            "-B",
             str(remote_verifier),
             str(remote_root),
         ),
@@ -864,7 +1175,7 @@ def run_l40s_bundle_verifier(
 def rename_bundle(staging: Path, destination: Path) -> None:
     if destination.exists():
         raise StageFailure("bundle_publish", "final_bundle_exists", str(destination))
-    os.replace(staging, destination)
+    _rename_noreplace(staging, destination)
     fsync_directory(destination.parent)
 
 
@@ -1171,6 +1482,55 @@ def determine_scientific_status(frames: Sequence[Mapping[str, Any]]) -> str:
     raise StageFailure("status", "terminal_partition", "valid gates match no status")
 
 
+def _monitor_implementation_checks(
+    monitor_report: Mapping[str, Any],
+) -> dict[str, bool]:
+    phase_peaks = monitor_report.get("phase_peaks", {})
+    if not isinstance(phase_peaks, Mapping):
+        phase_peaks = {}
+    support_phase = phase_peaks.get("support", {})
+    if not isinstance(support_phase, Mapping):
+        support_phase = {}
+    return {
+        "monitor_clean": not monitor_report.get("monitor_errors"),
+        "sampling_target_matches_reported_constant": int(
+            monitor_report.get("sample_interval_target_ns", -1)
+        )
+        == MONITOR_SAMPLE_INTERVAL_NS,
+        "sampling_interval_le_50ms": int(
+            monitor_report.get(
+                "maximum_interval_ns",
+                MAX_MONITOR_SAMPLE_INTERVAL_NS + 1,
+            )
+        )
+        <= MAX_MONITOR_SAMPLE_INTERVAL_NS,
+        "sampling_periodic_coverage": int(
+            monitor_report.get("periodic_sample_count", -1)
+        )
+        >= int(monitor_report.get("minimum_periodic_sample_count", 1)),
+        "all_registered_phases_sampled": bool(phase_peaks)
+        and all(int(phase.get("samples", 0)) > 0 for phase in phase_peaks.values()),
+        "no_cuda_overlap": monitor_report.get("cuda_overlap_detected") is False,
+        "no_foreign_cuda_pid": (
+            not monitor_report.get("foreign_cuda_pids")
+            and int(monitor_report.get("foreign_cuda_pid_sample_count", -1)) == 0
+        ),
+        "single_cuda_pid": (
+            int(monitor_report.get("maximum_cuda_pid_count", -1)) <= 1
+            and int(monitor_report.get("multiple_cuda_pid_sample_count", -1)) == 0
+        ),
+        "cuda_only_in_registered_cuda_child": (
+            not monitor_report.get("unexpected_tree_cuda_pids")
+            and int(
+                monitor_report.get("unexpected_tree_cuda_pid_sample_count", -1)
+            )
+            == 0
+        ),
+        "support_has_no_descendants": support_phase.get("child_descendant_seen")
+        is False,
+    }
+
+
 def summarize_resources(
     *,
     monitor_report: Mapping[str, Any],
@@ -1192,31 +1552,61 @@ def summarize_resources(
     child_reserved = int(
         support_summary.get("maximum_torch_peak_reserved_bytes", 0)
     )
+    verifier_timing_consistent = True
+    verifier_timing_within_frame = True
+    oracle_frame_boundary_consistent = True
     for support, frame in zip(support_frames, frames, strict=True):
         support_timing = support.get("timing", {})
+        frame_resources = frame["resources"]
+        verifier_ns = int(frame_resources["independent_verifier_wall_ns"])
+        verifier_serialization_ns = int(
+            frame_resources["independent_verifier_serialization_ns"]
+        )
+        oracle_report_allocation_ns = int(
+            frame_resources["oracle_report_allocation_ns"]
+        )
+        joined_oracle_allocation_ns = (
+            oracle_report_allocation_ns + verifier_ns + verifier_serialization_ns
+        )
+        verifier_timing_consistent &= (
+            int(frame_resources["oracle_allocation_ns"])
+            == joined_oracle_allocation_ns
+        )
+        verifier_timing_within_frame &= (
+            int(frame_resources["oracle_frame_ns"])
+            >= verifier_ns + verifier_serialization_ns
+        )
+        oracle_frame_boundary_consistent &= (
+            frame_resources.get("oracle_frame_timing_lower_bound_valid") is True
+            and int(frame_resources["oracle_parent_pre_target_ns_excluded"]) >= 0
+            and int(frame_resources["oracle_parent_child_wall_ns_reported"])
+            >= int(frame_resources["oracle_child_pre_metric_ns"])
+            and int(frame_resources["oracle_frame_ns"])
+            >= int(frame_resources["oracle_frame_measured_lower_bound_ns"])
+        )
         allocation_ns.append(
             int(support_timing["support_allocation_ns"])
-            + int(frame["resources"]["oracle_allocation_ns"])
+            + joined_oracle_allocation_ns
         )
         frame_total_ns.append(
             int(support_timing["support_frame_ns"])
-            + int(frame["resources"]["oracle_frame_ns"])
+            + int(frame_resources["oracle_frame_ns"])
         )
         child_allocated = max(
             child_allocated,
-            int(frame["resources"].get("torch_peak_allocated_bytes", 0)),
+            int(frame_resources.get("torch_peak_allocated_bytes", 0)),
         )
         child_reserved = max(
             child_reserved,
-            int(frame["resources"].get("torch_peak_reserved_bytes", 0)),
+            int(frame_resources.get("torch_peak_reserved_bytes", 0)),
         )
     nvml = int(monitor_report["peak_summed_process_tree_nvml_bytes"])
     cuda_peak = max(child_allocated, child_reserved, nvml)
-    support_phase = monitor_report.get("phase_peaks", {}).get("support", {})
     checks = {
-        "monitor_clean": not monitor_report.get("monitor_errors"),
-        "no_cuda_overlap": monitor_report.get("cuda_overlap_detected") is False,
-        "support_has_no_descendants": support_phase.get("child_descendant_seen") is False,
+        **_monitor_implementation_checks(monitor_report),
+        "verifier_timing_consistent": verifier_timing_consistent,
+        "verifier_timing_within_frame": verifier_timing_within_frame,
+        "oracle_frame_boundary_consistent": oracle_frame_boundary_consistent,
         "host_rss_le_60gib": int(monitor_report["peak_process_tree_rss_bytes"]) <= MAX_HOST_BYTES,
         "swap_zero": int(monitor_report["peak_process_tree_swap_bytes"]) == 0,
         "cuda_le_60gib": cuda_peak <= MAX_CUDA_BYTES,
@@ -1240,7 +1630,21 @@ def summarize_resources(
         "checks": checks,
         "implementation_valid": all(
             checks[key]
-            for key in ("monitor_clean", "no_cuda_overlap", "support_has_no_descendants")
+            for key in (
+                "monitor_clean",
+                "sampling_target_matches_reported_constant",
+                "sampling_interval_le_50ms",
+                "sampling_periodic_coverage",
+                "all_registered_phases_sampled",
+                "no_cuda_overlap",
+                "no_foreign_cuda_pid",
+                "single_cuda_pid",
+                "cuda_only_in_registered_cuda_child",
+                "support_has_no_descendants",
+                "verifier_timing_consistent",
+                "verifier_timing_within_frame",
+                "oracle_frame_boundary_consistent",
+            )
         ),
         "resource_valid": all(
             checks[key]
@@ -1257,16 +1661,19 @@ def summarize_resources(
 
 
 def environment_report(args: argparse.Namespace, gpu: Mapping[str, Any]) -> dict[str, Any]:
+    probe_statement = (
+        "import json,numpy,scipy,torch;"
+        "print(json.dumps({'numpy':numpy.__version__,'scipy':scipy.__version__,"
+        "'torch':torch.__version__,'cuda':torch.version.cuda},sort_keys=True))"
+    )
     probe = subprocess.check_output(
         (
             sys.executable,
+            "-I",
+            "-S",
             "-B",
             "-c",
-            (
-                "import json,numpy,scipy,torch;"
-                "print(json.dumps({'numpy':numpy.__version__,'scipy':scipy.__version__,"
-                "'torch':torch.__version__,'cuda':torch.version.cuda},sort_keys=True))"
-            ),
+            _isolated_python_bootstrap(repo=args.repo, statement=probe_statement),
         ),
         env=child_environment(repo=args.repo, physical_gpu=None, phase="environment_probe"),
         text=True,
@@ -1287,6 +1694,8 @@ def environment_report(args: argparse.Namespace, gpu: Mapping[str, Any]) -> dict
         "cpu_model": cpu_model,
         "logical_core_count": os.cpu_count(),
         "gpu": dict(gpu),
+        "cuda_driver_version": str(gpu.get("driver_version", "")),
+        "orchestrator_interpreter": interpreter_isolation_report(),
         "solver_environment": {
             "PYTHONHASHSEED": "0",
             "LANG": "C",
@@ -1306,6 +1715,9 @@ def environment_report(args: argparse.Namespace, gpu: Mapping[str, Any]) -> dict
         "numpy_2_2_6": versions["numpy"] == "2.2.6",
         "scipy_1_15_3": versions["scipy"] == "1.15.3",
         "torch_2_12_1_cu130": versions["torch"] == "2.12.1+cu130" and versions["cuda"] == "13.0",
+        "cuda_driver_recorded": bool(report["cuda_driver_version"]),
+        "orchestrator_isolated_no_site": report["orchestrator_interpreter"]["passed"]
+        is True,
     }
     report["checks"] = checks
     report["passed"] = all(checks.values())
@@ -1343,6 +1755,92 @@ def _canonical_record(path: Path, *, schema: str | None = None) -> dict[str, Any
             f"{path}: expected {schema}, got {document.get('schema')}",
         )
     return document
+
+
+def _load_verifier_parent_timing_evidence(
+    *,
+    verification_path: Path,
+    log_path: Path,
+    verification: Mapping[str, Any],
+    parent_started_ns: int,
+    parent_completed_ns: int,
+) -> dict[str, Any]:
+    authority = verification.get("timing_authority")
+    if not isinstance(authority, Mapping):
+        raise StageFailure(
+            "implementation",
+            "verifier_timing_authority_absent",
+            str(verification_path),
+        )
+    module_started_ns = authority.get("module_wall_started_perf_counter_ns")
+    summary = _canonical_record(
+        log_path,
+        schema="stda_f0_independent_frame_verification_v1",
+    )
+    internal_wall_ns = summary.get("internal_full_wall_through_output_rehash_ns")
+    output_payload = verification_path.read_bytes()
+    expected_boundary = (
+        "verifier_module_start_through_output_fsync_and_independent_rehash"
+    )
+    integer_fields = (
+        type(module_started_ns) is int
+        and type(internal_wall_ns) is int
+        and int(internal_wall_ns) > 0
+    )
+    internal_ended_ns = (
+        int(module_started_ns) + int(internal_wall_ns) if integer_fields else -1
+    )
+    checks = {
+        "report_parent_wall_authoritative": authority.get(
+            "parent_process_wall_authoritative"
+        )
+        is True,
+        "report_internal_wall_emitted_after_rehash": authority.get(
+            "internal_process_wall_emitted_after_output_rehash"
+        )
+        is True,
+        "summary_parent_wall_authoritative": summary.get(
+            "parent_process_wall_authoritative"
+        )
+        is True,
+        "summary_internal_boundary": summary.get("internal_full_wall_boundary")
+        == expected_boundary,
+        "summary_passed": summary.get("passed") is True
+        and verification.get("passed") is True,
+        "summary_output_path": summary.get("output")
+        == str(verification_path.absolute()),
+        "summary_output_size": type(summary.get("output_size_bytes")) is int
+        and int(summary["output_size_bytes"]) == len(output_payload),
+        "summary_output_sha256": summary.get("output_sha256")
+        == sha256_bytes(output_payload),
+        "integer_timing_fields": integer_fields,
+        "child_module_started_inside_parent_wall": integer_fields
+        and parent_started_ns <= int(module_started_ns) <= parent_completed_ns,
+        "child_rehash_ended_inside_parent_wall": integer_fields
+        and int(module_started_ns) <= internal_ended_ns <= parent_completed_ns,
+    }
+    if not all(checks.values()):
+        raise StageFailure(
+            "implementation",
+            "verifier_timing_authority_invalid",
+            str(checks),
+        )
+    return {
+        "schema": "stda_f0_verifier_parent_timing_evidence_v1",
+        "parent_process_wall_authoritative": True,
+        "parent_started_perf_counter_ns": int(parent_started_ns),
+        "parent_completed_perf_counter_ns": int(parent_completed_ns),
+        "parent_wall_ns": int(parent_completed_ns - parent_started_ns),
+        "child_module_started_perf_counter_ns": int(module_started_ns),
+        "child_internal_full_wall_through_output_rehash_ns": int(
+            internal_wall_ns
+        ),
+        "child_output_rehash_completed_perf_counter_ns": internal_ended_ns,
+        "completion_receipt_sha256": sha256_file(log_path),
+        "verification_output_sha256": sha256_bytes(output_payload),
+        "checks": checks,
+        "passed": True,
+    }
 
 
 def _copy_regular_file(source: Path, destination: Path) -> dict[str, Any]:
@@ -1450,27 +1948,237 @@ def _foreign_gpu_processes(physical_index: int) -> list[dict[str, Any]]:
     return rows
 
 
-def _source_binding(repo: Path) -> dict[str, str]:
-    relative_paths = (
+def _require_gpu_idle_snapshot(physical_index: int, *, label: str) -> dict[str, Any]:
+    processes = _foreign_gpu_processes(physical_index)
+    snapshot = {
+        "label": label,
+        "observed_time_ns": time.time_ns(),
+        "physical_gpu": physical_index,
+        "foreign_processes": processes,
+        "passed": not processes,
+    }
+    if processes:
+        raise StageFailure("preflight", "gpu2_not_idle", str(snapshot))
+    return snapshot
+
+
+def _run_mandatory_pytest_group(
+    *,
+    repo: Path,
+    name: str,
+    test_paths: Sequence[str],
+    gpu_uuid: str | None,
+    source_hashes: Mapping[str, Any],
+    extra_environment: Mapping[str, str] | None = None,
+    timeout_seconds: float,
+) -> dict[str, Any]:
+    expected_test_hashes: dict[str, str] = {}
+    for relative in test_paths:
+        path = (repo / relative).resolve(strict=True)
+        if not path.is_file() or not path.is_relative_to(repo.resolve() / "code/tests"):
+            raise StageFailure("preflight", "mandatory_test_path", str(path))
+        expected = source_hashes.get(relative)
+        observed = sha256_file(path)
+        if not isinstance(expected, str) or observed != expected:
+            raise StageFailure(
+                "preflight",
+                "mandatory_test_source_hash",
+                f"{relative}: expected={expected}, observed={observed}",
+            )
+        expected_test_hashes[relative] = observed
+
+    environment = child_environment(
+        repo=repo,
+        physical_gpu=gpu_uuid,
+        phase=f"preflight_pytest_{name}",
+    )
+    environment.update(
+        {
+            "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
+            "STDA_F0_SYNTHETIC_ONLY": "1",
+        }
+    )
+    if extra_environment:
+        environment.update({str(key): str(value) for key, value in extra_environment.items()})
+
+    with tempfile.TemporaryDirectory(prefix=f"stda_f0_pytest_{name}_") as temporary:
+        base_temp = Path(temporary) / "pytest"
+        pytest_arguments = (
+            "-q",
+            "-p",
+            "no:cacheprovider",
+            "--basetemp",
+            str(base_temp),
+            *(str(repo / relative) for relative in test_paths),
+        )
+        statement = "import pytest;raise SystemExit(pytest.main(sys.argv[1:]))"
+        command = (
+            sys.executable,
+            "-I",
+            "-S",
+            "-B",
+            "-c",
+            _isolated_python_bootstrap(repo=repo, statement=statement),
+            *pytest_arguments,
+        )
+        started_ns = time.perf_counter_ns()
+        try:
+            completed = subprocess.run(
+                command,
+                cwd=repo,
+                env=environment,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                timeout=timeout_seconds,
+                check=False,
+            )
+        except subprocess.TimeoutExpired as error:
+            output = error.stdout or b""
+            raise StageFailure(
+                "preflight",
+                "mandatory_tests_timeout",
+                f"{name}: output_sha256={sha256_bytes(output)}",
+            ) from error
+        elapsed_ns = time.perf_counter_ns() - started_ns
+    output = bytes(completed.stdout)
+    report = {
+        "name": name,
+        "command": list(command),
+        "command_sha256": sha256_bytes(canonical_json_bytes(list(command))),
+        "test_paths": list(test_paths),
+        "test_source_sha256": expected_test_hashes,
+        "return_code": int(completed.returncode),
+        "wall_ns": elapsed_ns,
+        "stdout_bytes": len(output),
+        "stdout_sha256": sha256_bytes(output),
+        "stdout_tail": output[-4096:].decode("utf-8", errors="replace"),
+        "cuda_visible_devices": environment["CUDA_VISIBLE_DEVICES"],
+        "python_isolated_no_site": command[1:3] == ("-I", "-S"),
+        "pytest_cache_disabled": "no:cacheprovider" in command,
+        "synthetic_only": environment["STDA_F0_SYNTHETIC_ONLY"] == "1",
+        "real_target_or_cache_arguments": [],
+        "passed": completed.returncode == 0,
+    }
+    if report["passed"] is not True:
+        raise StageFailure(
+            "preflight",
+            "mandatory_tests_failed",
+            f"{name}: {report['stdout_tail']}",
+        )
+    return report
+
+
+def run_mandatory_synthetic_tests(
+    *,
+    repo: Path,
+    physical_gpu: int,
+    gpu_uuid: str,
+    gpu_pci: str,
+    gpu_name: str,
+    source_hashes: Mapping[str, Any],
+) -> dict[str, Any]:
+    idle_snapshots: list[dict[str, Any]] = []
+    groups: list[dict[str, Any]] = []
+    specifications = (
+        (
+            "cpu",
+            MANDATORY_CPU_TEST_PATHS,
+            None,
+            {},
+            900.0,
+        ),
+        (
+            "candidate_700k_cuda",
+            MANDATORY_CANDIDATE_TEST_PATHS,
+            gpu_uuid,
+            {},
+            900.0,
+        ),
+        (
+            "metric_explicit_cuda_smoke",
+            MANDATORY_METRIC_TEST_PATHS,
+            gpu_uuid,
+            {
+                "STDA_F0_CUDA_SMOKE": "1",
+                "STDA_EXPECTED_GPU_UUID": gpu_uuid,
+                "STDA_EXPECTED_GPU_PCI": gpu_pci,
+                "STDA_EXPECTED_GPU_NAME": gpu_name,
+            },
+            600.0,
+        ),
+    )
+    for name, paths, visible_uuid, extra, timeout_seconds in specifications:
+        idle_snapshots.append(
+            _require_gpu_idle_snapshot(physical_gpu, label=f"before_{name}")
+        )
+        groups.append(
+            _run_mandatory_pytest_group(
+                repo=repo,
+                name=name,
+                test_paths=paths,
+                gpu_uuid=visible_uuid,
+                source_hashes=source_hashes,
+                extra_environment=extra,
+                timeout_seconds=timeout_seconds,
+            )
+        )
+        idle_snapshots.append(
+            _require_gpu_idle_snapshot(physical_gpu, label=f"after_{name}")
+        )
+    document = {
+        "schema": "stda_f0_mandatory_synthetic_tests_v1",
+        "protocol_sha256": PROTOCOL_SHA256,
+        "groups": groups,
+        "gpu_idle_snapshots": idle_snapshots,
+        "test_count": sum(len(group["test_paths"]) for group in groups),
+        "candidate_700k_included": MANDATORY_CANDIDATE_TEST_PATHS[0]
+        in groups[1]["test_paths"],
+        "metric_isolated_import_test_included": MANDATORY_METRIC_TEST_PATHS[0]
+        in groups[2]["test_paths"],
+        "explicit_metric_smoke_enabled": groups[2]["cuda_visible_devices"]
+        == gpu_uuid,
+        "cache_root_opened": False,
+        "passed": all(group["passed"] for group in groups)
+        and all(snapshot["passed"] for snapshot in idle_snapshots),
+    }
+    document["report_sha256"] = sha256_bytes(canonical_json_bytes(document))
+    return document
+
+
+def _locked_source_paths(repo: Path) -> tuple[str, ...]:
+    fixed_paths = {
         "docs/stda_f0_sparse_target_demand_assignment_protocol.md",
         "artifacts/idea/stda_f0_freeze_record.json",
         "artifacts/idea/stda_f0_prefreeze_audit_round6.md",
-        "code/eval/stda_f0_candidate.py",
-        "code/eval/stda_f0_support.py",
-        "code/eval/stda_f0_fit.py",
-        "code/eval/stda_f0_round.py",
-        "code/eval/stda_f0_structure.py",
-        "code/eval/stda_f0_verify.py",
-        "code/scripts/stda_f0_support_phase.py",
-        "code/scripts/stda_f0_oracle_phase.py",
-        "code/scripts/stda_f0_assignment_replay.py",
-        "code/scripts/stda_f0_verify_phase.py",
-        "code/scripts/stda_f0_metric_phase.py",
-        "code/scripts/stda_f0_bundle_verify.py",
+        "code/eval/dense_geometry.py",
+        "code/eval/vrh_f0_metrics.py",
+        "code/eval/vrh_f0_support.py",
+        "code/eval/rald_wce_stage0.py",
+        "code/models/rald_wce_field.py",
+        "code/models/rald_matched.py",
+        "code/models/cube_cycle.py",
+        "code/cube_dense/kradar.py",
         "code/scripts/preflight_stda_f0_capacity.py",
-    )
+        *SUPPORT_RUNTIME_SOURCE_PATHS,
+        *ORACLE_CHILD_SOURCE_PATHS,
+        *VERIFY_CHILD_SOURCE_PATHS,
+        *MANDATORY_TEST_PATHS,
+    }
+    for pattern in (
+        "code/eval/stda_f0_*.py",
+        "code/scripts/stda_f0_*.py",
+        "code/tests/test_stda_f0_*.py",
+    ):
+        fixed_paths.update(
+            str(path.relative_to(repo)) for path in repo.glob(pattern) if path.is_file()
+        )
+    return tuple(sorted(fixed_paths))
+
+
+def _source_binding(repo: Path) -> dict[str, str]:
     records: dict[str, str] = {}
-    for relative in relative_paths:
+    for relative in _locked_source_paths(repo):
         path = repo / relative
         if not path.is_file():
             raise StageFailure("preflight", "source_file_missing", relative)
@@ -1478,7 +2186,92 @@ def _source_binding(repo: Path) -> dict[str, str]:
     return records
 
 
+def _assert_source_lock(
+    *,
+    repo: Path,
+    source_commit: str,
+    expected_hashes: Mapping[str, Any],
+    label: str,
+) -> dict[str, Any]:
+    try:
+        verify_source_tree(repo, source_commit)
+        observed = _source_binding(repo)
+    except BaseException as error:
+        code = error.code if isinstance(error, StageFailure) else type(error).__name__
+        raise StageFailure(
+            "implementation",
+            f"source_lock_{code}",
+            f"{label}: {error}",
+        ) from error
+    expected = {str(key): str(value) for key, value in expected_hashes.items()}
+    if observed != expected:
+        missing = sorted(set(expected) - set(observed))
+        added = sorted(set(observed) - set(expected))
+        changed = sorted(
+            key
+            for key in set(observed) & set(expected)
+            if observed[key] != expected[key]
+        )
+        raise StageFailure(
+            "implementation",
+            "source_hash_lock_mismatch",
+            f"{label}: missing={missing}, added={added}, changed={changed}",
+        )
+    return {
+        "label": label,
+        "verified_time_ns": time.time_ns(),
+        "source_commit": source_commit,
+        "source_file_count": len(observed),
+        "source_hashes_sha256": sha256_bytes(canonical_json_bytes(observed)),
+        "head_matches": True,
+        "worktree_clean": True,
+        "hashes_match": True,
+    }
+
+
+def _validate_child_source_evidence(
+    *,
+    child_name: str,
+    observed_hashes: Any,
+    expected_hashes: Mapping[str, Any],
+    required_paths: Sequence[str],
+) -> dict[str, Any]:
+    if not isinstance(observed_hashes, Mapping):
+        raise StageFailure(
+            "implementation",
+            "child_source_evidence_absent",
+            child_name,
+        )
+    observed = {str(key): str(value) for key, value in observed_hashes.items()}
+    expected = {str(key): str(value) for key, value in expected_hashes.items()}
+    required = set(required_paths)
+    missing = sorted(required - set(observed))
+    unknown = sorted(set(observed) - set(expected))
+    changed = sorted(
+        key for key in observed if key in expected and observed[key] != expected[key]
+    )
+    if missing or unknown or changed:
+        raise StageFailure(
+            "implementation",
+            "child_source_evidence_mismatch",
+            (
+                f"{child_name}: missing={missing}, unknown={unknown}, "
+                f"changed={changed}"
+            ),
+        )
+    return {
+        "child": child_name,
+        "reported_source_count": len(observed),
+        "required_source_count": len(required),
+        "reported_source_hashes_sha256": sha256_bytes(
+            canonical_json_bytes(observed)
+        ),
+        "passed": True,
+    }
+
+
 def run_preflight(args: argparse.Namespace) -> dict[str, Any]:
+    orchestrator_isolation = require_orchestrator_isolation()
     if os.environ.get("CUDA_VISIBLE_DEVICES") != "":
         raise StageFailure(
             "preflight",
@@ -1530,6 +2323,26 @@ def run_preflight(args: argparse.Namespace) -> dict[str, Any]:
     environment = environment_report(args, gpu)
     shared_mount, local_mount = _ensure_distinct_mounts(args)
     source_hashes = _source_binding(args.repo)
+    source_lock_before_tests = _assert_source_lock(
+        repo=args.repo,
+        source_commit=args.source_commit,
+        expected_hashes=source_hashes,
+        label="preflight_before_mandatory_tests",
+    )
+    mandatory_tests = run_mandatory_synthetic_tests(
+        repo=args.repo,
+        physical_gpu=args.physical_gpu,
+        gpu_uuid=args.gpu_uuid,
+        gpu_pci=str(gpu["pci_bus_id"]),
+        gpu_name=str(gpu["name"]),
+        source_hashes=source_hashes,
+    )
+    source_lock_after_tests = _assert_source_lock(
+        repo=args.repo,
+        source_commit=args.source_commit,
+        expected_hashes=source_hashes,
+        label="preflight_after_mandatory_tests",
+    )
     foreign_processes = _foreign_gpu_processes(args.physical_gpu)
     report = {
         "schema": "stda_f0_preflight_v1",
@@ -1538,18 +2351,26 @@ def run_preflight(args: argparse.Namespace) -> dict[str, Any]:
         "protocol_freeze_commit": PROTOCOL_FREEZE_COMMIT,
         "source": source,
         "source_hashes": source_hashes,
+        "source_execution_locks": [
+            source_lock_before_tests,
+            source_lock_after_tests,
+        ],
         "input_hashes": input_hashes,
         "cohort": records,
         "gpu": gpu,
         "foreign_gpu_processes": foreign_processes,
+        "mandatory_synthetic_tests": mandatory_tests,
         "environment": environment,
+        "orchestrator_interpreter": orchestrator_isolation,
         "shared_mount": shared_mount,
         "local_mount": local_mount,
         "target_cache_opened": False,
         "orchestrator_cuda_visible_devices": "",
         "orchestrator_imports_cuda_runtime": False,
         "formal_launch_consumed": False,
-        "passed": not foreign_processes,
+        "passed": not foreign_processes
+        and mandatory_tests["passed"] is True
+        and orchestrator_isolation["passed"] is True,
     }
     if foreign_processes:
         raise StageFailure("preflight", "gpu2_not_idle", str(foreign_processes))
@@ -1620,11 +2441,68 @@ def _freeze_tree_readonly(root: Path) -> None:
     fsync_directory(root.parent)
 
 
+def _is_lower_sha256(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(character in "0123456789abcdef" for character in value)
+    )
+
+
+def _load_support_sidecar(
+    *,
+    support_root: Path,
+    record: Mapping[str, Any],
+    pointer: Any,
+    filename: str,
+    schema: str,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    if not isinstance(pointer, Mapping):
+        raise StageFailure(
+            "support",
+            "support_sidecar_record_absent",
+            f"{_frame_key(record)}:{filename}",
+        )
+    expected_relative = str(
+        PurePosixPath("frames") / _frame_directory_name(record) / filename
+    )
+    size_bytes = pointer.get("size_bytes")
+    if (
+        pointer.get("relative_path") != expected_relative
+        or type(size_bytes) is not int
+        or size_bytes < 0
+        or not _is_lower_sha256(pointer.get("sha256"))
+        or pointer.get("fsynced") is not True
+        or pointer.get("full_rehash_passed") is not True
+    ):
+        raise StageFailure(
+            "support",
+            "support_sidecar_record_invalid",
+            f"{_frame_key(record)}:{filename}:{dict(pointer)}",
+        )
+    path = support_root.joinpath(*PurePosixPath(expected_relative).parts)
+    if path.is_symlink() or not path.is_file():
+        raise StageFailure("support", "support_sidecar_missing", str(path))
+    before = path.stat()
+    document = _canonical_record(path, schema=schema)
+    replay = path.read_bytes()
+    after = path.stat()
+    if (
+        before != after
+        or len(replay) != size_bytes
+        or sha256_bytes(replay) != pointer.get("sha256")
+        or canonical_json_bytes(document) != replay
+    ):
+        raise StageFailure("support", "support_sidecar_rehash", str(path))
+    return document, dict(pointer)
+
+
 def _validate_support_manifest(
     support_root: Path,
     records: Sequence[Mapping[str, Any]],
     *,
     source_commit: str,
+    expected_source_hashes: Mapping[str, Any],
 ) -> dict[str, Any]:
     manifest_path = support_root / "support_manifest.json"
     manifest = _canonical_record(
@@ -1637,6 +2515,12 @@ def _validate_support_manifest(
         or manifest.get("source_commit") != source_commit
     ):
         raise StageFailure("support", "support_manifest_binding", str(manifest_path))
+    _validate_child_source_evidence(
+        child_name="support",
+        observed_hashes=manifest.get("source_hashes"),
+        expected_hashes=expected_source_hashes,
+        required_paths=SUPPORT_RUNTIME_SOURCE_PATHS,
+    )
     frames = manifest.get("frames")
     if not isinstance(frames, list) or len(frames) != EXPECTED_TRAIN_FRAMES:
         raise StageFailure("support", "support_frame_count", str(type(frames)))
@@ -1669,12 +2553,19 @@ def _validate_support_manifest(
             raise StageFailure("support", "support_frame_order", str(identity))
         if frame.get("frame_key") != _frame_key(expected):
             raise StageFailure("support", "support_frame_key", str(identity))
+        if (
+            int(frame.get("position", -1)) != int(expected["position"])
+            or frame.get("partition") != "train"
+        ):
+            raise StageFailure("support", "support_frame_identity", str(identity))
         support = frame.get("support")
         candidate = frame.get("candidate")
+        cube = frame.get("cube")
         files = frame.get("files")
         if (
             not isinstance(support, Mapping)
             or not isinstance(candidate, Mapping)
+            or not isinstance(cube, Mapping)
             or not isinstance(files, Mapping)
         ):
             raise StageFailure("support", "support_frame_schema", str(identity))
@@ -1691,16 +2582,29 @@ def _validate_support_manifest(
         if not isinstance(independent, Mapping) or independent.get("passed") is not True:
             raise StageFailure("support", "support_independent_replay", str(identity))
         for filename, row in files.items():
-            if not isinstance(row, Mapping):
+            if not isinstance(filename, str) or not isinstance(row, Mapping):
                 raise StageFailure("support", "support_file_record", str(identity))
             relative = row.get("relative_path")
-            if not isinstance(relative, str):
+            expected_relative = str(
+                PurePosixPath("frames")
+                / _frame_directory_name(expected)
+                / filename
+            )
+            size_bytes = row.get("size_bytes")
+            if (
+                relative != expected_relative
+                or type(size_bytes) is not int
+                or size_bytes < 0
+                or not _is_lower_sha256(row.get("sha256"))
+                or row.get("fsynced") is not True
+                or row.get("full_rehash_passed") is not True
+            ):
                 raise StageFailure("support", "support_file_path", str(identity))
             path = support_root.joinpath(*PurePosixPath(relative).parts)
             if not path.is_file() or path.is_symlink():
                 raise StageFailure("support", "support_file_missing", str(path))
             if (
-                path.stat().st_size != int(row.get("size_bytes", -1))
+                path.stat().st_size != size_bytes
                 or sha256_file(path) != row.get("sha256")
             ):
                 raise StageFailure("support", "support_file_hash", str(path))
@@ -1709,6 +2613,128 @@ def _validate_support_manifest(
             raise StageFailure("support", "support_bin_record", str(identity))
         if support_bin.get("sha256") != support.get("support_sha256"):
             raise StageFailure("support", "support_commit_mismatch", str(identity))
+        _validate_child_source_evidence(
+            child_name=f"support_frame:{_frame_key(expected)}",
+            observed_hashes=frame.get("runtime_source_sha256"),
+            expected_hashes=expected_source_hashes,
+            required_paths=SUPPORT_RUNTIME_SOURCE_PATHS,
+        )
+        commitment, commitment_record = _load_support_sidecar(
+            support_root=support_root,
+            record=expected,
+            pointer=frame.get("frame_commitment"),
+            filename="support_record.json",
+            schema="stda_f0_support_frame_commitment_v1",
+        )
+        commitment_expected = {
+            "protocol_sha256": PROTOCOL_SHA256,
+            "protocol_freeze_commit": PROTOCOL_FREEZE_COMMIT,
+            "position": int(expected["position"]),
+            "sequence": int(expected["sequence"]),
+            "radar_index": int(expected["radar_index"]),
+            "cube_sha256": cube.get("sha256"),
+            "cube": dict(cube),
+            "candidate_hashes": candidate.get("hashes"),
+            "candidate_predecessor_expected": candidate.get(
+                "predecessor_expected"
+            ),
+            "candidate_predecessor_hashes_match": candidate.get(
+                "predecessor_hashes_match"
+            ),
+            "candidate_field_sha256": support.get("candidate_field_sha256"),
+            "support_sha256": support.get("support_sha256"),
+            "support_count": support.get("support_count"),
+            "selected_color_id": support.get("selected_color_id"),
+            "color_cardinalities": support.get("color_cardinalities"),
+            "files": dict(files),
+        }
+        commitment_mismatch = sorted(
+            key
+            for key, value in commitment_expected.items()
+            if commitment.get(key) != value
+        )
+        if (
+            commitment_mismatch
+            or commitment.get("independent_support_verification_passed") is not True
+            or commitment.get("support_target_input") is not False
+            or commitment.get("ground_truth_accessed") is not False
+        ):
+            raise StageFailure(
+                "support",
+                "support_frame_commitment_binding",
+                f"{_frame_key(expected)}:{commitment_mismatch}",
+            )
+        manifest_entry, _ = _load_support_sidecar(
+            support_root=support_root,
+            record=expected,
+            pointer=frame.get("manifest_entry_evidence"),
+            filename="support_manifest_entry.json",
+            schema="stda_f0_support_manifest_entry_evidence_v1",
+        )
+        entry_expected = {
+            "protocol_sha256": PROTOCOL_SHA256,
+            "protocol_freeze_commit": PROTOCOL_FREEZE_COMMIT,
+            "position": int(expected["position"]),
+            "sequence": int(expected["sequence"]),
+            "radar_index": int(expected["radar_index"]),
+            "frame_key": _frame_key(expected),
+            "partition": "train",
+            "cube": dict(cube),
+            "candidate": dict(candidate),
+            "support": dict(support),
+            "files": dict(files),
+            "frame_commitment": commitment_record,
+            "runtime_source_sha256": frame.get("runtime_source_sha256"),
+            "critical_runtime_source_sha256": frame.get(
+                "critical_runtime_source_sha256"
+            ),
+            "orchestrator_source_sha256": frame.get(
+                "orchestrator_source_sha256"
+            ),
+        }
+        entry_mismatch = sorted(
+            key for key, value in entry_expected.items() if manifest_entry.get(key) != value
+        )
+        timing_boundary = manifest_entry.get("timing_boundary_contract")
+        required_timing_boundary = {
+            "support_frame_ns_in_final_manifest": True,
+            "manifest_entry_write_fsync_rehash_inside_support_frame_ns": True,
+            "cleanup_and_final_cuda_sync_inside_support_frame_ns": True,
+            "elapsed_time_excluded_here_to_avoid_self_reference": True,
+        }
+        if (
+            entry_mismatch
+            or not isinstance(timing_boundary, Mapping)
+            or any(
+                timing_boundary.get(key) is not value
+                for key, value in required_timing_boundary.items()
+            )
+            or manifest_entry.get("support_target_input") is not False
+            or manifest_entry.get("ground_truth_accessed") is not False
+        ):
+            raise StageFailure(
+                "support",
+                "support_manifest_entry_binding",
+                f"{_frame_key(expected)}:{entry_mismatch}",
+            )
+        _validate_child_source_evidence(
+            child_name=f"support_manifest_entry:{_frame_key(expected)}",
+            observed_hashes=manifest_entry.get("runtime_source_sha256"),
+            expected_hashes=expected_source_hashes,
+            required_paths=SUPPORT_RUNTIME_SOURCE_PATHS,
+        )
+        _validate_child_source_evidence(
+            child_name=f"support_manifest_entry_critical:{_frame_key(expected)}",
+            observed_hashes=manifest_entry.get("critical_runtime_source_sha256"),
+            expected_hashes=expected_source_hashes,
+            required_paths=SUPPORT_CHILD_SOURCE_PATHS,
+        )
+        _validate_child_source_evidence(
+            child_name=f"support_manifest_entry_orchestrator:{_frame_key(expected)}",
+            observed_hashes=manifest_entry.get("orchestrator_source_sha256"),
+            expected_hashes=expected_source_hashes,
+            required_paths=SUPPORT_ORCHESTRATOR_SOURCE_PATHS,
+        )
     ledger = _canonical_record(
         support_root / "open_ledger.json",
         schema="stda_f0_support_open_ledger_v1",
@@ -1737,7 +2763,11 @@ def _support_frame_directory(
     return path.parent.resolve(strict=True)
 
 
-def _load_oracle_report(output_dir: Path) -> dict[str, Any]:
+def _load_oracle_report(
+    output_dir: Path,
+    *,
+    expected_source_hashes: Mapping[str, Any],
+) -> dict[str, Any]:
     complete = _canonical_record(
         output_dir / "ORACLE_COMPLETE.json",
         schema="stda_f0_oracle_frame_complete_v1",
@@ -1767,12 +2797,77 @@ def _load_oracle_report(output_dir: Path) -> dict[str, Any]:
     status = report.get("status")
     target = report.get("target")
     if status == "stda_f0_packed_support_capacity_no_go":
-        target_semantics = isinstance(target, Mapping) and target.get("opened") is False
+        stat_before = target.get("stat_before") if isinstance(target, Mapping) else None
+        stat_after = target.get("stat_after") if isinstance(target, Mapping) else None
+        cache_size = target.get("cache_size_bytes") if isinstance(target, Mapping) else None
+        target_semantics = (
+            isinstance(target, Mapping)
+            and target.get("opened") is True
+            and target.get("array_loader_called") is False
+            and target.get("cache_arrays_read") == []
+            and target.get("target_array_materialized") is False
+            and target.get("path_read_calls") == 1
+            and target.get("immutable_bytes_materialized") is True
+            and target.get("hash_consumed_same_payload") is True
+            and target.get("clock") == "time.perf_counter_ns"
+            and type(target.get("read_started_perf_counter_ns")) is int
+            and int(target["read_started_perf_counter_ns"]) > 0
+            and _is_lower_sha256(target.get("cache_sha256"))
+            and type(cache_size) is int
+            and cache_size >= 0
+            and isinstance(stat_before, Mapping)
+            and stat_before == stat_after
+            and stat_before.get("size_bytes") == cache_size
+        )
     else:
         target_semantics = isinstance(target, Mapping) and target.get("opened") is True
     if not target_semantics:
         raise StageFailure("oracle", "oracle_target_boundary", str(status))
+    _validate_child_source_evidence(
+        child_name="oracle",
+        observed_hashes=report.get("source_sha256"),
+        expected_hashes=expected_source_hashes,
+        required_paths=ORACLE_RUNTIME_SOURCE_PATHS,
+    )
     return report
+
+
+def _load_oracle_child_timing(
+    output_dir: Path,
+    *,
+    oracle: Mapping[str, Any],
+) -> dict[str, Any]:
+    timing_path = output_dir / "ORACLE_FRAME_TIMING.json"
+    timing = _canonical_record(
+        timing_path,
+        schema="stda_f0_oracle_child_timing_v2",
+    )
+    if (
+        timing.get("protocol_sha256") != PROTOCOL_SHA256
+        or timing.get("protocol_freeze_commit") != PROTOCOL_FREEZE_COMMIT
+        or timing.get("status") != oracle.get("status")
+        or timing.get("frame_key") != oracle.get("frame", {}).get("frame_key")
+    ):
+        raise StageFailure("oracle", "oracle_child_timing_binding", str(timing_path))
+    started_ns = int(timing.get("oracle_frame_started_perf_counter_ns", -1))
+    ended_ns = int(
+        timing.get("oracle_child_pre_metric_ended_perf_counter_ns", -1)
+    )
+    pre_metric_ns = int(timing.get("oracle_child_pre_metric_ns", -1))
+    if (
+        started_ns <= 0
+        or ended_ns < started_ns
+        or pre_metric_ns != ended_ns - started_ns
+        or timing.get("authoritative_oracle_frame_ns") is not False
+        or timing.get("parent_is_sole_oracle_frame_authority") is not True
+        or timing.get("support_reverification_excluded") is not True
+        or timing.get("timing_receipt_publication_excluded") is not True
+    ):
+        raise StageFailure("oracle", "oracle_child_timing_arithmetic", str(timing))
+    return {
+        **timing,
+        "timing_receipt_sha256": sha256_file(timing_path),
+    }
 
 
 def _class_metric_mapping(
@@ -1864,6 +2959,8 @@ def _build_metric_command(
         raise StageFailure("metric", "fit_hashes_absent", _frame_key(record))
     command = [
         sys.executable,
+        "-I",
+        "-S",
         "-B",
         str(args.repo / "code/scripts/stda_f0_metric_phase.py"),
         "--frame-key",
@@ -1915,6 +3012,13 @@ def _normalize_scientific_frame(
     verification: Mapping[str, Any] | None,
     metric: Mapping[str, Any] | None,
     oracle_frame_ns: int,
+    oracle_child_pre_metric_ns: int,
+    oracle_parent_pre_target_ns: int,
+    oracle_parent_child_wall_ns: int,
+    independent_verifier_wall_ns: int,
+    independent_verifier_serialization_ns: int,
+    metric_wall_ns: int,
+    source_execution_locks: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
     support = oracle.get("support")
     if not isinstance(support, Mapping):
@@ -1922,12 +3026,28 @@ def _normalize_scientific_frame(
     capacity = support.get("capacity_status")
     if not isinstance(capacity, Mapping):
         raise StageFailure("frame", "support_capacity_absent", _frame_key(record))
+    measured_lower_bound_ns = (
+        int(oracle_child_pre_metric_ns)
+        + int(independent_verifier_wall_ns)
+        + int(independent_verifier_serialization_ns)
+        + int(metric_wall_ns)
+    )
+    if int(oracle_frame_ns) < measured_lower_bound_ns:
+        raise StageFailure(
+            "implementation",
+            "oracle_frame_timing_under_count",
+            (
+                f"{_frame_key(record)}: frame={oracle_frame_ns}, "
+                f"measured_lower_bound={measured_lower_bound_ns}"
+            ),
+        )
     normalized: dict[str, Any] = {
         "position": int(record["position"]),
         "sequence": int(record["sequence"]),
         "radar_index": int(record["radar_index"]),
         "frame_key": _frame_key(record),
         "oracle_status": oracle.get("status"),
+        "source_execution_locks": [dict(row) for row in source_execution_locks],
         "support": {
             "capacity_sufficient": capacity.get("capacity_sufficient") is True,
             "support_count": int(support.get("support_count", -1)),
@@ -1940,10 +3060,27 @@ def _normalize_scientific_frame(
         },
         "arms": {},
         "resources": {
-            "oracle_allocation_ns": int(
+            "oracle_report_allocation_ns": int(
                 oracle.get("timings_ns", {}).get("allocation_core_ns", 0)
             ),
+            "independent_verifier_wall_ns": int(independent_verifier_wall_ns),
+            "independent_verifier_serialization_ns": int(
+                independent_verifier_serialization_ns
+            ),
+            "oracle_allocation_ns": (
+                int(oracle.get("timings_ns", {}).get("allocation_core_ns", 0))
+                + int(independent_verifier_wall_ns)
+                + int(independent_verifier_serialization_ns)
+            ),
             "oracle_frame_ns": int(oracle_frame_ns),
+            "oracle_child_pre_metric_ns": int(oracle_child_pre_metric_ns),
+            "oracle_parent_pre_target_ns_excluded": int(
+                oracle_parent_pre_target_ns
+            ),
+            "oracle_parent_child_wall_ns_reported": int(oracle_parent_child_wall_ns),
+            "metric_wall_ns": int(metric_wall_ns),
+            "oracle_frame_measured_lower_bound_ns": measured_lower_bound_ns,
+            "oracle_frame_timing_lower_bound_valid": True,
             "torch_peak_allocated_bytes": 0,
             "torch_peak_reserved_bytes": 0,
         },
@@ -2033,8 +3170,10 @@ def _run_support_child(
     args: argparse.Namespace,
     staging: Path,
     monitor: ProcessTreeMonitor,
-    transaction_started_ns: int,
+    transaction_started_ns: int | None,
+    transaction_clock: dict[str, int] | None,
     records: Sequence[Mapping[str, Any]],
+    expected_source_hashes: Mapping[str, Any],
 ) -> tuple[Path, dict[str, Any]]:
     support_root = staging / "support"
     support_root.mkdir(parents=False, exist_ok=False)
@@ -2042,6 +3181,8 @@ def _run_support_child(
     log_path = staging / "logs/support_child.json"
     command = (
         sys.executable,
+        "-I",
+        "-S",
         "-B",
         str(args.repo / "code/scripts/stda_f0_support_phase.py"),
         "--data-root",
@@ -2066,6 +3207,18 @@ def _run_support_child(
         "cuda:0",
     )
     event("support_started", output_root=str(support_root))
+    source_locks = [
+        _assert_source_lock(
+            repo=args.repo,
+            source_commit=args.source_commit,
+            expected_hashes=expected_source_hashes,
+            label="before_support_child",
+        )
+    ]
+    if transaction_started_ns is None:
+        transaction_started_ns = time.perf_counter_ns()
+        if transaction_clock is not None:
+            transaction_clock["started_ns"] = transaction_started_ns
     run_child(
         command,
         environment=child_environment(
@@ -2082,14 +3235,24 @@ def _run_support_child(
             args.support_timeout_seconds,
         ),
     )
+    source_locks.append(
+        _assert_source_lock(
+            repo=args.repo,
+            source_commit=args.source_commit,
+            expected_hashes=expected_source_hashes,
+            label="after_support_child",
+        )
+    )
     manifest = _validate_support_manifest(
         support_root,
         records,
         source_commit=args.source_commit,
+        expected_source_hashes=expected_source_hashes,
     )
     event(
         "support_completed",
         support_manifest_sha256=sha256_file(support_root / "support_manifest.json"),
+        source_execution_locks=source_locks,
     )
     return support_root, manifest
 
@@ -2099,17 +3262,22 @@ def _verify_phase_command(
     args: argparse.Namespace,
     support_frame_dir: Path,
     oracle_dir: Path,
+    target_cache: Path,
     expected_support_sha256: str,
     output: Path,
 ) -> tuple[str, ...]:
     return (
         sys.executable,
+        "-I",
+        "-S",
         "-B",
         str(args.repo / "code/scripts/stda_f0_verify_phase.py"),
         "--support-frame-dir",
         str(support_frame_dir),
         "--oracle-dir",
         str(oracle_dir),
+        "--target-cache",
+        str(target_cache),
         "--expected-support-sha256",
         expected_support_sha256,
         "--output",
@@ -2127,6 +3295,7 @@ def _run_one_oracle_frame(
     monitor: ProcessTreeMonitor,
     transaction_started_ns: int,
     gpu: Mapping[str, Any],
+    expected_source_hashes: Mapping[str, Any],
 ) -> dict[str, Any]:
     frame_root = staging / "frames" / _frame_directory_name(record)
     frame_root.mkdir(parents=True, exist_ok=False)
@@ -2135,10 +3304,21 @@ def _run_one_oracle_frame(
     support_frame_dir = _support_frame_directory(support_root, support_frame)
     expected_support_sha = str(support_frame["support"]["support_sha256"])
     target_cache = _target_cache_path(args.cache_root, record)
-    oracle_started_ns = time.perf_counter_ns()
+    source_execution_locks: list[dict[str, Any]] = []
+    source_execution_locks.append(
+        _assert_source_lock(
+            repo=args.repo,
+            source_commit=args.source_commit,
+            expected_hashes=expected_source_hashes,
+            label=f"{_frame_key(record)}:before_oracle_child",
+        )
+    )
+    oracle_parent_spawn_started_ns = time.perf_counter_ns()
     phase_suffix = f"{int(record['position']):02d}"
     oracle_command = (
         sys.executable,
+        "-I",
+        "-S",
         "-B",
         str(args.repo / "code/scripts/stda_f0_oracle_phase.py"),
         "--support-frame-dir",
@@ -2177,16 +3357,63 @@ def _run_one_oracle_frame(
             args.frame_child_timeout_seconds,
         ),
     )
-    oracle = _load_oracle_report(oracle_dir)
+    oracle_parent_child_completed_ns = time.perf_counter_ns()
+    source_execution_locks.append(
+        _assert_source_lock(
+            repo=args.repo,
+            source_commit=args.source_commit,
+            expected_hashes=expected_source_hashes,
+            label=f"{_frame_key(record)}:after_oracle_child",
+        )
+    )
+    oracle = _load_oracle_report(
+        oracle_dir,
+        expected_source_hashes=expected_source_hashes,
+    )
     if oracle.get("frame", {}).get("frame_key") != _frame_key(record):
         raise StageFailure("oracle", "oracle_frame_identity", _frame_key(record))
+    oracle_child_timing = _load_oracle_child_timing(oracle_dir, oracle=oracle)
+    oracle_child_started_ns = int(
+        oracle_child_timing["oracle_frame_started_perf_counter_ns"]
+    )
+    oracle_child_pre_metric_ended_ns = int(
+        oracle_child_timing[
+            "oracle_child_pre_metric_ended_perf_counter_ns"
+        ]
+    )
+    if (
+        oracle_child_started_ns < oracle_parent_spawn_started_ns
+        or oracle_child_pre_metric_ended_ns > oracle_parent_child_completed_ns
+    ):
+        raise StageFailure(
+            "implementation",
+            "oracle_child_parent_clock_boundary",
+            str(oracle_child_timing),
+        )
+    oracle_parent_pre_target_ns = (
+        oracle_child_started_ns - oracle_parent_spawn_started_ns
+    )
+    oracle_parent_child_wall_ns = (
+        oracle_parent_child_completed_ns - oracle_parent_spawn_started_ns
+    )
 
     verification_path = frame_root / "independent_verification.json"
+    source_execution_locks.append(
+        _assert_source_lock(
+            repo=args.repo,
+            source_commit=args.source_commit,
+            expected_hashes=expected_source_hashes,
+            label=f"{_frame_key(record)}:before_verify_child",
+        )
+    )
+    verifier_started_ns = time.perf_counter_ns()
+    verification_log_path = frame_root / "independent_verification.log"
     run_child(
         _verify_phase_command(
             args=args,
             support_frame_dir=support_frame_dir,
             oracle_dir=oracle_dir,
+            target_cache=target_cache,
             expected_support_sha256=expected_support_sha,
             output=verification_path,
         ),
@@ -2195,7 +3422,7 @@ def _run_one_oracle_frame(
             physical_gpu=None,
             phase=f"verify_{phase_suffix}",
         ),
-        log_path=frame_root / "independent_verification.log",
+        log_path=verification_log_path,
         phase=f"verify_{phase_suffix}",
         cuda_visible=False,
         monitor=monitor,
@@ -2204,6 +3431,16 @@ def _run_one_oracle_frame(
             args.frame_child_timeout_seconds,
         ),
     )
+    verifier_child_completed_ns = time.perf_counter_ns()
+    source_execution_locks.append(
+        _assert_source_lock(
+            repo=args.repo,
+            source_commit=args.source_commit,
+            expected_hashes=expected_source_hashes,
+            label=f"{_frame_key(record)}:after_verify_child",
+        )
+    )
+    verifier_serialization_started_ns = time.perf_counter_ns()
     verification = _canonical_record(
         verification_path,
         schema="stda_f0_independent_frame_verification_v1",
@@ -2216,10 +3453,39 @@ def _run_one_oracle_frame(
         or verification.get("oracle_status") != oracle.get("status")
     ):
         raise StageFailure("verify", "independent_frame_replay", _frame_key(record))
+    verifier_parent_timing = _load_verifier_parent_timing_evidence(
+        verification_path=verification_path,
+        log_path=verification_log_path,
+        verification=verification,
+        parent_started_ns=verifier_started_ns,
+        parent_completed_ns=verifier_child_completed_ns,
+    )
+    _validate_child_source_evidence(
+        child_name="verify",
+        observed_hashes=verification.get("source_sha256"),
+        expected_hashes=expected_source_hashes,
+        required_paths=VERIFY_CHILD_SOURCE_PATHS,
+    )
+    independent_verifier_serialization_ns = (
+        time.perf_counter_ns() - verifier_serialization_started_ns
+    )
+    independent_verifier_wall_ns = (
+        verifier_child_completed_ns - verifier_started_ns
+    )
 
     metric: dict[str, Any] | None = None
+    metric_wall_ns = 0
     if oracle.get("status") == "stda_f0_oracle_ready_for_cuda_metrics":
         metric_path = frame_root / "cuda_metrics.json"
+        source_execution_locks.append(
+            _assert_source_lock(
+                repo=args.repo,
+                source_commit=args.source_commit,
+                expected_hashes=expected_source_hashes,
+                label=f"{_frame_key(record)}:before_metric_child",
+            )
+        )
+        metric_started_ns = time.perf_counter_ns()
         run_child(
             _build_metric_command(
                 args=args,
@@ -2243,6 +3509,15 @@ def _run_one_oracle_frame(
                 args.frame_child_timeout_seconds,
             ),
         )
+        metric_wall_ns = time.perf_counter_ns() - metric_started_ns
+        source_execution_locks.append(
+            _assert_source_lock(
+                repo=args.repo,
+                source_commit=args.source_commit,
+                expected_hashes=expected_source_hashes,
+                label=f"{_frame_key(record)}:after_metric_child",
+            )
+        )
         metric = _canonical_record(
             metric_path,
             schema="stda_f0_metric_phase_v1",
@@ -2254,13 +3529,24 @@ def _run_one_oracle_frame(
         ):
             raise StageFailure("metric", "metric_binding", _frame_key(record))
 
-    evidence_boundary_ns = time.perf_counter_ns()
+    provisional_boundary_ns = time.perf_counter_ns()
     provisional = _normalize_scientific_frame(
         record=record,
         oracle=oracle,
         verification=verification,
         metric=metric,
-        oracle_frame_ns=evidence_boundary_ns - oracle_started_ns,
+        oracle_frame_ns=provisional_boundary_ns - oracle_child_started_ns,
+        oracle_child_pre_metric_ns=int(
+            oracle_child_timing["oracle_child_pre_metric_ns"]
+        ),
+        oracle_parent_pre_target_ns=oracle_parent_pre_target_ns,
+        oracle_parent_child_wall_ns=oracle_parent_child_wall_ns,
+        independent_verifier_wall_ns=independent_verifier_wall_ns,
+        independent_verifier_serialization_ns=(
+            independent_verifier_serialization_ns
+        ),
+        metric_wall_ns=metric_wall_ns,
+        source_execution_locks=source_execution_locks,
     )
     science_document = dict(provisional)
     science_document.pop("resources", None)
@@ -2270,7 +3556,13 @@ def _run_one_oracle_frame(
             "protocol_sha256": PROTOCOL_SHA256,
             "source_commit": args.source_commit,
             "oracle_report_sha256": sha256_file(oracle_dir / "oracle_report.json"),
+            "oracle_child_timing_sha256": oracle_child_timing[
+                "timing_receipt_sha256"
+            ],
             "independent_verification_sha256": sha256_file(verification_path),
+            "independent_verification_log_sha256": verifier_parent_timing[
+                "completion_receipt_sha256"
+            ],
             "cuda_metric_sha256": (
                 None if metric is None else sha256_file(frame_root / "cuda_metrics.json")
             ),
@@ -2282,31 +3574,84 @@ def _run_one_oracle_frame(
     ):
         raise StageFailure("frame", "frame_science_rehash", _frame_key(record))
     fsync_directory(frame_root)
-    oracle_frame_ns = time.perf_counter_ns() - oracle_started_ns
+    timing_started_ns = time.perf_counter_ns()
+    timing_document = {
+        "schema": "stda_f0_oracle_frame_timing_v2",
+        "protocol_sha256": PROTOCOL_SHA256,
+        "source_commit": args.source_commit,
+        "frame_key": _frame_key(record),
+        "oracle_frame_started_perf_counter_ns": oracle_child_started_ns,
+        "oracle_child_pre_metric_ended_perf_counter_ns": (
+            oracle_child_pre_metric_ended_ns
+        ),
+        "oracle_child_pre_metric_ns": int(
+            oracle_child_timing["oracle_child_pre_metric_ns"]
+        ),
+        "oracle_child_timing_sha256": oracle_child_timing[
+            "timing_receipt_sha256"
+        ],
+        "oracle_parent_pre_target_ns_excluded": oracle_parent_pre_target_ns,
+        "oracle_parent_child_wall_ns_reported": oracle_parent_child_wall_ns,
+        "independent_verifier_wall_ns": independent_verifier_wall_ns,
+        "independent_verifier_serialization_ns": (
+            independent_verifier_serialization_ns
+        ),
+        "independent_verifier_parent_timing": verifier_parent_timing,
+        "metric_wall_ns": metric_wall_ns,
+        "boundary": (
+            "oracle_frame_ns is derived after this receipt is fsynced and fully "
+            "rehashed as evidence_boundary_perf_counter_ns minus the child target "
+            "first-byte-read counter; the final counter and derived duration are "
+            "recorded in the enclosing resource report to avoid self-reference"
+        ),
+        "receipt_started_ns": timing_started_ns,
+        "receipt_publication_included_in_oracle_frame_ns": True,
+        "parent_spawn_and_pre_target_excluded": True,
+        "self_referential_end_fields_omitted": True,
+    }
+    timing_path = frame_root / "oracle_frame_timing.json"
+    atomic_write_json(timing_path, timing_document)
+    fsync_directory(frame_root)
+    replayed_timing = _canonical_record(
+        timing_path,
+        schema="stda_f0_oracle_frame_timing_v2",
+    )
+    timing_receipt_sha256 = sha256_file(timing_path)
+    if (
+        replayed_timing != timing_document
+        or timing_receipt_sha256 != sha256_bytes(
+            canonical_json_bytes(timing_document)
+        )
+    ):
+        raise StageFailure("frame", "oracle_frame_timing_rehash", _frame_key(record))
+    evidence_boundary_ns = time.perf_counter_ns()
+    timing_receipt_publication_ns = evidence_boundary_ns - timing_started_ns
+    oracle_frame_ns = evidence_boundary_ns - oracle_child_started_ns
     normalized = _normalize_scientific_frame(
         record=record,
         oracle=oracle,
         verification=verification,
         metric=metric,
         oracle_frame_ns=oracle_frame_ns,
-    )
-    timing_started_ns = time.perf_counter_ns()
-    timing_document = {
-        "schema": "stda_f0_oracle_frame_timing_v1",
-        "protocol_sha256": PROTOCOL_SHA256,
-        "source_commit": args.source_commit,
-        "frame_key": _frame_key(record),
-        "oracle_frame_ns": oracle_frame_ns,
-        "boundary": (
-            "conservative pre-child boundary through all scientific frame evidence "
-            "fsync and rehash; this timing receipt is published immediately afterward"
+        oracle_child_pre_metric_ns=int(
+            oracle_child_timing["oracle_child_pre_metric_ns"]
         ),
-        "receipt_started_ns": timing_started_ns,
-    }
-    atomic_write_json(frame_root / "oracle_frame_timing.json", timing_document)
-    fsync_directory(frame_root)
-    normalized["resources"]["timing_receipt_publication_ns"] = (
-        time.perf_counter_ns() - timing_started_ns
+        oracle_parent_pre_target_ns=oracle_parent_pre_target_ns,
+        oracle_parent_child_wall_ns=oracle_parent_child_wall_ns,
+        independent_verifier_wall_ns=independent_verifier_wall_ns,
+        independent_verifier_serialization_ns=(
+            independent_verifier_serialization_ns
+        ),
+        metric_wall_ns=metric_wall_ns,
+        source_execution_locks=source_execution_locks,
+    )
+    normalized["resources"].update(
+        {
+            "oracle_evidence_boundary_perf_counter_ns": evidence_boundary_ns,
+            "oracle_frame_timing_receipt_sha256": timing_receipt_sha256,
+            "timing_receipt_publication_ns": timing_receipt_publication_ns,
+            "timing_receipt_publication_included": True,
+        }
     )
     event(
         "oracle_frame_completed",
@@ -2327,6 +3672,7 @@ def _run_all_oracle_frames(
     monitor: ProcessTreeMonitor,
     transaction_started_ns: int,
     gpu: Mapping[str, Any],
+    expected_source_hashes: Mapping[str, Any],
 ) -> list[dict[str, Any]]:
     support_frames = support_manifest.get("frames")
     if not isinstance(support_frames, list):
@@ -2343,6 +3689,7 @@ def _run_all_oracle_frames(
                 monitor=monitor,
                 transaction_started_ns=transaction_started_ns,
                 gpu=gpu,
+                expected_source_hashes=expected_source_hashes,
             )
         )
     if len(frames) != EXPECTED_TRAIN_FRAMES:
@@ -2513,12 +3860,81 @@ def _publish_compact_result(
     }
 
 
+def _stop_transaction_monitor(
+    monitor: ProcessTreeMonitor,
+    transaction_started_ns: int,
+) -> tuple[dict[str, Any], int, int]:
+    report = monitor.stop()
+    boundary_ns = time.perf_counter_ns()
+    return report, boundary_ns - transaction_started_ns, boundary_ns
+
+
+def _run_source_locked_child(
+    *,
+    args: argparse.Namespace,
+    expected_source_hashes: Mapping[str, Any],
+    label: str,
+    operation: Callable[[], Any],
+) -> Any:
+    before = _assert_source_lock(
+        repo=args.repo,
+        source_commit=args.source_commit,
+        expected_hashes=expected_source_hashes,
+        label=f"before_{label}",
+    )
+    try:
+        result = operation()
+    finally:
+        after = _assert_source_lock(
+            repo=args.repo,
+            source_commit=args.source_commit,
+            expected_hashes=expected_source_hashes,
+            label=f"after_{label}",
+        )
+    event(
+        "source_locked_child_completed",
+        child=label,
+        before=before,
+        after=after,
+    )
+    return result
+
+
+def _classify_execution_failure(
+    error: BaseException,
+    *,
+    monitor_report: Mapping[str, Any] | None,
+    resources: Mapping[str, Any] | None,
+) -> str:
+    if resources is not None and resources.get("implementation_valid") is False:
+        return TERMINAL_STATUSES[0]
+    if monitor_report is not None and not all(
+        _monitor_implementation_checks(monitor_report).values()
+    ):
+        return TERMINAL_STATUSES[0]
+    if isinstance(error, StageFailure) and error.code in RESOURCE_FAILURE_CODES:
+        return TERMINAL_STATUSES[1]
+    return TERMINAL_STATUSES[0]
+
+
 def run_formal(
     args: argparse.Namespace,
     preflight: Mapping[str, Any],
 ) -> dict[str, Any]:
     global _EVENT_LOG_PATH
 
+    if preflight.get("mandatory_synthetic_tests", {}).get("passed") is not True:
+        raise StageFailure(
+            "preflight",
+            "mandatory_test_lock_absent",
+            "formal launch requires a passed SHA-bound mandatory test report",
+        )
+    _assert_source_lock(
+        repo=args.repo,
+        source_commit=args.source_commit,
+        expected_hashes=preflight["source_hashes"],
+        label="before_formal_launch_commit",
+    )
     marker, launch = _create_formal_launch_marker(args, preflight)
     _EVENT_LOG_PATH = Path(str(launch["log_path"]))
     event(
@@ -2534,6 +3950,8 @@ def run_formal(
     frames: list[dict[str, Any]] = []
     support_manifest: dict[str, Any] | None = None
     transaction_started_ns: int | None = None
+    transaction_clock: dict[str, int] = {}
+    transaction_work_ns: int | None = None
     bundle_root: str | None = None
     verification: dict[str, Any] | None = None
     transaction: dict[str, Any] | None = None
@@ -2546,14 +3964,16 @@ def run_formal(
         )
         monitor = ProcessTreeMonitor(os.getpid(), str(preflight["gpu"]["uuid"]))
         monitor.start()
-        transaction_started_ns = time.perf_counter_ns()
         support_root, support_manifest = _run_support_child(
             args=args,
             staging=staging,
             monitor=monitor,
-            transaction_started_ns=transaction_started_ns,
+            transaction_started_ns=None,
+            transaction_clock=transaction_clock,
             records=preflight["cohort"],
+            expected_source_hashes=preflight["source_hashes"],
         )
+        transaction_started_ns = transaction_clock["started_ns"]
         frames = _run_all_oracle_frames(
             args=args,
             staging=staging,
@@ -2563,12 +3983,19 @@ def run_formal(
             monitor=monitor,
             transaction_started_ns=transaction_started_ns,
             gpu=preflight["gpu"],
+            expected_source_hashes=preflight["source_hashes"],
         )
         _write_global_scientific_evidence(
             staging=staging,
             args=args,
             support_manifest=support_manifest,
             frames=frames,
+        )
+        _assert_source_lock(
+            repo=args.repo,
+            source_commit=args.source_commit,
+            expected_hashes=preflight["source_hashes"],
+            label="before_bundle_seal",
         )
         sealed = seal_bundle(staging, source_commit=args.source_commit)
         bundle_root = str(sealed["bundle_root"])
@@ -2579,10 +4006,15 @@ def run_formal(
         )
         verification_reports: dict[str, Mapping[str, Any]] = {}
         verification_timestamps: dict[str, int] = {}
-        verification_reports["shared_staging_h200"] = run_local_bundle_verifier(
-            staging / "tools/stda_f0_bundle_verify.py",
-            staging,
-            environment=cpu_environment,
+        verification_reports["shared_staging_h200"] = _run_source_locked_child(
+            args=args,
+            expected_source_hashes=preflight["source_hashes"],
+            label="shared_staging_h200_bundle_verifier",
+            operation=lambda: run_local_bundle_verifier(
+                staging / "tools/stda_f0_bundle_verify.py",
+                staging,
+                environment=cpu_environment,
+            ),
         )
         verification_timestamps["shared_staging_h200"] = time.time_ns()
         if verification_reports["shared_staging_h200"]["bundle_root"] != bundle_root:
@@ -2599,22 +4031,38 @@ def run_formal(
         )
         local_staging.rmdir()
         copy_bundle(staging, local_staging)
-        verification_reports["local_staging_h200"] = run_local_bundle_verifier(
-            local_staging / "tools/stda_f0_bundle_verify.py",
-            local_staging,
-            environment=cpu_environment,
+        verification_reports["local_staging_h200"] = _run_source_locked_child(
+            args=args,
+            expected_source_hashes=preflight["source_hashes"],
+            label="local_staging_h200_bundle_verifier",
+            operation=lambda: run_local_bundle_verifier(
+                local_staging / "tools/stda_f0_bundle_verify.py",
+                local_staging,
+                environment=cpu_environment,
+            ),
         )
         verification_timestamps["local_staging_h200"] = time.time_ns()
-        verification_reports["shared_staging_l40s"] = run_l40s_bundle_verifier(
-            staging,
-            shared_mount_root=args.shared_mount_root,
-            l40s_mount_root=args.l40s_mount_root,
-            l40s_host=args.l40s_host,
+        verification_reports["shared_staging_l40s"] = _run_source_locked_child(
+            args=args,
+            expected_source_hashes=preflight["source_hashes"],
+            label="shared_staging_l40s_bundle_verifier",
+            operation=lambda: run_l40s_bundle_verifier(
+                staging,
+                shared_mount_root=args.shared_mount_root,
+                l40s_mount_root=args.l40s_mount_root,
+                l40s_host=args.l40s_host,
+            ),
         )
         verification_timestamps["shared_staging_l40s"] = time.time_ns()
         _verification_consensus(
             verification_reports,
             timestamps_ns=verification_timestamps,
+        )
+        _assert_source_lock(
+            repo=args.repo,
+            source_commit=args.source_commit,
+            expected_hashes=preflight["source_hashes"],
+            label="before_dual_bundle_rename",
         )
 
         final_basename = (
@@ -2626,31 +4074,53 @@ def run_formal(
         rename_bundle(staging, shared_final)
         staging = None
         rename_bundle(local_staging, local_final)
-        verification_reports["shared_final_h200"] = run_local_bundle_verifier(
-            shared_final / "tools/stda_f0_bundle_verify.py",
-            shared_final,
-            environment=cpu_environment,
+        verification_reports["shared_final_h200"] = _run_source_locked_child(
+            args=args,
+            expected_source_hashes=preflight["source_hashes"],
+            label="shared_final_h200_bundle_verifier",
+            operation=lambda: run_local_bundle_verifier(
+                shared_final / "tools/stda_f0_bundle_verify.py",
+                shared_final,
+                environment=cpu_environment,
+            ),
         )
         verification_timestamps["shared_final_h200"] = time.time_ns()
-        verification_reports["local_final_h200"] = run_local_bundle_verifier(
-            local_final / "tools/stda_f0_bundle_verify.py",
-            local_final,
-            environment=cpu_environment,
+        verification_reports["local_final_h200"] = _run_source_locked_child(
+            args=args,
+            expected_source_hashes=preflight["source_hashes"],
+            label="local_final_h200_bundle_verifier",
+            operation=lambda: run_local_bundle_verifier(
+                local_final / "tools/stda_f0_bundle_verify.py",
+                local_final,
+                environment=cpu_environment,
+            ),
         )
         verification_timestamps["local_final_h200"] = time.time_ns()
-        verification_reports["shared_final_l40s"] = run_l40s_bundle_verifier(
-            shared_final,
-            shared_mount_root=args.shared_mount_root,
-            l40s_mount_root=args.l40s_mount_root,
-            l40s_host=args.l40s_host,
+        verification_reports["shared_final_l40s"] = _run_source_locked_child(
+            args=args,
+            expected_source_hashes=preflight["source_hashes"],
+            label="shared_final_l40s_bundle_verifier",
+            operation=lambda: run_l40s_bundle_verifier(
+                shared_final,
+                shared_mount_root=args.shared_mount_root,
+                l40s_mount_root=args.l40s_mount_root,
+                l40s_host=args.l40s_host,
+            ),
         )
         verification_timestamps["shared_final_l40s"] = time.time_ns()
         verification = _verification_consensus(
             verification_reports,
             timestamps_ns=verification_timestamps,
         )
-        transaction_work_ns = time.perf_counter_ns() - transaction_started_ns
-        monitor_report = monitor.stop()
+        _assert_source_lock(
+            repo=args.repo,
+            source_commit=args.source_commit,
+            expected_hashes=preflight["source_hashes"],
+            label="after_final_bundle_reverification",
+        )
+        monitor_report, transaction_work_ns, record_started_ns = (
+            _stop_transaction_monitor(monitor, transaction_started_ns)
+        )
         monitor = None
         resources = summarize_resources(
             monitor_report=monitor_report,
@@ -2659,19 +4129,24 @@ def run_formal(
             transaction_work_ns=transaction_work_ns,
         )
         if not resources["implementation_valid"]:
-            raise StageFailure("resource", "monitor_implementation", str(resources["checks"]))
-        if not resources["resource_valid"]:
+            terminal_status = TERMINAL_STATUSES[0]
+            failed_stage = "implementation"
+            failed_code = "monitor_or_timing_contract"
+        elif not resources["resource_valid"]:
             terminal_status = TERMINAL_STATUSES[1]
+            failed_stage = "resource"
+            failed_code = "frozen_resource_ceiling"
         else:
             terminal_status = determine_scientific_status(frames)
-        record_started_ns = time.perf_counter_ns()
-        if terminal_status == TERMINAL_STATUSES[1]:
+            failed_stage = ""
+            failed_code = ""
+        if terminal_status in TERMINAL_STATUSES[:2]:
             failure = publish_failure_record(
                 args=args,
                 source_commit=args.source_commit,
                 terminal_status=terminal_status,
-                failed_stage="resource",
-                failed_code="frozen_resource_ceiling",
+                failed_stage=failed_stage,
+                failed_code=failed_code,
                 resources=resources,
                 environment=preflight["environment"],
                 input_hashes=preflight["input_hashes"],
@@ -2728,14 +4203,21 @@ def run_formal(
         )
         return result
     except BaseException as error:
+        if transaction_started_ns is None:
+            transaction_started_ns = transaction_clock.get("started_ns")
         if monitor is not None:
-            monitor_report = monitor.stop()
+            if transaction_started_ns is None:
+                monitor_report = monitor.stop()
+                record_started_ns = time.perf_counter_ns()
+            else:
+                monitor_report, transaction_work_ns, record_started_ns = (
+                    _stop_transaction_monitor(monitor, transaction_started_ns)
+                )
             monitor = None
-        transaction_work_ns = (
-            None
-            if transaction_started_ns is None
-            else time.perf_counter_ns() - transaction_started_ns
-        )
+        else:
+            record_started_ns = time.perf_counter_ns()
+            if transaction_started_ns is not None and transaction_work_ns is None:
+                transaction_work_ns = record_started_ns - transaction_started_ns
         partial_resources = {
             "transaction_work_ns": transaction_work_ns,
             "monitor": monitor_report,
@@ -2744,16 +4226,10 @@ def run_formal(
         }
         failed_stage = error.stage if isinstance(error, StageFailure) else "unhandled"
         failed_code = error.code if isinstance(error, StageFailure) else type(error).__name__
-        resource_failure = isinstance(error, StageFailure) and (
-            error.stage == "resource" or error.code == "child_timeout"
-        )
-        terminal_status = TERMINAL_STATUSES[1] if resource_failure else TERMINAL_STATUSES[0]
-        event(
-            "formal_execution_failed",
-            terminal_status=terminal_status,
-            failed_stage=failed_stage,
-            failed_code=failed_code,
-            error_message=str(error),
+        terminal_status = _classify_execution_failure(
+            error,
+            monitor_report=monitor_report,
+            resources=resources,
         )
         failure = publish_failure_record(
             args=args,
@@ -2775,6 +4251,15 @@ def run_formal(
                 None if transaction is None else transaction.get("transaction_root")
             ),
         )
+        record_publication_ns = time.perf_counter_ns() - record_started_ns
+        event(
+            "formal_execution_failed",
+            terminal_status=terminal_status,
+            failed_stage=failed_stage,
+            failed_code=failed_code,
+            error_message=str(error),
+            record_publication_ns=record_publication_ns,
+        )
         return {
             "schema": "stda_f0_formal_compact_result_v1",
             "protocol_sha256": PROTOCOL_SHA256,
@@ -2786,6 +4271,7 @@ def run_formal(
             "traceback_sha256": sha256_bytes(traceback.format_exc().encode("utf-8")),
             "formal_launch_marker": str(marker),
             "formal_log_path": str(_EVENT_LOG_PATH),
+            "record_publication_ns": record_publication_ns,
         }
 
 

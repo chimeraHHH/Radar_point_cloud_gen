@@ -14,9 +14,11 @@ import io
 import json
 import math
 import struct
+import time
 from typing import Any, Iterable, Mapping, Sequence
 
 import numpy as np
+from scipy.spatial import cKDTree
 
 
 PROTOCOL_SHA256 = (
@@ -27,7 +29,49 @@ DEMAND_COUNT = 10_000
 GRAPH_K = 256
 UNMATCHED_SENTINEL = 2**63 - 1
 
+BOUNDARY_SEMANTICS = {
+    "support_target_input": False,
+    "demand_target_conditioned": True,
+    "graph_target_conditioned": True,
+    "cost_target_conditioned": True,
+    "control_score_target_conditioned": True,
+    "assignment_target_conditioned": True,
+    "solver_raw_target": False,
+    "deployment_claim": False,
+}
+
 CONTROL_EXPORT_REPLAY_SCHEMA = "stda_f0_independent_control_export_replay_v1"
+SEMANTIC_REPLAY_SCHEMA = "stda_f0_independent_fit_semantic_replay_v1"
+
+_FIT_CANONICAL_BUNDLE_DOMAIN = b"stda_f0_canonical_array_bundle_v1\0"
+_FIT_ATOM_SCHEMA = (
+    ("canonical_atom_id", "<i8"),
+    ("atom_xyz", "<f8"),
+    ("polar_rae", "<f8"),
+    ("aggregate_weight", "<f8"),
+    ("cdf", "<f8"),
+)
+_FIT_DEMAND_SCHEMA = (
+    ("slot_id", "<i8"),
+    ("canonical_atom_id", "<i8"),
+    ("slot_xyz", "<f8"),
+)
+_FIT_SUPPORT_SCHEMA = (
+    ("stable_candidate_id", "<i8"),
+    ("support_xyz", "<f4"),
+)
+_FIT_GRAPH_SCHEMA = (
+    ("indptr", "<i8"),
+    ("indices", "<i4"),
+    ("data", "<i8"),
+    ("squared_distance_m2", "<f8"),
+    ("distance_m", "<f8"),
+)
+_FIT_POINTWISE_SCHEMA = (
+    ("nearest_atom_id", "<i8"),
+    ("squared_distance_m2", "<f8"),
+    ("distance_m", "<f8"),
+)
 
 _SOLVER_INPUT_SCHEMA = {
     "support_stable_candidate_id.npy": ("<i8", 1),
@@ -50,6 +94,14 @@ _CONTROL_INPUT_SCHEMA = {
     "pointwise_nearest_atom_id.npy": ("<i8", 1),
     "pointwise_squared_distance.npy": ("<f8", 1),
     "pointwise_distance_m.npy": ("<f8", 1),
+}
+_FIT_EVIDENCE_SCHEMA = {
+    "target_xyz_confidence.npy": ("<f4", 2),
+    "target_atom_xyz_float32.npy": ("<f4", 2),
+    "target_atom_polar_rae.npy": ("<f8", 2),
+    "target_atom_cdf.npy": ("<f8", 1),
+    "demand_slot_xyz.npy": ("<f8", 2),
+    "canonical_support_xyz_float64.npy": ("<f8", 2),
 }
 _CONTROL_RESULT_SCHEMA = {
     "decision_slot_row.npy": ("<i8", 1),
@@ -76,6 +128,30 @@ _CONTROL_RESULT_SCHEMA = {
     "round_robin_greedy_ordered_atom_id.npy": ("<i8", 1),
     "round_robin_greedy_order_digest_bytes.npy": ("<u1", 2),
 }
+_MATCHING_RESULT_SCHEMA = {
+    "matching_custom_slot_to_support_rank.npy": ("<i8", 1),
+    "matching_custom_support_to_slot_row.npy": ("<i8", 1),
+    "matching_scipy_slot_to_support_rank.npy": ("<i8", 1),
+    "matching_scipy_support_to_slot_row.npy": ("<i8", 1),
+}
+_HALL_RESULT_SCHEMA = {
+    "hall_reachable_slot_rows.npy": ("<i8", 1),
+    "hall_reachable_support_ranks.npy": ("<i8", 1),
+    "hall_reachable_slot_ids.npy": ("<i8", 1),
+    "hall_reachable_support_ids.npy": ("<i8", 1),
+}
+SOLVER_INPUT_FILENAMES = frozenset(_SOLVER_INPUT_SCHEMA)
+CONTROL_INPUT_FILENAMES = frozenset(_CONTROL_INPUT_SCHEMA)
+FIT_EVIDENCE_FILENAMES = frozenset(
+    (*_FIT_EVIDENCE_SCHEMA, "target_xyz_confidence.bin")
+)
+MATCHING_RESULT_FILENAMES = frozenset(_MATCHING_RESULT_SCHEMA)
+GRAPH_NO_GO_RESULT_FILENAMES = frozenset(
+    (*_MATCHING_RESULT_SCHEMA, *_HALL_RESULT_SCHEMA)
+)
+READY_RESULT_FILENAMES = frozenset(
+    (*_MATCHING_RESULT_SCHEMA, *_CONTROL_RESULT_SCHEMA)
+)
 _EXPORT_ARMS = ("decision", "packed_pointwise", "round_robin_greedy")
 
 STRUCTURAL_REPORT_SCHEMA = "stda_f0_structural_report_v1"
@@ -459,19 +535,38 @@ def _matching_cardinality(row_to_support: np.ndarray) -> int:
 
 def verify_matching(
     row_to_support: np.ndarray,
+    support_to_row: np.ndarray,
     indptr: np.ndarray,
     indices: np.ndarray,
     *,
     support_cardinality: int,
 ) -> dict[str, Any]:
     matching = _as_le_array(row_to_support, "<i8")
+    reverse = _as_le_array(support_to_row, "<i8")
     indptr = _as_le_array(indptr, "<i8")
     indices = _as_le_array(indices, "<i4")
     if matching.shape != (DEMAND_COUNT,):
         raise ValueError("STDA-F0 maximum matching row vector changed")
+    if reverse.shape != (support_cardinality,):
+        raise ValueError("STDA-F0 maximum matching reverse vector changed")
+    sentinels_and_bounds = bool(
+        np.all(matching >= -1)
+        and np.all(matching < support_cardinality)
+        and np.all(reverse >= -1)
+        and np.all(reverse < DEMAND_COUNT)
+    )
     selected = matching[matching >= 0]
-    in_bounds = bool(np.all(selected < support_cardinality))
+    in_bounds = sentinels_and_bounds and bool(np.all(selected < support_cardinality))
     capacity_one = int(np.unique(selected).size) == int(selected.size)
+    matched_rows = np.flatnonzero(matching >= 0).astype("<i8", copy=False)
+    reverse_rows = np.flatnonzero(reverse >= 0).astype("<i8", copy=False)
+    reciprocal = bool(
+        in_bounds
+        and capacity_one
+        and matched_rows.size == reverse_rows.size
+        and np.array_equal(reverse[selected], matched_rows)
+        and np.array_equal(matching[reverse[reverse_rows]], reverse_rows)
+    )
     edge_membership = in_bounds
     if in_bounds:
         for row, column in enumerate(matching.tolist()):
@@ -484,13 +579,20 @@ def verify_matching(
                 edge_membership = False
                 break
     checks = {
+        "sentinels_and_bounds_valid": sentinels_and_bounds,
         "matched_support_in_bounds": in_bounds,
         "support_capacity_one": capacity_one,
+        "forward_reverse_reciprocal": reciprocal,
         "all_matches_are_graph_edges": edge_membership,
     }
+    digest_sha256 = _round_hash_arrays(
+        b"stda_f0_matching_v1", matching, reverse
+    )
     return {
         "cardinality": _matching_cardinality(matching),
         "matching_sha256": sha256_bytes(matching.tobytes()),
+        "reverse_matching_sha256": sha256_bytes(reverse.tobytes()),
+        "digest_sha256": digest_sha256,
         "checks": checks,
         "passed": all(checks.values()),
     }
@@ -610,10 +712,22 @@ def _load_required_arrays(
     schema: Mapping[str, tuple[str, int]],
     *,
     label: str,
+    exact_names: Iterable[str] | None = None,
 ) -> dict[str, np.ndarray]:
-    missing = sorted(set(schema) - set(payloads))
+    observed_names = set(payloads)
+    required_names = set(schema)
+    missing = sorted(required_names - observed_names)
     if missing:
         raise ValueError(f"STDA-F0 {label} is missing files: {missing}")
+    if exact_names is not None:
+        allowed_names = set(exact_names)
+        if observed_names != allowed_names:
+            unexpected = sorted(observed_names - allowed_names)
+            absent = sorted(allowed_names - observed_names)
+            raise ValueError(
+                f"STDA-F0 {label} file set changed; "
+                f"unexpected={unexpected}, missing={absent}"
+            )
     return {
         filename: _load_npy_bytes(
             payloads[filename],
@@ -665,6 +779,854 @@ def _file_set_binding(
         "label": label,
         "checks": checks,
         "files": file_reports,
+        "passed": all(checks.values()),
+    }
+
+
+@dataclass(frozen=True)
+class _SemanticTargetAtoms:
+    atom_id: np.ndarray
+    xyz_float32: np.ndarray
+    xyz_float64: np.ndarray
+    polar_rae: np.ndarray
+    weight: np.ndarray
+    cdf: np.ndarray
+    zero_confidence_row_count: int
+    digest_sha256: str
+
+
+@dataclass(frozen=True)
+class _SemanticDemand:
+    slot_id: np.ndarray
+    atom_id: np.ndarray
+    xyz_float64: np.ndarray
+    digest_sha256: str
+
+
+def _fit_canonical_digest(
+    kind: str,
+    schema: Sequence[tuple[str, str]],
+    arrays: Mapping[str, np.ndarray],
+    *,
+    extra_header: Mapping[str, object] | None = None,
+) -> str:
+    if tuple(arrays) != tuple(name for name, _ in schema):
+        raise ValueError(f"STDA-F0 independent {kind} fields changed")
+    fields: list[tuple[str, str, np.ndarray]] = []
+    for name, dtype in schema:
+        array = np.ascontiguousarray(arrays[name], dtype=np.dtype(dtype))
+        fields.append((name, dtype, array))
+    header = {
+        "base_freeze_commit": PROTOCOL_FREEZE_COMMIT,
+        "fields": [
+            {
+                "dtype": dtype,
+                "name": name,
+                "nbytes": int(array.nbytes),
+                "shape": [int(value) for value in array.shape],
+            }
+            for name, dtype, array in fields
+        ],
+        "kind": kind,
+        "protocol_sha256": PROTOCOL_SHA256,
+        **dict(extra_header or {}),
+    }
+    header_bytes = (
+        json.dumps(
+            header,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+            allow_nan=False,
+        ).encode("ascii")
+        + b"\n"
+    )
+    digest = hashlib.sha256(_FIT_CANONICAL_BUNDLE_DOMAIN)
+    digest.update(header_bytes)
+    for _, _, array in fields:
+        digest.update(array.tobytes(order="C"))
+    return digest.hexdigest()
+
+
+def _valid_sha256(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(character in "0123456789abcdef" for character in value)
+    )
+
+
+def _packed_support_columns(serialized: bytes) -> dict[str, np.ndarray]:
+    replay = verify_packed_support_bytes(serialized)
+    if replay.get("passed") is not True:
+        raise ValueError("STDA-F0 packed support failed before semantic replay")
+    newline = serialized.find(b"\n")
+    header = json.loads(serialized[:newline].decode("ascii"))
+    payload = serialized[newline + 1 :]
+    count = int(header["support_count"])
+    schema = (
+        ("stable_candidate_id", "<i8"),
+        ("cell_x", "<i8"),
+        ("cell_y", "<i8"),
+        ("cell_z", "<i8"),
+        ("x_m", "<f4"),
+        ("y_m", "<f4"),
+        ("z_m", "<f4"),
+        ("base_confidence", "<f4"),
+        ("color_id", "<u1"),
+    )
+    scalar: dict[str, np.ndarray] = {}
+    offset = 0
+    for name, dtype in schema:
+        size = count * np.dtype(dtype).itemsize
+        scalar[name] = np.frombuffer(payload[offset : offset + size], dtype=dtype)
+        offset += size
+    if offset != len(payload):
+        raise ValueError("STDA-F0 packed support payload has unparsed bytes")
+    return {
+        "stable_candidate_id": np.ascontiguousarray(
+            scalar["stable_candidate_id"], dtype="<i8"
+        ),
+        "grid_cell": np.ascontiguousarray(
+            np.column_stack(
+                (scalar["cell_x"], scalar["cell_y"], scalar["cell_z"])
+            ),
+            dtype="<i8",
+        ),
+        "xyz_float32": np.ascontiguousarray(
+            np.column_stack((scalar["x_m"], scalar["y_m"], scalar["z_m"])),
+            dtype="<f4",
+        ),
+        "base_confidence": np.ascontiguousarray(
+            scalar["base_confidence"], dtype="<f4"
+        ),
+        "color": np.ascontiguousarray(scalar["color_id"], dtype="<u1"),
+    }
+
+
+def _array_replay(
+    rebuilt: np.ndarray,
+    serialized: np.ndarray,
+) -> dict[str, Any]:
+    expected = np.ascontiguousarray(rebuilt)
+    observed = np.ascontiguousarray(serialized)
+    rebuilt_bytes = expected.tobytes(order="C")
+    serialized_bytes = observed.tobytes(order="C")
+    checks = {
+        "dtype": expected.dtype == observed.dtype,
+        "shape": expected.shape == observed.shape,
+        "bytes_identical": rebuilt_bytes == serialized_bytes,
+    }
+    return {
+        "dtype": expected.dtype.str,
+        "shape": [int(value) for value in expected.shape],
+        "rebuilt_sha256": sha256_bytes(rebuilt_bytes),
+        "serialized_sha256": sha256_bytes(serialized_bytes),
+        "checks": checks,
+        "passed": all(checks.values()),
+    }
+
+
+def _compare_array_sets(
+    rebuilt: Mapping[str, np.ndarray],
+    serialized: Mapping[str, np.ndarray],
+) -> dict[str, Any]:
+    exact_names = set(rebuilt) == set(serialized)
+    reports = {
+        name: _array_replay(rebuilt[name], serialized[name])
+        for name in sorted(set(rebuilt) & set(serialized))
+    }
+    return {
+        "exact_array_names": exact_names,
+        "arrays": reports,
+        "passed": exact_names and all(report["passed"] for report in reports.values()),
+    }
+
+
+def _float32_from_bits_independent(bits: int) -> float:
+    return float(
+        np.frombuffer(int(bits).to_bytes(4, "little", signed=False), dtype="<f4")[0]
+    )
+
+
+def _canonicalize_target_independently(payload: bytes) -> _SemanticTargetAtoms:
+    if not isinstance(payload, bytes) or not payload or len(payload) % 16 != 0:
+        raise ValueError("STDA-F0 target snapshot must contain float32 XYZC rows")
+    target = np.frombuffer(payload, dtype="<f4").reshape(-1, 4).copy(order="C")
+    if not bool(np.isfinite(target).all()) or bool(np.any(target[:, 3] < 0.0)):
+        raise ValueError("STDA-F0 target snapshot contains invalid XYZ/confidence")
+    target[target == np.float32(0.0)] = np.float32(0.0)
+    positive = target[:, 3] > np.float32(0.0)
+    zero_count = int((~positive).sum())
+    if not bool(positive.any()):
+        raise ValueError("STDA-F0 target snapshot has no positive-confidence row")
+
+    positive_target = np.ascontiguousarray(target[positive], dtype="<f4")
+    confidence_bits = np.ascontiguousarray(
+        positive_target[:, 3], dtype="<f4"
+    ).view("<u4")
+    grouped_bits: dict[bytes, list[int]] = {}
+    for row in range(positive_target.shape[0]):
+        xyz_key = positive_target[row, :3].tobytes(order="C")
+        grouped_bits.setdefault(xyz_key, []).append(int(confidence_bits[row]))
+
+    grouped_rows: list[tuple[bytes, np.ndarray, float]] = []
+    for xyz_key, bits in grouped_bits.items():
+        weight = math.fsum(
+            _float32_from_bits_independent(value) for value in sorted(bits)
+        )
+        if not math.isfinite(weight) or weight <= 0.0:
+            raise ValueError("STDA-F0 independent target atom weight is invalid")
+        grouped_rows.append(
+            (xyz_key, np.frombuffer(xyz_key, dtype="<f4", count=3).copy(), weight)
+        )
+
+    xyz_f32_unordered = np.ascontiguousarray(
+        np.stack([row[1] for row in grouped_rows], axis=0), dtype="<f4"
+    )
+    xyz_f64_unordered = np.ascontiguousarray(xyz_f32_unordered, dtype="<f8")
+    x = xyz_f64_unordered[:, 0]
+    y = xyz_f64_unordered[:, 1]
+    z = xyz_f64_unordered[:, 2]
+    radius = np.linalg.norm(xyz_f64_unordered, axis=1)
+    azimuth = np.arctan2(y, x)
+    elevation = np.arcsin(
+        np.divide(z, radius, out=np.zeros_like(z), where=radius > 0)
+    )
+    outside = (azimuth < -np.pi) | (azimuth >= np.pi)
+    canonical_azimuth = azimuth.copy()
+    canonical_azimuth[outside] = (
+        np.remainder(azimuth[outside] + np.pi, 2.0 * np.pi) - np.pi
+    )
+    canonical_azimuth = np.where(
+        canonical_azimuth == np.pi, -np.pi, canonical_azimuth
+    )
+    polar_unordered = np.ascontiguousarray(
+        np.column_stack((radius, canonical_azimuth, elevation)), dtype="<f8"
+    )
+    if not bool(np.isfinite(polar_unordered).all()):
+        raise ValueError("STDA-F0 independent target RAE is non-finite")
+    order = sorted(
+        range(len(grouped_rows)),
+        key=lambda row: (
+            float(polar_unordered[row, 0]),
+            float(polar_unordered[row, 1]),
+            float(polar_unordered[row, 2]),
+            float(xyz_f64_unordered[row, 0]),
+            float(xyz_f64_unordered[row, 1]),
+            float(xyz_f64_unordered[row, 2]),
+            grouped_rows[row][0],
+        ),
+    )
+    xyz_float32 = np.ascontiguousarray(xyz_f32_unordered[order], dtype="<f4")
+    xyz_float64 = np.ascontiguousarray(xyz_f64_unordered[order], dtype="<f8")
+    polar_rae = np.ascontiguousarray(polar_unordered[order], dtype="<f8")
+    weights_list = [float(grouped_rows[row][2]) for row in order]
+    weight = np.ascontiguousarray(weights_list, dtype="<f8")
+    total = math.fsum(weights_list)
+    if not math.isfinite(total) or total <= 0.0:
+        raise ValueError("STDA-F0 independent target total weight is invalid")
+    cdf = np.ascontiguousarray(
+        [
+            math.fsum(weights_list[: stop + 1]) / total
+            for stop in range(len(weights_list))
+        ],
+        dtype="<f8",
+    )
+    if (
+        not bool(np.isfinite(cdf).all())
+        or bool(np.any(np.diff(cdf) < 0.0))
+        or float(cdf[-1]) != 1.0
+    ):
+        raise ValueError("STDA-F0 independent target CDF is invalid")
+    atom_id = np.arange(len(order), dtype="<i8")
+    arrays = {
+        "canonical_atom_id": atom_id,
+        "atom_xyz": xyz_float64,
+        "polar_rae": polar_rae,
+        "aggregate_weight": weight,
+        "cdf": cdf,
+    }
+    return _SemanticTargetAtoms(
+        atom_id=atom_id,
+        xyz_float32=xyz_float32,
+        xyz_float64=xyz_float64,
+        polar_rae=polar_rae,
+        weight=weight,
+        cdf=cdf,
+        zero_confidence_row_count=zero_count,
+        digest_sha256=_fit_canonical_digest(
+            "stda_f0_target_atoms_v1", _FIT_ATOM_SCHEMA, arrays
+        ),
+    )
+
+
+def _build_demand_independently(atoms: _SemanticTargetAtoms) -> _SemanticDemand:
+    midpoint = np.fromiter(
+        ((2 * slot + 1) / 20_000 for slot in range(DEMAND_COUNT)),
+        dtype="<f8",
+        count=DEMAND_COUNT,
+    )
+    atom_index = np.searchsorted(atoms.cdf, midpoint, side="right")
+    if bool(np.any(atom_index < 0)) or bool(np.any(atom_index >= atoms.atom_id.size)):
+        raise ValueError("STDA-F0 independent demand CDF search is out of range")
+    slot_id = np.arange(DEMAND_COUNT, dtype="<i8")
+    atom_id = np.ascontiguousarray(atoms.atom_id[atom_index], dtype="<i8")
+    xyz = np.ascontiguousarray(atoms.xyz_float64[atom_index], dtype="<f8")
+    arrays = {
+        "slot_id": slot_id,
+        "canonical_atom_id": atom_id,
+        "slot_xyz": xyz,
+    }
+    return _SemanticDemand(
+        slot_id=slot_id,
+        atom_id=atom_id,
+        xyz_float64=xyz,
+        digest_sha256=_fit_canonical_digest(
+            "stda_f0_demand_slots_v1",
+            _FIT_DEMAND_SCHEMA,
+            arrays,
+            extra_header={"atom_digest_sha256": atoms.digest_sha256},
+        ),
+    )
+
+
+def _exact_squared_distance_independent(
+    left: np.ndarray,
+    right: np.ndarray,
+) -> float:
+    dx = float(left[0]) - float(right[0])
+    dy = float(left[1]) - float(right[1])
+    dz = float(left[2]) - float(right[2])
+    return (dx * dx + dy * dy) + dz * dz
+
+
+def _frozen_knn_row_independently(
+    tree: cKDTree,
+    support_xyz_float64: np.ndarray,
+    stable_candidate_id: np.ndarray,
+    query_xyz: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    provisional_distance, _ = tree.query(
+        query_xyz,
+        k=GRAPH_K,
+        p=2,
+        eps=0,
+        workers=1,
+    )
+    provisional = np.asarray(provisional_distance, dtype="<f8").reshape(-1)
+    if provisional.shape != (GRAPH_K,):
+        raise ValueError("STDA-F0 independent KNN provisional shape changed")
+    boundary = float(provisional[GRAPH_K - 1])
+    if not math.isfinite(boundary):
+        raise ValueError("STDA-F0 independent KNN boundary is non-finite")
+    gathered = tree.query_ball_point(
+        query_xyz,
+        r=math.nextafter(boundary, math.inf),
+        p=2,
+        eps=0,
+        workers=1,
+        return_sorted=True,
+    )
+    candidate_rank = [int(value) for value in gathered]
+    if len(candidate_rank) < GRAPH_K or len(candidate_rank) != len(set(candidate_rank)):
+        raise ValueError("STDA-F0 independent KNN boundary gathering is invalid")
+    resolved: list[tuple[float, int, int, float]] = []
+    for rank in candidate_rank:
+        squared = _exact_squared_distance_independent(
+            support_xyz_float64[rank], query_xyz
+        )
+        if not math.isfinite(squared) or squared < 0.0:
+            raise ValueError("STDA-F0 independent KNN squared distance is invalid")
+        resolved.append(
+            (
+                squared,
+                int(stable_candidate_id[rank]),
+                rank,
+                math.sqrt(squared),
+            )
+        )
+    resolved.sort(key=lambda row: (row[0], row[1]))
+    retained = resolved[:GRAPH_K]
+    return (
+        np.ascontiguousarray([row[2] for row in retained], dtype="<i8"),
+        np.ascontiguousarray([row[0] for row in retained], dtype="<f8"),
+        np.ascontiguousarray([row[3] for row in retained], dtype="<f8"),
+    )
+
+
+def _integer_micro_cost_independently(
+    distance_m: float,
+    *,
+    support_count: int,
+    support_rank: int,
+) -> int:
+    rounded = np.rint(np.float64(float(distance_m) * 1.0e6))
+    if not bool(np.isfinite(rounded)):
+        raise OverflowError("STDA-F0 independent micrometer rounding is non-finite")
+    distance_um = int(rounded)
+    cost = distance_um * (support_count + 1) + support_rank + 1
+    if cost <= 0 or cost >= 2**53:
+        raise OverflowError("STDA-F0 independent integer edge cost is invalid")
+    return cost
+
+
+def _build_graph_independently(
+    demand: _SemanticDemand,
+    support_xyz_float64: np.ndarray,
+    stable_candidate_id: np.ndarray,
+) -> tuple[dict[str, np.ndarray], str]:
+    support_count = int(stable_candidate_id.size)
+    if support_count < GRAPH_K:
+        raise ValueError("STDA-F0 semantic graph requires at least 256 support rows")
+    tree = cKDTree(
+        support_xyz_float64,
+        leafsize=16,
+        compact_nodes=True,
+        balanced_tree=True,
+        copy_data=True,
+    )
+    edge_count = DEMAND_COUNT * GRAPH_K
+    indptr = np.arange(0, edge_count + GRAPH_K, GRAPH_K, dtype="<i8")
+    indices = np.empty(edge_count, dtype="<i4")
+    data = np.empty(edge_count, dtype="<i8")
+    squared = np.empty(edge_count, dtype="<f8")
+    distance = np.empty(edge_count, dtype="<f8")
+    row_maximum_sum = 0
+    cache: dict[int, tuple[bytes, tuple[np.ndarray, np.ndarray, np.ndarray]]] = {}
+    for slot in range(DEMAND_COUNT):
+        atom_id = int(demand.atom_id[slot])
+        xyz_bytes = demand.xyz_float64[slot].tobytes(order="C")
+        cached = cache.get(atom_id)
+        if cached is None:
+            neighbors = _frozen_knn_row_independently(
+                tree,
+                support_xyz_float64,
+                stable_candidate_id,
+                demand.xyz_float64[slot],
+            )
+            cache[atom_id] = (xyz_bytes, neighbors)
+        else:
+            cached_xyz, neighbors = cached
+            if cached_xyz != xyz_bytes:
+                raise ValueError("STDA-F0 slots sharing an atom changed XYZ")
+        rank, row_squared, row_distance = neighbors
+        order = np.argsort(rank, kind="stable")
+        rank = rank[order]
+        row_squared = row_squared[order]
+        row_distance = row_distance[order]
+        start = slot * GRAPH_K
+        stop = start + GRAPH_K
+        row_cost = np.fromiter(
+            (
+                _integer_micro_cost_independently(
+                    float(row_distance[offset]),
+                    support_count=support_count,
+                    support_rank=int(rank[offset]),
+                )
+                for offset in range(GRAPH_K)
+            ),
+            dtype="<i8",
+            count=GRAPH_K,
+        )
+        indices[start:stop] = rank.astype("<i4", copy=False)
+        data[start:stop] = row_cost
+        squared[start:stop] = row_squared
+        distance[start:stop] = row_distance
+        row_maximum_sum += max(int(value) for value in row_cost)
+    if row_maximum_sum >= 2**63:
+        raise OverflowError("STDA-F0 independent graph objective bound overflowed")
+    arrays = {
+        "indptr": indptr,
+        "indices": indices,
+        "data": data,
+        "squared_distance_m2": squared,
+        "distance_m": distance,
+    }
+    support_arrays = {
+        "stable_candidate_id": stable_candidate_id,
+        "support_xyz": np.ascontiguousarray(support_xyz_float64, dtype="<f4"),
+    }
+    support_digest = _fit_canonical_digest(
+        "stda_f0_canonical_support_view_v1",
+        _FIT_SUPPORT_SCHEMA,
+        support_arrays,
+    )
+    graph_digest = _fit_canonical_digest(
+        "stda_f0_sparse_assignment_graph_v1",
+        _FIT_GRAPH_SCHEMA,
+        arrays,
+        extra_header={
+            "demand_digest_sha256": demand.digest_sha256,
+            "shape": [DEMAND_COUNT, support_count],
+            "support_digest_sha256": support_digest,
+        },
+    )
+    return arrays, graph_digest
+
+
+def _build_pointwise_independently(
+    atoms: _SemanticTargetAtoms,
+    support_xyz_float64: np.ndarray,
+    *,
+    support_digest_sha256: str,
+) -> tuple[dict[str, np.ndarray], str]:
+    tree = cKDTree(
+        atoms.xyz_float64,
+        leafsize=16,
+        compact_nodes=True,
+        balanced_tree=True,
+        copy_data=True,
+    )
+    count = int(support_xyz_float64.shape[0])
+    nearest_atom = np.empty(count, dtype="<i8")
+    squared = np.empty(count, dtype="<f8")
+    distance = np.empty(count, dtype="<f8")
+    for row in range(count):
+        query = support_xyz_float64[row]
+        provisional_distance, _ = tree.query(
+            query,
+            k=1,
+            p=2,
+            eps=0,
+            workers=1,
+        )
+        boundary = float(provisional_distance)
+        if not math.isfinite(boundary):
+            raise ValueError("STDA-F0 independent pointwise boundary is non-finite")
+        gathered = tree.query_ball_point(
+            query,
+            r=math.nextafter(boundary, math.inf),
+            p=2,
+            eps=0,
+            workers=1,
+            return_sorted=True,
+        )
+        if not gathered:
+            raise ValueError("STDA-F0 independent pointwise tie gathering is empty")
+        resolved: list[tuple[float, int]] = []
+        for candidate in gathered:
+            atom_id = int(atoms.atom_id[int(candidate)])
+            distance_squared = _exact_squared_distance_independent(
+                atoms.xyz_float64[int(candidate)], query
+            )
+            if not math.isfinite(distance_squared) or distance_squared < 0.0:
+                raise ValueError("STDA-F0 independent pointwise distance is invalid")
+            resolved.append((distance_squared, atom_id))
+        distance_squared, atom_id = min(resolved, key=lambda value: (value[0], value[1]))
+        nearest_atom[row] = atom_id
+        squared[row] = distance_squared
+        distance[row] = math.sqrt(distance_squared)
+    arrays = {
+        "nearest_atom_id": nearest_atom,
+        "squared_distance_m2": squared,
+        "distance_m": distance,
+    }
+    digest = _fit_canonical_digest(
+        "stda_f0_packed_pointwise_sidecar_v1",
+        _FIT_POINTWISE_SCHEMA,
+        arrays,
+        extra_header={
+            "atom_digest_sha256": atoms.digest_sha256,
+            "support_digest_sha256": support_digest_sha256,
+        },
+    )
+    return arrays, digest
+
+
+def verify_fitted_semantic_reconstruction(
+    *,
+    support_payload: bytes,
+    target_xyz_confidence_payload: bytes,
+    authoritative_target_cache_sha256: str,
+    solver_inputs: Mapping[str, bytes],
+    control_inputs: Mapping[str, bytes],
+    fit_evidence: Mapping[str, bytes],
+    fit_binding: Mapping[str, Any],
+    oracle_fit_digests: Mapping[str, Any],
+    round_input_binding: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Rebuild every target-conditioned fitter artifact from immutable inputs."""
+
+    started_ns = time.perf_counter_ns()
+    if not all(
+        isinstance(value, Mapping)
+        for value in (
+            solver_inputs,
+            control_inputs,
+            fit_evidence,
+            fit_binding,
+            oracle_fit_digests,
+            round_input_binding,
+        )
+    ):
+        raise TypeError("STDA-F0 semantic replay inputs must be mappings")
+    if not _valid_sha256(authoritative_target_cache_sha256):
+        raise ValueError("STDA-F0 authoritative target-cache SHA-256 is invalid")
+    if set(solver_inputs) != SOLVER_INPUT_FILENAMES:
+        raise ValueError("STDA-F0 solver input directory is not the frozen exact set")
+    if set(control_inputs) != CONTROL_INPUT_FILENAMES:
+        raise ValueError("STDA-F0 control input directory is not the frozen exact set")
+    if set(fit_evidence) != FIT_EVIDENCE_FILENAMES:
+        raise ValueError("STDA-F0 fit-evidence directory is not the frozen exact set")
+    timings: dict[str, int] = {}
+
+    interval = time.perf_counter_ns()
+    support = _packed_support_columns(support_payload)
+    solver = _load_required_arrays(
+        solver_inputs,
+        _SOLVER_INPUT_SCHEMA,
+        label="semantic solver_inputs",
+        exact_names=SOLVER_INPUT_FILENAMES,
+    )
+    support_rebuilt = {
+        "support_stable_candidate_id.npy": support["stable_candidate_id"],
+        "support_grid_cell.npy": support["grid_cell"],
+        "support_xyz.npy": support["xyz_float32"],
+        "support_base_confidence.npy": support["base_confidence"],
+        "support_color.npy": support["color"],
+    }
+    support_serialized = {name: solver[name] for name in support_rebuilt}
+    support_arrays = _compare_array_sets(support_rebuilt, support_serialized)
+    support_xyz_float64 = np.ascontiguousarray(support["xyz_float32"], dtype="<f8")
+    canonical_support_digest = _fit_canonical_digest(
+        "stda_f0_canonical_support_view_v1",
+        _FIT_SUPPORT_SCHEMA,
+        {
+            "stable_candidate_id": support["stable_candidate_id"],
+            "support_xyz": support["xyz_float32"],
+        },
+    )
+    timings["support_bin_parse_and_solver_binding_ns"] = (
+        time.perf_counter_ns() - interval
+    )
+
+    interval = time.perf_counter_ns()
+    atoms = _canonicalize_target_independently(target_xyz_confidence_payload)
+    fit_arrays = _load_required_arrays(
+        fit_evidence,
+        _FIT_EVIDENCE_SCHEMA,
+        label="semantic fit_evidence",
+        exact_names=FIT_EVIDENCE_FILENAMES,
+    )
+    target_snapshot = fit_evidence.get("target_xyz_confidence.bin")
+    if not isinstance(target_snapshot, bytes):
+        raise ValueError("STDA-F0 fit evidence lacks target_xyz_confidence.bin")
+    raw_target = np.frombuffer(target_xyz_confidence_payload, dtype="<f4").reshape(-1, 4)
+    timings["target_parse_and_canonical_atoms_ns"] = time.perf_counter_ns() - interval
+
+    interval = time.perf_counter_ns()
+    demand = _build_demand_independently(atoms)
+    timings["midpoint_exact_10000_demand_ns"] = time.perf_counter_ns() - interval
+
+    interval = time.perf_counter_ns()
+    graph_arrays, graph_digest = _build_graph_independently(
+        demand,
+        support_xyz_float64,
+        support["stable_candidate_id"],
+    )
+    timings["ckdtree_k256_graph_and_integer_cost_ns"] = (
+        time.perf_counter_ns() - interval
+    )
+
+    interval = time.perf_counter_ns()
+    pointwise_arrays, pointwise_digest = _build_pointwise_independently(
+        atoms,
+        support_xyz_float64,
+        support_digest_sha256=canonical_support_digest,
+    )
+    timings["ckdtree_pointwise_tie_replay_ns"] = time.perf_counter_ns() - interval
+
+    interval = time.perf_counter_ns()
+    fit_rebuilt = {
+        "target_xyz_confidence.npy": np.ascontiguousarray(raw_target, dtype="<f4"),
+        "target_atom_xyz_float32.npy": atoms.xyz_float32,
+        "target_atom_polar_rae.npy": atoms.polar_rae,
+        "target_atom_cdf.npy": atoms.cdf,
+        "demand_slot_xyz.npy": demand.xyz_float64,
+        "canonical_support_xyz_float64.npy": support_xyz_float64,
+    }
+    fit_array_replay = _compare_array_sets(fit_rebuilt, fit_arrays)
+    control = _load_required_arrays(
+        control_inputs,
+        _CONTROL_INPUT_SCHEMA,
+        label="semantic control_inputs",
+        exact_names=CONTROL_INPUT_FILENAMES,
+    )
+    control_rebuilt = {
+        "demand_slot_atom_id.npy": demand.atom_id,
+        "demand_atom_id.npy": atoms.atom_id,
+        "demand_atom_xyz.npy": atoms.xyz_float64,
+        "demand_atom_weight.npy": atoms.weight,
+        "pointwise_nearest_atom_id.npy": pointwise_arrays["nearest_atom_id"],
+        "pointwise_squared_distance.npy": pointwise_arrays["squared_distance_m2"],
+        "pointwise_distance_m.npy": pointwise_arrays["distance_m"],
+    }
+    control_array_replay = _compare_array_sets(control_rebuilt, control)
+    graph_rebuilt = {
+        "graph_indptr.npy": graph_arrays["indptr"],
+        "graph_indices.npy": graph_arrays["indices"],
+        "graph_data.npy": graph_arrays["data"],
+        "graph_edge_squared_distance_m2.npy": graph_arrays[
+            "squared_distance_m2"
+        ],
+        "graph_edge_distance_m.npy": graph_arrays["distance_m"],
+        "demand_slot_id.npy": demand.slot_id,
+    }
+    graph_serialized = {name: solver[name] for name in graph_rebuilt}
+    graph_array_replay = _compare_array_sets(graph_rebuilt, graph_serialized)
+
+    fit_payloads_with_target = dict(fit_evidence)
+    file_bindings = {
+        "fit_solver": _file_set_binding(
+            solver_inputs,
+            fit_binding.get("solver_input_files_sha256"),
+            label="fit_binding.solver_inputs",
+        ),
+        "round_solver": _file_set_binding(
+            solver_inputs,
+            round_input_binding.get("solver_input_files_sha256"),
+            label="round_input_binding.solver_inputs",
+        ),
+        "fit_controls": _file_set_binding(
+            control_inputs,
+            fit_binding.get("control_input_files_sha256"),
+            label="fit_binding.control_inputs",
+        ),
+        "round_controls": _file_set_binding(
+            control_inputs,
+            round_input_binding.get("control_input_files_sha256"),
+            label="round_input_binding.control_inputs",
+        ),
+        "fit_evidence": _file_set_binding(
+            fit_payloads_with_target,
+            fit_binding.get("fit_evidence_files_sha256"),
+            label="fit_binding.fit_evidence",
+        ),
+        "round_fit_evidence": _file_set_binding(
+            fit_payloads_with_target,
+            round_input_binding.get("fit_evidence_files_sha256"),
+            label="round_input_binding.fit_evidence",
+        ),
+    }
+    fit_digests = {
+        "canonical_target_atoms_sha256": atoms.digest_sha256,
+        "demand_slots_sha256": demand.digest_sha256,
+        "canonical_support_sha256": canonical_support_digest,
+        "sparse_graph_sha256": graph_digest,
+        "packed_pointwise_sidecar_sha256": pointwise_digest,
+    }
+    round_digests = {
+        "round_support_sha256": _round_hash_arrays(
+            b"stda_f0_packed_support_v1",
+            support["stable_candidate_id"],
+            support["grid_cell"],
+            support["xyz_float32"],
+            support["base_confidence"],
+            support["color"],
+        ),
+        "round_graph_sha256": _round_hash_arrays(
+            b"stda_f0_assignment_graph_v1",
+            graph_arrays["indptr"],
+            graph_arrays["indices"],
+            graph_arrays["data"],
+            graph_arrays["squared_distance_m2"],
+            graph_arrays["distance_m"],
+            demand.slot_id,
+            np.asarray([support["stable_candidate_id"].size], dtype="<i8"),
+        ),
+        "round_greedy_sidecar_sha256": _round_hash_arrays(
+            b"stda_f0_greedy_sidecar_v1",
+            demand.atom_id,
+            atoms.atom_id,
+            atoms.xyz_float64,
+            atoms.weight,
+        ),
+        "round_pointwise_sidecar_sha256": _round_hash_arrays(
+            b"stda_f0_pointwise_sidecar_v1",
+            pointwise_arrays["nearest_atom_id"],
+            pointwise_arrays["squared_distance_m2"],
+            pointwise_arrays["distance_m"],
+        ),
+    }
+    fit_digest_checks = {
+        name: fit_binding.get(name) == digest
+        and oracle_fit_digests.get(name) == digest
+        for name, digest in fit_digests.items()
+    }
+    round_digest_checks = {
+        name: round_input_binding.get(name) == digest
+        for name, digest in round_digests.items()
+    }
+    binding_checks = {
+        "schema": fit_binding.get("schema") == "stda_f0_fit_binding_v1",
+        "protocol_sha256": fit_binding.get("protocol_sha256") == PROTOCOL_SHA256,
+        "protocol_freeze_commit": fit_binding.get("protocol_freeze_commit")
+        == PROTOCOL_FREEZE_COMMIT,
+        "support_bin_sha256": fit_binding.get("support_bin_sha256")
+        == sha256_bytes(support_payload),
+        "target_tensor_sha256": fit_binding.get("target_tensor_sha256")
+        == sha256_bytes(target_xyz_confidence_payload),
+        "fit_target_bin_matches_authoritative_cache_array": target_snapshot
+        == target_xyz_confidence_payload,
+        "target_cache_sha256_matches_authoritative_cache": fit_binding.get(
+            "target_cache_sha256"
+        )
+        == authoritative_target_cache_sha256,
+        "boundary_semantics_frozen": BOUNDARY_SEMANTICS
+        == {
+            "support_target_input": False,
+            "demand_target_conditioned": True,
+            "graph_target_conditioned": True,
+            "cost_target_conditioned": True,
+            "control_score_target_conditioned": True,
+            "assignment_target_conditioned": True,
+            "solver_raw_target": False,
+            "deployment_claim": False,
+        },
+        "all_fit_digests": all(fit_digest_checks.values()),
+        "all_round_digests": all(round_digest_checks.values()),
+        "all_file_bindings": all(
+            report["passed"] for report in file_bindings.values()
+        ),
+    }
+    timings["all_array_and_hash_binding_ns"] = time.perf_counter_ns() - interval
+    timings["semantic_reconstruction_total_ns"] = time.perf_counter_ns() - started_ns
+
+    checks = {
+        "support_columns_byte_identical": support_arrays["passed"],
+        "fit_target_snapshot_bound_to_authoritative_cache": binding_checks[
+            "fit_target_bin_matches_authoritative_cache_array"
+        ],
+        "canonical_target_and_fit_arrays": fit_array_replay["passed"],
+        "exact_10000_demand_and_control_sidecars": control_array_replay["passed"],
+        "k256_graph_distances_and_integer_costs": graph_array_replay["passed"],
+        "all_content_and_semantic_digests": all(binding_checks.values()),
+    }
+    return {
+        "schema": SEMANTIC_REPLAY_SCHEMA,
+        "protocol_sha256": PROTOCOL_SHA256,
+        "protocol_freeze_commit": PROTOCOL_FREEZE_COMMIT,
+        "boundary_semantics": dict(BOUNDARY_SEMANTICS),
+        "authoritative_target_cache_sha256": authoritative_target_cache_sha256,
+        "support_count": int(support["stable_candidate_id"].size),
+        "target_source_row_count": int(raw_target.shape[0]),
+        "zero_confidence_row_count": atoms.zero_confidence_row_count,
+        "canonical_positive_atom_count": int(atoms.atom_id.size),
+        "demand_slot_count": int(demand.slot_id.size),
+        "graph_edge_count": int(graph_arrays["indices"].size),
+        "support_array_replay": support_arrays,
+        "fit_array_replay": fit_array_replay,
+        "control_array_replay": control_array_replay,
+        "graph_array_replay": graph_array_replay,
+        "file_bindings": file_bindings,
+        "computed_fit_digests": fit_digests,
+        "fit_digest_checks": fit_digest_checks,
+        "computed_round_digests": round_digests,
+        "round_digest_checks": round_digest_checks,
+        "binding_checks": binding_checks,
+        "timings_ns": timings,
+        "checks": checks,
         "passed": all(checks.values()),
     }
 
@@ -1566,6 +2528,12 @@ def verify_control_export_replay(
         type(expected_graph_k) is not int or expected_graph_k <= 0
     ):
         raise ValueError("STDA-F0 expected graph degree must be positive or None")
+    if set(solver_inputs) != SOLVER_INPUT_FILENAMES:
+        raise ValueError("STDA-F0 solver_inputs contains a non-frozen file set")
+    if set(control_inputs) != CONTROL_INPUT_FILENAMES:
+        raise ValueError("STDA-F0 control_inputs contains a non-frozen file set")
+    if set(round_results) != READY_RESULT_FILENAMES:
+        raise ValueError("STDA-F0 READY round_results contains a non-frozen file set")
 
     round_binding = _expected_report_mapping(
         oracle_report.get("round_input_binding"), label="round input binding"
@@ -1586,13 +2554,22 @@ def verify_control_export_replay(
         label="round_results",
     )
     solver = _load_required_arrays(
-        solver_inputs, _SOLVER_INPUT_SCHEMA, label="solver_inputs"
+        solver_inputs,
+        _SOLVER_INPUT_SCHEMA,
+        label="solver_inputs",
+        exact_names=SOLVER_INPUT_FILENAMES,
     )
     controls = _load_required_arrays(
-        control_inputs, _CONTROL_INPUT_SCHEMA, label="control_inputs"
+        control_inputs,
+        _CONTROL_INPUT_SCHEMA,
+        label="control_inputs",
+        exact_names=CONTROL_INPUT_FILENAMES,
     )
     results = _load_required_arrays(
-        round_results, _CONTROL_RESULT_SCHEMA, label="round_results"
+        round_results,
+        _CONTROL_RESULT_SCHEMA,
+        label="round_results",
+        exact_names=READY_RESULT_FILENAMES,
     )
     input_replay = _validate_replay_inputs(
         solver,
@@ -1687,6 +2664,10 @@ def verify_control_export_replay(
         == PROTOCOL_SHA256,
         "protocol_freeze_commit": oracle_report.get("protocol_freeze_commit")
         == PROTOCOL_FREEZE_COMMIT,
+        "boundary_semantics_frozen": BOUNDARY_SEMANTICS.get("solver_raw_target")
+        is False
+        and BOUNDARY_SEMANTICS.get("deployment_claim") is False
+        and len(BOUNDARY_SEMANTICS) == 8,
         "frame": all(frame_checks.values()),
         "exact_export_file_names": set(exports) == expected_export_names,
         "solver_file_binding": solver_file_binding["passed"],
@@ -1705,6 +2686,7 @@ def verify_control_export_replay(
         "schema": CONTROL_EXPORT_REPLAY_SCHEMA,
         "protocol_sha256": PROTOCOL_SHA256,
         "protocol_freeze_commit": PROTOCOL_FREEZE_COMMIT,
+        "boundary_semantics": dict(BOUNDARY_SEMANTICS),
         "frame": {
             "sequence": sequence,
             "radar_index": radar_index,

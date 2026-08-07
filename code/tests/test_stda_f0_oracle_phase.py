@@ -3,7 +3,10 @@ from __future__ import annotations
 import ast
 import hashlib
 import inspect
+import os
 from pathlib import Path
+import subprocess
+import sys
 from types import SimpleNamespace
 
 import numpy as np
@@ -77,8 +80,8 @@ def test_oracle_has_cpu_only_target_and_metric_boundaries() -> None:
     assert "eval.stda_f0_round" in imported
     assert "eval.stda_f0_structure" in imported
     assert "eval.vrh_f0_support" in imported
-    assert "load_target_xyz_confidence" in _calls(source)
-    assert _calls(source).count("load_target_xyz_confidence") == 1
+    assert "load_target_xyz_confidence_bytes" in _calls(source)
+    assert _calls(source).count("load_target_xyz_confidence_bytes") == 1
     assert "np.load" not in source
     assert "geometry_report" not in source
     assert "load_tesseract" not in source
@@ -130,6 +133,10 @@ def test_clean_replay_environment_drops_target_and_cuda_state(
     assert environment["CUDA_VISIBLE_DEVICES"] == ""
     assert environment["PYTHONHASHSEED"] == "0"
     assert environment["OMP_NUM_THREADS"] == "1"
+    assert environment["PYTHONNOUSERSITE"] == "1"
+    assert environment["PYTHONDONTWRITEBYTECODE"] == "1"
+    assert "PYTHONPATH" not in environment
+    assert "PYTHONHOME" not in environment
     assert "TARGET_CACHE_PATH" not in environment
     assert "NVIDIA_VISIBLE_DEVICES" not in environment
     assert "CUDA_HOME" not in environment
@@ -164,6 +171,7 @@ def test_replay_request_rejects_any_extra_target_file(tmp_path: Path) -> None:
         request,
         request_payload=request_payload,
         input_root=input_root,
+        observed_input_hashes=file_hashes,
     )
     assert cardinality == 10_000
     assert observed == file_hashes
@@ -174,6 +182,7 @@ def test_replay_request_rejects_any_extra_target_file(tmp_path: Path) -> None:
             request,
             request_payload=request_payload,
             input_root=input_root,
+            observed_input_hashes=file_hashes,
         )
 
 
@@ -298,21 +307,22 @@ def test_all_emitted_arm_reports_pass_independent_structural_replay() -> None:
     }
 
 
-def test_capacity_no_go_never_opens_target(
+def test_capacity_no_go_hashes_cache_once_without_array_loader(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "")
     monkeypatch.setattr(oracle_module, "FORBIDDEN_MODULE_PREFIXES", ())
+    monkeypatch.setattr(oracle_module, "_require_isolated_interpreter", lambda: None)
     target_calls: list[Path] = []
 
-    def forbidden_target_loader(path: Path, **_: object) -> object:
-        target_calls.append(path)
+    def forbidden_target_loader(_: bytes, **kwargs: object) -> object:
+        target_calls.append(Path(str(kwargs)))
         raise AssertionError("capacity no-go must not open target")
 
     monkeypatch.setattr(
         oracle_module,
-        "load_target_xyz_confidence",
+        "load_target_xyz_confidence_bytes",
         forbidden_target_loader,
     )
     support = build_packed_support(
@@ -332,7 +342,8 @@ def test_capacity_no_go_never_opens_target(
     support_dir.mkdir()
     (support_dir / "support.bin").write_bytes(support_bytes)
     target_path = tmp_path / "must_not_open.npz"
-    target_path.write_bytes(b"not a target cache")
+    target_payload = b"not parsed as a target cache"
+    target_path.write_bytes(target_payload)
     resources = tmp_path / "resources"
     resources.mkdir()
     output = tmp_path / "oracle_output"
@@ -348,11 +359,116 @@ def test_capacity_no_go_never_opens_target(
     )
 
     assert report["status"] == CAPACITY_NO_GO_STATUS
-    assert report["target"]["opened"] is False
+    assert report["target"]["opened"] is True
+    assert report["target"]["array_loader_called"] is False
+    assert report["target"]["cache_arrays_read"] == []
+    assert report["target"]["target_array_materialized"] is False
+    assert report["target"]["cache_sha256"] == hashlib.sha256(
+        target_payload
+    ).hexdigest()
+    assert report["target"]["cache_size_bytes"] == len(target_payload)
+    assert report["target"]["stat_before"] == report["target"]["stat_after"]
+    assert report["target"]["path_read_calls"] == 1
+    assert report["target"]["descriptor_read_calls"] >= 1
     assert target_calls == []
     assert (output / "oracle_report.json").is_file()
     assert (output / "ORACLE_COMPLETE.json").is_file()
+    timing, _ = oracle_module._load_canonical_json(
+        output / "ORACLE_FRAME_TIMING.json"
+    )
+    assert timing["oracle_child_pre_metric_ns"] > 0
+    assert timing["authoritative_oracle_frame_ns"] is False
+    assert timing["support_reverification_excluded"] is True
+    assert timing["timing_receipt_publication_excluded"] is True
+    assert "sole_target_cache_byte_read" in timing["boundary"]
     assert not (output / "solver_inputs").exists()
+
+
+def test_capacity_no_go_cache_provenance_rejects_concurrent_mutation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cache = tmp_path / "target.npz"
+    cache.write_bytes(b"before")
+    original_read = oracle_module.os.read
+    mutated = False
+
+    def mutate_after_read(descriptor: int, count: int) -> bytes:
+        nonlocal mutated
+        payload = original_read(descriptor, count)
+        if payload and not mutated:
+            mutated = True
+            with cache.open("ab") as handle:
+                handle.write(b"changed")
+                handle.flush()
+                os.fsync(handle.fileno())
+        return payload
+
+    monkeypatch.setattr(oracle_module.os, "read", mutate_after_read)
+    with pytest.raises(ValueError, match="sole byte read"):
+        oracle_module._read_immutable_path_bytes(
+            cache,
+            label="STDA capacity-no-go target cache",
+        )
+
+
+def test_clean_solver_uses_isolated_no_site_flags() -> None:
+    source = inspect.getsource(oracle_module.run_oracle_phase)
+    assert '"-I"' in source
+    assert '"-S"' in source
+    assert '"-B"' in source
+    assert source.index('"-I"') < source.index("str(replay_script)")
+    assert "expected_replay_source_hashes" in source
+
+
+def test_oracle_and_assignment_scripts_import_under_isolated_no_site(
+    tmp_path: Path,
+) -> None:
+    marker = tmp_path / "sitecustomize-ran"
+    hostile = tmp_path / "hostile"
+    hostile.mkdir()
+    (hostile / "sitecustomize.py").write_text(
+        f"from pathlib import Path\nPath({str(marker)!r}).write_text('bad')\n",
+        encoding="ascii",
+    )
+    environment = dict(os.environ)
+    environment.update(
+        {
+            "CUDA_VISIBLE_DEVICES": "",
+            "PYTHONPATH": str(hostile),
+            "PYTHONNOUSERSITE": "1",
+        }
+    )
+    for script in (Path(oracle_module.__file__), Path(replay_module.__file__)):
+        completed = subprocess.run(
+            [sys.executable, "-I", "-S", "-B", str(script), "--help"],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            check=False,
+            timeout=30.0,
+        )
+        assert completed.returncode == 0, completed.stderr.decode(errors="replace")
+    assert not marker.exists()
+
+
+def test_assignment_runtime_source_hashes_are_explicit_and_stable() -> None:
+    hashes = replay_module._runtime_source_hashes()
+    assert set(hashes) == {
+        "code/scripts/stda_f0_assignment_replay.py",
+        "code/eval/stda_f0_round.py",
+    }
+    assert replay_module._require_runtime_source_hashes(hashes) == hashes
+
+
+def test_oracle_source_hashes_expose_exact_orchestrator_binding() -> None:
+    hashes = oracle_module._source_hashes()
+    orchestrator_hashes = {
+        relative: hashes[relative]
+        for relative in oracle_module.ORCHESTRATOR_SOURCE_PATHS
+    }
+    assert tuple(orchestrator_hashes) == oracle_module.ORCHESTRATOR_SOURCE_PATHS
+    assert all(len(value) == 64 for value in orchestrator_hashes.values())
 
 
 def test_fsynced_array_writer_preserves_explicit_little_endian_dtype(

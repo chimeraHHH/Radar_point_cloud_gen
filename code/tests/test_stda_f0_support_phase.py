@@ -2,13 +2,19 @@ from __future__ import annotations
 
 import ast
 import hashlib
+import io
 import inspect
 import json
+import os
 from pathlib import Path
+import subprocess
 import sys
 
+import numpy as np
 import pytest
+from scipy.io import savemat
 
+import cube_dense.kradar as kradar
 import scripts.stda_f0_support_phase as phase
 
 
@@ -308,20 +314,126 @@ def test_canonical_json_and_support_file_schema_are_stable() -> None:
     )
 
 
-def test_frame_runtime_source_contains_required_boundaries_and_direct_loader() -> None:
+def test_immutable_cube_reader_reads_once_and_binds_payload(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cube = tmp_path / "cube.mat"
+    payload = b"immutable synthetic Cube bytes"
+    cube.write_bytes(payload)
+    observed, provenance = phase._read_immutable_path_bytes(cube, label="raw Cube")
+
+    assert observed == payload
+    assert provenance["path_read_calls"] == 1
+    assert provenance["descriptor_read_calls"] >= 1
+    assert provenance["sha256"] == hashlib.sha256(payload).hexdigest()
+    assert provenance["stat_before"] == provenance["stat_after"]
+    assert provenance["hash_consumed_same_payload"] is True
+
+
+def test_immutable_cube_reader_rejects_mutation_during_read(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cube = tmp_path / "cube.mat"
+    cube.write_bytes(b"before")
+    original_read = phase.os.read
+    mutated = False
+
+    def mutate_after_read(descriptor: int, count: int) -> bytes:
+        nonlocal mutated
+        payload = original_read(descriptor, count)
+        if payload and not mutated:
+            mutated = True
+            with cube.open("ab") as handle:
+                handle.write(b"changed")
+                handle.flush()
+                os.fsync(handle.fileno())
+        return payload
+
+    monkeypatch.setattr(phase.os, "read", mutate_after_read)
+    with pytest.raises(phase.SupportPhaseContractError, match="sole byte read"):
+        phase._read_immutable_path_bytes(cube, label="raw Cube")
+
+
+def test_tesseract_bytesio_errors_preserve_source_label() -> None:
+    buffer = io.BytesIO()
+    savemat(buffer, {"arrDREA": np.zeros((1, 2), dtype=np.float32)})
+    buffer.seek(0)
+    with pytest.raises(ValueError, match="synthetic_cube.mat"):
+        kradar.load_tesseract(buffer, source_label="synthetic_cube.mat")
+
+
+def test_frame_runtime_source_contains_required_boundaries_and_payload_loader() -> None:
     source = inspect.getsource(phase._process_frame)
-    assert "runtime.kradar.load_tesseract(cube_path)" in source
+    assert "_read_immutable_path_bytes(" in source
+    assert "io.BytesIO(cube_payload)" in source
+    assert "source_label=cube_path" in source
+    assert "sha256_file(cube_path)" not in source
     assert "torch.autocast(device_type=\"cuda\", dtype=torch.bfloat16)" in source
     assert "runtime.candidate.reconstruct_candidate_field" in source
     assert "runtime.candidate.verify_candidate_only" in source
     assert "runtime.support.build_packed_support" in source
     assert "runtime.verify.verify_packed_support_bytes" in source
     assert 'frame_root / "support_record.json"' in source
+    assert 'frame_root / "support_manifest_entry.json"' in source
+    assert "manifest_entry_record = _write_fsync_rehash(" in source
+    assert source.index("manifest_entry_record = _write_fsync_rehash(") < source.index(
+        "support_frame_ended = time.perf_counter_ns()"
+    )
+    assert source.index("torch.cuda.empty_cache()") < source.index(
+        "support_frame_ended = time.perf_counter_ns()"
+    )
     assert source.count("torch.cuda.synchronize(device)") >= 5
     assert "time.perf_counter_ns()" in source
     assert "peak_allocated_bytes" in source
     assert "peak_reserved_bytes" in source
     assert "PilotCubeDataset" not in source
+
+
+def test_trusted_site_packages_are_explicit_without_site_processing() -> None:
+    roots = phase._interpreter_roots(os.environ)
+    paths = phase._trusted_site_package_paths(roots)
+    assert paths
+    assert any((path / "numpy").is_dir() for path in paths)
+    source = inspect.getsource(phase._trusted_site_package_paths)
+    assert "addsitedir" not in source
+    assert "sitecustomize" not in source
+
+
+def test_runtime_source_hashes_expose_exact_orchestrator_binding() -> None:
+    repo = Path(phase.__file__).resolve().parents[2]
+    runtime_hashes = phase._runtime_source_hashes(repo)
+    orchestrator_hashes = phase._source_hash_subset(
+        runtime_hashes,
+        phase.ORCHESTRATOR_SOURCE_PATHS,
+    )
+    assert tuple(orchestrator_hashes) == phase.ORCHESTRATOR_SOURCE_PATHS
+    assert all(len(value) == 64 for value in orchestrator_hashes.values())
+
+
+def test_support_script_starts_under_isolated_no_site_interpreter(
+    tmp_path: Path,
+) -> None:
+    marker = tmp_path / "sitecustomize-ran"
+    hostile = tmp_path / "hostile"
+    hostile.mkdir()
+    (hostile / "sitecustomize.py").write_text(
+        f"from pathlib import Path\nPath({str(marker)!r}).write_text('bad')\n",
+        encoding="ascii",
+    )
+    environment = dict(os.environ)
+    environment["PYTHONPATH"] = str(hostile)
+    completed = subprocess.run(
+        [sys.executable, "-I", "-S", "-B", str(Path(phase.__file__)), "--help"],
+        cwd=tmp_path,
+        env=environment,
+        capture_output=True,
+        check=False,
+        timeout=30.0,
+    )
+    assert completed.returncode == 0, completed.stderr.decode(errors="replace")
+    assert not marker.exists()
 
 
 def test_completion_writer_seals_after_opening_ledger_file() -> None:

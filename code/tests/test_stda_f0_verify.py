@@ -29,6 +29,7 @@ from eval.stda_f0_round import (
     GreedySidecar,
     PackedSupport,
     PointwiseSidecar,
+    maximum_cardinality_certificate,
     packed_pointwise_control,
     solve_full_assignment,
     target_atom_round_robin_greedy,
@@ -42,6 +43,7 @@ from eval.stda_f0_verify import (
     verify_exact_spacing_bytes,
     verify_control_export_replay,
     verify_export_pair,
+    verify_fitted_semantic_reconstruction,
     verify_packed_support_bytes,
     verify_structural_replay,
 )
@@ -411,6 +413,7 @@ def _control_artifact_bundle(
         distance_m=pointwise_distance,
     )
 
+    certificate = maximum_cardinality_certificate(support, graph)
     decision = solve_full_assignment(support, graph)
     pointwise = packed_pointwise_control(
         support, pointwise_sidecar, output_count=slot_count
@@ -445,6 +448,18 @@ def _control_artifact_bundle(
         "pointwise_distance_m.npy": pointwise_distance,
     }
     result_values = {
+        "matching_custom_slot_to_support_rank.npy": (
+            certificate.custom_matching.slot_to_support_rank
+        ),
+        "matching_custom_support_to_slot_row.npy": (
+            certificate.custom_matching.support_to_slot_row
+        ),
+        "matching_scipy_slot_to_support_rank.npy": (
+            certificate.scipy_matching.slot_to_support_rank
+        ),
+        "matching_scipy_support_to_slot_row.npy": (
+            certificate.scipy_matching.support_to_slot_row
+        ),
         "decision_slot_row.npy": decision.slot_row,
         "decision_slot_id.npy": decision.slot_id,
         "decision_support_rank.npy": decision.support_rank,
@@ -617,6 +632,196 @@ def test_verifier_is_bound_and_has_no_forbidden_predecessor_imports() -> None:
     assert signature.parameters["required_export_count"].default == 10_000
     assert signature.parameters["expected_graph_k"].default == 256
 
+    semantic_signature = inspect.signature(verify_fitted_semantic_reconstruction)
+    assert tuple(semantic_signature.parameters) == (
+        "support_payload",
+        "target_xyz_confidence_payload",
+        "authoritative_target_cache_sha256",
+        "solver_inputs",
+        "control_inputs",
+        "fit_evidence",
+        "fit_binding",
+        "oracle_fit_digests",
+        "round_input_binding",
+    )
+
+
+def test_independent_knn_boundary_tie_uses_stable_id_not_tree_row() -> None:
+    support_xyz = np.tile(np.asarray([[1.0, 0.0, 0.0]], dtype="<f8"), (300, 1))
+    stable_id = (np.arange(300, dtype="<i8")[::-1] * 11) + 7
+    tree = verify_module.cKDTree(
+        support_xyz,
+        leafsize=16,
+        compact_nodes=True,
+        balanced_tree=True,
+        copy_data=True,
+    )
+    rank, squared, distance = verify_module._frozen_knn_row_independently(
+        tree,
+        support_xyz,
+        stable_id,
+        np.zeros(3, dtype="<f8"),
+    )
+
+    selected_id = stable_id[rank]
+    assert np.array_equal(selected_id, np.sort(stable_id)[:256])
+    assert np.array_equal(squared, np.ones(256, dtype="<f8"))
+    assert np.array_equal(distance, np.ones(256, dtype="<f8"))
+
+
+def test_independent_knn_ulp_boundary_is_support_permutation_invariant() -> None:
+    near = np.linspace(0.1, 0.9, 250, dtype="<f8")
+    tie = np.full(10, 1.0, dtype="<f8")
+    outside = np.full(40, np.nextafter(1.0, math.inf), dtype="<f8")
+    radius = np.concatenate((near, tie, outside))
+    support_xyz = np.zeros((radius.size, 3), dtype="<f8")
+    support_xyz[:, 0] = radius
+    stable_id = (np.arange(radius.size, dtype="<i8") * 37 + 11)[::-1].copy()
+    query = np.zeros(3, dtype="<f8")
+
+    def selected_ids(order: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        xyz = np.ascontiguousarray(support_xyz[order], dtype="<f8")
+        ids = np.ascontiguousarray(stable_id[order], dtype="<i8")
+        tree = verify_module.cKDTree(
+            xyz,
+            leafsize=16,
+            compact_nodes=True,
+            balanced_tree=True,
+            copy_data=True,
+        )
+        rank, squared, distance = verify_module._frozen_knn_row_independently(
+            tree,
+            xyz,
+            ids,
+            query,
+        )
+        return ids[rank], squared, distance
+
+    identity = np.arange(radius.size, dtype="<i8")
+    permutation = np.random.default_rng(20260808).permutation(radius.size)
+    first_id, first_squared, first_distance = selected_ids(identity)
+    second_id, second_squared, second_distance = selected_ids(permutation)
+
+    expected_tie = np.sort(stable_id[250:260])[:6]
+    assert np.array_equal(first_id, second_id)
+    assert np.array_equal(first_squared, second_squared)
+    assert np.array_equal(first_distance, second_distance)
+    assert set(expected_tie.tolist()).issubset(set(first_id.tolist()))
+    assert not set(stable_id[260:].tolist()).intersection(first_id.tolist())
+
+
+def test_independent_positive_target_atoms_ignore_row_order_and_signed_zero() -> None:
+    negative_zero = np.asarray([-0.0], dtype="<f4")[0]
+    target = np.asarray(
+        [
+            [2.0, negative_zero, 0.0, 0.25],
+            [1.0, 0.0, negative_zero, 1.0],
+            [2.0, 0.0, 0.0, 0.75],
+            [9.0, 9.0, 9.0, 0.0],
+        ],
+        dtype="<f4",
+    )
+    first = verify_module._canonicalize_target_independently(
+        target.tobytes(order="C")
+    )
+    second = verify_module._canonicalize_target_independently(
+        np.ascontiguousarray(target[[3, 2, 0, 1]], dtype="<f4").tobytes(order="C")
+    )
+    first_demand = verify_module._build_demand_independently(first)
+    second_demand = verify_module._build_demand_independently(second)
+
+    assert first.zero_confidence_row_count == second.zero_confidence_row_count == 1
+    assert first.digest_sha256 == second.digest_sha256
+    assert first_demand.digest_sha256 == second_demand.digest_sha256
+    assert np.array_equal(first.atom_id, second.atom_id)
+    assert np.array_equal(first.xyz_float32.view("<u4"), second.xyz_float32.view("<u4"))
+    assert np.array_equal(first.weight, second.weight)
+    assert np.array_equal(first_demand.atom_id, second_demand.atom_id)
+
+
+def test_target_atom_golden_bytes_have_exact_grouping_order_and_weights() -> None:
+    target = np.asarray(
+        [
+            [2.0, 0.0, 0.0, 0.25],
+            [1.0, 0.0, 0.0, 2.0],
+            [2.0, 0.0, 0.0, 0.75],
+            [9.0, 9.0, 9.0, 0.0],
+        ],
+        dtype="<f4",
+    )
+    payload = target.tobytes(order="C")
+    assert payload[:16] == struct.pack("<ffff", 2.0, 0.0, 0.0, 0.25)
+
+    atoms = verify_module._canonicalize_target_independently(payload)
+
+    expected_xyz = np.asarray(
+        [[1.0, 0.0, 0.0], [2.0, 0.0, 0.0]],
+        dtype="<f4",
+    )
+    assert atoms.zero_confidence_row_count == 1
+    assert atoms.atom_id.tolist() == [0, 1]
+    assert atoms.xyz_float32.tobytes(order="C") == expected_xyz.tobytes(order="C")
+    assert atoms.weight.tolist() == [2.0, 1.0]
+    assert atoms.cdf.tolist() == [2.0 / 3.0, 1.0]
+
+
+def test_high_atom_target_semantics_are_permutation_stable() -> None:
+    atom_count = 2048
+    index = np.arange(atom_count, dtype="<f4")
+    target = np.column_stack(
+        (
+            np.float32(1.0) + index * np.float32(0.01),
+            np.sin(index.astype("<f8") * 0.01).astype("<f4"),
+            np.cos(index.astype("<f8") * 0.01).astype("<f4"),
+            np.ones(atom_count, dtype="<f4"),
+        )
+    ).astype("<f4", copy=False)
+    first = verify_module._canonicalize_target_independently(
+        np.ascontiguousarray(target).tobytes(order="C")
+    )
+    second = verify_module._canonicalize_target_independently(
+        np.ascontiguousarray(target[::-1]).tobytes(order="C")
+    )
+    first_demand = verify_module._build_demand_independently(first)
+    second_demand = verify_module._build_demand_independently(second)
+
+    assert first.atom_id.size == second.atom_id.size == atom_count
+    assert first.digest_sha256 == second.digest_sha256
+    assert first_demand.digest_sha256 == second_demand.digest_sha256
+    assert np.array_equal(first_demand.atom_id, second_demand.atom_id)
+    assert first_demand.slot_id.size == 10_000
+
+
+def test_independent_pointwise_tie_uses_canonical_atom_id() -> None:
+    target = np.asarray(
+        [[-1.0, 0.0, 0.0, 1.0], [1.0, 0.0, 0.0, 1.0]], dtype="<f4"
+    )
+    atoms = verify_module._canonicalize_target_independently(
+        target.tobytes(order="C")
+    )
+    support_xyz = np.zeros((1, 3), dtype="<f8")
+    arrays, _ = verify_module._build_pointwise_independently(
+        atoms,
+        support_xyz,
+        support_digest_sha256="0" * 64,
+    )
+
+    assert arrays["nearest_atom_id"].tolist() == [0]
+    assert arrays["squared_distance_m2"].tolist() == [1.0]
+    assert arrays["distance_m"].tolist() == [1.0]
+
+
+def test_independent_integer_micro_cost_uses_ties_to_even_then_rank() -> None:
+    even = verify_module._integer_micro_cost_independently(
+        2.5e-6, support_count=300, support_rank=9
+    )
+    odd = verify_module._integer_micro_cost_independently(
+        3.5e-6, support_count=300, support_rank=9
+    )
+
+    assert even == 2 * 301 + 10
+    assert odd == 4 * 301 + 10
+
 
 def test_independent_control_and_three_export_replay_passes_fixed_seed() -> None:
     bundle, expected_graph_k = _control_artifact_bundle()
@@ -640,6 +845,18 @@ def test_independent_control_and_three_export_replay_passes_fixed_seed() -> None
         assert export["checks"]["strict_spacing_5cm"] is True
         assert export["checks"]["npy_bin_raw_bytes_identical"] is True
         assert export["checks"]["bound_to_replayed_selection"] is True
+
+
+def test_ready_result_rejects_rebound_extra_file() -> None:
+    bundle, expected_graph_k = _control_artifact_bundle()
+    payload = _npy_payload(np.asarray([1], dtype="<i8"))
+    bundle["round_results"]["unexpected.npy"] = payload
+    bundle["oracle_report"]["result_array_files_sha256"]["unexpected.npy"] = (
+        hashlib.sha256(payload).hexdigest()
+    )
+
+    with pytest.raises(ValueError, match="non-frozen file set"):
+        _run_control_bundle(bundle, expected_graph_k)
 
 
 def test_packed_pointwise_tamper_changes_frozen_selection_order() -> None:

@@ -7,7 +7,9 @@ import hashlib
 import io
 import json
 import math
+import os
 from pathlib import Path
+import stat
 from typing import Iterable, Mapping
 
 import numpy as np
@@ -72,32 +74,63 @@ class TargetLoad:
     cache_arrays_read: tuple[str, ...] = ("target_xyz_confidence",)
 
 
-def load_target_xyz_confidence(
-    cache_path: Path,
+def _validate_support_commit_sha256(support_commit_sha256: str) -> None:
+    if (
+        len(support_commit_sha256) != 64
+        or any(
+            character not in "0123456789abcdef"
+            for character in support_commit_sha256
+        )
+    ):
+        raise ValueError("STDA target loading requires a valid support commitment")
+
+
+def _read_regular_file_snapshot(path: Path) -> bytes:
+    """Read one regular file through one no-follow descriptor."""
+
+    path = Path(path)
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as error:
+        raise ValueError("STDA target cache must be one regular non-symlink file") from error
+    try:
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode):
+            raise ValueError("STDA target cache must be one regular file")
+        chunks: list[bytes] = []
+        while True:
+            chunk = os.read(descriptor, 1024 * 1024)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        after = os.fstat(descriptor)
+        payload = b"".join(chunks)
+        if (
+            before.st_dev != after.st_dev
+            or before.st_ino != after.st_ino
+            or before.st_mode != after.st_mode
+            or before.st_size != after.st_size
+            or before.st_mtime_ns != after.st_mtime_ns
+            or before.st_ctime_ns != after.st_ctime_ns
+            or len(payload) != before.st_size
+        ):
+            raise ValueError("STDA target cache changed during its sole approved read")
+        return payload
+    finally:
+        os.close(descriptor)
+
+
+def load_target_xyz_confidence_bytes(
+    payload: bytes,
     *,
     support_commit_sha256: str,
 ) -> TargetLoad:
-    """Read only target_xyz_confidence after an immutable support commit."""
+    """Parse only target_xyz_confidence from one already-bound cache payload."""
 
-    if (
-        len(support_commit_sha256) != 64
-        or any(character not in "0123456789abcdef" for character in support_commit_sha256)
-    ):
-        raise ValueError("STDA target loading requires a valid support commitment")
-    path = Path(cache_path)
-    if not path.is_file() or path.is_symlink():
-        raise ValueError("STDA target cache must be one regular file")
-    before = path.stat()
-    payload = path.read_bytes()
-    after = path.stat()
-    if (
-        before.st_dev != after.st_dev
-        or before.st_ino != after.st_ino
-        or before.st_size != after.st_size
-        or before.st_mtime_ns != after.st_mtime_ns
-        or len(payload) != after.st_size
-    ):
-        raise ValueError("STDA target cache changed during its sole approved read")
+    _validate_support_commit_sha256(support_commit_sha256)
+    if not isinstance(payload, bytes):
+        raise TypeError("STDA target cache payload must be immutable bytes")
     with np.load(io.BytesIO(payload), allow_pickle=False) as cache:
         if "target_xyz_confidence" not in cache:
             raise ValueError("STDA target cache lacks target_xyz_confidence")
@@ -116,6 +149,21 @@ def load_target_xyz_confidence(
         target_xyz_confidence=immutable,
         cache_sha256=hashlib.sha256(payload).hexdigest(),
         target_tensor_sha256=hashlib.sha256(immutable.tobytes(order="C")).hexdigest(),
+        support_commit_sha256=support_commit_sha256,
+    )
+
+
+def load_target_xyz_confidence(
+    cache_path: Path,
+    *,
+    support_commit_sha256: str,
+) -> TargetLoad:
+    """Compatibility path loader using the same descriptor-bound byte parser."""
+
+    _validate_support_commit_sha256(support_commit_sha256)
+    payload = _read_regular_file_snapshot(cache_path)
+    return load_target_xyz_confidence_bytes(
+        payload,
         support_commit_sha256=support_commit_sha256,
     )
 

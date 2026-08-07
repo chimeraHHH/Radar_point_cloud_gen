@@ -11,18 +11,81 @@ import math
 import os
 from pathlib import Path
 import resource
+import stat
 import subprocess
 import sys
 import time
 import traceback
 from typing import Any, Callable, Mapping, Sequence, TypeVar
 
-import numpy as np
-
-
 CODE_ROOT = Path(__file__).resolve().parents[1]
-if str(CODE_ROOT) not in sys.path:
-    sys.path.insert(0, str(CODE_ROOT))
+
+
+def _require_isolated_interpreter() -> None:
+    if not (
+        sys.flags.isolated
+        and sys.flags.no_site
+        and sys.flags.no_user_site
+        and "sitecustomize" not in sys.modules
+    ):
+        raise RuntimeError(
+            "STDA oracle requires python -I -S with no user site or sitecustomize"
+        )
+
+
+if __name__ == "__main__":
+    _require_isolated_interpreter()
+
+
+def _path_within(path: Path, root: Path) -> bool:
+    try:
+        return os.path.commonpath((str(path), str(root))) == str(root)
+    except ValueError:
+        return False
+
+
+def _trusted_site_package_paths() -> tuple[Path, ...]:
+    """Expose only this interpreter's package dirs; never process .pth hooks."""
+
+    prefix = Path(sys.executable).resolve().parent.parent
+    version = f"python{sys.version_info.major}.{sys.version_info.minor}"
+    paths: set[Path] = set()
+    for relative in (
+        Path("lib") / version / "site-packages",
+        Path("lib64") / version / "site-packages",
+    ):
+        candidate = (prefix / relative).resolve()
+        if candidate.is_dir() and _path_within(candidate, prefix):
+            paths.add(candidate)
+    if not paths:
+        raise RuntimeError("STDA oracle cannot locate trusted site-packages under -I -S")
+    return tuple(sorted(paths, key=str))
+
+
+def _bootstrap_sys_path(trusted_site_packages: Sequence[Path]) -> None:
+    retained: list[str] = []
+    trusted = {path.resolve() for path in trusted_site_packages}
+    for entry in sys.path:
+        if not entry:
+            continue
+        resolved = Path(entry).resolve()
+        if resolved == CODE_ROOT or resolved in trusted or "site-packages" in resolved.parts:
+            continue
+        value = str(resolved)
+        if value not in retained:
+            retained.append(value)
+    sys.path[:] = [
+        str(CODE_ROOT),
+        *retained,
+        *(str(path) for path in trusted_site_packages),
+    ]
+
+
+TRUSTED_SITE_PACKAGE_PATHS = _trusted_site_package_paths()
+_bootstrap_sys_path(TRUSTED_SITE_PACKAGE_PATHS)
+
+
+import numpy as np  # noqa: E402
 
 from cube_dense.kradar import load_axes  # noqa: E402
 from eval.stda_f0_fit import (  # noqa: E402
@@ -31,7 +94,7 @@ from eval.stda_f0_fit import (  # noqa: E402
     build_sparse_assignment_graph,
     canonicalize_support,
     canonicalize_target_atoms,
-    load_target_xyz_confidence,
+    load_target_xyz_confidence_bytes,
 )
 from eval.stda_f0_round import (  # noqa: E402
     GRAPH_ARRAY_FILES,
@@ -81,6 +144,53 @@ IMPLEMENTATION_INVALID_STATUS = "stda_f0_implementation_invalid"
 INFO_ARR_SHA256 = "53f72b22544aa11bc0057f9b8c2177a7a844fddd0e8ce3f753a989d07159767a"
 ARR_DOPPLER_SHA256 = "f81e56889c2cedc98eb3eb8a4828e382845e3d4758a36f3b8fc0fce4839e0493"
 FORBIDDEN_MODULE_PREFIXES = ("torch", "cupy", "jax", "tensorflow", "pynvml")
+ASSIGNMENT_REPLAY_SOURCE_PATHS = (
+    "code/scripts/stda_f0_assignment_replay.py",
+    "code/eval/stda_f0_round.py",
+)
+ORACLE_CRITICAL_SOURCE_PATHS = (
+    "code/scripts/stda_f0_oracle_phase.py",
+    "code/scripts/stda_f0_assignment_replay.py",
+    "code/cube_dense/__init__.py",
+    "code/cube_dense/kradar.py",
+    "code/eval/stda_f0_support.py",
+    "code/eval/stda_f0_fit.py",
+    "code/eval/stda_f0_round.py",
+    "code/eval/stda_f0_structure.py",
+    "code/eval/vrh_f0_support.py",
+    "docs/stda_f0_sparse_target_demand_assignment_protocol.md",
+)
+ORCHESTRATOR_SOURCE_PATHS = (
+    "docs/stda_f0_sparse_target_demand_assignment_protocol.md",
+    "artifacts/idea/stda_f0_freeze_record.json",
+    "artifacts/idea/stda_f0_prefreeze_audit_round6.md",
+    "code/eval/stda_f0_candidate.py",
+    "code/eval/stda_f0_support.py",
+    "code/eval/stda_f0_fit.py",
+    "code/eval/stda_f0_round.py",
+    "code/eval/stda_f0_structure.py",
+    "code/eval/stda_f0_verify.py",
+    "code/scripts/stda_f0_support_phase.py",
+    "code/scripts/stda_f0_oracle_phase.py",
+    "code/scripts/stda_f0_assignment_replay.py",
+    "code/scripts/stda_f0_verify_phase.py",
+    "code/scripts/stda_f0_metric_phase.py",
+    "code/scripts/stda_f0_bundle_verify.py",
+    "code/scripts/preflight_stda_f0_capacity.py",
+)
+RUNTIME_SOURCE_PATHS = tuple(
+    dict.fromkeys((*ORACLE_CRITICAL_SOURCE_PATHS, *ORCHESTRATOR_SOURCE_PATHS))
+)
+REQUIRED_PROJECT_MODULE_PATHS = {
+    "cube_dense": "code/cube_dense/__init__.py",
+    "cube_dense.kradar": "code/cube_dense/kradar.py",
+    "eval.stda_f0_fit": "code/eval/stda_f0_fit.py",
+    "eval.stda_f0_round": "code/eval/stda_f0_round.py",
+    "eval.stda_f0_structure": "code/eval/stda_f0_structure.py",
+    "eval.stda_f0_support": "code/eval/stda_f0_support.py",
+    "eval.vrh_f0_support": "code/eval/vrh_f0_support.py",
+}
+PROJECT_IMPORT_ROOTS = frozenset({"cube_dense", "eval", "models"})
 ASSIGNMENT_IDENTITY_FIELDS = (
     "assignment_sha256",
     "selected_id_sha256",
@@ -96,12 +206,16 @@ ALLOCATION_COMPONENT_KEYS = (
     "build_sparse_assignment_graph_ns",
     "build_packed_pointwise_sidecar_ns",
     "fit_input_serialization_ns",
+    "fit_binding_serialization_ns",
     "round_input_reload_ns",
     "maximum_cardinality_certificate_ns",
+    "matching_replay_custom_ns",
+    "matching_replay_scipy_ns",
     "hall_replay_ns",
     "decision_solver_inprocess_1_ns",
     "decision_solver_inprocess_2_ns",
     "decision_solver_inprocess_replay_ns",
+    "assignment_replay_request_serialization_ns",
     "decision_solver_subprocess_3_ns",
     "decision_solver_subprocess_replay_ns",
     "packed_pointwise_control_ns",
@@ -110,6 +224,17 @@ ALLOCATION_COMPONENT_KEYS = (
     "round_robin_greedy_replay_ns",
     "result_array_serialization_ns",
     "export_serialization_ns",
+    "structural_domain_load_ns",
+    "structural_target_snapshot_ns",
+    "structure_evidence_directory_ns",
+    "structure_decision_ns",
+    "structure_decision_serialization_ns",
+    "structure_packed_pointwise_ns",
+    "structure_packed_pointwise_serialization_ns",
+    "structure_round_robin_greedy_ns",
+    "structure_round_robin_greedy_serialization_ns",
+    "structure_directory_fsync_ns",
+    "final_input_reverification_ns",
 )
 
 T = TypeVar("T")
@@ -138,6 +263,74 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _stat_record(value: os.stat_result) -> dict[str, int]:
+    return {
+        "device": int(value.st_dev),
+        "inode": int(value.st_ino),
+        "mode": int(value.st_mode),
+        "size_bytes": int(value.st_size),
+        "mtime_ns": int(value.st_mtime_ns),
+        "ctime_ns": int(value.st_ctime_ns),
+    }
+
+
+def _read_immutable_path_bytes(
+    path: Path,
+    *,
+    label: str,
+) -> tuple[bytes, dict[str, object]]:
+    """Read one regular file through one no-follow descriptor."""
+
+    path = Path(path)
+    read_started_ns = time.perf_counter_ns()
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as error:
+        raise ValueError(f"{label} must be a regular non-symlink file") from error
+    read_calls = 0
+    try:
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode):
+            raise ValueError(f"{label} must be a regular file")
+        chunks: list[bytes] = []
+        while True:
+            chunk = os.read(descriptor, 1024 * 1024)
+            read_calls += 1
+            if not chunk:
+                break
+            chunks.append(chunk)
+        after = os.fstat(descriptor)
+        payload = b"".join(chunks)
+        path_after = os.stat(path, follow_symlinks=False)
+    finally:
+        os.close(descriptor)
+    before_record = _stat_record(before)
+    after_record = _stat_record(after)
+    path_after_record = _stat_record(path_after)
+    if (
+        before_record != after_record
+        or path_after_record != after_record
+        or len(payload) != before.st_size
+    ):
+        raise ValueError(f"{label} changed during its sole byte read")
+    return payload, {
+        "path": str(path),
+        "cache_sha256": sha256_bytes(payload),
+        "cache_size_bytes": len(payload),
+        "stat_before": before_record,
+        "stat_after": after_record,
+        "path_stat_after": path_after_record,
+        "path_read_calls": 1,
+        "descriptor_read_calls": read_calls,
+        "open_flags": ["O_RDONLY", "O_CLOEXEC", "O_NOFOLLOW"],
+        "read_started_perf_counter_ns": read_started_ns,
+        "clock": "time.perf_counter_ns",
+        "immutable_bytes_materialized": True,
+        "hash_consumed_same_payload": True,
+    }
 
 
 def _validate_sha256(value: object, *, label: str) -> str:
@@ -173,6 +366,10 @@ def _timed(timings: dict[str, int], name: str, operation: Callable[[], T]) -> T:
         if name in timings:
             raise AssertionError(f"STDA timing component recorded twice: {name}")
         timings[name] = elapsed
+
+
+def _allocation_core_ns(timings: Mapping[str, int]) -> int:
+    return sum(int(timings.get(name, 0)) for name in ALLOCATION_COMPONENT_KEYS)
 
 
 def _fsync_directory(path: Path) -> None:
@@ -270,20 +467,51 @@ def _load_canonical_json(path: Path) -> tuple[dict[str, Any], bytes]:
 
 
 def _source_hashes() -> dict[str, str]:
-    paths = (
-        Path(__file__).resolve(),
-        CODE_ROOT / "scripts/stda_f0_assignment_replay.py",
-        CODE_ROOT / "eval/stda_f0_support.py",
-        CODE_ROOT / "eval/stda_f0_fit.py",
-        CODE_ROOT / "eval/stda_f0_round.py",
-        CODE_ROOT / "eval/stda_f0_structure.py",
-        CODE_ROOT / "eval/vrh_f0_support.py",
-        CODE_ROOT / "cube_dense/kradar.py",
-        CODE_ROOT.parent / "docs/stda_f0_sparse_target_demand_assignment_protocol.md",
-    )
     return {
-        str(path.relative_to(CODE_ROOT.parent)): sha256_file(path) for path in paths
+        relative: sha256_file(CODE_ROOT.parent / relative)
+        for relative in RUNTIME_SOURCE_PATHS
     }
+
+
+def _require_project_import_closure(
+    modules: Mapping[str, object] | None = None,
+) -> dict[str, str]:
+    repo = CODE_ROOT.parent.resolve(strict=True)
+    code_root = CODE_ROOT.resolve(strict=True)
+    loaded = sys.modules if modules is None else modules
+    allowed = set(RUNTIME_SOURCE_PATHS)
+    origins: dict[str, str] = {}
+    for name, module in sorted(loaded.items()):
+        if name.split(".", 1)[0] not in PROJECT_IMPORT_ROOTS or module is None:
+            continue
+        raw_file = getattr(module, "__file__", None)
+        if raw_file is None:
+            locations = getattr(module, "__path__", None)
+            if locations is not None:
+                for location in locations:
+                    if not _path_within(Path(location).resolve(strict=True), code_root):
+                        raise ValueError(f"project namespace escaped CODE_ROOT: {name}")
+            continue
+        resolved = Path(raw_file).resolve(strict=True)
+        if not _path_within(resolved, code_root):
+            raise ValueError(f"project module escaped CODE_ROOT: {name} -> {resolved}")
+        relative = resolved.relative_to(repo).as_posix()
+        if relative not in allowed:
+            raise ValueError(
+                f"loaded project module is absent from source lock: {relative}"
+            )
+        origins[name] = relative
+    for name, expected in REQUIRED_PROJECT_MODULE_PATHS.items():
+        if origins.get(name) != expected:
+            raise ValueError(f"required project module origin changed: {name}")
+    return origins
+
+
+def _require_source_hashes(expected: Mapping[str, str]) -> dict[str, str]:
+    observed = _source_hashes()
+    if observed != dict(expected):
+        raise ValueError("STDA oracle runtime source bytes changed during execution")
+    return observed
 
 
 def _verify_support(
@@ -338,6 +566,24 @@ def _support_unchanged(support_report: Mapping[str, object]) -> None:
     )
     if not all(checks):
         raise ValueError("STDA support.bin changed during oracle execution")
+
+
+def _reverify_round_inputs(
+    *,
+    solver_dir: Path,
+    solver_hashes: Mapping[str, str],
+    control_dir: Path,
+    control_hashes: Mapping[str, str],
+    support_report: Mapping[str, object],
+) -> None:
+    for filename, expected in solver_hashes.items():
+        if sha256_file(solver_dir / filename) != expected:
+            raise ValueError(f"STDA solver input changed after all replays: {filename}")
+    for filename, expected in control_hashes.items():
+        if sha256_file(control_dir / filename) != expected:
+            raise ValueError(f"STDA control input changed after all replays: {filename}")
+    _support_unchanged(support_report)
+    require_cpu_only_environment()
 
 
 def _load_structural_domain(resources_dir: Path) -> tuple[StructuralDomain, dict[str, object]]:
@@ -501,11 +747,11 @@ def _clean_replay_environment() -> dict[str, str]:
         "MKL_NUM_THREADS": "1",
         "OPENBLAS_NUM_THREADS": "1",
         "NUMEXPR_NUM_THREADS": "1",
-        "PYTHONPATH": str(CODE_ROOT),
+        "PYTHONNOUSERSITE": "1",
+        "PYTHONDONTWRITEBYTECODE": "1",
     }
     for name in (
         "PATH",
-        "PYTHONHOME",
         "LD_LIBRARY_PATH",
         "CONDA_PREFIX",
         "VIRTUAL_ENV",
@@ -534,6 +780,61 @@ def _build_replay_request(
     return request
 
 
+def _replay_snapshot_valid(
+    snapshot: object,
+    *,
+    expected_path: str,
+    expected_sha256: str,
+) -> bool:
+    expected_keys = {
+        "path",
+        "size_bytes",
+        "sha256",
+        "stat_before",
+        "stat_after",
+        "path_stat_after",
+        "path_read_calls",
+        "descriptor_read_calls",
+        "open_flags",
+        "read_started_perf_counter_ns",
+        "clock",
+        "immutable_bytes_materialized",
+        "hash_consumed_same_payload",
+        "parse_consumed_same_payload",
+    }
+    if not isinstance(snapshot, Mapping) or set(snapshot) != expected_keys:
+        return False
+    stat_before = snapshot.get("stat_before")
+    stat_after = snapshot.get("stat_after")
+    path_stat_after = snapshot.get("path_stat_after")
+    if not (
+        isinstance(stat_before, Mapping)
+        and stat_before == stat_after == path_stat_after
+        and type(stat_before.get("mode")) is int
+        and stat.S_ISREG(stat_before["mode"])
+    ):
+        return False
+    return all(
+        (
+            snapshot.get("path") == expected_path,
+            snapshot.get("sha256") == expected_sha256,
+            type(snapshot.get("size_bytes")) is int,
+            snapshot.get("size_bytes") == stat_before.get("size_bytes"),
+            snapshot.get("path_read_calls") == 1,
+            type(snapshot.get("descriptor_read_calls")) is int,
+            snapshot.get("descriptor_read_calls") >= 1,
+            snapshot.get("open_flags")
+            == ["O_RDONLY", "O_CLOEXEC", "O_NOFOLLOW"],
+            type(snapshot.get("read_started_perf_counter_ns")) is int,
+            snapshot.get("read_started_perf_counter_ns") > 0,
+            snapshot.get("clock") == "time.perf_counter_ns",
+            snapshot.get("immutable_bytes_materialized") is True,
+            snapshot.get("hash_consumed_same_payload") is True,
+            snapshot.get("parse_consumed_same_payload") is True,
+        )
+    )
+
+
 def _verify_subprocess_assignment(
     *,
     report: Mapping[str, Any],
@@ -543,6 +844,7 @@ def _verify_subprocess_assignment(
     replay_export_bytes: bytes,
     replay_assignment_bytes: bytes,
     expected_input_hashes: Mapping[str, str],
+    expected_source_hashes: Mapping[str, str],
 ) -> dict[str, bool]:
     reference_export = np.ascontiguousarray(reference.export_xyz, dtype="<f4").tobytes(
         order="C"
@@ -551,6 +853,29 @@ def _verify_subprocess_assignment(
         reference.support_rank,
         dtype="<i8",
     ).tobytes(order="C")
+    input_snapshots = report.get("input_file_snapshots")
+    input_snapshot_checks = isinstance(input_snapshots, Mapping) and set(
+        input_snapshots
+    ) == set(expected_input_hashes)
+    if input_snapshot_checks:
+        input_snapshot_checks = all(
+            _replay_snapshot_valid(
+                input_snapshots[name],
+                expected_path=f"solver_inputs/{name}",
+                expected_sha256=expected_input_hashes[name],
+            )
+            for name in expected_input_hashes
+        )
+    request_snapshot_check = _replay_snapshot_valid(
+        report.get("request_snapshot"),
+        expected_path="assignment_replay/request.json",
+        expected_sha256=sha256_bytes(canonical_json_bytes(request)),
+    )
+    expected_project_module_paths = {
+        "eval.stda_f0_round": str(
+            (CODE_ROOT / "eval/stda_f0_round.py").resolve(strict=True)
+        )
+    }
     checks = {
         "schema": report.get("schema") == REPLAY_RESULT_SCHEMA,
         "protocol_sha256": report.get("protocol_sha256") == PROTOCOL_SHA256,
@@ -563,8 +888,27 @@ def _verify_subprocess_assignment(
         == request.get("request_payload_sha256"),
         "cuda_visible_devices_empty": report.get("cuda_visible_devices") == "",
         "no_cuda_modules": report.get("forbidden_cuda_modules_loaded") == [],
+        "runtime_source_hashes": report.get("runtime_source_sha256")
+        == dict(sorted(expected_source_hashes.items())),
+        "runtime_source_hashes_stable": (
+            report.get("runtime_source_hashes_stable") is True
+        ),
+        "project_module_paths": report.get("project_module_paths")
+        == expected_project_module_paths,
+        "project_module_paths_stable": (
+            report.get("project_module_paths_stable") is True
+        ),
+        "isolated_interpreter": isinstance(
+            report.get("interpreter_isolation"), Mapping
+        )
+        and report["interpreter_isolation"].get("isolated") is True
+        and report["interpreter_isolation"].get("no_site") is True
+        and report["interpreter_isolation"].get("no_user_site") is True
+        and report["interpreter_isolation"].get("sitecustomize_loaded") is False,
         "input_hashes": report.get("input_files_sha256")
         == dict(sorted(expected_input_hashes.items())),
+        "input_snapshots": input_snapshot_checks,
+        "request_snapshot": request_snapshot_check,
         "objective": report.get("objective") == reference.objective,
         "assignment_sha256": report.get("assignment_sha256")
         == reference.assignment_sha256,
@@ -835,7 +1179,10 @@ def _finalize_report(
     *,
     output_dir: Path,
     report: dict[str, object],
+    expected_source_hashes: Mapping[str, str],
+    oracle_frame_started_ns: int,
 ) -> dict[str, object]:
+    _require_source_hashes(expected_source_hashes)
     report_path = output_dir / "oracle_report.json"
     report_payload = canonical_json_bytes(report)
     _write_new_fsynced(report_path, report_payload)
@@ -852,10 +1199,44 @@ def _finalize_report(
         "oracle_report_sha256": report_sha,
     }
     complete_path = output_dir / "ORACLE_COMPLETE.json"
-    _write_new_fsynced(complete_path, canonical_json_bytes(complete))
+    complete_payload = canonical_json_bytes(complete)
+    _write_new_fsynced(complete_path, complete_payload)
     _fsync_directory(output_dir)
     if sha256_file(report_path) != report_sha:
         raise AssertionError("STDA oracle report changed after completion marker")
+    if sha256_file(complete_path) != sha256_bytes(complete_payload):
+        raise AssertionError("STDA oracle completion marker changed after fsync")
+    _require_source_hashes(expected_source_hashes)
+    oracle_child_pre_metric_ended_ns = time.perf_counter_ns()
+    timing = {
+        "schema": "stda_f0_oracle_child_timing_v2",
+        "protocol_sha256": PROTOCOL_SHA256,
+        "protocol_freeze_commit": PROTOCOL_FREEZE_COMMIT,
+        "status": report["status"],
+        "frame_key": report["frame"]["frame_key"],
+        "oracle_frame_started_perf_counter_ns": oracle_frame_started_ns,
+        "oracle_child_pre_metric_ended_perf_counter_ns": (
+            oracle_child_pre_metric_ended_ns
+        ),
+        "oracle_child_pre_metric_ns": (
+            oracle_child_pre_metric_ended_ns - oracle_frame_started_ns
+        ),
+        "authoritative_oracle_frame_ns": False,
+        "parent_is_sole_oracle_frame_authority": True,
+        "support_reverification_excluded": True,
+        "boundary": (
+            "immediately_before_the_sole_target_cache_byte_read_to_after_oracle_"
+            "report_and_completion_fsync_rehash_and_runtime_source_rehash_before_"
+            "cuda_metrics_and_independent_verifier"
+        ),
+        "timing_receipt_publication_excluded": True,
+    }
+    timing_path = output_dir / "ORACLE_FRAME_TIMING.json"
+    timing_payload = canonical_json_bytes(timing)
+    _write_new_fsynced(timing_path, timing_payload)
+    _fsync_directory(output_dir)
+    if sha256_file(timing_path) != sha256_bytes(timing_payload):
+        raise AssertionError("STDA oracle timing receipt changed after fsync")
     return complete
 
 
@@ -869,10 +1250,19 @@ def _base_report(
     timings: Mapping[str, int],
     records: Mapping[str, Mapping[str, object]],
     started_ns: int,
+    source_hashes: Mapping[str, str],
 ) -> dict[str, object]:
-    allocation_core_ns = sum(
-        int(timings.get(name, 0)) for name in ALLOCATION_COMPONENT_KEYS
-    )
+    runtime_source_hashes = _require_source_hashes(source_hashes)
+    project_module_origins = _require_project_import_closure()
+    critical_source_hashes = {
+        relative: runtime_source_hashes[relative]
+        for relative in ORACLE_CRITICAL_SOURCE_PATHS
+    }
+    orchestrator_source_hashes = {
+        relative: runtime_source_hashes[relative]
+        for relative in ORCHESTRATOR_SOURCE_PATHS
+    }
+    allocation_core_ns = _allocation_core_ns(timings)
     return {
         "schema": ORACLE_SCHEMA,
         "protocol_sha256": PROTOCOL_SHA256,
@@ -888,6 +1278,15 @@ def _base_report(
             "forbidden_cuda_modules_loaded": [],
             "geometry_evaluator_used": False,
             "candidate_reconstruction_used": False,
+            "trusted_site_package_paths": [
+                str(path) for path in TRUSTED_SITE_PACKAGE_PATHS
+            ],
+            "interpreter_flags": {
+                "isolated": bool(sys.flags.isolated),
+                "no_site": bool(sys.flags.no_site),
+                "no_user_site": bool(sys.flags.no_user_site),
+            },
+            "sitecustomize_loaded": "sitecustomize" in sys.modules,
         },
         "support": dict(support_report),
         "target": dict(target_report),
@@ -901,7 +1300,11 @@ def _base_report(
             "peak_rss_platform_units": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
             "process_tree_monitoring_owned_by_orchestrator": True,
         },
-        "source_sha256": _source_hashes(),
+        "source_sha256": runtime_source_hashes,
+        "critical_runtime_source_sha256": critical_source_hashes,
+        "orchestrator_source_sha256": orchestrator_source_hashes,
+        "runtime_source_hashes_stable": True,
+        "project_module_origins": project_module_origins,
         "payload_files": [records[name] for name in sorted(records)],
     }
 
@@ -921,7 +1324,10 @@ def run_oracle_phase(
     """Execute one frozen frame and return its canonical report document."""
 
     started_ns = time.perf_counter_ns()
+    _require_isolated_interpreter()
     require_cpu_only_environment()
+    _require_project_import_closure()
+    runtime_source_hashes = _source_hashes()
     expected_support_sha256 = _validate_sha256(
         expected_support_sha256,
         label="expected_support_sha256",
@@ -929,7 +1335,9 @@ def run_oracle_phase(
     if sequence < 0 or radar_index < 0:
         raise ValueError("STDA frame indices must be nonnegative")
     support_frame_dir = Path(support_frame_dir).resolve(strict=True)
-    target_cache_path = Path(target_cache_path).resolve(strict=True)
+    target_cache_path = Path(os.path.abspath(os.fspath(target_cache_path)))
+    if not target_cache_path.parent.resolve(strict=True).is_dir():
+        raise ValueError("STDA target cache parent is unavailable")
     resources_dir = Path(resources_dir).resolve(strict=True)
     output_dir = Path(output_dir).absolute()
     if output_dir == support_frame_dir or support_frame_dir in output_dir.parents:
@@ -956,6 +1364,22 @@ def run_oracle_phase(
         if commitment.capacity_status.terminal_status != CAPACITY_NO_GO_STATUS:
             raise AssertionError("STDA insufficient support lacks the frozen no-go status")
         _support_unchanged(support_report)
+        target_cache_payload, target_cache_provenance = _timed(
+            timings,
+            "target_cache_provenance_ns",
+            lambda: _read_immutable_path_bytes(
+                target_cache_path,
+                label="STDA capacity-no-go target cache",
+            ),
+        )
+        if sha256_bytes(target_cache_payload) != target_cache_provenance[
+            "cache_sha256"
+        ]:
+            raise AssertionError("STDA target cache immutable payload hash changed")
+        oracle_frame_started_ns = int(
+            target_cache_provenance["read_started_perf_counter_ns"]
+        )
+        del target_cache_payload
         require_cpu_only_environment()
         report = _base_report(
             status=CAPACITY_NO_GO_STATUS,
@@ -963,24 +1387,45 @@ def run_oracle_phase(
             radar_index=radar_index,
             support_report=support_report,
             target_report={
-                "opened": False,
-                "reason": "packed_support_capacity_no_go_precedes_target_access",
+                **target_cache_provenance,
+                "opened": True,
+                "reason": "capacity_no_go_records_cache_provenance_without_array_parse",
                 "path_disclosed_to_support": False,
+                "array_loader_called": False,
+                "cache_arrays_read": [],
+                "target_array_materialized": False,
             },
             timings=timings,
             records=records,
             started_ns=started_ns,
+            source_hashes=runtime_source_hashes,
         )
         report["scientific_scope"] = commitment.capacity_status.conclusion_scope
-        _finalize_report(output_dir=output_dir, report=report)
+        _finalize_report(
+            output_dir=output_dir,
+            report=report,
+            expected_source_hashes=runtime_source_hashes,
+            oracle_frame_started_ns=oracle_frame_started_ns,
+        )
         return report
 
-    target_started = time.perf_counter_ns()
+    target_cache_payload, target_cache_provenance = _timed(
+        timings,
+        "target_cache_snapshot_ns",
+        lambda: _read_immutable_path_bytes(
+            target_cache_path,
+            label="STDA target cache",
+        ),
+    )
+    oracle_frame_started_ns = int(
+        target_cache_provenance["read_started_perf_counter_ns"]
+    )
+    target_started = oracle_frame_started_ns
     target_load = _timed(
         timings,
         "target_load_ns",
-        lambda: load_target_xyz_confidence(
-            target_cache_path,
+        lambda: load_target_xyz_confidence_bytes(
+            target_cache_payload,
             support_commit_sha256=commitment.support_sha256,
         ),
     )
@@ -994,17 +1439,23 @@ def run_oracle_phase(
     if sha256_bytes(target_bytes) != target_load.target_tensor_sha256:
         raise AssertionError("STDA target tensor bytes changed after sole approved load")
     target_report: dict[str, object] = {
+        **target_cache_provenance,
         "opened": True,
-        "loader": "eval.stda_f0_fit.load_target_xyz_confidence",
-        "path": str(target_cache_path),
-        "cache_sha256": target_load.cache_sha256,
+        "array_loader_called": True,
+        "loader": "eval.stda_f0_fit.load_target_xyz_confidence_bytes",
         "target_tensor_sha256": target_load.target_tensor_sha256,
         "target_shape": list(target_shape),
         "target_dtype": "<f4",
         "cache_arrays_read": list(target_load.cache_arrays_read),
         "support_commit_sha256": target_load.support_commit_sha256,
         "target_open_to_load_complete_ns": time.perf_counter_ns() - target_started,
+        "loader_consumed_same_payload_as_cache_sha256": (
+            target_load.cache_sha256 == target_cache_provenance["cache_sha256"]
+        ),
     }
+    if not target_report["loader_consumed_same_payload_as_cache_sha256"]:
+        raise AssertionError("STDA target parser did not consume the bound cache payload")
+    del target_cache_payload
 
     atoms = _timed(
         timings,
@@ -1150,9 +1601,17 @@ def run_oracle_phase(
         "fit_evidence_files_sha256": dict(sorted(fit_hashes.items())),
     }
     fit_binding_path = output_dir / "fit_binding.json"
-    _write_new_fsynced(fit_binding_path, canonical_json_bytes(fit_binding))
-    _remember_file(records, root=output_dir, path=fit_binding_path)
-    _fsync_directory(output_dir)
+
+    def serialize_fit_binding() -> None:
+        _write_new_fsynced(fit_binding_path, canonical_json_bytes(fit_binding))
+        _remember_file(records, root=output_dir, path=fit_binding_path)
+        _fsync_directory(output_dir)
+
+    _timed(
+        timings,
+        "fit_binding_serialization_ns",
+        serialize_fit_binding,
+    )
 
     fit_digests = {
         "canonical_target_atoms_sha256": atoms.digest_sha256,
@@ -1203,8 +1662,16 @@ def run_oracle_phase(
         "maximum_cardinality_certificate_ns",
         lambda: maximum_cardinality_certificate(round_support, round_graph),
     )
-    custom_checks = verify_matching(round_graph, certificate.custom_matching)
-    scipy_checks = verify_matching(round_graph, certificate.scipy_matching)
+    custom_checks = _timed(
+        timings,
+        "matching_replay_custom_ns",
+        lambda: verify_matching(round_graph, certificate.custom_matching),
+    )
+    scipy_checks = _timed(
+        timings,
+        "matching_replay_scipy_ns",
+        lambda: verify_matching(round_graph, certificate.scipy_matching),
+    )
     if not custom_checks.passed or not scipy_checks.passed:
         raise AssertionError("STDA maximum-matching verification failed")
     if certificate.custom_matching.cardinality != certificate.scipy_matching.cardinality:
@@ -1257,8 +1724,17 @@ def run_oracle_phase(
                 records=records,
             ),
         )
-        _support_unchanged(support_report)
-        require_cpu_only_environment()
+        _timed(
+            timings,
+            "final_input_reverification_ns",
+            lambda: _reverify_round_inputs(
+                solver_dir=solver_dir,
+                solver_hashes=solver_hashes,
+                control_dir=control_dir,
+                control_hashes=control_hashes,
+                support_report=support_report,
+            ),
+        )
         report = _base_report(
             status=GRAPH_NO_GO_STATUS,
             sequence=sequence,
@@ -1268,6 +1744,7 @@ def run_oracle_phase(
             timings=timings,
             records=records,
             started_ns=started_ns,
+            source_hashes=runtime_source_hashes,
         )
         report.update(
             {
@@ -1298,7 +1775,12 @@ def run_oracle_phase(
                 ),
             }
         )
-        _finalize_report(output_dir=output_dir, report=report)
+        _finalize_report(
+            output_dir=output_dir,
+            report=report,
+            expected_source_hashes=runtime_source_hashes,
+            oracle_frame_started_ns=oracle_frame_started_ns,
+        )
         return report
 
     decision_first = _timed(
@@ -1342,6 +1824,14 @@ def run_oracle_phase(
         Path(sys.executable) if python_executable is None else Path(python_executable)
     ).resolve(strict=True)
     replay_script_sha = sha256_file(replay_script)
+    expected_replay_source_hashes = {
+        relative: runtime_source_hashes[relative]
+        for relative in ASSIGNMENT_REPLAY_SOURCE_PATHS
+    }
+    if replay_script_sha != expected_replay_source_hashes[
+        "code/scripts/stda_f0_assignment_replay.py"
+    ]:
+        raise ValueError("STDA replay script differs from oracle runtime binding")
     replay_request = _build_replay_request(
         support_cardinality=round_support.count,
         input_hashes=solver_hashes,
@@ -1353,13 +1843,24 @@ def run_oracle_phase(
     replay_result_path = replay_dir / "result.json"
     replay_export_path = replay_dir / "export.bin"
     replay_assignment_path = replay_dir / "assignment.bin"
-    _write_new_fsynced(replay_request_path, canonical_json_bytes(replay_request))
-    _remember_file(records, root=output_dir, path=replay_request_path)
-    _fsync_directory(replay_dir)
+
+    def serialize_replay_request() -> None:
+        _write_new_fsynced(replay_request_path, canonical_json_bytes(replay_request))
+        _remember_file(records, root=output_dir, path=replay_request_path)
+        _fsync_directory(replay_dir)
+
+    _timed(
+        timings,
+        "assignment_replay_request_serialization_ns",
+        serialize_replay_request,
+    )
 
     def run_clean_solver() -> subprocess.CompletedProcess[bytes]:
         command = (
             str(python_executable),
+            "-I",
+            "-S",
+            "-B",
             str(replay_script),
             "--input-root",
             str(solver_dir),
@@ -1396,14 +1897,13 @@ def run_oracle_phase(
         "decision_solver_subprocess_3_ns",
         run_clean_solver,
     )
-    replay_result, replay_result_payload = _load_canonical_json(replay_result_path)
-    replay_export_bytes = replay_export_path.read_bytes()
-    replay_assignment_bytes = replay_assignment_path.read_bytes()
-
-    subprocess_replay_checks = _timed(
-        timings,
-        "decision_solver_subprocess_replay_ns",
-        lambda: _verify_subprocess_assignment(
+    def replay_subprocess_evidence() -> dict[str, bool]:
+        replay_result, replay_result_payload = _load_canonical_json(
+            replay_result_path
+        )
+        replay_export_bytes = replay_export_path.read_bytes()
+        replay_assignment_bytes = replay_assignment_path.read_bytes()
+        checks = _verify_subprocess_assignment(
             report=replay_result,
             report_payload=replay_result_payload,
             request=replay_request,
@@ -1411,12 +1911,19 @@ def run_oracle_phase(
             replay_export_bytes=replay_export_bytes,
             replay_assignment_bytes=replay_assignment_bytes,
             expected_input_hashes=solver_hashes,
-        ),
+            expected_source_hashes=expected_replay_source_hashes,
+        )
+        _remember_file(records, root=output_dir, path=replay_result_path)
+        _remember_file(records, root=output_dir, path=replay_export_path)
+        _remember_file(records, root=output_dir, path=replay_assignment_path)
+        _fsync_directory(replay_dir)
+        return checks
+
+    subprocess_replay_checks = _timed(
+        timings,
+        "decision_solver_subprocess_replay_ns",
+        replay_subprocess_evidence,
     )
-    _remember_file(records, root=output_dir, path=replay_result_path)
-    _remember_file(records, root=output_dir, path=replay_export_path)
-    _remember_file(records, root=output_dir, path=replay_assignment_path)
-    _fsync_directory(replay_dir)
 
     pointwise_result = _timed(
         timings,
@@ -1525,15 +2032,33 @@ def run_oracle_phase(
         raise AssertionError("STDA structural domain report is missing")
 
     target_snapshot_path = fit_dir / "target_xyz_confidence.bin"
-    target_structure_bytes = target_snapshot_path.read_bytes()
-    if sha256_bytes(target_structure_bytes) != target_report["target_tensor_sha256"]:
-        raise ValueError("STDA immutable target snapshot changed before structure")
-    target_for_structure = np.frombuffer(
-        target_structure_bytes,
-        dtype="<f4",
-    ).reshape(target_shape)
+
+    def load_structural_target_snapshot() -> tuple[bytes, np.ndarray]:
+        target_structure_bytes, _ = _read_immutable_path_bytes(
+            target_snapshot_path,
+            label="STDA structural target snapshot",
+        )
+        if sha256_bytes(target_structure_bytes) != target_report[
+            "target_tensor_sha256"
+        ]:
+            raise ValueError("STDA immutable target snapshot changed before structure")
+        target_for_structure = np.frombuffer(
+            target_structure_bytes,
+            dtype="<f4",
+        ).reshape(target_shape)
+        return target_structure_bytes, target_for_structure
+
+    target_structure_bytes, target_for_structure = _timed(
+        timings,
+        "structural_target_snapshot_ns",
+        load_structural_target_snapshot,
+    )
     structure_dir = output_dir / "structure"
-    structure_dir.mkdir(parents=False, exist_ok=False)
+    _timed(
+        timings,
+        "structure_evidence_directory_ns",
+        lambda: structure_dir.mkdir(parents=False, exist_ok=False),
+    )
     structural_reports: dict[str, dict[str, object]] = {}
     arm_exports = {
         "decision": decision_first.export_xyz,
@@ -1558,8 +2083,19 @@ def run_oracle_phase(
             evaluate_arm_structure,
         )
         structure_path = structure_dir / f"{arm}.json"
-        _write_new_fsynced(structure_path, canonical_json_bytes(structure_report))
-        record = _remember_file(records, root=output_dir, path=structure_path)
+
+        def serialize_structure_report() -> dict[str, object]:
+            _write_new_fsynced(
+                structure_path,
+                canonical_json_bytes(structure_report),
+            )
+            return _remember_file(records, root=output_dir, path=structure_path)
+
+        record = _timed(
+            timings,
+            f"structure_{arm}_serialization_ns",
+            serialize_structure_report,
+        )
         structural_reports[arm] = {
             "structural_domain_valid": structure_result.structural_domain_valid,
             "evaluation_complete": structure_result.evaluation_complete,
@@ -1570,17 +2106,24 @@ def run_oracle_phase(
             "result_sha256": structure_result.result_sha256,
             "report": record,
         }
-    _fsync_directory(structure_dir)
+    _timed(
+        timings,
+        "structure_directory_fsync_ns",
+        lambda: _fsync_directory(structure_dir),
+    )
     del target_for_structure, target_structure_bytes
 
-    for filename, expected in solver_hashes.items():
-        if sha256_file(solver_dir / filename) != expected:
-            raise ValueError(f"STDA solver input changed after all replays: {filename}")
-    for filename, expected in control_hashes.items():
-        if sha256_file(control_dir / filename) != expected:
-            raise ValueError(f"STDA control input changed after all replays: {filename}")
-    _support_unchanged(support_report)
-    require_cpu_only_environment()
+    _timed(
+        timings,
+        "final_input_reverification_ns",
+        lambda: _reverify_round_inputs(
+            solver_dir=solver_dir,
+            solver_hashes=solver_hashes,
+            control_dir=control_dir,
+            control_hashes=control_hashes,
+            support_report=support_report,
+        ),
+    )
 
     report = _base_report(
         status=ORACLE_READY_STATUS,
@@ -1591,6 +2134,7 @@ def run_oracle_phase(
         timings=timings,
         records=records,
         started_ns=started_ns,
+        source_hashes=runtime_source_hashes,
     )
     report.update(
         {
@@ -1652,7 +2196,12 @@ def run_oracle_phase(
             "formal_independent_byte_replay_pending": True,
         }
     )
-    _finalize_report(output_dir=output_dir, report=report)
+    _finalize_report(
+        output_dir=output_dir,
+        report=report,
+        expected_source_hashes=runtime_source_hashes,
+        oracle_frame_started_ns=oracle_frame_started_ns,
+    )
     return report
 
 

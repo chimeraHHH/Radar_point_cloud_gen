@@ -35,6 +35,22 @@ sys.addaudithook(_stda_f0_early_audit_hook)
 AUDIT_HOOK_INSTALLED_BEFORE_SCIENTIFIC_IMPORTS = True
 
 
+def _require_isolated_interpreter() -> None:
+    if not (
+        sys.flags.isolated
+        and sys.flags.no_site
+        and sys.flags.no_user_site
+        and "sitecustomize" not in sys.modules
+    ):
+        raise RuntimeError(
+            "STDA support requires python -I -S with no user site or sitecustomize"
+        )
+
+
+if __name__ == "__main__":
+    _require_isolated_interpreter()
+
+
 import argparse
 import ast
 import gc
@@ -49,6 +65,7 @@ import os
 from pathlib import Path
 import platform
 import re
+import stat
 import time
 from types import SimpleNamespace
 from typing import Any, Mapping, MutableMapping, Sequence
@@ -114,6 +131,8 @@ SUPPORT_FILE_SCHEMA = (
 )
 CRITICAL_SOURCE_PATHS = (
     "code/scripts/stda_f0_support_phase.py",
+    "code/cube_dense/__init__.py",
+    "code/cube_dense/kradar.py",
     "code/eval/stda_f0_candidate.py",
     "code/eval/stda_f0_support.py",
     "code/eval/stda_f0_verify.py",
@@ -121,8 +140,46 @@ CRITICAL_SOURCE_PATHS = (
     "code/models/rald_wce_field.py",
     "code/models/rald_matched.py",
     "code/models/cube_cycle.py",
-    "code/cube_dense/kradar.py",
+    "code/models/cube_doppler.py",
+    "code/models/cube_occupancy.py",
+    "code/models/point_to_cube.py",
 )
+ORCHESTRATOR_SOURCE_PATHS = (
+    "docs/stda_f0_sparse_target_demand_assignment_protocol.md",
+    "artifacts/idea/stda_f0_freeze_record.json",
+    "artifacts/idea/stda_f0_prefreeze_audit_round6.md",
+    "code/eval/stda_f0_candidate.py",
+    "code/eval/stda_f0_support.py",
+    "code/eval/stda_f0_fit.py",
+    "code/eval/stda_f0_round.py",
+    "code/eval/stda_f0_structure.py",
+    "code/eval/stda_f0_verify.py",
+    "code/scripts/stda_f0_support_phase.py",
+    "code/scripts/stda_f0_oracle_phase.py",
+    "code/scripts/stda_f0_assignment_replay.py",
+    "code/scripts/stda_f0_verify_phase.py",
+    "code/scripts/stda_f0_metric_phase.py",
+    "code/scripts/stda_f0_bundle_verify.py",
+    "code/scripts/preflight_stda_f0_capacity.py",
+)
+RUNTIME_SOURCE_PATHS = tuple(
+    dict.fromkeys((*CRITICAL_SOURCE_PATHS, *ORCHESTRATOR_SOURCE_PATHS))
+)
+REQUIRED_PROJECT_MODULE_PATHS = {
+    "cube_dense": "code/cube_dense/__init__.py",
+    "cube_dense.kradar": "code/cube_dense/kradar.py",
+    "eval.stda_f0_candidate": "code/eval/stda_f0_candidate.py",
+    "eval.stda_f0_support": "code/eval/stda_f0_support.py",
+    "eval.stda_f0_verify": "code/eval/stda_f0_verify.py",
+    "eval.rald_wce_stage0": "code/eval/rald_wce_stage0.py",
+    "models.rald_wce_field": "code/models/rald_wce_field.py",
+    "models.rald_matched": "code/models/rald_matched.py",
+    "models.cube_cycle": "code/models/cube_cycle.py",
+    "models.cube_doppler": "code/models/cube_doppler.py",
+    "models.cube_occupancy": "code/models/cube_occupancy.py",
+    "models.point_to_cube": "code/models/point_to_cube.py",
+}
+PROJECT_IMPORT_ROOTS = frozenset({"cube_dense", "eval", "models"})
 BOUNDARY_FLAGS = {
     "support_target_input": False,
     "demand_target_conditioned": True,
@@ -174,6 +231,7 @@ REQUIRED_ENVIRONMENT = {
     "NUMEXPR_NUM_THREADS": "1",
     "CUDA_DEVICE_ORDER": "PCI_BUS_ID",
     "CONDA_DEFAULT_ENV": "hym_radar",
+    "PYTHONNOUSERSITE": "1",
 }
 RETAINED_ENVIRONMENT_KEYS = {
     *REQUIRED_ENVIRONMENT,
@@ -285,6 +343,76 @@ def _read_hashed_bytes(path: Path) -> tuple[bytes, str]:
     return payload, sha256_bytes(payload)
 
 
+def _stat_record(value: os.stat_result) -> dict[str, int]:
+    return {
+        "device": int(value.st_dev),
+        "inode": int(value.st_ino),
+        "mode": int(value.st_mode),
+        "size_bytes": int(value.st_size),
+        "mtime_ns": int(value.st_mtime_ns),
+        "ctime_ns": int(value.st_ctime_ns),
+    }
+
+
+def _read_immutable_path_bytes(
+    path: Path,
+    *,
+    label: str,
+) -> tuple[bytes, dict[str, object]]:
+    """Materialize one regular file through one no-follow descriptor."""
+
+    path = Path(path)
+    read_started_ns = time.perf_counter_ns()
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as error:
+        raise SupportPhaseContractError(
+            f"{label} must be a regular non-symlink file"
+        ) from error
+    read_calls = 0
+    try:
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode):
+            raise SupportPhaseContractError(f"{label} must be a regular file")
+        chunks: list[bytes] = []
+        while True:
+            chunk = os.read(descriptor, 1024 * 1024)
+            read_calls += 1
+            if not chunk:
+                break
+            chunks.append(chunk)
+        after = os.fstat(descriptor)
+        payload = b"".join(chunks)
+        path_after = os.stat(path, follow_symlinks=False)
+    finally:
+        os.close(descriptor)
+    before_record = _stat_record(before)
+    after_record = _stat_record(after)
+    path_after_record = _stat_record(path_after)
+    if (
+        before_record != after_record
+        or path_after_record != after_record
+        or len(payload) != before.st_size
+    ):
+        raise SupportPhaseContractError(f"{label} changed during its sole byte read")
+    return payload, {
+        "path": str(path),
+        "size_bytes": len(payload),
+        "sha256": sha256_bytes(payload),
+        "stat_before": before_record,
+        "stat_after": after_record,
+        "path_stat_after": path_after_record,
+        "path_read_calls": 1,
+        "descriptor_read_calls": read_calls,
+        "open_flags": ["O_RDONLY", "O_CLOEXEC", "O_NOFOLLOW"],
+        "read_started_perf_counter_ns": read_started_ns,
+        "clock": "time.perf_counter_ns",
+        "immutable_bytes_materialized": True,
+        "hash_consumed_same_payload": True,
+    }
+
+
 def _hashed_value(value: str) -> str:
     return sha256_bytes(value.encode("utf-8", errors="surrogateescape"))
 
@@ -294,6 +422,52 @@ def _path_within(path: Path, root: Path) -> bool:
         return os.path.commonpath((str(path), str(root))) == str(root)
     except ValueError:
         return False
+
+
+def _require_project_import_closure(
+    *,
+    repo: Path,
+    allowed_source_paths: Sequence[str],
+    modules: Mapping[str, object] | None = None,
+) -> dict[str, str]:
+    """Bind every loaded project module to an allowed file under CODE_ROOT."""
+
+    repo = Path(repo).resolve(strict=True)
+    code_root = (repo / "code").resolve(strict=True)
+    loaded = sys.modules if modules is None else modules
+    allowed = set(allowed_source_paths)
+    origins: dict[str, str] = {}
+    for name, module in sorted(loaded.items()):
+        if name.split(".", 1)[0] not in PROJECT_IMPORT_ROOTS or module is None:
+            continue
+        raw_file = getattr(module, "__file__", None)
+        if raw_file is None:
+            locations = getattr(module, "__path__", None)
+            if locations is not None:
+                for location in locations:
+                    resolved_location = Path(location).resolve(strict=True)
+                    if not _path_within(resolved_location, code_root):
+                        raise SupportPhaseContractError(
+                            f"project namespace escaped CODE_ROOT: {name}"
+                        )
+            continue
+        resolved = Path(raw_file).resolve(strict=True)
+        if not _path_within(resolved, code_root):
+            raise SupportPhaseContractError(
+                f"project module escaped CODE_ROOT: {name} -> {resolved}"
+            )
+        relative = resolved.relative_to(repo).as_posix()
+        if relative not in allowed:
+            raise SupportPhaseContractError(
+                f"loaded project module is absent from source lock: {relative}"
+            )
+        origins[name] = relative
+    for name, expected in REQUIRED_PROJECT_MODULE_PATHS.items():
+        if origins.get(name) != expected:
+            raise SupportPhaseContractError(
+                f"required project module origin changed: {name}"
+            )
+    return origins
 
 
 def _resolved_path(value: os.PathLike[str] | str) -> Path:
@@ -854,6 +1028,56 @@ def _interpreter_roots(environment: Mapping[str, str]) -> tuple[Path, ...]:
     return tuple(sorted(roots, key=str))
 
 
+def _trusted_site_package_paths(
+    interpreter_roots: Sequence[Path],
+) -> tuple[Path, ...]:
+    """Locate package directories without importing site or processing .pth files."""
+
+    executable_prefix = _resolved_path(Path(sys.executable).parent.parent)
+    if executable_prefix not in {_resolved_path(root) for root in interpreter_roots}:
+        raise SupportPhaseContractError("interpreter executable prefix is not audited")
+    version = f"python{sys.version_info.major}.{sys.version_info.minor}"
+    candidates: set[Path] = set()
+    for relative in (
+        Path("lib") / version / "site-packages",
+        Path("lib64") / version / "site-packages",
+    ):
+        candidate = _resolved_path(executable_prefix / relative)
+        if candidate.is_dir() and _path_within(candidate, executable_prefix):
+            candidates.add(candidate)
+    if not candidates:
+        raise SupportPhaseContractError(
+            "trusted interpreter site-packages are unavailable under -I -S"
+        )
+    return tuple(sorted(candidates, key=str))
+
+
+def _runtime_source_hashes(repo: Path) -> dict[str, str]:
+    return {
+        relative: sha256_file(Path(repo) / relative)
+        for relative in RUNTIME_SOURCE_PATHS
+    }
+
+
+def _source_hash_subset(
+    hashes: Mapping[str, str],
+    paths: Sequence[str],
+) -> dict[str, str]:
+    return {relative: str(hashes[relative]) for relative in paths}
+
+
+def _require_runtime_source_hashes(
+    repo: Path,
+    expected: Mapping[str, str],
+) -> dict[str, str]:
+    observed = _runtime_source_hashes(repo)
+    if observed != dict(expected):
+        raise SupportPhaseContractError(
+            "support runtime source bytes changed after their formal binding"
+        )
+    return observed
+
+
 def _git_directory(repo: Path, auditor: OpenAuditPolicy) -> Path:
     marker = repo / ".git"
     if marker.is_dir():
@@ -924,6 +1148,9 @@ def _validate_input_contract(
 
     protocol_path = paths["repo"] / "docs/stda_f0_sparse_target_demand_assignment_protocol.md"
     freeze_path = paths["repo"] / "artifacts/idea/stda_f0_freeze_record.json"
+    prefreeze_audit_path = (
+        paths["repo"] / "artifacts/idea/stda_f0_prefreeze_audit_round6.md"
+    )
     input_specs = (
         ("protocol", protocol_path, PROTOCOL_SHA256),
         ("freeze_record", freeze_path, FREEZE_RECORD_SHA256),
@@ -1015,10 +1242,7 @@ def _validate_input_contract(
             "sha256": observed,
         }
 
-    source_hashes: dict[str, str] = {}
-    for relative in CRITICAL_SOURCE_PATHS:
-        path = paths["repo"] / relative
-        source_hashes[relative] = sha256_file(path)
+    source_hashes = _runtime_source_hashes(paths["repo"])
     own_source = (paths["repo"] / CRITICAL_SOURCE_PATHS[0]).read_text(
         encoding="utf-8"
     )
@@ -1049,16 +1273,23 @@ def _load_scientific_runtime(
     interpreter_roots: Sequence[Path],
 ) -> SimpleNamespace:
     code_root = _resolved_path(repo / "code")
-    retained_path: list[str] = [str(code_root)]
+    trusted_site_packages = _trusted_site_package_paths(interpreter_roots)
+    retained_path: list[str] = []
     for entry in sys.path:
         if not entry:
             continue
         resolved = _resolved_path(entry)
+        if resolved == code_root or "site-packages" in resolved.parts:
+            continue
         if any(_path_within(resolved, root) for root in interpreter_roots):
             value = str(resolved)
             if value not in retained_path:
                 retained_path.append(value)
-    sys.path[:] = retained_path
+    sys.path[:] = [
+        str(code_root),
+        *retained_path,
+        *(str(path) for path in trusted_site_packages),
+    ]
 
     np = importlib.import_module("numpy")
     torch = importlib.import_module("torch")
@@ -1067,6 +1298,10 @@ def _load_scientific_runtime(
     candidate = importlib.import_module("eval.stda_f0_candidate")
     support = importlib.import_module("eval.stda_f0_support")
     verify = importlib.import_module("eval.stda_f0_verify")
+    project_module_origins = _require_project_import_closure(
+        repo=repo,
+        allowed_source_paths=RUNTIME_SOURCE_PATHS,
+    )
     return SimpleNamespace(
         np=np,
         torch=torch,
@@ -1075,6 +1310,8 @@ def _load_scientific_runtime(
         candidate=candidate,
         support=support,
         verify=verify,
+        trusted_site_packages=tuple(str(path) for path in trusted_site_packages),
+        project_module_origins=project_module_origins,
     )
 
 
@@ -1105,7 +1342,7 @@ def _validate_runtime_api(runtime: SimpleNamespace) -> dict[str, object]:
         ),
     }
     expected = {
-        "load_tesseract": ("path", "reverse_angular_axes"),
+        "load_tesseract": ("path", "reverse_angular_axes", "source_label"),
         "reconstruct_candidate_field": (
             "base_model",
             "cube_drae",
@@ -1242,6 +1479,13 @@ def _write_fsync_rehash(path: Path, payload: bytes) -> dict[str, object]:
     }
 
 
+def _synchronized_allocation_end(torch: Any, device: Any) -> int:
+    """Return the allocation end only after all CUDA work is complete."""
+
+    torch.cuda.synchronize(device)
+    return time.perf_counter_ns()
+
+
 def _support_sidecar_payloads(runtime: SimpleNamespace, support: Any) -> dict[str, bytes]:
     return {
         "support_stable_candidate_id.npy": _npy_bytes(
@@ -1261,11 +1505,13 @@ def _frame_directory_name(sequence: int, radar_index: int) -> str:
 
 
 def _cube_path(data_root: Path, sequence: int, radar_index: int) -> Path:
-    path = _resolved_path(
-        data_root
+    path = Path(
+        os.path.abspath(
+            data_root
         / str(sequence)
         / "radar_tesseract"
         / f"tesseract_{radar_index:05d}.mat"
+        )
     )
     if not _path_within(path, data_root):
         raise SupportPhaseContractError("canonical Cube path escaped data root")
@@ -1276,6 +1522,8 @@ def _process_frame(
     *,
     runtime: SimpleNamespace,
     auditor: OpenAuditPolicy,
+    repo: Path,
+    expected_source_hashes: Mapping[str, str],
     data_root: Path,
     output_root: Path,
     position: int,
@@ -1291,6 +1539,13 @@ def _process_frame(
     sequence = int(record["sequence"])
     radar_index = int(record["radar_index"])
     cube_path = _cube_path(data_root, sequence, radar_index)
+    source_hashes = _require_runtime_source_hashes(repo, expected_source_hashes)
+    critical_source_hashes = _source_hash_subset(
+        source_hashes, CRITICAL_SOURCE_PATHS
+    )
+    orchestrator_source_hashes = _source_hash_subset(
+        source_hashes, ORCHESTRATOR_SOURCE_PATHS
+    )
     frame_root = output_root / "frames" / _frame_directory_name(sequence, radar_index)
     frame_root.mkdir(mode=0o750)
     _fsync_directory(frame_root.parent)
@@ -1298,15 +1553,24 @@ def _process_frame(
 
     torch.cuda.synchronize(device)
     torch.cuda.reset_peak_memory_stats(device)
-    support_frame_started = time.perf_counter_ns()
     auditor.set_current_cube(cube_path)
     try:
-        cube_sha256 = sha256_file(cube_path)
-        cube_numpy = runtime.kradar.load_tesseract(cube_path).astype(
-            np.float32, copy=False
+        cube_payload, cube_provenance = _read_immutable_path_bytes(
+            cube_path,
+            label="raw Cube",
         )
+        with io.BytesIO(cube_payload) as cube_stream:
+            cube_numpy = runtime.kradar.load_tesseract(
+                cube_stream,
+                source_label=cube_path,
+            ).astype(np.float32, copy=False)
     finally:
         auditor.clear_current_cube(cube_path)
+    cube_sha256 = str(cube_provenance["sha256"])
+    support_frame_started = int(cube_provenance["read_started_perf_counter_ns"])
+    if sha256_bytes(cube_payload) != cube_sha256:
+        raise SupportPhaseContractError("immutable Cube payload hash changed in memory")
+    del cube_payload
     if cube_numpy.shape != (64, 256, 107, 37):
         raise SupportPhaseContractError("canonical Cube shape changed")
     cube = torch.from_numpy(cube_numpy).unsqueeze(0).to(device)
@@ -1359,6 +1623,33 @@ def _process_frame(
             (frame_root / filename).relative_to(output_root)
         )
         files[filename] = file_record
+    capacity = packed.capacity_status.as_dict()
+    verification_report = candidate_verification.report()
+    support_evidence = {
+        "candidate_count": int(packed.candidate_count),
+        "support_count": int(packed.support_count),
+        "selected_color_id": int(packed.selected_color_id),
+        "color_cardinalities": list(packed.color_cardinalities),
+        "candidate_field_sha256": packed.candidate_field_sha256,
+        "support_sha256": packed.digest_sha256,
+        "capacity": capacity,
+        "builder_commit": {
+            "support_sha256": builder_commit.support_sha256,
+            "builder_spacing_self_check_passed": (
+                builder_commit.builder_spacing_self_check_passed
+            ),
+            "builder_is_not_formal_independent_verifier": True,
+        },
+        "formal_independent_spacing_verified": bool(independent["passed"]),
+        "independent_verifier": independent,
+    }
+    cube_evidence = {
+        **cube_provenance,
+        "loaded_with": "cube_dense.kradar.load_tesseract",
+        "loader_input": "io.BytesIO(immutable_payload)",
+        "source_label": str(cube_path),
+        "loader_consumed_same_payload_as_sha256": True,
+    }
     frame_commitment_payload = canonical_json_bytes(
         {
             "schema": "stda_f0_support_frame_commitment_v1",
@@ -1368,6 +1659,7 @@ def _process_frame(
             "sequence": sequence,
             "radar_index": radar_index,
             "cube_sha256": cube_sha256,
+            "cube": cube_evidence,
             "candidate_hashes": candidate_verification.hashes,
             "candidate_predecessor_expected": (
                 candidate_verification.predecessor_expected
@@ -1397,16 +1689,63 @@ def _process_frame(
     _fsync_directory(frame_root)
     _fsync_directory(frame_root.parent)
     _fsync_directory(output_root)
-    allocation_ended = time.perf_counter_ns()
+    _require_runtime_source_hashes(repo, source_hashes)
+    manifest_entry_evidence = {
+        "schema": "stda_f0_support_manifest_entry_evidence_v1",
+        "protocol_sha256": PROTOCOL_SHA256,
+        "protocol_freeze_commit": PROTOCOL_FREEZE_COMMIT,
+        "position": position,
+        "sequence": sequence,
+        "radar_index": radar_index,
+        "frame_key": f"seq{sequence:02d}/radar{radar_index:05d}",
+        "partition": "train",
+        "cube": cube_evidence,
+        "candidate": verification_report,
+        "support": support_evidence,
+        "files": files,
+        "frame_commitment": frame_commitment,
+        "runtime_source_sha256": source_hashes,
+        "critical_runtime_source_sha256": critical_source_hashes,
+        "orchestrator_source_sha256": orchestrator_source_hashes,
+        "timing_boundary_contract": {
+            "support_frame_ns_in_final_manifest": True,
+            "manifest_entry_write_fsync_rehash_inside_support_frame_ns": True,
+            "cleanup_and_final_cuda_sync_inside_support_frame_ns": True,
+            "elapsed_time_excluded_here_to_avoid_self_reference": True,
+        },
+        "support_target_input": False,
+        "ground_truth_accessed": False,
+    }
+    manifest_entry_payload = canonical_json_bytes(manifest_entry_evidence)
+    manifest_entry_record = _write_fsync_rehash(
+        frame_root / "support_manifest_entry.json",
+        manifest_entry_payload,
+    )
+    manifest_entry_record["relative_path"] = str(
+        (frame_root / "support_manifest_entry.json").relative_to(output_root)
+    )
+    if sha256_file(frame_root / "support_manifest_entry.json") != manifest_entry_record[
+        "sha256"
+    ]:
+        raise SupportPhaseContractError("support manifest-entry evidence rehash changed")
+    _fsync_directory(frame_root)
+    _fsync_directory(frame_root.parent)
+    _fsync_directory(output_root)
+    allocation_ended = _synchronized_allocation_end(torch, device)
 
     peak_allocated = int(torch.cuda.max_memory_allocated(device))
     peak_reserved = int(torch.cuda.max_memory_reserved(device))
-    capacity = packed.capacity_status.as_dict()
-    verification_report = candidate_verification.report()
-    del field, cube, cube_numpy, xyz, confidence, candidate_ids, payloads
+
+    del field, cube, cube_numpy, xyz, confidence, candidate_ids, payload, payloads
+    del serialized, packed, builder_commit, independent, candidate_verification
+    del frame_commitment_payload, manifest_entry_payload, manifest_entry_evidence
     gc.collect()
     torch.cuda.empty_cache()
     torch.cuda.synchronize(device)
+    _require_runtime_source_hashes(repo, source_hashes)
+    _fsync_directory(frame_root)
+    _fsync_directory(frame_root.parent)
+    _fsync_directory(output_root)
     support_frame_ended = time.perf_counter_ns()
     return {
         "position": position,
@@ -1414,32 +1753,15 @@ def _process_frame(
         "radar_index": radar_index,
         "frame_key": f"seq{sequence:02d}/radar{radar_index:05d}",
         "partition": "train",
-        "cube": {
-            "path": str(cube_path),
-            "sha256": cube_sha256,
-            "loaded_directly_with": "cube_dense.kradar.load_tesseract",
-        },
+        "cube": cube_evidence,
         "candidate": verification_report,
-        "support": {
-            "candidate_count": int(packed.candidate_count),
-            "support_count": int(packed.support_count),
-            "selected_color_id": int(packed.selected_color_id),
-            "color_cardinalities": list(packed.color_cardinalities),
-            "candidate_field_sha256": packed.candidate_field_sha256,
-            "support_sha256": packed.digest_sha256,
-            "capacity": capacity,
-            "builder_commit": {
-                "support_sha256": builder_commit.support_sha256,
-                "builder_spacing_self_check_passed": (
-                    builder_commit.builder_spacing_self_check_passed
-                ),
-                "builder_is_not_formal_independent_verifier": True,
-            },
-            "formal_independent_spacing_verified": bool(independent["passed"]),
-            "independent_verifier": independent,
-        },
+        "support": support_evidence,
         "files": files,
         "frame_commitment": frame_commitment,
+        "manifest_entry_evidence": manifest_entry_record,
+        "runtime_source_sha256": source_hashes,
+        "critical_runtime_source_sha256": critical_source_hashes,
+        "orchestrator_source_sha256": orchestrator_source_hashes,
         "timing": {
             "support_frame_ns": support_frame_ended - support_frame_started,
             "candidate_ns": candidate_ended - candidate_started,
@@ -1448,7 +1770,8 @@ def _process_frame(
             "candidate_cuda_synchronized_boundaries": True,
             "allocation_cuda_synchronized_before_boundary": True,
             "support_frame_boundary": (
-                "before_cube_open_to_after_support_record_fsync_rehash_cleanup_and_sync"
+                "before_single_cube_read_to_after_manifest_entry_fsync_rehash_"
+                "cleanup_cuda_sync_source_rehash_and_directory_fsync"
             ),
         },
         "torch_memory": {
@@ -1507,6 +1830,7 @@ def _write_final_ledger(
 def run_support_phase(args: argparse.Namespace) -> dict[str, object]:
     global _ACTIVE_AUDITOR
 
+    _require_isolated_interpreter()
     parser = build_parser()
     validate_parser_surface(parser)
     paths = _validate_cli_paths(args)
@@ -1517,6 +1841,9 @@ def run_support_phase(args: argparse.Namespace) -> dict[str, object]:
     resources = paths["data_root"] / "resources"
     protocol_path = paths["repo"] / "docs/stda_f0_sparse_target_demand_assignment_protocol.md"
     freeze_path = paths["repo"] / "artifacts/idea/stda_f0_freeze_record.json"
+    prefreeze_audit_path = (
+        paths["repo"] / "artifacts/idea/stda_f0_prefreeze_audit_round6.md"
+    )
     exact_reads = (
         paths["manifest"],
         paths["scene_split"],
@@ -1525,6 +1852,7 @@ def run_support_phase(args: argparse.Namespace) -> dict[str, object]:
         paths["candidate_hash_manifest"],
         protocol_path,
         freeze_path,
+        prefreeze_audit_path,
         resources / "info_arr.mat",
         resources / "arr_doppler.mat",
         paths["repo"] / ".git",
@@ -1593,6 +1921,8 @@ def run_support_phase(args: argparse.Namespace) -> dict[str, object]:
             _process_frame(
                 runtime=runtime,
                 auditor=auditor,
+                repo=paths["repo"],
+                expected_source_hashes=contract["source_hashes"],
                 data_root=paths["data_root"],
                 output_root=paths["output_root"],
                 position=position,
@@ -1622,6 +1952,15 @@ def run_support_phase(args: argparse.Namespace) -> dict[str, object]:
     gc.collect()
     runtime.torch.cuda.empty_cache()
     runtime.torch.cuda.synchronize(device)
+    runtime_source_hashes = _require_runtime_source_hashes(
+        paths["repo"], contract["source_hashes"]
+    )
+    critical_runtime_source_hashes = _source_hash_subset(
+        runtime_source_hashes, CRITICAL_SOURCE_PATHS
+    )
+    orchestrator_source_hashes = _source_hash_subset(
+        runtime_source_hashes, ORCHESTRATOR_SOURCE_PATHS
+    )
 
     support_counts = [int(frame["support"]["support_count"]) for frame in frames]
     support_manifest = {
@@ -1643,13 +1982,19 @@ def run_support_phase(args: argparse.Namespace) -> dict[str, object]:
         },
         "inputs": contract["input_records"],
         "axes": contract["axis_records"],
-        "source_hashes": contract["source_hashes"],
+        "source_hashes": critical_runtime_source_hashes,
+        "runtime_source_sha256": runtime_source_hashes,
+        "critical_runtime_source_sha256": critical_runtime_source_hashes,
+        "orchestrator_source_sha256": orchestrator_source_hashes,
         "source_checks": {
             "git_head_matches_source_commit": contract[
                 "git_head_matches_source_commit"
             ],
-            "critical_source_hash_count": len(contract["source_hashes"]),
+            "critical_source_hash_count": len(CRITICAL_SOURCE_PATHS),
+            "orchestrator_source_hash_count": len(ORCHESTRATOR_SOURCE_PATHS),
             "clean_worktree_verified_by_parent_orchestrator": True,
+            "runtime_hashes_match_startup_binding": True,
+            "every_frame_rechecked_runtime_source_hashes": True,
         },
         "api_audit": api_audit,
         "runtime": {
@@ -1663,6 +2008,14 @@ def run_support_phase(args: argparse.Namespace) -> dict[str, object]:
             "pid": os.getpid(),
             "gpu": gpu,
             "bf16_autocast": True,
+            "trusted_site_package_paths": list(runtime.trusted_site_packages),
+            "project_module_origins": dict(runtime.project_module_origins),
+            "sitecustomize_loaded": "sitecustomize" in sys.modules,
+            "interpreter_flags": {
+                "isolated": bool(sys.flags.isolated),
+                "no_site": bool(sys.flags.no_site),
+                "no_user_site": bool(sys.flags.no_user_site),
+            },
         },
         "environment": environment_report,
         "frames": frames,
@@ -1700,6 +2053,7 @@ def run_support_phase(args: argparse.Namespace) -> dict[str, object]:
     )
     manifest_record["relative_path"] = "support_manifest.json"
     _fsync_directory(paths["output_root"])
+    _require_runtime_source_hashes(paths["repo"], runtime_source_hashes)
     ledger_record = _write_final_ledger(
         auditor=auditor,
         output_root=paths["output_root"],
@@ -1712,6 +2066,9 @@ def run_support_phase(args: argparse.Namespace) -> dict[str, object]:
         "protocol_sha256": PROTOCOL_SHA256,
         "protocol_freeze_commit": PROTOCOL_FREEZE_COMMIT,
         "source_commit": args.source_commit,
+        "runtime_source_sha256": runtime_source_hashes,
+        "orchestrator_source_sha256": orchestrator_source_hashes,
+        "runtime_source_hashes_match_startup_binding": True,
         "frame_count": len(frames),
         "support_manifest": manifest_record,
         "open_ledger": ledger_record,

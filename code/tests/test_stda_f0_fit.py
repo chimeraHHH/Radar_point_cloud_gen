@@ -22,6 +22,7 @@ from eval.stda_f0_fit import (
     canonicalize_target_atoms,
     integer_edge_cost,
     load_target_xyz_confidence,
+    load_target_xyz_confidence_bytes,
     select_frozen_neighbors,
     validate_full_assignment_objective_bound,
 )
@@ -56,10 +57,12 @@ def test_source_binds_exact_freeze_constants_and_one_explicit_target_loader() ->
     assert not any("round" in name for name in imported)
     assert not any("metric" in name for name in imported)
     loader_source = inspect.getsource(load_target_xyz_confidence)
-    assert 'cache["target_xyz_confidence"]' in loader_source
-    assert "target_rae_index" not in loader_source
-    assert "cfar" not in loader_source.lower()
-    assert "cube" not in loader_source.lower()
+    byte_loader_source = inspect.getsource(load_target_xyz_confidence_bytes)
+    assert "load_target_xyz_confidence_bytes" in loader_source
+    assert 'cache["target_xyz_confidence"]' in byte_loader_source
+    assert "target_rae_index" not in byte_loader_source
+    assert "cfar" not in byte_loader_source.lower()
+    assert "cube" not in byte_loader_source.lower()
 
 
 def test_target_loader_is_support_gated_and_reads_only_approved_array(

@@ -9,14 +9,25 @@ import math
 import os
 from pathlib import Path
 import shutil
+import subprocess
+import sys
 from typing import Any, Callable
 
 import numpy as np
 import pytest
 
+import eval.stda_f0_fit as fit_module
 import eval.stda_f0_round as round_module
+import scripts.stda_f0_assignment_replay as replay_module
 import scripts.stda_f0_oracle_phase as oracle_module
 import scripts.stda_f0_verify_phase as verify_phase
+from eval.stda_f0_fit import (
+    build_midpoint_demand_slots,
+    build_packed_pointwise_sidecar,
+    build_sparse_assignment_graph,
+    canonicalize_support,
+    canonicalize_target_atoms,
+)
 from eval.stda_f0_round import (
     AssignmentGraph,
     GreedySidecar,
@@ -46,6 +57,7 @@ REQUIRED_COUNT = 10_000
 class SyntheticFrame:
     support_dir: Path
     oracle_dir: Path
+    target_cache: Path
     support_sha256: str
     status: str
 
@@ -65,6 +77,20 @@ def _read_json(path: Path) -> dict[str, Any]:
     return document
 
 
+def _false_boolean_paths(value: Any, prefix: str = "") -> list[str]:
+    failed: list[str] = []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            path = f"{prefix}.{key}" if prefix else str(key)
+            failed.extend(_false_boolean_paths(child, path))
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            failed.extend(_false_boolean_paths(child, f"{prefix}[{index}]"))
+    elif value is False:
+        failed.append(prefix)
+    return failed
+
+
 def _npy_bytes(values: np.ndarray) -> bytes:
     stream = io.BytesIO()
     np.save(stream, np.ascontiguousarray(values), allow_pickle=False)
@@ -78,18 +104,19 @@ def _load_npy(path: Path) -> np.ndarray:
 
 def _formal_support() -> tuple[TargetFreeSupport, np.ndarray]:
     rng = np.random.default_rng(SEED)
-    cell_x, cell_y = np.meshgrid(
-        np.arange(100, 300, 2, dtype="<i8"),
-        np.arange(-100, 100, 2, dtype="<i8"),
-        indexing="ij",
-    )
-    cells = np.column_stack(
-        (
-            cell_x.reshape(-1),
-            cell_y.reshape(-1),
-            np.full(REQUIRED_COUNT, 2, dtype="<i8"),
-        )
-    )
+    cells_list: list[tuple[int, int, int]] = []
+    for cluster in range(40):
+        cluster_x = cluster % 8
+        cluster_y = cluster // 8
+        base_x = 100 + 200 * cluster_x
+        base_y = -400 + 200 * cluster_y
+        for local_x in range(25):
+            for local_y in range(10):
+                cells_list.append(
+                    (base_x + 2 * local_x, base_y + 2 * local_y, 2)
+                )
+    cells = np.asarray(cells_list, dtype="<i8")
+    assert cells.shape == (REQUIRED_COUNT, 3)
     xyz = ((cells.astype("<f8") + 0.5) / 20.0).astype("<f4")
     confidence = rng.uniform(0.25, 0.95, REQUIRED_COUNT).astype("<f4")
     candidate_id = np.arange(REQUIRED_COUNT, dtype="<i8")
@@ -98,6 +125,18 @@ def _formal_support() -> tuple[TargetFreeSupport, np.ndarray]:
     assert support.color_cardinalities == (REQUIRED_COUNT, 0, 0, 0, 0, 0, 0, 0)
     assert support.selected_color_id == 0
     return support, np.ascontiguousarray(support.xyz_m, dtype="<f4")
+
+
+def _target_cache_bytes(target: np.ndarray) -> bytes:
+    stream = io.BytesIO()
+    np.savez(stream, target_xyz_confidence=np.ascontiguousarray(target, dtype="<f4"))
+    return stream.getvalue()
+
+
+def _write_target_cache(root: Path, name: str, payload: bytes) -> Path:
+    path = root / f"{name}.npz"
+    path.write_bytes(payload)
+    return path.resolve(strict=True)
 
 
 def _small_support(xyz: np.ndarray) -> TargetFreeSupport:
@@ -111,7 +150,7 @@ def _small_support(xyz: np.ndarray) -> TargetFreeSupport:
 
 
 def _synthetic_domain() -> tuple[StructuralDomain, dict[str, Any]]:
-    azimuth = tuple(np.linspace(-1.0, 1.0, 2049, dtype="<f8").tolist())
+    azimuth = tuple(np.linspace(-1.5, 1.5, 3073, dtype="<f8").tolist())
     elevation = (-0.2, 0.2)
     domain = StructuralDomain.from_edges(azimuth, elevation)
     azimuth_bytes = np.asarray(azimuth, dtype="<f8").tobytes(order="C")
@@ -182,49 +221,130 @@ def _support_arrays(support: TargetFreeSupport) -> dict[str, np.ndarray]:
     }
 
 
-def _graph(
+def _fit_artifacts(
     *,
-    deficient: bool,
-) -> tuple[AssignmentGraph, dict[str, np.ndarray]]:
-    rows = np.arange(REQUIRED_COUNT, dtype="<i8")[:, None]
-    offsets = np.arange(256, dtype="<i8")[None, :]
-    if deficient:
-        columns = np.broadcast_to(offsets, (REQUIRED_COUNT, 256)).copy()
-        costs = np.broadcast_to(offsets + 1, columns.shape).copy()
-    else:
-        columns = np.sort(np.mod(rows + offsets, REQUIRED_COUNT), axis=1)
-        costs = np.mod(columns - rows, REQUIRED_COUNT) + 1
-    indices = np.ascontiguousarray(columns.reshape(-1), dtype="<i4")
-    data = np.ascontiguousarray(costs.reshape(-1), dtype="<i8")
-    squared = np.ascontiguousarray(data.astype("<f8") / 1_000_000.0)
-    distance = np.fromiter(
-        (math.sqrt(float(value)) for value in squared),
-        dtype="<f8",
-        count=squared.size,
+    support: TargetFreeSupport,
+    support_payload: bytes,
+    target: np.ndarray,
+    target_cache_payload: bytes,
+) -> dict[str, Any]:
+    target = np.ascontiguousarray(target, dtype="<f4")
+    atoms = canonicalize_target_atoms(target)
+    demand = build_midpoint_demand_slots(atoms)
+    canonical_support = canonicalize_support(
+        support.xyz_m, support.stable_candidate_id
     )
-    indptr = np.arange(
-        0,
-        (REQUIRED_COUNT + 1) * 256,
-        256,
-        dtype="<i8",
+    fitted_graph = build_sparse_assignment_graph(
+        demand,
+        canonical_support.xyz_float32,
+        canonical_support.stable_candidate_id,
     )
-    slot_id = np.arange(REQUIRED_COUNT, dtype="<i8")
+    fitted_pointwise = build_packed_pointwise_sidecar(
+        atoms,
+        canonical_support.xyz_float32,
+        canonical_support.stable_candidate_id,
+    )
+    packed = _round_support(support)
     graph = AssignmentGraph(
-        indptr=indptr,
-        indices=indices,
-        data=data,
-        edge_squared_distance_m2=squared,
-        edge_distance_m=distance,
-        slot_id=slot_id,
-        support_cardinality=REQUIRED_COUNT,
+        indptr=fitted_graph.indptr,
+        indices=fitted_graph.indices,
+        data=fitted_graph.data,
+        edge_squared_distance_m2=fitted_graph.squared_distance_m2,
+        edge_distance_m=fitted_graph.distance_m,
+        slot_id=demand.slot_id,
+        support_cardinality=support.support_count,
     )
-    return graph, {
-        "graph_indptr.npy": indptr,
-        "graph_indices.npy": indices,
-        "graph_data.npy": data,
-        "graph_edge_squared_distance_m2.npy": squared,
-        "graph_edge_distance_m.npy": distance,
-        "demand_slot_id.npy": slot_id,
+    greedy_sidecar = GreedySidecar(
+        slot_atom_id=demand.canonical_atom_id,
+        atom_id=atoms.canonical_atom_id,
+        atom_xyz=atoms.xyz_float64,
+        atom_weight=atoms.aggregate_weight,
+    )
+    pointwise_sidecar = PointwiseSidecar(
+        nearest_atom_id=fitted_pointwise.nearest_atom_id,
+        squared_distance=fitted_pointwise.squared_distance_m2,
+        distance_m=fitted_pointwise.distance_m,
+    )
+    solver_arrays = {
+        **_support_arrays(support),
+        "graph_indptr.npy": fitted_graph.indptr,
+        "graph_indices.npy": fitted_graph.indices,
+        "graph_data.npy": fitted_graph.data,
+        "graph_edge_squared_distance_m2.npy": fitted_graph.squared_distance_m2,
+        "graph_edge_distance_m.npy": fitted_graph.distance_m,
+        "demand_slot_id.npy": demand.slot_id,
+    }
+    control_arrays = {
+        "demand_slot_atom_id.npy": demand.canonical_atom_id,
+        "demand_atom_id.npy": atoms.canonical_atom_id,
+        "demand_atom_xyz.npy": atoms.xyz_float64,
+        "demand_atom_weight.npy": atoms.aggregate_weight,
+        "pointwise_nearest_atom_id.npy": fitted_pointwise.nearest_atom_id,
+        "pointwise_squared_distance.npy": fitted_pointwise.squared_distance_m2,
+        "pointwise_distance_m.npy": fitted_pointwise.distance_m,
+    }
+    fit_arrays = {
+        "target_xyz_confidence.npy": target,
+        "target_atom_xyz_float32.npy": atoms.xyz_float32,
+        "target_atom_polar_rae.npy": atoms.polar_rae,
+        "target_atom_cdf.npy": atoms.cdf,
+        "demand_slot_xyz.npy": demand.slot_xyz,
+        "canonical_support_xyz_float64.npy": canonical_support.xyz_float64,
+    }
+    solver_payloads = _array_payloads(solver_arrays)
+    control_payloads = _array_payloads(control_arrays)
+    fit_payloads = {
+        **_array_payloads(fit_arrays),
+        "target_xyz_confidence.bin": target.tobytes(order="C"),
+    }
+    fit_binding = {
+        "schema": "stda_f0_fit_binding_v1",
+        "protocol_sha256": verify_phase.PROTOCOL_SHA256,
+        "protocol_freeze_commit": verify_phase.PROTOCOL_FREEZE_COMMIT,
+        "support_bin_sha256": _sha256(support_payload),
+        "target_cache_sha256": _sha256(target_cache_payload),
+        "target_tensor_sha256": _sha256(target.tobytes(order="C")),
+        "canonical_target_atoms_sha256": atoms.digest_sha256,
+        "demand_slots_sha256": demand.digest_sha256,
+        "canonical_support_sha256": canonical_support.digest_sha256,
+        "sparse_graph_sha256": fitted_graph.digest_sha256,
+        "packed_pointwise_sidecar_sha256": fitted_pointwise.digest_sha256,
+        "solver_input_files_sha256": _payload_hashes(solver_payloads),
+        "control_input_files_sha256": _payload_hashes(control_payloads),
+        "fit_evidence_files_sha256": _payload_hashes(fit_payloads),
+    }
+    fit_digests = {
+        name: fit_binding[name]
+        for name in (
+            "canonical_target_atoms_sha256",
+            "demand_slots_sha256",
+            "canonical_support_sha256",
+            "sparse_graph_sha256",
+            "packed_pointwise_sidecar_sha256",
+        )
+    }
+    round_binding = {
+        "solver_input_files_sha256": _payload_hashes(solver_payloads),
+        "control_input_files_sha256": _payload_hashes(control_payloads),
+        "fit_evidence_files_sha256": _payload_hashes(fit_payloads),
+        "round_support_sha256": packed.digest_sha256,
+        "round_graph_sha256": graph.digest_sha256,
+        "round_greedy_sidecar_sha256": greedy_sidecar.digest_sha256,
+        "round_pointwise_sidecar_sha256": pointwise_sidecar.digest_sha256,
+    }
+    return {
+        "atoms": atoms,
+        "demand": demand,
+        "packed": packed,
+        "graph": graph,
+        "greedy_sidecar": greedy_sidecar,
+        "pointwise_sidecar": pointwise_sidecar,
+        "solver_payloads": solver_payloads,
+        "control_payloads": control_payloads,
+        "fit_payloads": fit_payloads,
+        "fit_binding": fit_binding,
+        "fit_digests": fit_digests,
+        "round_binding": round_binding,
     }
 
 
@@ -253,6 +373,113 @@ def _write_payloads(
                 "sha256": _sha256(payload),
             }
         )
+
+
+def _write_root_payload(
+    oracle_dir: Path,
+    relative_path: str,
+    payload: bytes,
+    records: list[dict[str, Any]],
+) -> None:
+    path = oracle_dir / relative_path
+    path.write_bytes(payload)
+    records.append(
+        {
+            "path": relative_path,
+            "bytes": len(payload),
+            "sha256": _sha256(payload),
+        }
+    )
+
+
+def _write_assignment_replay(
+    *,
+    oracle_dir: Path,
+    solver_payloads: dict[str, bytes],
+    decision: Any,
+    packed: RoundPackedSupport,
+    graph: AssignmentGraph,
+    records: list[dict[str, Any]],
+) -> tuple[dict[str, bool], dict[str, bool]]:
+    replay_dir = oracle_dir / "assignment_replay"
+    replay_dir.mkdir(parents=False, exist_ok=False)
+    input_hashes = _payload_hashes(solver_payloads)
+    replay_script = Path(replay_module.__file__).resolve(strict=True)
+    request = oracle_module._build_replay_request(
+        support_cardinality=packed.count,
+        input_hashes=input_hashes,
+        replay_script_sha256=replay_module.sha256_file(replay_script),
+    )
+    request_path = replay_dir / "request.json"
+    result_path = replay_dir / "result.json"
+    export_path = replay_dir / "export.bin"
+    assignment_path = replay_dir / "assignment.bin"
+    request_payload = _canonical_json(request)
+    request_path.write_bytes(request_payload)
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-S",
+            "-B",
+            str(replay_script),
+            "--input-root",
+            str(oracle_dir / "solver_inputs"),
+            "--request",
+            str(request_path),
+            "--result",
+            str(result_path),
+            "--export",
+            str(export_path),
+            "--assignment",
+            str(assignment_path),
+        ],
+        cwd=oracle_dir / "solver_inputs",
+        env=oracle_module._clean_replay_environment(),
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+        timeout=120,
+    )
+    assert completed.returncode == 0, completed.stderr.decode(
+        "utf-8", errors="replace"
+    )
+    assert completed.stdout == b""
+    assert completed.stderr == b""
+    result_payload = result_path.read_bytes()
+    result = json.loads(result_payload.decode("ascii"))
+    assert _canonical_json(result) == result_payload
+    expected_source_hashes = replay_module._runtime_source_hashes()
+    clean_checks = oracle_module._verify_subprocess_assignment(
+        report=result,
+        report_payload=result_payload,
+        request=request,
+        reference=decision,
+        replay_export_bytes=export_path.read_bytes(),
+        replay_assignment_bytes=assignment_path.read_bytes(),
+        expected_input_hashes=input_hashes,
+        expected_source_hashes=expected_source_hashes,
+    )
+    assert all(clean_checks.values()), clean_checks
+    inprocess = round_module.verify_full_assignment(
+        packed,
+        graph,
+        decision,
+        reference=decision,
+    )
+    inprocess_checks = oracle_module._checks_dict(inprocess)
+    assert all(inprocess_checks.values()), inprocess_checks
+    for name in ("request.json", "result.json", "export.bin", "assignment.bin"):
+        payload = (replay_dir / name).read_bytes()
+        records.append(
+            {
+                "path": f"assignment_replay/{name}",
+                "bytes": len(payload),
+                "sha256": _sha256(payload),
+            }
+        )
+    return inprocess_checks, clean_checks
 
 
 def _base_report(
@@ -301,12 +528,14 @@ def _frame(
     *,
     support_dir: Path,
     oracle_dir: Path,
+    target_cache: Path,
     support_sha256: str,
     status: str,
 ) -> SyntheticFrame:
     return SyntheticFrame(
         support_dir=support_dir,
         oracle_dir=oracle_dir,
+        target_cache=target_cache,
         support_sha256=support_sha256,
         status=status,
     )
@@ -321,6 +550,10 @@ def _capacity_no_go_frame(
     )
     oracle_dir = root / "support_no_go_oracle"
     oracle_dir.mkdir()
+    target_cache_payload = b"synthetic-invalid-npz-must-not-be-parsed\n"
+    target_cache = _write_target_cache(
+        root, "support_no_go_target_cache", target_cache_payload
+    )
     report = _base_report(
         status=verify_phase.SUPPORT_NO_GO_STATUS,
         sequence=1,
@@ -328,11 +561,20 @@ def _capacity_no_go_frame(
         support=support,
         support_payload=payload,
     )
-    report["target"] = {"opened": False, "synthetic": True}
+    report["target"] = {
+        "opened": True,
+        "array_loader_called": False,
+        "cache_arrays_read": [],
+        "target_array_materialized": False,
+        "synthetic": True,
+        "path": str(target_cache),
+        "cache_sha256": _sha256(target_cache_payload),
+    }
     _finalize_oracle(oracle_dir, report)
     return _frame(
         support_dir=support_dir,
         oracle_dir=oracle_dir,
+        target_cache=target_cache,
         support_sha256=support_sha256,
         status=verify_phase.SUPPORT_NO_GO_STATUS,
     )
@@ -360,33 +602,76 @@ def _graph_no_go_frame(
     oracle_dir = root / "graph_no_go_oracle"
     oracle_dir.mkdir()
     records: list[dict[str, Any]] = []
-    graph, graph_arrays = _graph(deficient=True)
-    solver_payloads = _array_payloads({**_support_arrays(support), **graph_arrays})
-    slot_to_support = np.full(REQUIRED_COUNT, -1, dtype="<i8")
-    slot_to_support[:256] = np.arange(256, dtype="<i8")
-    support_to_slot = np.full(REQUIRED_COUNT, -1, dtype="<i8")
-    support_to_slot[:256] = np.arange(256, dtype="<i8")
-    reachable_slots = np.arange(REQUIRED_COUNT, dtype="<i8")
-    reachable_support = np.arange(256, dtype="<i8")
+    target = np.concatenate(
+        (
+            np.ascontiguousarray(support.xyz_m[:1], dtype="<f4"),
+            np.ones((1, 1), dtype="<f4"),
+        ),
+        axis=1,
+    )
+    target_cache_payload = _target_cache_bytes(target)
+    target_cache = _write_target_cache(
+        root, "graph_no_go_target_cache", target_cache_payload
+    )
+    fitted = _fit_artifacts(
+        support=support,
+        support_payload=support_payload,
+        target=target,
+        target_cache_payload=target_cache_payload,
+    )
+    graph = fitted["graph"]
+    packed = fitted["packed"]
+    solver_payloads = fitted["solver_payloads"]
+    control_payloads = fitted["control_payloads"]
+    fit_payloads = fitted["fit_payloads"]
+    certificate = round_module.maximum_cardinality_certificate(packed, graph)
+    assert certificate.transported_mass == 256
+    assert certificate.hall_witness is not None
+    witness = certificate.hall_witness
+    custom_checks = oracle_module._checks_dict(
+        round_module.verify_matching(graph, certificate.custom_matching)
+    )
+    scipy_checks = oracle_module._checks_dict(
+        round_module.verify_matching(graph, certificate.scipy_matching)
+    )
+    assert all(custom_checks.values())
+    assert all(scipy_checks.values())
     hall = verify_hall_certificate(
-        reachable_slots,
-        reachable_support,
-        slot_to_support,
+        witness.slot_rows,
+        witness.support_ranks,
+        certificate.custom_matching.slot_to_support_rank,
         graph.indptr,
         graph.indices,
         support_cardinality=REQUIRED_COUNT,
     )
     assert hall["passed"] is True
     result_arrays = {
-        **_matching_arrays(slot_to_support, support_to_slot),
-        "hall_reachable_slot_rows.npy": reachable_slots,
-        "hall_reachable_support_ranks.npy": reachable_support,
-        "hall_reachable_slot_ids.npy": reachable_slots,
-        "hall_reachable_support_ids.npy": reachable_support,
+        "matching_custom_slot_to_support_rank.npy": (
+            certificate.custom_matching.slot_to_support_rank
+        ),
+        "matching_custom_support_to_slot_row.npy": (
+            certificate.custom_matching.support_to_slot_row
+        ),
+        "matching_scipy_slot_to_support_rank.npy": (
+            certificate.scipy_matching.slot_to_support_rank
+        ),
+        "matching_scipy_support_to_slot_row.npy": (
+            certificate.scipy_matching.support_to_slot_row
+        ),
+        "hall_reachable_slot_rows.npy": witness.slot_rows,
+        "hall_reachable_support_ranks.npy": witness.support_ranks,
+        "hall_reachable_slot_ids.npy": witness.slot_ids,
+        "hall_reachable_support_ids.npy": witness.support_ids,
     }
     result_payloads = _array_payloads(result_arrays)
     _write_payloads(oracle_dir, "solver_inputs", solver_payloads, records)
+    _write_payloads(oracle_dir, "control_inputs", control_payloads, records)
+    _write_payloads(oracle_dir, "fit_evidence", fit_payloads, records)
     _write_payloads(oracle_dir, "round_results", result_payloads, records)
+    fit_binding_payload = _canonical_json(fitted["fit_binding"])
+    _write_root_payload(
+        oracle_dir, "fit_binding.json", fit_binding_payload, records
+    )
 
     report = _base_report(
         status=verify_phase.GRAPH_NO_GO_STATUS,
@@ -397,15 +682,30 @@ def _graph_no_go_frame(
     )
     report.update(
         {
-            "target": {"opened": True, "synthetic": True},
-            "round_input_binding": {
-                "solver_input_files_sha256": _payload_hashes(solver_payloads),
+            "target": {
+                "opened": True,
+                "synthetic": True,
+                "path": str(target_cache),
+                "cache_sha256": _sha256(target_cache_payload),
+                "target_tensor_sha256": _sha256(target.tobytes(order="C")),
+                "target_shape": [1, 4],
+                "target_dtype": "<f4",
+                "cache_arrays_read": ["target_xyz_confidence"],
             },
+            "fit_binding": fitted["fit_binding"],
+            "fit_digests": fitted["fit_digests"],
+            "round_input_binding": fitted["round_binding"],
             "result_array_files_sha256": _payload_hashes(result_payloads),
             "cardinality": {
-                "transported_mass": 256,
-                "custom_matching": {"cardinality": 256},
-                "scipy_matching": {"cardinality": 256},
+                "transported_mass": certificate.transported_mass,
+                "custom_matching": {
+                    "cardinality": certificate.custom_matching.cardinality,
+                    "digest_sha256": certificate.custom_matching.digest_sha256,
+                },
+                "scipy_matching": {
+                    "cardinality": certificate.scipy_matching.cardinality,
+                    "digest_sha256": certificate.scipy_matching.digest_sha256,
+                },
                 "hall_witness": {
                     "reachable_slot_count": hall["reachable_slot_count"],
                     "reachable_support_count": hall["reachable_support_count"],
@@ -414,6 +714,18 @@ def _graph_no_go_frame(
                     "support_set_sha256": hall["reachable_support_sha256"],
                 },
             },
+            "matching_replay": {
+                "custom": custom_checks,
+                "scipy": scipy_checks,
+                "hall": oracle_module._checks_dict(
+                    round_module.verify_hall_witness(
+                        packed,
+                        graph,
+                        certificate.custom_matching,
+                        witness,
+                    )
+                ),
+            },
             "payload_files": records,
         }
     )
@@ -421,6 +733,7 @@ def _graph_no_go_frame(
     return _frame(
         support_dir=support_dir,
         oracle_dir=oracle_dir,
+        target_cache=target_cache,
         support_sha256=support_sha256,
         status=verify_phase.GRAPH_NO_GO_STATUS,
     )
@@ -463,38 +776,37 @@ def _full_ready_frame(
     oracle_dir = root / "full_ready_oracle"
     oracle_dir.mkdir()
     records: list[dict[str, Any]] = []
-    packed = _round_support(support)
-    graph, graph_arrays = _graph(deficient=False)
-    identity = np.arange(REQUIRED_COUNT, dtype="<i8")
-    decision = round_module._full_assignment_from_columns(
-        packed,
-        graph,
-        identity,
-        identity,
+    target_xyz = np.ascontiguousarray(support.xyz_m[::250], dtype="<f4")
+    assert target_xyz.shape == (40, 3)
+    target = np.concatenate(
+        (target_xyz, np.ones((target_xyz.shape[0], 1), dtype="<f4")), axis=1
     )
-
-    atom_id = np.asarray([0], dtype="<i8")
-    atom_xyz = packed.xyz[:1].astype("<f8")
-    atom_weight = np.asarray([1.0], dtype="<f8")
-    slot_atom_id = np.zeros(REQUIRED_COUNT, dtype="<i8")
-    greedy_sidecar = GreedySidecar(
-        slot_atom_id=slot_atom_id,
-        atom_id=atom_id,
-        atom_xyz=atom_xyz,
-        atom_weight=atom_weight,
+    target_cache_payload = _target_cache_bytes(target)
+    target_cache = _write_target_cache(
+        root, "full_ready_target_cache", target_cache_payload
     )
-    delta = packed.xyz.astype("<f8") - atom_xyz[0]
-    point_squared = np.einsum("ij,ij->i", delta, delta).astype("<f8")
-    point_distance = np.fromiter(
-        (math.sqrt(float(value)) for value in point_squared),
-        dtype="<f8",
-        count=REQUIRED_COUNT,
+    fitted = _fit_artifacts(
+        support=support,
+        support_payload=support_payload,
+        target=target,
+        target_cache_payload=target_cache_payload,
     )
-    pointwise_sidecar = PointwiseSidecar(
-        nearest_atom_id=np.zeros(REQUIRED_COUNT, dtype="<i8"),
-        squared_distance=point_squared,
-        distance_m=point_distance,
+    packed = fitted["packed"]
+    graph = fitted["graph"]
+    greedy_sidecar = fitted["greedy_sidecar"]
+    pointwise_sidecar = fitted["pointwise_sidecar"]
+    certificate = round_module.maximum_cardinality_certificate(packed, graph)
+    assert certificate.transported_mass == REQUIRED_COUNT
+    assert certificate.hall_witness is None
+    custom_matching_checks = oracle_module._checks_dict(
+        round_module.verify_matching(graph, certificate.custom_matching)
     )
+    scipy_matching_checks = oracle_module._checks_dict(
+        round_module.verify_matching(graph, certificate.scipy_matching)
+    )
+    assert all(custom_matching_checks.values())
+    assert all(scipy_matching_checks.values())
+    decision = round_module.solve_full_assignment(packed, graph)
     pointwise = packed_pointwise_control(
         packed,
         pointwise_sidecar,
@@ -509,21 +821,23 @@ def _full_ready_frame(
     )
     assert greedy.failed_slot_count == 0
 
-    solver_payloads = _array_payloads({**_support_arrays(support), **graph_arrays})
-    control_payloads = _array_payloads(
-        {
-            "demand_slot_atom_id.npy": slot_atom_id,
-            "demand_atom_id.npy": atom_id,
-            "demand_atom_xyz.npy": atom_xyz,
-            "demand_atom_weight.npy": atom_weight,
-            "pointwise_nearest_atom_id.npy": pointwise_sidecar.nearest_atom_id,
-            "pointwise_squared_distance.npy": pointwise_sidecar.squared_distance,
-            "pointwise_distance_m.npy": pointwise_sidecar.distance_m,
-        }
-    )
+    solver_payloads = fitted["solver_payloads"]
+    control_payloads = fitted["control_payloads"]
+    fit_payloads = fitted["fit_payloads"]
     result_payloads = _array_payloads(
         {
-            **_matching_arrays(identity, identity),
+            "matching_custom_slot_to_support_rank.npy": (
+                certificate.custom_matching.slot_to_support_rank
+            ),
+            "matching_custom_support_to_slot_row.npy": (
+                certificate.custom_matching.support_to_slot_row
+            ),
+            "matching_scipy_slot_to_support_rank.npy": (
+                certificate.scipy_matching.slot_to_support_rank
+            ),
+            "matching_scipy_support_to_slot_row.npy": (
+                certificate.scipy_matching.support_to_slot_row
+            ),
             "decision_slot_row.npy": decision.slot_row,
             "decision_slot_id.npy": decision.slot_id,
             "decision_support_rank.npy": decision.support_rank,
@@ -565,20 +879,22 @@ def _full_ready_frame(
 
     _write_payloads(oracle_dir, "solver_inputs", solver_payloads, records)
     _write_payloads(oracle_dir, "control_inputs", control_payloads, records)
+    _write_payloads(oracle_dir, "fit_evidence", fit_payloads, records)
     _write_payloads(oracle_dir, "round_results", result_payloads, records)
     _write_payloads(oracle_dir, "exports", export_payloads, records)
-
-    target = np.asarray(
-        [[packed.xyz[0, 0], packed.xyz[0, 1], packed.xyz[0, 2], 1.0]],
-        dtype="<f4",
+    inprocess_replay_checks, clean_replay_checks = _write_assignment_replay(
+        oracle_dir=oracle_dir,
+        solver_payloads=solver_payloads,
+        decision=decision,
+        packed=packed,
+        graph=graph,
+        records=records,
+    )
+    fit_binding_payload = _canonical_json(fitted["fit_binding"])
+    _write_root_payload(
+        oracle_dir, "fit_binding.json", fit_binding_payload, records
     )
     target_bytes = target.tobytes(order="C")
-    _write_payloads(
-        oracle_dir,
-        "fit_evidence",
-        {"target_xyz_confidence.bin": target_bytes},
-        records,
-    )
     domain, domain_report = _synthetic_domain()
     structure_payloads: dict[str, bytes] = {}
     structure_reports: dict[str, Any] = {}
@@ -609,22 +925,33 @@ def _full_ready_frame(
             "target": {
                 "opened": True,
                 "synthetic": True,
+                "path": str(target_cache),
+                "cache_sha256": _sha256(target_cache_payload),
                 "target_tensor_sha256": _sha256(target_bytes),
+                "target_shape": [40, 4],
+                "target_dtype": "<f4",
+                "cache_arrays_read": ["target_xyz_confidence"],
             },
-            "round_input_binding": {
-                "solver_input_files_sha256": _payload_hashes(solver_payloads),
-                "control_input_files_sha256": _payload_hashes(control_payloads),
-                "round_support_sha256": packed.digest_sha256,
-                "round_graph_sha256": graph.digest_sha256,
-                "round_greedy_sidecar_sha256": greedy_sidecar.digest_sha256,
-                "round_pointwise_sidecar_sha256": pointwise_sidecar.digest_sha256,
-            },
+            "fit_binding": fitted["fit_binding"],
+            "fit_digests": fitted["fit_digests"],
+            "round_input_binding": fitted["round_binding"],
             "result_array_files_sha256": _payload_hashes(result_payloads),
             "cardinality": {
-                "transported_mass": REQUIRED_COUNT,
-                "custom_matching": {"cardinality": REQUIRED_COUNT},
-                "scipy_matching": {"cardinality": REQUIRED_COUNT},
+                "transported_mass": certificate.transported_mass,
+                "custom_matching": {
+                    "cardinality": certificate.custom_matching.cardinality,
+                    "digest_sha256": certificate.custom_matching.digest_sha256,
+                },
+                "scipy_matching": {
+                    "cardinality": certificate.scipy_matching.cardinality,
+                    "digest_sha256": certificate.scipy_matching.digest_sha256,
+                },
                 "hall_witness": None,
+            },
+            "matching_replay": {
+                "custom": custom_matching_checks,
+                "scipy": scipy_matching_checks,
+                "hall": None,
             },
             "decision": {
                 "objective": decision.objective,
@@ -633,6 +960,9 @@ def _full_ready_frame(
                 "export_sha256": decision.export_sha256,
                 "objective_sha256": decision.objective_sha256,
                 "digest_sha256": decision.digest_sha256,
+                "second_inprocess_replay": inprocess_replay_checks,
+                "clean_subprocess_replay": clean_replay_checks,
+                "three_solver_runs_identical": True,
             },
             "packed_pointwise": {
                 "selection_sha256": pointwise.selection_sha256,
@@ -652,6 +982,13 @@ def _full_ready_frame(
             "exports": export_reports,
             "structural_domain": domain_report,
             "structure": structure_reports,
+            "timings_ns": {
+                "decision_solver_inprocess_1_ns": 1,
+                "decision_solver_inprocess_2_ns": 1,
+                "decision_solver_inprocess_replay_ns": 1,
+                "decision_solver_subprocess_3_ns": 1,
+                "decision_solver_subprocess_replay_ns": 1,
+            },
             "payload_files": records,
         }
     )
@@ -659,6 +996,7 @@ def _full_ready_frame(
     return _frame(
         support_dir=support_dir,
         oracle_dir=oracle_dir,
+        target_cache=target_cache,
         support_sha256=support_sha256,
         status=verify_phase.READY_STATUS,
     )
@@ -686,6 +1024,7 @@ def _arguments(frame: SyntheticFrame, output: Path) -> argparse.Namespace:
     return argparse.Namespace(
         support_frame_dir=frame.support_dir,
         oracle_dir=frame.oracle_dir,
+        target_cache=frame.target_cache,
         expected_support_sha256=frame.support_sha256,
         output=output,
     )
@@ -697,6 +1036,7 @@ def _copy_frame(frame: SyntheticFrame, root: Path, name: str) -> SyntheticFrame:
     return SyntheticFrame(
         support_dir=frame.support_dir,
         oracle_dir=oracle_dir,
+        target_cache=frame.target_cache,
         support_sha256=frame.support_sha256,
         status=frame.status,
     )
@@ -740,13 +1080,19 @@ def test_support_capacity_no_go_replays_without_graph_or_target(
     frame = synthetic_frames["support_no_go"]
     report = verify_phase.run(_arguments(frame, tmp_path / "support_report.json"))
 
-    assert report["passed"] is True
+    assert report["passed"] is True, {
+        "checks": _false_boolean_paths(report["checks"]),
+        "status_checks": _false_boolean_paths(report["status_checks"]),
+    }
     assert report["oracle_status"] == verify_phase.SUPPORT_NO_GO_STATUS
     assert report["support"]["passed"] is True
     assert report["graph"] is None
     assert report["controls"] is None
     assert report["arms"] == {}
     assert report["status_checks"]["support_no_go_has_no_graph"] is True
+    assert report["target_cache_provenance"]["passed"] is True
+    assert report["target_cache_provenance"]["array"]["parsed"] is False
+    assert report["fit_semantic_replay"] is None
 
 
 def test_graph_cardinality_no_go_replays_verified_hall_witness(
@@ -757,7 +1103,14 @@ def test_graph_cardinality_no_go_replays_verified_hall_witness(
     report = verify_phase.run(_arguments(frame, tmp_path / "graph_report.json"))
     graph = report["graph"]
 
-    assert report["passed"] is True
+    assert report["passed"] is True, {
+        "checks": _false_boolean_paths(report["checks"]),
+        "status_checks": _false_boolean_paths(report["status_checks"]),
+        "graph_checks": _false_boolean_paths(report["graph"]["checks"]),
+        "semantic_checks": _false_boolean_paths(
+            report["fit_semantic_replay"]["checks"]
+        ),
+    }
     assert report["oracle_status"] == verify_phase.GRAPH_NO_GO_STATUS
     assert graph is not None and graph["passed"] is True
     assert graph["custom_matching"]["cardinality"] == 256
@@ -768,6 +1121,11 @@ def test_graph_cardinality_no_go_replays_verified_hall_witness(
     assert report["status_checks"]["graph_no_go_has_verified_deficit"] is True
     assert report["controls"] is None
     assert report["arms"] == {}
+    semantic = report["fit_semantic_replay"]
+    assert semantic is not None and semantic["passed"] is True
+    assert semantic["arithmetic"]["graph_edge_count"] == 2_560_000
+    assert semantic["arithmetic"]["graph_array_replay"]["passed"] is True
+    assert semantic["arithmetic"]["control_array_replay"]["passed"] is True
 
 
 def test_full_ready_replays_all_controls_exports_and_structures(
@@ -777,11 +1135,24 @@ def test_full_ready_replays_all_controls_exports_and_structures(
     frame = synthetic_frames["full_ready"]
     report = verify_phase.run(_arguments(frame, tmp_path / "ready_report.json"))
 
-    assert report["passed"] is True
+    assert report["passed"] is True, {
+        "checks": _false_boolean_paths(report["checks"]),
+        "status_checks": _false_boolean_paths(report["status_checks"]),
+        "graph_checks": _false_boolean_paths(report["graph"]["checks"]),
+        "semantic_checks": _false_boolean_paths(
+            report["fit_semantic_replay"]["checks"]
+        ),
+        "control_checks": _false_boolean_paths(report["controls"]["checks"]),
+    }
     assert report["oracle_status"] == verify_phase.READY_STATUS
     assert report["graph"]["custom_matching"]["cardinality"] == REQUIRED_COUNT
     assert report["graph"]["hall"] is None
     assert report["controls"]["passed"] is True
+    assert report["fit_semantic_replay"]["passed"] is True
+    semantic_timings = report["fit_semantic_replay"]["arithmetic"]["timings_ns"]
+    assert semantic_timings["ckdtree_k256_graph_and_integer_cost_ns"] > 0
+    assert semantic_timings["ckdtree_pointwise_tie_replay_ns"] > 0
+    assert report["timings_ns"]["independent_fit_semantic_reconstruction_ns"] > 0
     assert set(report["arms"]) == {"decision", "pointwise", "greedy"}
     for arm in report["arms"].values():
         assert arm["passed"] is True
@@ -792,6 +1163,191 @@ def test_full_ready_replays_all_controls_exports_and_structures(
         assert arm["structural_replay"]["computed_report"]["schema"] == (
             "stda_f0_structural_report_v1"
         )
+
+
+def test_rebound_self_consistent_graph_cost_fails_semantic_reconstruction(
+    synthetic_frames: dict[str, SyntheticFrame],
+    tmp_path: Path,
+) -> None:
+    frame = _copy_frame(
+        synthetic_frames["graph_no_go"], tmp_path, "semantic_graph_tamper"
+    )
+    relative = "solver_inputs/graph_data.npy"
+    graph_data_path = frame.oracle_dir / relative
+    changed_data = _load_npy(graph_data_path).copy()
+    changed_data[0] += np.int64(REQUIRED_COUNT + 1)
+    changed_payload = _npy_bytes(changed_data.astype("<i8", copy=False))
+    graph_data_path.write_bytes(changed_payload)
+
+    solver_dir = frame.oracle_dir / "solver_inputs"
+    indptr = _load_npy(solver_dir / "graph_indptr.npy")
+    indices = _load_npy(solver_dir / "graph_indices.npy")
+    squared = _load_npy(solver_dir / "graph_edge_squared_distance_m2.npy")
+    distance = _load_npy(solver_dir / "graph_edge_distance_m.npy")
+    slot_id = _load_npy(solver_dir / "demand_slot_id.npy")
+    support_id = _load_npy(solver_dir / "support_stable_candidate_id.npy")
+    binding_path = frame.oracle_dir / "fit_binding.json"
+    fit_binding = _read_json(binding_path)
+    fit_graph_digest = fit_module._canonical_digest(
+        "stda_f0_sparse_assignment_graph_v1",
+        fit_module.GRAPH_SCHEMA,
+        {
+            "indptr": indptr,
+            "indices": indices,
+            "data": changed_data,
+            "squared_distance_m2": squared,
+            "distance_m": distance,
+        },
+        extra_header={
+            "demand_digest_sha256": fit_binding["demand_slots_sha256"],
+            "shape": [REQUIRED_COUNT, int(support_id.size)],
+            "support_digest_sha256": fit_binding["canonical_support_sha256"],
+        },
+    )
+    rebound_round_graph = AssignmentGraph(
+        indptr=indptr,
+        indices=indices,
+        data=changed_data,
+        edge_squared_distance_m2=squared,
+        edge_distance_m=distance,
+        slot_id=slot_id,
+        support_cardinality=int(support_id.size),
+    )
+    changed_sha256 = _sha256(changed_payload)
+    fit_binding["solver_input_files_sha256"]["graph_data.npy"] = changed_sha256
+    fit_binding["sparse_graph_sha256"] = fit_graph_digest
+    fit_binding_payload = _canonical_json(fit_binding)
+    binding_path.write_bytes(fit_binding_payload)
+
+    def rebind(report: dict[str, Any]) -> None:
+        report["fit_binding"] = fit_binding
+        report["fit_digests"]["sparse_graph_sha256"] = fit_graph_digest
+        report["round_input_binding"]["solver_input_files_sha256"][
+            "graph_data.npy"
+        ] = changed_sha256
+        report["round_input_binding"][
+            "round_graph_sha256"
+        ] = rebound_round_graph.digest_sha256
+        _update_payload_record(report, relative, changed_payload)
+        _update_payload_record(report, "fit_binding.json", fit_binding_payload)
+
+    _rewrite_oracle_report(frame.oracle_dir, rebind)
+    report = verify_phase.run(_arguments(frame, tmp_path / "semantic_graph.json"))
+
+    semantic = report["fit_semantic_replay"]["arithmetic"]
+    assert report["graph"]["passed"] is True
+    assert semantic["file_bindings"]["fit_solver"]["passed"] is True
+    assert semantic["fit_digest_checks"]["sparse_graph_sha256"] is False
+    assert semantic["round_digest_checks"]["round_graph_sha256"] is False
+    assert semantic["graph_array_replay"]["arrays"]["graph_data.npy"][
+        "passed"
+    ] is False
+    assert semantic["passed"] is False
+    assert report["passed"] is False
+
+
+def test_rebound_solver_support_column_fails_support_bin_byte_replay(
+    synthetic_frames: dict[str, SyntheticFrame],
+    tmp_path: Path,
+) -> None:
+    frame = _copy_frame(
+        synthetic_frames["graph_no_go"], tmp_path, "semantic_support_tamper"
+    )
+    relative = "solver_inputs/support_base_confidence.npy"
+    path = frame.oracle_dir / relative
+    changed = _load_npy(path).copy()
+    changed[0] += np.float32(0.125)
+    changed_payload = _npy_bytes(changed.astype("<f4", copy=False))
+    path.write_bytes(changed_payload)
+
+    solver_dir = frame.oracle_dir / "solver_inputs"
+    rebound_support = RoundPackedSupport(
+        stable_candidate_id=_load_npy(
+            solver_dir / "support_stable_candidate_id.npy"
+        ),
+        grid_cell=_load_npy(solver_dir / "support_grid_cell.npy"),
+        xyz=_load_npy(solver_dir / "support_xyz.npy"),
+        base_confidence=changed,
+        color=_load_npy(solver_dir / "support_color.npy"),
+    )
+    changed_sha256 = _sha256(changed_payload)
+    binding_path = frame.oracle_dir / "fit_binding.json"
+    fit_binding = _read_json(binding_path)
+    fit_binding["solver_input_files_sha256"][
+        "support_base_confidence.npy"
+    ] = changed_sha256
+    fit_binding_payload = _canonical_json(fit_binding)
+    binding_path.write_bytes(fit_binding_payload)
+
+    def rebind(report: dict[str, Any]) -> None:
+        report["fit_binding"] = fit_binding
+        report["round_input_binding"]["solver_input_files_sha256"][
+            "support_base_confidence.npy"
+        ] = changed_sha256
+        report["round_input_binding"][
+            "round_support_sha256"
+        ] = rebound_support.digest_sha256
+        _update_payload_record(report, relative, changed_payload)
+        _update_payload_record(report, "fit_binding.json", fit_binding_payload)
+
+    _rewrite_oracle_report(frame.oracle_dir, rebind)
+    report = verify_phase.run(_arguments(frame, tmp_path / "semantic_support.json"))
+
+    semantic = report["fit_semantic_replay"]["arithmetic"]
+    assert report["graph"]["passed"] is True
+    assert semantic["file_bindings"]["fit_solver"]["passed"] is True
+    assert semantic["support_array_replay"]["arrays"][
+        "support_base_confidence.npy"
+    ]["passed"] is False
+    assert semantic["passed"] is False
+    assert report["passed"] is False
+
+
+def test_authoritative_cache_rejects_self_consistent_wrong_snapshot(
+    synthetic_frames: dict[str, SyntheticFrame],
+    tmp_path: Path,
+) -> None:
+    frame = _copy_frame(
+        synthetic_frames["graph_no_go"], tmp_path, "wrong_target_snapshot"
+    )
+    with np.load(frame.target_cache, allow_pickle=False) as cache:
+        target = np.array(cache["target_xyz_confidence"], dtype="<f4", copy=True)
+    target[0, 0] += np.float32(0.2)
+    authoritative_payload = _target_cache_bytes(target)
+    authoritative_cache = _write_target_cache(
+        tmp_path, "authoritative_changed_target", authoritative_payload
+    )
+    rebound_frame = SyntheticFrame(
+        support_dir=frame.support_dir,
+        oracle_dir=frame.oracle_dir,
+        target_cache=authoritative_cache,
+        support_sha256=frame.support_sha256,
+        status=frame.status,
+    )
+
+    def rebind_target_provenance(report: dict[str, Any]) -> None:
+        report["target"].update(
+            path=str(authoritative_cache),
+            cache_sha256=_sha256(authoritative_payload),
+            target_tensor_sha256=_sha256(target.tobytes(order="C")),
+            target_shape=[int(value) for value in target.shape],
+            target_dtype="<f4",
+            cache_arrays_read=["target_xyz_confidence"],
+        )
+
+    _rewrite_oracle_report(frame.oracle_dir, rebind_target_provenance)
+    report = verify_phase.run(
+        _arguments(rebound_frame, tmp_path / "wrong_target_report.json")
+    )
+
+    assert report["target_cache_provenance"]["passed"] is True
+    assert report["graph"]["passed"] is True
+    semantic = report["fit_semantic_replay"]["arithmetic"]
+    assert semantic["binding_checks"]["fit_target_bin_matches_authoritative_cache_array"] is False
+    assert semantic["fit_array_replay"]["arrays"]["target_xyz_confidence.npy"][
+        "passed"
+    ] is False
+    assert report["passed"] is False
 
 
 def test_file_hash_tamper_is_detected(
@@ -814,6 +1370,47 @@ def test_file_hash_tamper_is_detected(
     assert report["graph"]["solver_file_binding"]["checks"][
         "all_hashes_match"
     ] is False
+
+
+@pytest.mark.parametrize(
+    ("relative_dir", "binding_key"),
+    (
+        ("solver_inputs", "solver_input_files_sha256"),
+        ("control_inputs", "control_input_files_sha256"),
+        ("fit_evidence", "fit_evidence_files_sha256"),
+    ),
+)
+def test_rebound_extra_input_file_is_rejected(
+    synthetic_frames: dict[str, SyntheticFrame],
+    tmp_path: Path,
+    relative_dir: str,
+    binding_key: str,
+) -> None:
+    frame = _copy_frame(
+        synthetic_frames["graph_no_go"],
+        tmp_path,
+        f"extra_{relative_dir}",
+    )
+    payload = _npy_bytes(np.asarray([1], dtype="<i8"))
+    extra = frame.oracle_dir / relative_dir / "unexpected.npy"
+    extra.write_bytes(payload)
+
+    def rebind(report: dict[str, Any]) -> None:
+        report["fit_binding"][binding_key]["unexpected.npy"] = _sha256(payload)
+        report["round_input_binding"][binding_key]["unexpected.npy"] = _sha256(
+            payload
+        )
+        report["payload_files"].append(
+            {
+                "path": f"{relative_dir}/unexpected.npy",
+                "bytes": len(payload),
+                "sha256": _sha256(payload),
+            }
+        )
+
+    _rewrite_oracle_report(frame.oracle_dir, rebind)
+    with pytest.raises(ValueError, match="directory file set changed"):
+        verify_phase.run(_arguments(frame, tmp_path / f"{relative_dir}.json"))
 
 
 def test_rebound_structural_report_tamper_fails_independent_replay(
@@ -870,6 +1467,71 @@ def test_rebound_export_npy_bin_mismatch_is_detected(
     assert export["checks"]["npy_bin_raw_bytes_identical"] is False
 
 
+@pytest.mark.parametrize(
+    "target",
+    (
+        np.ones((2, 4), dtype="<f8"),
+        np.ones((2, 3), dtype="<f4"),
+        np.asfortranarray(np.ones((2, 4), dtype="<f4")),
+    ),
+    ids=("wrong-dtype", "wrong-shape", "fortran-order"),
+)
+def test_authoritative_target_rejects_noncanonical_member(
+    target: np.ndarray,
+    tmp_path: Path,
+) -> None:
+    stream = io.BytesIO()
+    np.savez(stream, target_xyz_confidence=target)
+    payload = stream.getvalue()
+    cache = tmp_path / "noncanonical_target.npz"
+    cache.write_bytes(payload)
+    oracle = {
+        "target": {
+            "opened": True,
+            "path": str(cache.resolve(strict=True)),
+            "cache_sha256": _sha256(payload),
+            "cache_arrays_read": ["target_xyz_confidence"],
+        }
+    }
+
+    with pytest.raises(ValueError, match="target cache is invalid"):
+        verify_phase._target_cache_provenance(
+            cache,
+            oracle=oracle,
+            parse_array=True,
+        )
+
+
+def test_verifier_paths_reject_parent_traversal_and_symlink_components(
+    tmp_path: Path,
+) -> None:
+    evidence = tmp_path / "evidence"
+    evidence.mkdir()
+    target = evidence / "target.bin"
+    target.write_bytes(b"target")
+    alias = tmp_path / "alias"
+    alias.symlink_to(evidence, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="parent traversal"):
+        verify_phase._resolve_input_path(
+            evidence / ".." / "evidence" / "target.bin",
+            directory=False,
+            label="target-cache",
+        )
+    with pytest.raises(ValueError, match="symlink"):
+        verify_phase._resolve_input_path(
+            alias / "target.bin",
+            directory=False,
+            label="target-cache",
+        )
+    with pytest.raises(ValueError, match="parent traversal"):
+        verify_phase._resolve_output_path(
+            tmp_path / "scratch" / ".." / "result.json",
+            forbidden_roots=(evidence,),
+            forbidden_files=(target,),
+        )
+
+
 def test_cuda_visible_devices_must_be_explicitly_empty(
     synthetic_frames: dict[str, SyntheticFrame],
     tmp_path: Path,
@@ -880,6 +1542,30 @@ def test_cuda_visible_devices_must_be_explicitly_empty(
 
     with pytest.raises(RuntimeError, match="CUDA_VISIBLE_DEVICES empty"):
         verify_phase.run(_arguments(frame, tmp_path / "cuda_report.json"))
+
+
+def test_formal_script_bootstraps_numpy_and_scipy_under_isolated_no_site() -> None:
+    script = Path(verify_phase.__file__).resolve(strict=True)
+    environment = dict(os.environ)
+    environment.update(verify_phase.PINNED_ENVIRONMENT)
+    environment.update(
+        {
+            "CONDA_PREFIX": sys.prefix,
+            "CONDA_DEFAULT_ENV": Path(sys.prefix).name,
+            "PYTHONPATH": str(verify_phase.CODE_ROOT),
+            "STDA_F0_PHASE": "verify_999",
+        }
+    )
+    completed = subprocess.run(
+        [sys.executable, "-I", "-S", str(script), "--help"],
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=30,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert "--target-cache" in completed.stdout
 
 
 def test_main_publishes_once_and_cannot_overwrite_output(
@@ -893,15 +1579,47 @@ def test_main_publishes_once_and_cannot_overwrite_output(
         str(frame.support_dir),
         "--oracle-dir",
         str(frame.oracle_dir),
+        "--target-cache",
+        str(frame.target_cache),
         "--expected-support-sha256",
         frame.support_sha256,
         "--output",
         str(output),
     ]
+    environment = dict(os.environ)
+    environment.update(verify_phase.PINNED_ENVIRONMENT)
+    environment.update(
+        {
+            "CONDA_PREFIX": sys.prefix,
+            "CONDA_DEFAULT_ENV": Path(sys.prefix).name,
+            "PYTHONPATH": str(verify_phase.CODE_ROOT),
+            "STDA_F0_PHASE": "verify_998",
+        }
+    )
+    command = [
+        sys.executable,
+        "-I",
+        "-S",
+        str(Path(verify_phase.__file__).resolve(strict=True)),
+        *argv,
+    ]
 
-    assert verify_phase.main(argv) == 0
+    first = subprocess.run(
+        command,
+        env=environment,
+        capture_output=True,
+        check=False,
+        timeout=60,
+    )
+    assert first.returncode == 0, first.stderr.decode("utf-8", errors="replace")
     original = output.read_bytes()
     assert _canonical_json(json.loads(original.decode("ascii"))) == original
-    with pytest.raises(FileExistsError):
-        verify_phase.main(argv)
+    second = subprocess.run(
+        command,
+        env=environment,
+        capture_output=True,
+        check=False,
+        timeout=60,
+    )
+    assert second.returncode != 0
     assert output.read_bytes() == original

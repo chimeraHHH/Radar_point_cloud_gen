@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import BinaryIO
 
 import numpy as np
 from scipy.io import loadmat
@@ -68,15 +69,37 @@ def load_axes(resources: Path) -> KRadarAxes:
     return axes
 
 
-def load_tesseract(path: Path, reverse_angular_axes: bool = True) -> np.ndarray:
-    on_disk = loadmat(path)["arrDREA"]
+def load_tesseract(
+    path: Path | BinaryIO,
+    reverse_angular_axes: bool = True,
+    *,
+    source_label: Path | str | None = None,
+) -> np.ndarray:
+    """Load a DRAE tensor from a path or an already-frozen byte stream."""
+
+    label = source_label
+    if label is None:
+        label = (
+            path
+            if isinstance(path, (str, Path))
+            else getattr(path, "name", None)
+        )
+    if label is None:
+        label = "<immutable tesseract payload>"
+    try:
+        document = loadmat(path)
+    except Exception as error:
+        raise ValueError(f"Failed to load K-Radar tesseract from {label}") from error
+    if "arrDREA" not in document:
+        raise ValueError(f"Missing arrDREA in {label}")
+    on_disk = document["arrDREA"]
     if on_disk.shape != (64, 256, 37, 107):
-        raise ValueError(f"Unexpected arrDREA shape {on_disk.shape} in {path}")
+        raise ValueError(f"Unexpected arrDREA shape {on_disk.shape} in {label}")
     cube = np.transpose(on_disk, (0, 1, 3, 2))
     if reverse_angular_axes:
         cube = np.flip(np.flip(cube, axis=2), axis=3)
     if not np.isfinite(cube).all():
-        raise ValueError(f"Non-finite values in {path}")
+        raise ValueError(f"Non-finite values in {label}")
     return np.ascontiguousarray(cube)
 
 
