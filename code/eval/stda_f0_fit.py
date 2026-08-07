@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import hashlib
+import io
 import json
 import math
+from pathlib import Path
 from typing import Iterable, Mapping
 
 import numpy as np
@@ -57,6 +59,65 @@ POINTWISE_SCHEMA = (
     ("squared_distance_m2", "<f8"),
     ("distance_m", "<f8"),
 )
+
+
+@dataclass(frozen=True)
+class TargetLoad:
+    """One immutable, support-gated read of the approved target cache array."""
+
+    target_xyz_confidence: np.ndarray
+    cache_sha256: str
+    target_tensor_sha256: str
+    support_commit_sha256: str
+    cache_arrays_read: tuple[str, ...] = ("target_xyz_confidence",)
+
+
+def load_target_xyz_confidence(
+    cache_path: Path,
+    *,
+    support_commit_sha256: str,
+) -> TargetLoad:
+    """Read only target_xyz_confidence after an immutable support commit."""
+
+    if (
+        len(support_commit_sha256) != 64
+        or any(character not in "0123456789abcdef" for character in support_commit_sha256)
+    ):
+        raise ValueError("STDA target loading requires a valid support commitment")
+    path = Path(cache_path)
+    if not path.is_file() or path.is_symlink():
+        raise ValueError("STDA target cache must be one regular file")
+    before = path.stat()
+    payload = path.read_bytes()
+    after = path.stat()
+    if (
+        before.st_dev != after.st_dev
+        or before.st_ino != after.st_ino
+        or before.st_size != after.st_size
+        or before.st_mtime_ns != after.st_mtime_ns
+        or len(payload) != after.st_size
+    ):
+        raise ValueError("STDA target cache changed during its sole approved read")
+    with np.load(io.BytesIO(payload), allow_pickle=False) as cache:
+        if "target_xyz_confidence" not in cache:
+            raise ValueError("STDA target cache lacks target_xyz_confidence")
+        target = np.array(
+            cache["target_xyz_confidence"],
+            dtype="<f4",
+            order="C",
+            copy=True,
+        )
+    if target.ndim != 2 or target.shape[1] != 4 or target.shape[0] == 0:
+        raise ValueError("STDA target cache array must have shape (N,4)")
+    if not np.isfinite(target).all() or np.any(target[:, 3] < 0.0):
+        raise ValueError("STDA target cache contains invalid XYZ/confidence")
+    immutable = _little_endian_array(target, "<f4")
+    return TargetLoad(
+        target_xyz_confidence=immutable,
+        cache_sha256=hashlib.sha256(payload).hexdigest(),
+        target_tensor_sha256=hashlib.sha256(immutable.tobytes(order="C")).hexdigest(),
+        support_commit_sha256=support_commit_sha256,
+    )
 
 
 def _little_endian_array(values: np.ndarray, dtype: str) -> np.ndarray:

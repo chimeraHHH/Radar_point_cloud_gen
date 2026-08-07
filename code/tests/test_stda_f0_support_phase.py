@@ -5,6 +5,7 @@ import hashlib
 import inspect
 import json
 from pathlib import Path
+import sys
 
 import pytest
 
@@ -161,6 +162,27 @@ def test_environment_sanitization_removes_cache_knobs_and_rejects_gt_input() -> 
             {"PATH": "/usr/bin:/dataset/labels/train"},
             enforce_required=False,
         )
+
+
+def test_formal_environment_requires_frozen_h200_gpu2_uuid() -> None:
+    environment = {
+        **phase.REQUIRED_ENVIRONMENT,
+        "CUDA_VISIBLE_DEVICES": phase.EXPECTED_GPU_UUID_TOKEN,
+        "CONDA_PREFIX": str(Path(sys.executable).resolve().parent.parent),
+        "PATH": str(Path(sys.executable).resolve().parent),
+    }
+    report = phase.sanitize_environment(environment, enforce_required=True)
+    assert report["required_checks"][
+        "CUDA_VISIBLE_DEVICES_is_frozen_H200_GPU2_UUID"
+    ] is True
+
+    wrong = {
+        **phase.REQUIRED_ENVIRONMENT,
+        "CUDA_VISIBLE_DEVICES": "2",
+        "CONDA_PREFIX": str(Path(sys.executable).resolve().parent.parent),
+    }
+    with pytest.raises(phase.SupportPhaseContractError, match="GPU2 UUID"):
+        phase.sanitize_environment(wrong, enforce_required=True)
 
 
 def test_audit_policy_allows_only_exact_cube_source_env_and_staging(

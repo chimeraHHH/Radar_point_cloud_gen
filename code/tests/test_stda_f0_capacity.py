@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import socket
+import sys
 from typing import Any
 
 import pytest
@@ -227,6 +228,7 @@ def _phase_args(tmp_path: Path) -> argparse.Namespace:
         candidate_hash_manifest=tmp_path / "candidate-hashes.json",
         source_commit=SOURCE_COMMIT,
         physical_gpu=2,
+        gpu_uuid=GPU["uuid"],
         support_timeout_seconds=1.0,
         frame_child_timeout_seconds=1.0,
     )
@@ -650,7 +652,7 @@ def test_phase_commands_enforce_serial_cuda_visibility_contract(
     support_call = calls.pop()
     assert support_call["phase"] == "support"
     assert support_call["cuda_visible"] is True
-    assert support_call["environment"]["CUDA_VISIBLE_DEVICES"] == "2"
+    assert support_call["environment"]["CUDA_VISIBLE_DEVICES"] == GPU["uuid"]
     assert support_call["environment"]["STDA_F0_PHASE"] == "support"
     assert support_call["command"][-2:] == ("--device", "cuda:0")
     assert "--target-cache" not in support_call["command"]
@@ -753,8 +755,50 @@ def test_phase_commands_enforce_serial_cuda_visibility_contract(
         assert call["environment"]["STDA_F0_PHASE"] == call["phase"]
     metric_call = calls[2]
     assert metric_call["cuda_visible"] is True
-    assert metric_call["environment"]["CUDA_VISIBLE_DEVICES"] == "2"
+    assert metric_call["environment"]["CUDA_VISIBLE_DEVICES"] == GPU["uuid"]
     assert metric_call["environment"]["STDA_F0_PHASE"] == "metric_00"
     assert "--target-cache" in calls[0]["command"]
     assert "--target-cache" not in calls[1]["command"]
     assert "--target" in metric_call["command"]
+
+
+def test_h200_gpu2_uuid_nvml_process_tree_monitor_captures_child(
+    tmp_path: Path,
+) -> None:
+    repo = Path(capacity.__file__).resolve().parents[2]
+    monitor = capacity.ProcessTreeMonitor(os.getpid(), GPU["uuid"])
+    monitor.start()
+    try:
+        capacity.run_child(
+            (
+                sys.executable,
+                "-B",
+                "-c",
+                (
+                    "import time,torch;"
+                    "assert torch.cuda.device_count()==1;"
+                    "assert torch.cuda.get_device_name(0)=='NVIDIA H200 NVL';"
+                    "x=torch.ones((1024,1024),device='cuda:0');"
+                    "torch.cuda.synchronize();time.sleep(0.40);"
+                    "print(int(x.numel()))"
+                ),
+            ),
+            environment=capacity.child_environment(
+                repo=repo,
+                physical_gpu=GPU["uuid"],
+                phase="synthetic_gpu",
+            ),
+            log_path=tmp_path / "synthetic_gpu.log",
+            phase="synthetic_gpu",
+            cuda_visible=True,
+            monitor=monitor,
+            timeout_seconds=20.0,
+        )
+    finally:
+        report = monitor.stop()
+    peak = report["phase_peaks"]["synthetic_gpu"]
+    assert peak["peak_nvml_bytes"] > 0
+    assert report["peak_summed_process_tree_nvml_bytes"] >= peak["peak_nvml_bytes"]
+    assert report["peak_process_tree_swap_bytes"] == 0
+    assert report["cuda_overlap_detected"] is False
+    assert report["monitor_errors"] == []

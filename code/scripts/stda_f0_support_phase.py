@@ -98,6 +98,11 @@ FRESH_PARENT_SOURCE_COMMIT = "f2a9489d40323d1ef45d85de958f4aea8126e1c8"
 SOURCE_COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 EXPECTED_DEVICE_ARGUMENT = "cuda:0"
 EXPECTED_GPU_NAME = "NVIDIA H200 NVL"
+EXPECTED_GPU_UUID_TOKEN = "GPU-000b6236-3632-a001-9667-1f02cbb61c8b"
+EXPECTED_GPU_UUID_HEX = "000b6236-3632-a001-9667-1f02cbb61c8b"
+EXPECTED_GPU_PCI_DOMAIN = 0
+EXPECTED_GPU_PCI_BUS = 0xD1
+EXPECTED_GPU_PCI_DEVICE = 0
 
 SUPPORT_FILE_SCHEMA = (
     ("support.bin", None, None),
@@ -370,11 +375,11 @@ def sanitize_environment(
                 f"support environment requires {key}={expected!r}"
             )
     visible = environment.get("CUDA_VISIBLE_DEVICES")
-    visible_ok = visible in ("0", "2")
-    required_checks["CUDA_VISIBLE_DEVICES_is_one_allowed_H200_index"] = visible_ok
+    visible_ok = visible == EXPECTED_GPU_UUID_TOKEN
+    required_checks["CUDA_VISIBLE_DEVICES_is_frozen_H200_GPU2_UUID"] = visible_ok
     if enforce_required and not visible_ok:
         raise SupportPhaseContractError(
-            "support environment requires exactly physical H200 GPU 0 or GPU 2"
+            "support environment requires the frozen physical H200 GPU2 UUID"
         )
     conda_prefix = environment.get("CONDA_PREFIX")
     prefix_ok = bool(conda_prefix) and _resolved_path(conda_prefix) == _resolved_path(
@@ -1147,8 +1152,8 @@ def _require_h200(runtime: SimpleNamespace, device_argument: str) -> tuple[Any, 
     torch = runtime.torch
     if os.environ.get("CUDA_DEVICE_ORDER") != "PCI_BUS_ID":
         raise SupportPhaseContractError("CUDA device order changed")
-    if os.environ.get("CUDA_VISIBLE_DEVICES") not in ("0", "2"):
-        raise SupportPhaseContractError("support child has a forbidden physical GPU")
+    if os.environ.get("CUDA_VISIBLE_DEVICES") != EXPECTED_GPU_UUID_TOKEN:
+        raise SupportPhaseContractError("support child is not UUID-bound to H200 GPU2")
     if not torch.cuda.is_available() or torch.cuda.device_count() != 1:
         raise SupportPhaseContractError("support child requires one visible CUDA device")
     device = torch.device(device_argument)
@@ -1158,12 +1163,35 @@ def _require_h200(runtime: SimpleNamespace, device_argument: str) -> tuple[Any, 
     if name != EXPECTED_GPU_NAME or not torch.cuda.is_bf16_supported():
         raise SupportPhaseContractError(f"support child requires BF16 H200, got {name}")
     properties = torch.cuda.get_device_properties(device)
+    observed_uuid = str(properties.uuid).lower()
+    observed_pci = (
+        int(properties.pci_domain_id),
+        int(properties.pci_bus_id),
+        int(properties.pci_device_id),
+    )
+    if observed_uuid != EXPECTED_GPU_UUID_HEX:
+        raise SupportPhaseContractError(
+            f"support child GPU UUID changed: {observed_uuid}"
+        )
+    if observed_pci != (
+        EXPECTED_GPU_PCI_DOMAIN,
+        EXPECTED_GPU_PCI_BUS,
+        EXPECTED_GPU_PCI_DEVICE,
+    ):
+        raise SupportPhaseContractError(
+            f"support child GPU PCI identity changed: {observed_pci}"
+        )
     return device, {
         "device_argument": device_argument,
         "visible_device_count": int(torch.cuda.device_count()),
         "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
         "cuda_device_order": os.environ.get("CUDA_DEVICE_ORDER"),
         "name": name,
+        "uuid": f"GPU-{observed_uuid}",
+        "pci_bus_id": (
+            f"{observed_pci[0]:08X}:{observed_pci[1]:02X}:"
+            f"{observed_pci[2]:02X}.0"
+        ),
         "total_memory_bytes": int(properties.total_memory),
         "bf16_supported": bool(torch.cuda.is_bf16_supported()),
     }

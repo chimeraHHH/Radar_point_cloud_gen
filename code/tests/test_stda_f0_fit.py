@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 import inspect
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -19,6 +21,7 @@ from eval.stda_f0_fit import (
     canonicalize_support,
     canonicalize_target_atoms,
     integer_edge_cost,
+    load_target_xyz_confidence,
     select_frozen_neighbors,
     validate_full_assignment_objective_bound,
 )
@@ -36,7 +39,7 @@ def _duplicate_support(
     return xyz, stable_id
 
 
-def test_source_binds_exact_freeze_constants_and_has_no_hidden_target_loader() -> None:
+def test_source_binds_exact_freeze_constants_and_one_explicit_target_loader() -> None:
     assert BASE_FREEZE_COMMIT == "eb839e1e806c44dd1668051085a307faf4fe83a0"
     assert FROZEN_PROTOCOL_SHA256 == (
         "a1bacd619ab462b92e8b0fbfccf142e9999ab18130996762f6964a3ccd2edf84"
@@ -52,8 +55,36 @@ def test_source_binds_exact_freeze_constants_and_has_no_hidden_target_loader() -
             imported.extend(alias.name for alias in node.names)
     assert not any("round" in name for name in imported)
     assert not any("metric" in name for name in imported)
-    assert "np.load" not in source
-    assert "open(" not in source
+    loader_source = inspect.getsource(load_target_xyz_confidence)
+    assert 'cache["target_xyz_confidence"]' in loader_source
+    assert "target_rae_index" not in loader_source
+    assert "cfar" not in loader_source.lower()
+    assert "cube" not in loader_source.lower()
+
+
+def test_target_loader_is_support_gated_and_reads_only_approved_array(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "target.npz"
+    target = np.asarray([[1.0, -0.0, 0.0, 0.75]], dtype="<f4")
+    np.savez(
+        path,
+        target_xyz_confidence=target,
+        target_rae_index=np.zeros((1, 3), dtype="<i8"),
+        cfar_xyzd_power_snr=np.ones((1, 6), dtype="<f4"),
+    )
+
+    loaded = load_target_xyz_confidence(
+        path,
+        support_commit_sha256="ab" * 32,
+    )
+
+    np.testing.assert_array_equal(loaded.target_xyz_confidence, target)
+    assert not loaded.target_xyz_confidence.flags.writeable
+    assert loaded.cache_arrays_read == ("target_xyz_confidence",)
+    assert loaded.cache_sha256 == hashlib.sha256(path.read_bytes()).hexdigest()
+    with pytest.raises(ValueError, match="support commitment"):
+        load_target_xyz_confidence(path, support_commit_sha256="invalid")
 
 
 def test_target_and_demand_hashes_ignore_row_permutation() -> None:

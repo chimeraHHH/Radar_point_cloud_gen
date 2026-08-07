@@ -365,6 +365,8 @@ def _load_structural_domain(resources_dir: Path) -> tuple[StructuralDomain, dict
         "vrh_schema_header_sha256": vrh.schema_header_sha256,
         "azimuth_edge_count": len(domain.azimuth_edges_rad),
         "elevation_edge_count": len(domain.elevation_edges_rad),
+        "azimuth_edges_rad": list(domain.azimuth_edges_rad),
+        "elevation_edges_rad": list(domain.elevation_edges_rad),
         "azimuth_edges_sha256": sha256_bytes(
             np.asarray(domain.azimuth_edges_rad, dtype="<f8").tobytes(order="C")
         ),
@@ -1242,7 +1244,7 @@ def run_oracle_phase(
         )
 
     if certificate.transported_mass < REQUIRED_EXPORT_COUNT:
-        _timed(
+        result_hashes = _timed(
             timings,
             "result_array_serialization_ns",
             lambda: _write_result_arrays(
@@ -1271,6 +1273,15 @@ def run_oracle_phase(
             {
                 "fit_binding": fit_binding,
                 "fit_digests": fit_digests,
+                "round_input_binding": {
+                    "solver_input_files_sha256": dict(sorted(solver_hashes.items())),
+                    "control_input_files_sha256": dict(sorted(control_hashes.items())),
+                    "fit_evidence_files_sha256": dict(sorted(fit_hashes.items())),
+                    "round_support_sha256": round_support.digest_sha256,
+                    "round_graph_sha256": round_graph.digest_sha256,
+                    "round_greedy_sidecar_sha256": greedy_sidecar.digest_sha256,
+                    "round_pointwise_sidecar_sha256": pointwise_sidecar.digest_sha256,
+                },
                 "cardinality": _cardinality_report(certificate),
                 "matching_replay": {
                     "custom": _checks_dict(custom_checks),
@@ -1278,6 +1289,7 @@ def run_oracle_phase(
                     "hall": hall_checks,
                 },
                 "hall_target_summary": hall_summary,
+                "result_array_files_sha256": dict(sorted(result_hashes.items())),
                 "structural_domain": structural_domain_report,
                 "available_arms": [],
                 "scientific_scope": (
