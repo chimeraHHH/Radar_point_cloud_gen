@@ -1,0 +1,764 @@
+\documentclass[11pt,a4paper,fontset=none]{ctexart}
+
+\setCJKmainfont{Songti SC}
+\setCJKsansfont{PingFang SC}
+\setCJKmonofont{Songti SC}
+
+\usepackage[margin=2.15cm]{geometry}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{booktabs,longtable,tabularx,array,multirow}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{microtype}
+\usepackage{multicol}
+
+\definecolor{RadarBlue}{HTML}{1F4E79}
+\definecolor{RadarGreen}{HTML}{287A52}
+\definecolor{RadarOrange}{HTML}{B85C20}
+\definecolor{RadarRed}{HTML}{A33A32}
+\definecolor{RadarGray}{HTML}{5B6573}
+\definecolor{RadarLight}{HTML}{EEF3F7}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=RadarBlue,
+  urlcolor=RadarBlue,
+  citecolor=RadarBlue,
+  pdfauthor={Radar Cube-to-Dense Project},
+  pdftitle={4D Radar Cube to Dense Point Cloud: Work Report 2026-07-29}
+}
+
+\setlist[itemize]{leftmargin=1.7em,itemsep=0.22em,topsep=0.35em}
+\setlist[enumerate]{leftmargin=1.9em,itemsep=0.22em,topsep=0.35em}
+\renewcommand{\arraystretch}{1.18}
+\setlength{\emergencystretch}{3em}
+\captionsetup{font=small,labelfont=bf}
+
+\newcommand{\done}{\textcolor{RadarGreen}{\textbf{已验证}}}
+\newcommand{\impl}{\textcolor{RadarBlue}{\textbf{已实现}}}
+\newcommand{\pending}{\textcolor{RadarOrange}{\textbf{待实验}}}
+\newcommand{\closed}{\textcolor{RadarRed}{\textbf{未通过}}}
+\newcommand{\locked}{\textcolor{RadarGray}{\textbf{锁定}}}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\hash}[2]{{\small\ttfamily #1\allowbreak{}#2}}
+\newcommand{\metric}[1]{\textbf{#1}}
+\newcommand{\raed}{\mathrm{RAED}}
+\newcommand{\xyz}{\mathrm{XYZ}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{4D Radar Cube-to-Dense}
+\fancyhead[R]{工作报告 2026-07-29}
+\fancyfoot[C]{\thepage}
+\setlength{\headheight}{14pt}
+
+\title{\bfseries 从 4D Radar Cube 生成物理一致的稠密点云\\[0.45em]
+\large 当前网络、实验结论与并行研究计划}
+\author{Radar Cube-to-Dense 项目组}
+\date{2026 年 7 月 29 日}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+\fcolorbox{RadarBlue}{RadarLight}{
+\begin{minipage}{0.92\textwidth}
+\small
+\textbf{报告口径。}
+本文只采用当前仓库中的冻结协议、H200 结果文件和代码实现作为证据，状态截点为
+\textbf{2026-07-29}。文中严格区分“已实现”“已验证”和“仅计划”：
+结构 oracle、验证集 GT 排序和单帧 memorization 不能替代可部署模型结果；
+旧 TruckScenes 点云时序实验只能支持机制动机，不能验证当前 K-Radar Cube 主线。
+截至截点，数据审计 G0 已通过，但尚无几何父模型通过正式门，因此逐点 Doppler、
+Cube-cycle、时序生成和测试集评估仍未解锁。
+\end{minipage}}
+\end{center}
+
+\tableofcontents
+\newpage
+
+\section{执行摘要}
+
+\subsection{项目要解决的问题}
+
+项目的最终目标是从当前帧完整 4D Radar Cube
+\begin{equation}
+  \mathbf C_t\in\mathbb R_{\ge 0}^{D\times R\times A\times E},
+  \qquad (D,R,A,E)=(64,256,107,37),
+\end{equation}
+生成固定数量、雷达可观测的稠密状态
+\begin{equation}
+  \mathcal P_t=
+  \left\{\mathbf p_i=(x_i,y_i,z_i),\;
+  q_i(v_r),\;c_i\right\}_{i=1}^{10{,}000}.
+\end{equation}
+其中 $q_i(v_r)$ 是逐点环形 Doppler 分布，$c_i$ 是可观测置信度。
+后续再将历史状态经 ego motion 与 Doppler/flow 传播为先验，由当前 Cube
+重新决定当前时刻的几何、速度和置信度。
+
+该问题区别于普通“单帧稀疏点云超分辨率”：输入不是 CFAR 后的稀疏点，
+输出也不仅是更密的 XYZ。目标是联合生成
+\textbf{位置、速度分布和置信度}，并用 point-to-Cube 重投影与跨帧运动关系
+约束物理一致性。
+
+\subsection{当前最重要的结论}
+
+\begin{enumerate}
+  \item \textbf{数据链已可信。}
+  修复版 G0 覆盖 45 个场景、100 帧，76/24 train/validation 分区保持场景隔离，
+  100/100 帧成功且 11/11 项检查通过。
+
+  \item \textbf{简单稠密化有效，但完整 Doppler 早融合未被证明。}
+  RAE-Max 将 CFAR 的 Chamfer 从 $10.6982$ m 降至 $2.9306$ m，
+  但 $25.697\%$ 的离群率略高于冻结的 $25\%$ 门。
+  Full-RAED 的 Chamfer 为 $3.1024$ m，相对 RAE-Max 恶化 $5.86\%$，
+  场景优先 95\% 区间为 $+0.78\%$ 到 $+14.69\%$。
+
+  \item \textbf{RaLD 结构不能直接解决固定 10k 输出。}
+  G1D、G1G、R-A1 和 R-A2 均完成各自冻结实验但未通过几何门。
+  官方 RaLD 原生采用变长 occupancy threshold，而本项目要求固定 10k、
+  三段距离配额和 5 cm 最小间距；把 binary occupancy confidence
+  直接当成几何质量分数，是本项目额外引入且已被实验证伪的假设。
+
+  \item \textbf{核心瓶颈已经从“有没有候选”定位到“如何评分和结构化输出”。}
+  R-A1 的 700k 固定候选对 GT 的 target-to-candidate 平均距离为
+  $0.1486$ m。仅用验证集 GT 重新排序、保持候选和 exact-10k 导出不变，
+  Chamfer 可从 $4.0090$ m 降到 $0.6410$ m，离群率从 $31.8129\%$
+  降到 $2.2804\%$。这不是可部署结果，但证明候选支撑充足，主要失败位于
+  confidence-quality alignment。
+
+  \item \textbf{下一步不再单线加深网络。}
+  当前采用两条相互独立的几何主线：
+  Q1 在冻结 R-A1 候选上学习连续几何质量；
+  R-B2 用 Cartesian voxel 加固定 slots 改写输出表示。
+  只有其中一条通过几何门，才继续 Doppler、Cube-cycle 和时序模型。
+\end{enumerate}
+
+\subsection{状态总表}
+
+\begin{table}[H]
+\centering
+\small
+\caption{截至 2026-07-29 的阶段状态}
+\begin{tabularx}{\textwidth}{>{\bfseries}p{2.2cm} p{2.3cm} Y Y}
+\toprule
+阶段/路线 & 状态 & 已取得的证据 & 当前边界 \\
+\midrule
+G0 数据审计 & \done & 100/100 帧，11/11 检查通过 & 只证明数据、坐标、同步和 target 构造可信 \\
+原 G1 Cube U-Net & \closed & RAE-Max 明显优于 CFAR & Full-RAED 未优于 RAE-Max，且绝对离群门失败 \\
+G1D RaLD query field & \closed & 150 epochs 与 D1--D3 诊断完成 & 条件使用弱、重复和 coverage/precision 矛盾未解决 \\
+G1G condition-exclusive & \closed & 信息路径和梯度检查通过 & condition shuffle、离群和重复门失败 \\
+R-A1 RaLD-WCE & \closed & 学到显著 Cube 条件效应；700k pool 支撑强 & binary confidence 无法可靠选择 exact-10k \\
+R-A2 binary pilot & \closed & 8 帧、500 updates 完成 & memorization 仍未通过，旧 sampler 同时不合格 \\
+Q1 quality ranking & \impl/\pending & 模型、损失、训练脚本与冻结协议已形成 & 尚未完成干净提交和 H200 科学训练 \\
+R-B2 voxel-slot & 部分通过 & GT-aided 结构容量通过 & 当前 20k Cube-only 激活 recall 仅 10.976\%，训练未启动 \\
+下游物理与时序 & \locked & 代码和旧机制证据存在 & 无通过的 K-Radar 几何父模型，不能形成当前主张 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{研究定位与创新边界}
+
+\subsection{与传统雷达点云增强的关系}
+
+传统雷达增强通常把任务写成单帧稀疏点或单帧 BEV 的去噪、补全或超分辨率。
+本项目的更准确定位是：
+\begin{quote}
+\textbf{传统方法把雷达增强看成单帧几何稠密化；本项目把它定义为完整
+RAED 测量条件下的雷达状态生成问题。}模型不仅输出当前位置，还应输出
+与该位置匹配的 Doppler 分布和置信度，并在后续阶段用历史状态改善连续性，
+同时接受当前 Cube 的观测纠正。
+\end{quote}
+
+“使用历史帧”本身不能作为创新。Radar-Mamba、RadarMP、DoppDrive、
+RMap、CMFlow 等已经覆盖多帧增强、scene flow 或历史聚合。
+可防守的差异应同时满足以下四点：
+\begin{itemize}
+  \item 当前完整 Cube 始终是主观测，而不是只从上一帧自回归；
+  \item 输出是新生成的固定计数雷达状态，而不是历史测量点的直接累加；
+  \item Doppler 是逐点生成属性或分布，而不是只作为输入 feature；
+  \item 生成状态必须同时满足 Cube 重投影与跨帧位移--速度一致性。
+\end{itemize}
+
+\subsection{当前可主张与不可主张内容}
+
+\begin{table}[H]
+\centering
+\small
+\caption{创新主张的证据边界}
+\begin{tabularx}{\textwidth}{>{\bfseries}p{4.0cm} p{2.2cm} Y}
+\toprule
+主张 & 当前状态 & 准确表述 \\
+\midrule
+完整 RAED 条件可直接改善几何 & 否决 & 早融合 Full-RAED 在当前协议下未优于 RAE-Max \\
+RaLD 风格 wide query 提供足够支撑 & 诊断支持 & 700k pool 覆盖强，但 learned exact-10k selector 未通过 \\
+连续质量评分优于 binary occupancy & 待验证 & Q1 已实现，尚无 H200 科学结果 \\
+voxel-slot 能表达固定 10k & 结构支持 & GT-aided oracle 通过；Cube-only 激活尚未通过 \\
+生成逐点 Doppler 分布 & 仅计划 & 代码存在，但 geometry parent 未过门，不能评价 \\
+Cube-point 双向物理闭环 & 仅计划 & renderer 与损失存在，尚无有效父模型上的消融 \\
+历史 Doppler/flow 改善长期一致性 & 仅机制证据 & 旧点云管线有证据；K-Radar Cube 主线尚未验证 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{数据、计算与评估协议}
+
+\subsection{数据与输入}
+
+K-Radar Cube 从磁盘布局 $(D,R,E,A)$ 转为规范
+$(D,R,A,E)=(64,256,107,37)$。每帧保留完整 64-bin Doppler 轴。
+开发 cohort 共 100 帧、45 个场景，按场景划分为 76 个训练帧和
+24 个验证帧；测试集在模型族冻结前保持不可访问。
+
+监督目标不是完整 LiDAR，而是经过雷达视场、Cube 支撑和配准约束构造的
+radar-observable dense target。每个目标点保存 XYZ、可观测置信度和
+RAE 映射。修复版 G0 的关键检查包括：
+\begin{itemize}
+  \item Cube shape、数值有限性、轴单调性与 CFAR exact-bin round trip；
+  \item LiDAR/雷达时间同步与 odometry 支撑；
+  \item 方位正负号与镜像对照；
+  \item target nonempty、跨帧 observability 稳定性；
+  \item train-only 时间参考选择与 no-deskew 冻结。
+\end{itemize}
+
+\subsection{输出与硬约束}
+
+正式几何输出固定为 10,000 点，并要求：
+\begin{equation}
+  N_{0-30}=8{,}000,\qquad
+  N_{30-60}=1{,}700,\qquad
+  N_{60-120}=300.
+\end{equation}
+点间真实欧氏距离不得小于 5 cm；禁止通过复制、padding、重复中心或
+后处理 jitter 伪造点数。评估至少报告：
+\begin{itemize}
+  \item 对称 Chamfer、confidence-weighted completeness、F-score；
+  \item 2 m 离群率、5 cm 重复率与 exact-count；
+  \item 0--30、30--60、60--120 m 分层指标；
+  \item wrong-condition 干预和 matched-condition win rate；
+  \item 后续 Doppler 的 circular W1/NLL/PCE、Cube spectrum discrepancy；
+  \item 后续时序的 radial consistency、flicker 与多步 rollout。
+\end{itemize}
+
+\subsection{计算与可复现边界}
+
+所有科研计算限定在 \code{wangning} 用户的 NVIDIA H200 节点，
+只允许物理 GPU 0 或 2；物理 GPU 1 的 RTX 5000 不使用。
+Conda 环境为
+\code{/home/wangning/miniforge3/envs/hym\_radar}。
+每次运行由 source commit、数据 manifest、split、cache、Cube、资源文件、
+checkpoint 和 evaluator 的 SHA-256 共同绑定。
+
+当前本地分支为 \code{agent/cube-to-dense-g0}，最新已推送提交为
+\hash{af21861954bf8ab7fde50d}{4580309214ebf85dc8}。
+Q1 与 R-B2 support sweep 位于尚待审计的工作区增量中，不能作为该提交的
+已归档能力。
+
+\section{模型结构与路线演化}
+
+\subsection{基础 Cube U-Net}
+
+\code{CubeOccupancyNet} 在 RAE 网格上使用轻量 3D residual U-Net。
+三种 matched 输入编码分别为：
+\begin{itemize}
+  \item \textbf{RAE-Max：}沿 Doppler 维取最大强度；
+  \item \textbf{RAE-Moments：}峰值、Doppler 均值和标准差；
+  \item \textbf{Full-RAED：}将 64 个 Doppler bins 作为输入通道。
+\end{itemize}
+三者先投影到相同 base width，再进入两层下采样与 skip-connected 上采样。
+occupancy head 输出 RAE 网格 logits，早期版本直接选取全局 top-10k cell
+center。该结构证明稠密解码本身显著强于 CFAR，但也暴露 binary occupancy
+在固定计数尾部的离群问题。
+
+\subsection{RaLD query-field 路线}
+
+G1D 按 RaLD 思路构建 512 个 working latents、24 个 radar-conditioned
+Transformer blocks、32k coarse proposals 与 10k local refinement points。
+训练查询遵循约 6.25\% occupied 与 93.75\% empty 的 classwise occupancy
+监督，推理则使用 radar-guided coarse-to-refine queries。
+
+这一实现比早期 deterministic latent refiner 更接近 RaLD 的 query-field
+结构，但仍与官方方法存在重要差异：官方 RaLD 的生成结果是对任意 query
+做 occupancy threshold 得到的变长集合；当前项目必须在范围配额和间距约束下
+输出精确 10k。因此，G1D 的失败不能解释为“没有借鉴 RaLD”，也不能把
+RaLD 的公开结果直接当作当前任务的 baseline 结果。
+
+\subsection{R-A1：Wide Candidate Export}
+
+R-A1 将训练与导出拆成两个层次：
+\begin{enumerate}
+  \item Q0 在全空间构造 500k 规则 queries；
+  \item Q1 围绕 Cube peaks 构造 200k radar-guided queries；
+  \item 冻结 field 对 700k 候选预测 occupancy 和 residual；
+  \item 在三段距离配额与 5 cm capacity-one 约束下导出 exact-10k。
+\end{enumerate}
+该路线学到了可测量的 current-Cube condition effect，但最终 confidence
+仍混合了“是否占据”和“几何定位是否精确”两个不同问题。
+
+\subsection{Q1：连续几何质量头}
+
+Q1 保持 R-A1 的 field、Q0/Q1、候选坐标、residual、范围配额和导出约束不变，
+只新增独立质量头。输入为：
+\begin{equation}
+  \left(\widetilde{\mathbf u}_i,\;\mathbf Z_C,\;
+  \operatorname{stopgrad}(p_i^{\mathrm{occ}})\right),
+\end{equation}
+其中 $\widetilde{\mathbf u}_i$ 是候选的归一化连续 RAE 坐标，
+$\mathbf Z_C$ 是冻结的当前 Cube condition latents。
+质量头使用 Fourier coordinate embedding、condition cross-attention
+与 MLP residual：
+\begin{equation}
+  s_i^{Q}
+  =\operatorname{logit}(p_i^{\mathrm{occ}})+\Delta s_i.
+\end{equation}
+最后一层零初始化，因此 update 0 必须与 R-A1 的排序和 selected rows
+bit-exact 一致。
+
+训练目标由当前帧 GT 仅在候选生成完成后构造：
+\begin{equation}
+  q_i=
+  \frac{w_{j(i)}}{\max_j w_j}
+  \exp\left(-\frac{\lVert\mathbf p_i-\mathbf y_{j(i)}\rVert_2}{1\,\mathrm m}\right),
+\end{equation}
+损失为三段距离平衡的 soft BCE 加 within-range pairwise ranking。
+正式 field 全冻结，Q1 推理 API 不接受 GT、future、test、Doppler target
+或 best-of-$k$ 输入。
+
+\subsection{R-B2：Cartesian Voxel-Slot}
+
+R-B2 不再从 700k points 中直接做全局 hard top-$k$，而是把输出写成
+固定 Cartesian voxel 与局部 slots：
+\begin{itemize}
+  \item voxel size 为 $0.40\times0.40\times0.40$ m；
+  \item 每个 voxel 固定 4 个 XY quadrant anchors；
+  \item 网络预测 voxel occupancy、4 个 slot confidence 和 4 个局部 XYZ offsets；
+  \item 选择 $2000/425/75$ 个 whole voxels，每个输出 4 点；
+  \item 参数化本身保证最小点距下界不小于 0.06 m。
+\end{itemize}
+
+结构 oracle 已证明这一表示在 100 帧上具备 exact-10k 容量，但第一版
+Cube-only 激活只覆盖 10.976\% 的 target-occupied voxels，低于 20\% 门。
+当前 bounded sweep 只允许比较三种 Cube Doppler 聚合
+\code{max\_d/sum\_d/log\_sum\_d} 与 20k/40k/80k candidate banks；
+任何 GT 均只能在候选生成后用于报告 support。
+
+\subsection{下游 Doppler、Cycle 与 Temporal 模块}
+
+仓库已存在以下模块，但当前只能标记为实现资产：
+\begin{itemize}
+  \item \code{CubeDopplerNet}：scalar、64-bin distribution 和位置条件查询；
+  \item \code{CubeCycleNet} 与 \code{point\_to\_cube.py}：
+  连续 RAE offsets 与可微 RAED soft splatting；
+  \item \code{CubeTemporalNet}、temporal prior 与 scheduled sampling：
+  ego/Doppler warp、Concat、Cross-Attention 和 Draft Refinement；
+  \item direct multi-horizon world model：0.5/1.5/2.5 s fixed-count 预测接口。
+\end{itemize}
+
+由于没有几何父模型通过，以上模块尚不能构成当前 K-Radar 方法结果。
+特别是 D-MHW 的 birth radial-moment label 仅覆盖 4.487\% 的未来几何，
+因此 birth Doppler 分支已关闭；未来若重启，只能让 birth points
+输出 XYZ/confidence，并显式设置 \code{doppler\_valid=false}。
+
+\section{实验结果与失败定位}
+
+\subsection{原始单帧几何}
+
+\begin{table}[H]
+\centering
+\caption{原始 G1 三种子结果}
+\begin{tabular}{lrrl}
+\toprule
+方法 & Chamfer (m) & 2 m 离群率 & 判定 \\
+\midrule
+CFAR & 10.6982 & 79.909\% & 稀疏测量基线 \\
+RAE-Max & 2.9306 & 25.697\% & 大幅改善，但绝对离群门失败 \\
+Full-RAED residual & 3.1024 & 26.896\% & 相对 RAE-Max 恶化 5.86\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+这组结果否决的是“当前早融合实现中完整 Doppler 频谱改善几何”的主张，
+不是否决 Doppler 作为最终点属性、cycle 信号或时序运动信息的价值。
+
+\subsection{RaLD 结构路线结果}
+
+\begin{table}[H]
+\centering
+\small
+\caption{RaLD 相关几何路线的关键终点}
+\begin{tabularx}{\textwidth}{>{\bfseries}p{2.1cm} r r r Y}
+\toprule
+路线 & Chamfer & Completeness & 离群率 & 主要失败 \\
+\midrule
+G1D epoch 15 & 6.0103 m mean & 3.5637 m median & 17.8875\% & 23 个远距帧的 mean completeness 为 46.9407 m，重复 26.9721\% \\
+G1D epoch 150 & 6.3969 m mean & 3.6331 m median & 24.8396\% & 继续训练恶化，D1--D3 均未授权修复 \\
+G1G epoch 20 & 未作为主门单列 & 1.2086 m median & 84.6854\% & condition shuffle 为 $-0.1211\%$，重复 70.8108\% \\
+R-A1 epoch 20 & 4.0090 m mean & 1.5081 m median & 31.8129\% & 条件效应强但 precision tail 与 matched wins 失败 \\
+R-A2 update 500 & 5.1892 m mean & 1.8302 m mean & 45.2600\% & 8 帧 memorization 未通过 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+G1D 的 condition intervention 进一步表明：固定 measured path 时，
+替换全局 Cube 只使 mean Chamfer 变化 $+1.05\%$，且场景优先区间跨零。
+这说明大模型虽有梯度路径，但 global condition use 弱且不稳定。
+G1G 强制取消 local bypass 后仍没有形成有用的 condition-dependent allocation，
+所以问题不能仅靠“禁止 bypass”解决。
+
+\subsection{R-A1 frozen-pool 诊断}
+
+\begin{table}[H]
+\centering
+\caption{同一 700k pool、同一 exact-10k 约束下的排序对照}
+\begin{tabular}{lrrrr}
+\toprule
+排序 & Chamfer & Completeness & 2 m 离群率 & 远距 completeness \\
+\midrule
+模型 confidence & 4.00895 m & 1.50805 m & 31.8129\% & 11.12111 m \\
+验证 GT nearest oracle & 0.64102 m & 0.14895 m & 2.2804\% & 0.70414 m \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+该 oracle 在 24/24 验证帧和 23/23 远距帧上通过全部绝对几何检查，
+但 GT 参与排序，因此不具备部署资格。它的作用是排除“wide field 没有好点”
+这一解释，并将下一步压缩到 quality learning、uncertainty calibration
+或结构化输出，而不是继续扩大同一 occupancy 网络。
+
+\subsection{Cardinality 与结构表示诊断}
+
+\begin{table}[H]
+\centering
+\small
+\caption{固定输出数量与新表示的诊断}
+\begin{tabularx}{\textwidth}{>{\bfseries}p{2.6cm} Y Y}
+\toprule
+诊断 & 结果 & 决策 \\
+\midrule
+RAE-Max 2.5k--10k & 点数减少会降低离群率，但 completeness 变差；10k Chamfer 最好 & exact-10k 不是主要失败因素 \\
+R-B1 range-echo & $K=4/6$ 在两帧最多只有 6798/7939 等可用 peaks，无法满足三段配额 & 直接 peak construction 不训练 \\
+R-B2 GT-aided oracle & $0.4$ m、4 slots：Chamfer 0.72268 m，median completeness 0.05963 m，outlier 1.5417\% & 结构容量通过，但不是模型结果 \\
+R-B2 Cube-only 20k & exact/unique/配额均通过；occupied-voxel recall 10.9763\%，confidence coverage 31.6908\% & 当前激活 no-go；只允许 bounded support sweep \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{旧时序机制证据}
+
+旧 TruckScenes 稀疏点云管线中，纯 Doppler-warp copy 在 2.5 s rollout
+上的 Chamfer 为 9.26，对比 ego-only copy 的 13.34，改善 31\%；
+反事实 ego-speed 干预得到 slope 0.696、Pearson $r=0.850$。
+scheduled sampling 提升了长期物理新鲜度，但生成桥仍存在几何税。
+
+这些结果支持“warp 管运动骨架、当前观测负责刷新”的设计原则，
+却不能证明 K-Radar Cube-to-dense 的长期效果。当前项目在几何门通过前
+不会用旧时序结果掩盖单帧失败。
+
+\section{文献与开源代码对照}
+
+\subsection{RaLD 的可迁移内容}
+
+对 RaLD 官方 commit
+\href{https://github.com/MetaIoT-WHU/RaLD/tree/ffec4b41241391734b1eda5c093de843c909eb8e}
+{\code{ffec4b41241391734b1eda5c093de843c909eb8e}}
+的代码审计得到以下结论：
+\begin{itemize}
+  \item 可迁移：frustum occupancy、正负 arbitrary queries、
+  radar-guided wide queries、mixed latent set、逐层 radar condition；
+  \item 不可直接照搬：官方推理以 \code{logit > 0} 产生变长点集，
+  不解决 exact-10k、距离配额与 5 cm exclusion；
+  \item 官方没有独立 localization-quality head、uncertainty ranking
+  或 cardinality loss；
+  \item 发布的 generation 配置是 intensity-only，输出不含逐点
+  Doppler distribution 或 calibrated confidence。
+\end{itemize}
+
+因此，Q1 的 continuous quality target 是由当前故障与 quality-aware
+detection 文献共同推导出的新机制，不应写成“RaLD 原有模块”。
+
+\subsection{相关方法与借鉴决策}
+
+\begin{longtable}{p{2.7cm} p{4.1cm} p{4.4cm} p{3.5cm}}
+\caption{一级文献/官方代码与当前决策}\\
+\toprule
+方法 & 已有工作 & 可借鉴机制 & 当前处理 \\
+\midrule
+\endfirsthead
+\toprule
+方法 & 已有工作 & 可借鉴机制 & 当前处理 \\
+\midrule
+\endhead
+\href{https://arxiv.org/abs/2511.07067}{RaLD} &
+Radar spectrum 条件的 occupancy field 与 latent generation &
+wide queries、mixed latents、thresholded occupancy &
+作为结构来源；不作为 matched K-Radar fixed-10k baseline \\
+
+\href{https://arxiv.org/abs/2405.05131}{DenserRadar} &
+Full-Doppler 3D U-Net 输出稠密 occupancy &
+spherical multiscale feature 与 deep supervision &
+用于 R-B2 encoder 设计，不照搬 variable threshold output \\
+
+\href{https://proceedings.neurips.cc/paper_files/paper/2023/file/34074479ee2186a9f236b8fd03635372-Paper-Conference.pdf}{Rank-DETR} &
+分类分数与 localization quality 对齐 &
+soft quality target 与 ranking loss &
+迁移到 Q1；属于跨任务机制借鉴，非直接复现 \\
+
+\href{https://openaccess.thecvf.com/content/CVPR2026/papers/Wang_RaUF_Learning_the_Spatial_Uncertainty_Field_of_Radar_CVPR_2026_paper.pdf}{RaUF} &
+极坐标各向异性 uncertainty 与 NLL &
+$\sigma_r,\sigma_a,\sigma_e$ 风险评分 &
+仅在 Q1 有正向信号后做 Q2-lite \\
+
+\href{https://arxiv.org/abs/2511.12117}{RadarMP} &
+相邻 tesseracts 的 echo motion 与 3D scene flow &
+Cube-level flow/reliability proposals &
+几何 parent 通过后，用作时序 proposal prior \\
+
+\href{https://arxiv.org/abs/2508.12330}{DoppDrive} &
+Doppler-driven 历史点径向传播与逐点 age gate &
+限制历史污染的可靠性门控 &
+作为强 aggregation control，不直接当生成模型 \\
+
+\href{https://www.ijcai.org/proceedings/2025/979}{SDDiff} /
+\href{https://arxiv.org/abs/2403.08460}{Radar-Diffusion} &
+spatial-Doppler 或 BEV diffusion &
+多模态生成与 consistency distillation &
+代价高，不能优先修复已定位的 ranking 故障 \\
+\bottomrule
+\end{longtable}
+
+\section{当前并行研究计划}
+
+\subsection{路线 A：Q1 Geometry-Quality Aligned WCE}
+
+\textbf{目标。}验证在候选坐标完全不变时，连续质量监督能否学会 exact-10k
+排序。
+
+\textbf{最小实验。}
+8 个冻结训练帧、最多 500 updates，每 100 updates 在同一 8 帧执行
+exact-10k。连续两次同时满足：
+\begin{equation}
+  \mathrm{CD}\le1.0\ \mathrm m,\qquad
+  \mathrm{Completeness}\le0.75\ \mathrm m,\qquad
+  \mathrm{Outlier}_{2m}\le10\%.
+\end{equation}
+通过后才冻结 76/24 pilot；失败则关闭“仅替换 score head”的路线。
+
+\textbf{后续可选 Q2。}
+若 Q1 改善明显但高风险候选仍占据 top-10k，
+增加 RaUF-lite 的 polar heteroscedastic uncertainty。
+Q2 必须以 risk-coverage、Spearman 与 top-10k 几何的增益证明价值，
+不能只报告 NLL 下降。
+
+\subsection{路线 B：R-B2 Voxel-Slot}
+
+\textbf{第一门：candidate support。}
+对 20k/40k/80k banks 与
+\code{max\_d/sum\_d/log\_sum\_d} 做 3$\times$3 bounded sweep。
+一帧通过后才能审计全部 76 个训练帧；每帧均需
+occupied-voxel recall $\ge20\%$ 且 confidence coverage $\ge30\%$。
+
+\textbf{第二门：one-frame optimization。}
+只有 support 通过才允许 500-update memorization。
+必须连续两次满足 exact-10k、三段配额、最小间距、CD、completeness
+和 outlier 的完整门。
+
+\textbf{第三门：Full-Doppler voxel encoder。}
+one-frame 通过后再引入 DenserRadar 式 spherical multiscale features，
+并进行 76/24 Cube-only generalization。否则不启动更大 sparse convolution
+或 Transformer。
+
+\subsection{路线 C：时序与长期效果}
+
+长期效果差时不能只延长 autoregressive 训练。时序路线被拆成可独立淘汰的
+四个模块：
+\begin{enumerate}
+  \item \textbf{T0：}通过的单帧 geometry parent；
+  \item \textbf{T1：}ego-only history proposals；
+  \item \textbf{T2：}DoppDrive-style radial warp 与 pointwise age gate；
+  \item \textbf{T3：}RadarMP-style learned echo flow 与 reliability，
+  但最终 export 仍由当前 Cube 评分；
+  \item \textbf{T4：}在 T3 有效后再使用 scheduled sampling 做 rollout。
+\end{enumerate}
+
+每条时序路线必须同时满足：
+\begin{itemize}
+  \item 当前帧 Chamfer 相对单帧 parent 不恶化超过 2\%；
+  \item far recall 或 candidate support 至少改善 5 个百分点；
+  \item wrong-history 干预显著劣于 matched history；
+  \item 25-step confidence 与 coverage 保留率均不低于 90\%；
+  \item Doppler freshness/PCE 改善不能以复制历史点获得。
+\end{itemize}
+
+\subsection{执行优先级与资源}
+
+\begin{table}[H]
+\centering
+\small
+\caption{下一阶段可并行执行矩阵}
+\begin{tabularx}{\textwidth}{>{\bfseries}p{1.5cm} p{4.0cm} p{2.5cm} Y}
+\toprule
+优先级 & 任务 & 预算 & 决策输出 \\
+\midrule
+P0-A & 审计、提交并运行 Q1 tiny & H200 数小时 & 关闭或进入 76/24 quality pilot \\
+P0-B & R-B2 support 3$\times$3 sweep & H200，一帧后最多 76 帧只读审计 & 关闭当前激活族或允许 one-frame 训练 \\
+P1 & Q2 RaUF-lite & 仅在 Q1 有效后，约半日至一日 & uncertainty 是否进一步改善风险排序 \\
+P1-B & R-B2 one-frame/full pilot & support 通过后，数小时至两天 & voxel-slot 是否成为几何 parent \\
+P2 & 文献/代码持续复扫 & 与 P0/P1 并行 & 新方法必须绑定官方证据、最小实验与 no-go 门 \\
+P3 & Doppler + Cube-cycle & 仅在几何 parent 通过后 & 逐点速度和闭环主张 \\
+P4 & RadarMP + DoppDrive 时序 & 单帧 parent 冻结后，2--4 H200 日 & 长期一致性与 rollout 主张 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{论文可行性与风险}
+
+\subsection{当前论文成熟度}
+
+当前项目具备清晰问题、严格数据协议、大量可复现负结果与一个明确的
+failure-driven research frontier，但\textbf{尚未达到投稿结果阶段}。
+原因不是实验数量不足，而是最上游的单帧 geometry parent 尚未通过。
+在此之前，Doppler、cycle 和 temporal 模块无论结构多完整，都不能形成
+可信主表。
+
+若 Q1 或 R-B2 通过，论文可形成以下主线：
+\begin{quote}
+Full-RAED Cube $\rightarrow$ fixed-count radar state generation
+$\rightarrow$ per-point Doppler distribution
+$\rightarrow$ differentiable Cube closure
+$\rightarrow$ current-observation-corrected temporal state.
+\end{quote}
+若两条几何路线均失败，则应停止扩展完整论文叙事，把成果收敛为
+数据/评估协议、系统性负结果与候选选择诊断，或重新定义变长输出任务，
+而不是继续堆叠 diffusion 与时序模块。
+
+\subsection{主要审稿风险}
+
+\begin{longtable}{p{3.5cm} p{5.1cm} p{5.8cm}}
+\caption{主要风险与证据要求}\\
+\toprule
+风险 & 当前问题 & 必须补齐的证据 \\
+\midrule
+\endfirsthead
+\toprule
+风险 & 当前问题 & 必须补齐的证据 \\
+\midrule
+\endhead
+“只是 RaLD 加 Doppler” &
+RaLD 结构大量进入候选路线 &
+明确 RaLD 的 variable threshold 边界；用 Q1/R-B2、逐点分布和 Cube closure
+建立不同任务与机制 \\
+
+固定 10k 是人为困难 &
+减少点数确实降低部分离群 &
+报告 cardinality sweep，并证明 fixed-count 对下游和公平比较的必要性 \\
+
+GT oracle 被误当结果 &
+0.641 m 数字非常强 &
+所有表格显式标记 non-deployable diagnostic，不进入方法主表 \\
+
+Doppler 只是复制局部谱 &
+尚无几何 parent 上的比较 &
+scalar、distribution、direct Cube query 和 counterfactual 全部做 matched ablation \\
+
+时序只是历史聚合 &
+DoppDrive/RadarMP 已很接近 &
+current Cube override、generated-state output、wrong-history 和 refresh 证据 \\
+
+长期效果靠平滑换准确率 &
+旧桥式 rollout 有几何税 &
+同时报告当前帧几何、flicker、PCE、coverage 和 25-step rollout \\
+
+失败路线过多、主线发散 &
+已完成多条 no-go route &
+正文只保留最终机制；失败诊断进入 appendix，并说明如何排除替代解释 \\
+\bottomrule
+\end{longtable}
+
+\section{结论}
+
+截至 2026-07-29，项目已经完成从“宽泛的 Cube-to-dense 设想”
+到“可证伪的 failure-driven 研究计划”的转变。G0 已通过；
+RAE-Max 证明 Cube 稠密化具备明显价值；Full-RAED 早融合、G1D、G1G、
+R-A1 和 R-A2 则按冻结协议如实关闭。
+
+最有价值的新认识是：R-A1 的 700k wide-query pool 中存在足够好的几何候选，
+但 binary occupancy confidence 无法为 exact-10k 输出可靠排序。
+因此当前科研问题已经收敛为两个互补方向：
+\textbf{学习与几何质量对齐的评分}，以及
+\textbf{用 voxel-slot 改写固定计数的输出表示}。
+Q1 与 R-B2 将并行接受小预算、硬门槛的 H200 检验。
+
+逐点 Doppler、Cube-point 双向约束和长期时序一致性仍是项目最终创新组合，
+但它们目前是有代码支撑的研究计划，而不是已有实验结论。
+只有单帧几何父模型通过后，才继续 RadarMP/DoppDrive 启发的时序 proposal、
+scheduled sampling 和多步 rollout；这能避免用后续复杂模块掩盖上游几何失败。
+
+\appendix
+\section{复现信息摘要}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{>{\bfseries}p{4.0cm} Y}
+\toprule
+项目 & 冻结信息 \\
+\midrule
+代码分支 & \code{agent/cube-to-dense-g0} \\
+最新已推送提交 & \hash{af21861954bf8ab7fde50d}{4580309214ebf85dc8} \\
+H200 环境 & \code{/home/wangning/miniforge3/envs/hym\_radar} \\
+允许 GPU & NVIDIA H200 NVL，物理 GPU 0 或 2 \\
+禁止 GPU & 物理 GPU 1，RTX 5000 \\
+规范 Cube shape & $(D,R,A,E)=(64,256,107,37)$ \\
+开发数据 & 100 帧，45 场景，76 train + 24 validation \\
+正式输出 & exact 10,000 points，范围配额 $8000/1700/300$ \\
+最小点距 & 5 cm \\
+测试访问 & false \\
+Q1 cache ordered digest &
+\hash{dd9d296cc10933fce12f4e050b4aa065}{f82752ab123171ec1a75e8cabbc06e4f} \\
+RaLD 审计 commit &
+\hash{ffec4b41241391734b1e}{da5c093de843c909eb8e} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{关键证据文件}
+
+\begin{multicols}{2}
+\scriptsize
+\sloppy
+\begin{itemize}[leftmargin=1.4em,itemsep=0.1em,topsep=0.15em]
+  \item \path{paper/claim_evidence_ledger.md}
+  \item \path{docs/work_plan_cube_to_dense_topconf.md}
+  \item \path{docs/literature_rald_and_alternatives_2026-07-29.md}
+  \item \path{artifacts/g1/g1_bounded_recovery_failure_2026-07-19.md}
+  \item \path{artifacts/g1/g1d_formal_failure_and_factors_2026-07-29.md}
+  \item \path{artifacts/g1/g1g_formal_failure_2026-07-29.md}
+  \item \path{artifacts/g1/wce_formal_failure_2026-07-29.md}
+  \item \path{artifacts/g1/wce_failure_diag_eb0a5f5/decision_2026-07-29.md}
+  \item \path{artifacts/g1/ra2_tiny_no_go_2026-07-29.md}
+  \item \path{artifacts/g1/parallel_geometry_diagnostics_decision_2026-07-29.md}
+  \item \path{artifacts/g1/rb2_candidate_support_no_go_2026-07-29.md}
+  \item \path{artifacts/g1/dmhw_birth_rmoment_label_audit_no_go_2026-07-29.md}
+\end{itemize}
+\end{multicols}
+
+\section{证据边界检查}
+
+\small
+\begin{itemize}[itemsep=0.15em,topsep=0.2em]
+  \item 本报告没有把 GT-aided oracle 写成模型结果。
+  \item 本报告没有把 Q1 的代码实现写成 H200 训练通过。
+  \item 本报告没有把 R-B2 structural capacity 写成 Cube-only generalization。
+  \item 本报告没有用旧 TruckScenes 指标验证当前 K-Radar 主线。
+  \item 本报告没有引用旧 far-completeness censored evaluator 作为当前正式门。
+  \item 本报告没有声称 RaLD、RadarMP 或 DoppDrive 没有覆盖相邻任务。
+  \item 本报告没有解锁 Doppler、cycle、temporal 或 test 评估。
+\end{itemize}
+
+\end{document}
