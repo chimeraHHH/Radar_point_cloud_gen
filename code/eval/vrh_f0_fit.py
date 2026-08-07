@@ -237,6 +237,31 @@ def _cell_coordinates(
     return r2, a2, e2, radius, azimuth, elevation
 
 
+def _representable_delta(
+    desired: np.ndarray,
+    center: np.ndarray,
+    lower_interior: np.ndarray,
+    upper_interior: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Choose a delta whose float64 reconstruction remains in the cell."""
+
+    delta = np.asarray(desired - center, dtype=np.float64)
+    for _ in range(4):
+        reconstructed = center + delta
+        below = reconstructed < lower_interior
+        above = reconstructed > upper_interior
+        if not bool(below.any() or above.any()):
+            return delta, reconstructed
+        delta[below] = np.nextafter(delta[below], np.inf)
+        delta[above] = np.nextafter(delta[above], -np.inf)
+    reconstructed = center + delta
+    if np.any(
+        (reconstructed < lower_interior) | (reconstructed > upper_interior)
+    ):
+        raise ValueError("VRH fitted delta cannot reconstruct inside its source cell")
+    return delta, reconstructed
+
+
 def fit_gt_oracle_marks(
     support: VRHSupport,
     target_xyz_confidence: np.ndarray,
@@ -299,6 +324,24 @@ def fit_gt_oracle_marks(
             support.elevation_axis.lower_interior[e2],
             support.elevation_axis.upper_interior[e2],
         )
+        reconstructed_delta_r, fitted_r = _representable_delta(
+            fitted_r,
+            radius,
+            support.range_axis.lower_interior[r2],
+            support.range_axis.upper_interior[r2],
+        )
+        reconstructed_delta_a, fitted_a = _representable_delta(
+            fitted_a,
+            azimuth,
+            support.azimuth_axis.lower_interior[a2],
+            support.azimuth_axis.upper_interior[a2],
+        )
+        reconstructed_delta_e, fitted_e = _representable_delta(
+            fitted_e,
+            elevation,
+            support.elevation_axis.lower_interior[e2],
+            support.elevation_axis.upper_interior[e2],
+        )
         fitted_xyz = polar_to_cartesian(fitted_r, fitted_a, fitted_e)
         difference = fitted_xyz - targets.xyz[chosen_ids]
         distance = np.sqrt(np.einsum("ij,ij->i", difference, difference))
@@ -312,9 +355,9 @@ def fit_gt_oracle_marks(
             HAZARD_EPSILON,
             1.0 - HAZARD_EPSILON,
         )
-        flat_delta_r[start:stop] = fitted_r - radius
-        flat_delta_a[start:stop] = fitted_a - azimuth
-        flat_delta_e[start:stop] = fitted_e - elevation
+        flat_delta_r[start:stop] = reconstructed_delta_r
+        flat_delta_a[start:stop] = reconstructed_delta_a
+        flat_delta_e[start:stop] = reconstructed_delta_e
         flat_priority[start:stop] = scaled_priority.astype(np.int64)
         flat_confidence[start:stop] = np.maximum(targets.confidence[chosen_ids], 0.0)
         flat_nearest[start:stop] = chosen_ids
