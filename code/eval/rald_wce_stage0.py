@@ -496,6 +496,157 @@ def exact_capacity_export(
     )
 
 
+def global_exact_capacity_export(
+    candidate_xyz_m: torch.Tensor,
+    candidate_confidence: torch.Tensor,
+    *,
+    minimum_distance_m: float,
+) -> ExactWCEExport:
+    """Select a global exact-10k set without per-range output quotas."""
+
+    candidate_count = candidate_xyz_m.shape[0]
+    if candidate_xyz_m.shape != (candidate_count, 3):
+        raise ValueError("RaLD-WCE global candidate XYZ must have shape (N,3)")
+    if candidate_confidence.shape != (candidate_count,):
+        raise ValueError("RaLD-WCE global confidence must match XYZ")
+    if candidate_count < EXPORT_COUNT:
+        raise ValueError("RaLD-WCE global candidate count cannot fill exact 10k")
+    if minimum_distance_m <= 0.0:
+        raise ValueError("RaLD-WCE global minimum distance must be positive")
+    if not bool(torch.isfinite(candidate_xyz_m).all()) or not bool(
+        torch.isfinite(candidate_confidence).all()
+    ):
+        raise ValueError("RaLD-WCE global candidates must be finite")
+
+    xyz_cpu = candidate_xyz_m.detach().float().cpu()
+    confidence_cpu = candidate_confidence.detach().float().cpu()
+    codes_cpu = range_stratum_codes(xyz_cpu)
+    if bool((codes_cpu < 0).any()):
+        raise ValueError("RaLD-WCE global candidate lies outside 0--120 m")
+    candidate_ids = np.arange(candidate_count, dtype=np.int64)
+    confidence_np = confidence_cpu.numpy()
+    order = np.lexsort((candidate_ids, -confidence_np))
+    selected_rows: list[int] = []
+    selected_cells: dict[
+        tuple[int, int, int],
+        list[tuple[float, float, float]],
+    ] = {}
+    selected_by_range = [0, 0, 0]
+    rejected_distance = [0, 0, 0]
+    observed_minimum_squared = float("inf")
+    minimum_squared = minimum_distance_m**2
+
+    for row_value in order:
+        row = int(row_value)
+        stratum = int(codes_cpu[row].item())
+        point = tuple(float(value) for value in xyz_cpu[row].tolist())
+        cell = tuple(math.floor(value / minimum_distance_m) for value in point)
+        candidate_minimum_squared = float("inf")
+        rejected = False
+        for delta_x in (-1, 0, 1):
+            for delta_y in (-1, 0, 1):
+                for delta_z in (-1, 0, 1):
+                    neighbours = selected_cells.get(
+                        (
+                            cell[0] + delta_x,
+                            cell[1] + delta_y,
+                            cell[2] + delta_z,
+                        )
+                    )
+                    if neighbours is None:
+                        continue
+                    for neighbour in neighbours:
+                        distance_squared = sum(
+                            (left - right) ** 2
+                            for left, right in zip(point, neighbour, strict=True)
+                        )
+                        candidate_minimum_squared = min(
+                            candidate_minimum_squared,
+                            distance_squared,
+                        )
+                        if distance_squared < minimum_squared:
+                            rejected_distance[stratum] += 1
+                            rejected = True
+                            break
+                    if rejected:
+                        break
+                if rejected:
+                    break
+            if rejected:
+                break
+        if rejected:
+            continue
+        observed_minimum_squared = min(
+            observed_minimum_squared,
+            candidate_minimum_squared,
+        )
+        selected_cells.setdefault(cell, []).append(point)
+        selected_rows.append(row)
+        selected_by_range[stratum] += 1
+        if len(selected_rows) == EXPORT_COUNT:
+            break
+
+    candidate_capacity = [
+        int((codes_cpu == index).sum().item())
+        for index in range(len(RANGE_STRATA_M))
+    ]
+    if len(selected_rows) != EXPORT_COUNT:
+        report = {
+            "stage": "global_exact_10000_selection",
+            "candidate_count": candidate_count,
+            "candidate_capacity_by_range": _quota_dict(candidate_capacity),
+            "selected_by_range": _quota_dict(selected_by_range),
+            "rejected_minimum_distance_by_range": _quota_dict(
+                rejected_distance
+            ),
+            "minimum_euclidean_distance_m": minimum_distance_m,
+            "range_quotas_enforced": False,
+            "copy_padding_jitter_duplicate": False,
+        }
+        raise ExactExportCapacityError(
+            "RaLD-WCE global true 5 cm support cannot fill exact 10k",
+            report,
+        )
+
+    selected = torch.tensor(selected_rows, dtype=torch.long)
+    xyz = xyz_cpu[selected]
+    confidence = confidence_cpu[selected]
+    minimum_observed = (
+        math.sqrt(observed_minimum_squared)
+        if math.isfinite(observed_minimum_squared)
+        else minimum_distance_m
+    )
+    if minimum_observed < minimum_distance_m - 1e-6:
+        raise AssertionError("RaLD-WCE global export violated point distance")
+    report = {
+        "method": "global_confidence_stable_true_5cm_capacity_one",
+        "candidate_count": candidate_count,
+        "candidate_capacity_by_range": _quota_dict(candidate_capacity),
+        "selected_by_range": _quota_dict(selected_by_range),
+        "rejected_minimum_distance_by_range": _quota_dict(rejected_distance),
+        "minimum_euclidean_distance_m": minimum_distance_m,
+        "observed_minimum_pair_distance_m": minimum_observed,
+        "exact_point_count": int(xyz.shape[0]),
+        "finite_xyz": bool(torch.isfinite(xyz).all()),
+        "finite_confidence": bool(torch.isfinite(confidence).all()),
+        "unique_selected_candidate_count": int(torch.unique(selected).numel()),
+        "range_quotas_enforced": False,
+        "copy_padding_jitter_duplicate": False,
+        "ground_truth_accessed": False,
+    }
+    return ExactWCEExport(
+        xyz_m=xyz,
+        confidence=confidence,
+        selected_candidate_rows=selected,
+        report=report,
+        hashes={
+            "xyz_sha256": tensor_sha256(xyz),
+            "confidence_sha256": tensor_sha256(confidence),
+            "selected_candidate_rows_sha256": tensor_sha256(selected),
+        },
+    )
+
+
 @torch.no_grad()
 def infer_exact_wce(
     model: RaLDWCEField,

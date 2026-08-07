@@ -5,6 +5,7 @@ from eval.rald_wce_stage0 import (
     ExactExportCapacityError,
     WideInferenceConfig,
     exact_capacity_export,
+    global_exact_capacity_export,
     fixed_wide_q0,
     occupancy_dependent_q1,
     range_stratum_codes,
@@ -150,6 +151,39 @@ def test_exact_export_refuses_capacity_failure_without_fill() -> None:
     report = caught.value.report
     assert report["selected_by_range"]["range_60_120m"] == 199
     assert report["copy_padding_jitter_duplicate"] is False
+
+
+def test_global_export_has_exact_count_without_range_quotas() -> None:
+    xyz, confidence = exact_candidate_set()
+    confidence[:300] = 2.0
+    export = global_exact_capacity_export(
+        xyz,
+        confidence,
+        minimum_distance_m=0.05,
+    )
+
+    assert export.xyz_m.shape == (10_000, 3)
+    assert torch.unique(export.selected_candidate_rows).numel() == 10_000
+    assert export.report["range_quotas_enforced"] is False
+    assert sum(export.report["selected_by_range"].values()) == 10_000
+    assert export.report["observed_minimum_pair_distance_m"] >= 0.05 - 1e-6
+    assert export.report["ground_truth_accessed"] is False
+
+
+def test_global_export_refuses_true_capacity_failure() -> None:
+    xyz = torch.zeros(10_000, 3, dtype=torch.float32)
+    xyz[:, 0] = 10.0 + 0.001 * torch.arange(10_000)
+    confidence = torch.linspace(1.0, 0.0, xyz.shape[0])
+
+    with pytest.raises(ExactExportCapacityError) as caught:
+        global_exact_capacity_export(
+            xyz,
+            confidence,
+            minimum_distance_m=0.05,
+        )
+
+    assert caught.value.report["range_quotas_enforced"] is False
+    assert caught.value.report["copy_padding_jitter_duplicate"] is False
 
 
 def test_bounded_training_queries_match_rald_positive_ratio() -> None:

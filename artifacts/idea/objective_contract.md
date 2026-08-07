@@ -1,7 +1,7 @@
 # Cube-to-dense objective contract
 
-> Refreshed 2026-08-07 after the Q1-R replay-parent no-go. Test access remains
-> false.
+> Refreshed 2026-08-07 after the Q-Local-F0 and fixed-range-quota terminal
+> decisions. Test access remains false.
 
 ## Real objective
 
@@ -22,9 +22,9 @@ test evaluation.
 
 There is no authorized geometry parent. The next question is therefore:
 
-> Can a newly named and independently frozen single-frame mechanism learn
-> radar-conditioned geometric utility or allocate radar-observable mass well
-> enough to produce an exact 10,000-point parent?
+> After removing only the mathematically contradictory per-frame range quotas,
+> does the unchanged Fresh-WCE 700k field contain an exact-10k, true-5-cm
+> subset that passes every per-frame geometry and target-stratum retention gate?
 
 The deleted R-A1 checkpoint cannot be recovered. The new replay may be used
 only as an explicitly fresh baseline or candidate generator; it cannot inherit
@@ -47,6 +47,12 @@ the original-parent identity or the failed Q1-R authorization.
 - R-B2 proves voxel-slot representational capacity, but its current
   score-plus-fixed-neighborhood activation family fails per-frame confidence
   coverage and is closed.
+- Q-Local-F0 passed all source, gradient, intervention, and structural checks,
+  but its fixed-quota GT-nearest oracle passed only 10/12 frames; its scorer was
+  never trained.
+- The 76-frame strict radial audit proves the hard `8000/1700/300` allocation
+  impossible on train frames `47:94` and `58:404`, independently of network,
+  candidate field, angular error, spacing, and completeness.
 
 ## Frozen development gate
 
@@ -58,8 +64,10 @@ fixed. A learned parent must satisfy all of:
 - median completeness `<= 0.65 m`;
 - mean 60--120 m completeness `<= 8.0 m` over all 23 far-target frames;
 - mean duplicate fraction within 5 cm `<= 10%`;
-- exact output count `10,000` with range quotas `8000/1700/300`;
+- exact output count `10,000`, with no per-frame hard range quota;
 - true minimum spacing `>= 5 cm`;
+- explicit range-stratified completeness/recall anti-collapse checks whenever
+  the frame contains targets in that stratum;
 - preregistered matched-vs-cross-scene condition degradation `>= 1%`.
 
 The first learned run must begin with a train-only memorization gate. The
@@ -83,6 +91,7 @@ The following do not authorize promotion:
 - lower training loss without exact-10k geometry improvement;
 - GT-aided ranking or capacity oracles presented as model results;
 - improved precision obtained by discarding coverage or reducing point count;
+- restoring the retired `8000/1700/300` per-frame range quotas;
 - duplicate points, padding, or post-selection jitter used to satisfy count;
 - nonzero gradients without measurable cross-scene condition dependence;
 - reusing the Q1-R certificate or calling the replay the deleted checkpoint;
@@ -107,10 +116,12 @@ The following do not authorize promotion:
 ## Search and experiment budget
 
 The completed idea pass compared direct radar generation, RaLD, fixed-count set
-prediction, ray/range allocation, and quality/ranking mechanisms. It selected
-Q-Local-F0 as the only primary Stage-0 and a variable multi-return ray-hazard
-field as the outside-family fallback. Sparse ray-range transport remains third
-priority and is not run in parallel.
+prediction, ray/range allocation, and quality/ranking mechanisms. Q-Local-F0
+is terminal under its original exporter. The live falsification is
+Q-Local-F0R, which preserves its scorer and 700k field while changing only the
+retired output quotas to global selection. A variable multi-return ray-hazard
+field is authorized only if the F0R same-field oracle fails. Sparse ray-range
+transport remains third priority and is not run in parallel.
 
 Before a training route is authorized, it needs a source-bound falsification
 that completes in at most two H200 GPU-hours and states:

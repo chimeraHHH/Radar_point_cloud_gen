@@ -1,6 +1,7 @@
 # Cube-to-dense current board packet
 
-> Refreshed 2026-08-07 at repository commit `083f4c4`. Test access is false.
+> Refreshed 2026-08-07 after source `dc63dfc` fixed-range audit. Test access is
+> false.
 
 ## Incumbent
 
@@ -11,7 +12,8 @@ output:
 - current-confidence exact-10k: Chamfer `4.0261 m`, outlier `31.7854%`;
 - validation-GT-nearest exact-10k on identical candidates:
   Chamfer `0.6375 m`, outlier `2.2771%`, far completeness `0.7046 m`;
-- candidate coordinates, range quotas, exporter, and 5 cm spacing are fixed.
+- candidate coordinates and 5 cm spacing are fixed; the old per-frame range
+  quotas are now proven contradictory and retired.
 
 This isolates geometric-utility prediction and structured selection as an open
 mechanism. It does not authorize reuse of the deleted R-A1 identity.
@@ -28,6 +30,8 @@ mechanism. It does not authorize reuse of the deleted R-A1 identity.
 | G1F fixed 32k selector oracle | GT-aided subset still failed Chamfer/completeness/duplicates | Selector-only repair on that pool closed |
 | R-A1/R-A2 | Wide candidates exist, but binary occupancy/confidence does not select them | Binary score recipe closed |
 | Q1-R | Replay failed four original-endpoint equivalence tolerances | Quality hypothesis untested; old-parent route closed |
+| Q-Local-F0 | 10/12 fixed-export oracle frames passed; `47:514` and `58:404` failed | Scorer untrained; terminal under the original exporter only |
+| Fixed range quotas | 76-frame audit found strict CD lower-bound failures on `47:94` and `58:404` | Hard `8000/1700/300` per-frame allocation retired from all successors |
 | R-B2 | 80k `max_d` recall passed on 76/76, confidence coverage failed on 3 frames | Current score-plus-fixed-neighborhood activation closed |
 | G1T | Ego/Doppler union changed geometry by less than `0.05%` and remained very poor | Current no-train history proposal route closed |
 
@@ -43,7 +47,7 @@ without:
 
 1. inheriting a deleted checkpoint identity;
 2. reading target geometry at inference;
-3. collapsing coverage, range quotas, or point diversity;
+3. collapsing target-bearing range coverage or point diversity;
 4. bypassing the global Cube condition through local energy alone.
 
 ## Closed assumptions
@@ -59,24 +63,26 @@ without:
 
 ## Selected live mechanism
 
-**Q-Local-F0** freezes the fresh replay as `Fresh-WCE-20`, keeps its 700k
-candidate coordinates and exact exporter, and predicts a six-bin geometric-risk
-distribution from global Cube latents plus local 64-bin Doppler evidence. It is
-train-only, uses eight fit sequences plus four unseen training sequences, and
-has a 500-update/7200-GPU-second hard stop.
+**Q-Local-F0R** freezes the Q-Local-F0 Fresh-WCE field, its 700k candidate
+coordinates, Q0/Q1, base confidence, six-bin scorer/loss, and the same eight fit
+plus four unseen-train frames. It changes only the output allocation from hard
+`8000/1700/300` per-frame quotas to one global stable order followed by true
+5 cm greedy exact-10k selection.
 
-The same-coordinate wrong-Cube control swaps only global and local Cube
-evidence; candidates, parent confidence, target, and exporter remain fixed.
-This directly tests radar-conditioned scoring instead of another support field.
+The first gate is zero-training and non-deployable: a GT-nearest global oracle
+must pass every frame's CD/outlier/structure checks while preserving
+completeness and recall in every target-bearing range stratum. Scorer training
+remains prohibited until that gate passes.
 
-If Q-Local-F0 fails, the outside-family fallback is a variable multi-return
-ray-hazard representation. Sparse ray-range transport is deferred behind its
-own hard-rounding oracle. Adaptive fixed-neighborhood support is closed with
-R-B2 and is no longer listed as live.
+If and only if F0R fails scientifically, the outside-family fallback is a
+variable multi-return renewal-hazard representation. Sparse ray-range transport
+is deferred behind its own hard-rounding oracle. Adaptive fixed-neighborhood
+support is closed with R-B2 and is no longer listed as live.
 
 ## Stale routes not to reopen
 
 - threshold relaxation or cardinality reduction;
+- hard per-frame `8000/1700/300` range quotas;
 - G1B spectral-rank variants;
 - another G1C/G1D deterministic query refiner;
 - G1G with only a different patch count or radius;

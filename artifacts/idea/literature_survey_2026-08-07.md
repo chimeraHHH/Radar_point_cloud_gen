@@ -56,9 +56,11 @@ six-bin nearest-surface distance distribution using:
 - local normalized 64-bin Doppler spectrum;
 - local integrated log energy, spectrum entropy, and RAE energy gradients.
 
-The deployment score is negative expected clipped distance. The unchanged
-capacity exporter enforces exact 10k, `8000/1700/300`, and 5 cm separation.
-Ground truth only builds training risk labels and evaluation metrics.
+The deployment score is negative expected clipped distance. Q-Local-F0's
+historical exporter enforced exact 10k, `8000/1700/300`, and 5 cm separation.
+A later 76-frame proof retired only those hard per-frame range quotas; exact
+10k and true 5 cm remain. Ground truth only builds training risk labels and
+evaluation metrics.
 
 This is not another binary occupancy head: its target, output distribution,
 listwise loss, local Full-RAED evidence, and same-coordinate condition
@@ -66,18 +68,21 @@ intervention all differ. It is also not presented as the final novelty claim.
 
 ### Outside-family fallback: variable multi-return ray hazard
 
-If Q-Local-F0 fails, the next representation family is a survival-normalized
-range hazard on each azimuth/elevation ray with a variable number of learned
-returns. A zero-training 76-frame capacity oracle must pass before any model is
-implemented. Fixed measured-peak `K=4/6`, larger WCE pools, and another
-Cartesian neighborhood sweep remain closed.
+Q-Local-F0 is terminal under its historical exporter. Before changing
+representation, Q-Local-F0R keeps its scorer and 700k field and removes only
+the proven-contradictory output quotas. If that same-field global-export oracle
+also fails scientifically, the next representation family is a
+survival-normalized range hazard on each azimuth/elevation ray with a variable
+number of learned returns. A zero-training capacity oracle must pass before any
+model is implemented. Fixed measured-peak `K=4/6`, larger WCE pools, and
+another Cartesian neighborhood sweep remain closed.
 
 ### Deferred fallback: sparse ray-range transport
 
 Sparse partial transport is considered only after a ray-range hard-rounding
 oracle stays within `0.15 m` Chamfer and `2 pp` outlier of the unattainable
 pointwise oracle, under `2 s/frame` and `60 GiB`. It is not run in parallel with
-Q-Local-F0.
+Q-Local-F0R.
 
 ## Novelty boundary after the rescan
 

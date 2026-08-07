@@ -89,8 +89,12 @@ Fresh-WCE-20 当作新鲜候选场，保持 700k 坐标与 exact-10k exporter �
 学习由局部 Full-RAED 证据决定的六档几何风险分布。其 source-bound H200
 预检已以 \code{qlocal\_f0\_capacity\_no\_go} 原子终止：10/12 帧的不可部署
 oracle 通过，但两个 fit 帧失败，因此 scorer 训练未启动。失败同时暴露了逐帧
-固定 $8000/1700/300$ 距离配额可能与 $0.8$ m Chamfer/5\% outlier 门矛盾；76-frame train-only
-配额可行性审计已冻结。逐点 Doppler、Cube-cycle、时序生成和测试集评估仍未解锁。
+固定 $8000/1700/300$ 距离配额与 $0.8$ m Chamfer/5\% outlier 门存在模型无关的
+矛盾。随后完成的 76-frame train-only 严格审计在 47:94 与 58:404 上给出
+不可行下界，终态为 \code{fixed\_range\_quota\_contract\_no\_go}。旧硬配额已从
+后继路线退休；exact 10k 与真实 5 cm 间距保留。当前已冻结 Q-Local-F0R
+全域导出容量协议，但尚无该路线的 H200 结果。逐点 Doppler、Cube-cycle、
+时序生成和测试集评估仍未解锁。
 \end{minipage}}
 \end{center}
 
@@ -193,12 +197,20 @@ oracle 通过，但两个 fit 帧失败，因此 scorer 训练未启动。失败
   GT-nearest capacity oracle 的 $\mathrm{CD}\le0.8$ m、outlier $\le5\%$ 是前置
   硬门；两个 fit 帧失败后，500-update 训练被正确禁止。
 
-  \item \textbf{失败进一步指向输出契约，而不只是候选场。}
-  $(58,404)$ 的 target 全部位于 30 m 内，而 exporter 强制输出 1,700 个
-  30--60 m 点和 300 个 60--120 m 点；其 oracle outlier 恰为 20\%。这提示
-  固定逐帧 range quota 可能给出与模型无关的矛盾下界。当前先对全部
-  76 个 train 帧做 reverse-triangle-inequality 审计；若任一帧的乐观 Chamfer
-  下界超过 $0.8$ m 或强制 outlier 超过 5\%，任何后继 exporter 均不得继承旧配额。
+  \item \textbf{固定逐帧 range quota 已被严格否决，不能再由后继路线继承。}
+  对 76/76 个 train 帧执行只读取 target range 的 reverse-triangle-inequality
+  审计后，47:94 与 58:404 的乐观 Chamfer 下界分别为 $0.8210$ m 与
+  $1.3245$ m，已经超过 $0.8$ m；58:404 还被强制产生至少 20\% 的 2 m
+  离群点。该结论与网络、候选场、角度误差、5 cm packing 和 completeness
+  无关。旧 $8000/1700/300$ 配额退休，但 exact 10k 和真实 5 cm 间距保留。
+
+  \item \textbf{最窄后继 Q-Local-F0R 已冻结，当前仍是零训练待执行门。}
+  F0R 保持 Fresh-WCE-20、700k 坐标、Q0/Q1、residual、base confidence、
+  Q-Local scorer 和 12 帧 cohort 不变，只把三段硬配额改为全域稳定排序加
+  5 cm greedy selection。它仍须逐帧通过 $\mathrm{CD}\le0.8$ m、outlier
+  $\le5\%$、exact 10k，并不得牺牲任何含 target 的中远距区间。
+  只有该同场 capacity oracle 通过，才允许另行冻结 500-update scorer 训练；
+  若失败，才进入 variable multi-return ray-hazard 表示。
 
   \item \textbf{文献重扫后，创新边界进一步收紧。}
   RaUF、SDDiff、RadarMP、Radar-Mamba 与 DoppDrive 已分别覆盖雷达不确定性、
@@ -226,7 +238,8 @@ R-A1 RaLD-WCE & \closed & 学到显著 Cube 条件效应；700k pool 支撑强 &
 R-A2 binary pilot & \closed & 8 帧、500 updates 完成 & memorization 仍未通过，旧 sampler 同时不合格 \\
 Q1-R quality ranking & \closed & replay、full-24 diagnosis 与证书完成；ranking bottleneck 再现 & replay 端点等价门失败，tiny 与 Q2 未启动 \\
 Q-Local-F0 & \closed & 10/12 oracle 帧通过；梯度、同坐标干预、结构与 provenance 通过 & 两个 fit 帧容量失败；训练按协议禁止，不代表 scorer 学习失败 \\
-固定 range quota 审计 & \running & 已冻结严格径向 Chamfer/outlier 下界与 76-frame train-only 协议 & 正在执行；决定后继 exporter 是否必须取消硬配额 \\
+固定 range quota 审计 & \closed & 76/76 train 帧完成；2 帧的乐观 CD 下界越门，1 帧强制 20\% outlier & 硬 $8000/1700/300$ 配额退休；该 no-go 不否定 scorer 或 700k field \\
+Q-Local-F0R & \pending & source-bound 零训练协议已冻结；候选、scorer、cohort、exact 10k 与 5 cm 均保持 & 只取消硬 range quota；H200 capacity 结果尚未形成 \\
 R-B2 voxel-slot & \closed & GT-aided 结构容量通过；80k arm 的 recall 在 76/76 帧过门 & 3 帧 coverage 失败，当前 Cube-only activation family 关闭 \\
 G4 时序数据 & \running & 45 序列、2,160 帧、约 600.8 GiB 已下载 & exact-member/size/CRC 审计运行中；不解锁时序训练 \\
 下游物理与时序 & \locked & 代码和旧机制证据存在 & 无通过的 K-Radar 几何父模型，不能形成当前主张 \\
@@ -300,14 +313,18 @@ RAE 映射。修复版 G0 的关键检查包括：
 
 \subsection{输出与硬约束}
 
-正式几何输出固定为 10,000 点，并要求：
+当前正式几何输出仍固定为 10,000 个互异点，并要求真实欧氏最小间距不低于
+5 cm；禁止通过复制、padding、重复中心、后处理 jitter 或 best-of-$k$ 伪造点数。
+早期协议还逐帧强制
 \begin{equation}
-  N_{0-30}=8{,}000,\qquad
-  N_{30-60}=1{,}700,\qquad
-  N_{60-120}=300.
+  N^{\mathrm{old}}_{0-30}=8{,}000,\qquad
+  N^{\mathrm{old}}_{30-60}=1{,}700,\qquad
+  N^{\mathrm{old}}_{60-120}=300,
 \end{equation}
-点间真实欧氏距离不得小于 5 cm；禁止通过复制、padding、重复中心或
-后处理 jitter 伪造点数。评估至少报告：
+但 76-frame 严格审计已证明该逐帧硬配额与冻结几何门不相容，因此它只作为
+历史实验协议保留，不得进入新 exporter。新路线仍报告三个距离段的输出计数，
+并对每个含 target 的距离段施加 completeness/recall 防塌缩门，而不是要求每一帧
+产生固定距离质量。评估至少报告：
 \begin{itemize}
   \item 对称 Chamfer、confidence-weighted completeness、F-score；
   \item 2 m 离群率、5 cm 重复率与 exact-count；
@@ -353,6 +370,15 @@ H200 GPU2 上用时 444.58 s，峰值 allocated memory 为 2.432 GB，并原子�
 \code{qlocal\_f0\_capacity\_no\_go}。完整 provenance、gradient 与 intervention
 检查均通过；训练未启动。
 
+固定配额审计绑定 source
+\hash{dc63dfc404d647f31409177ccca6de80}{726eb8d7}，在 H200 主机上只读取
+76 个 train target cache，11.2799 s 后原子落盘
+\code{fixed\_range\_quota\_contract\_no\_go}。validation、test、Cube、CFAR、
+model 与 candidate access 均为 false。其报告 SHA-256 为
+\hash{d5d9eeaae99a97bb8d358ce2de7c6c48}{92e221e82b1e64eaf2897aa038cb627c}。
+Q-Local-F0R 在本报告截点只有冻结协议与待验证实现，不登记 checkpoint、训练 step
+或 H200 科学终态。
+
 \section{模型结构与路线演化}
 
 \subsection{当前网络总览}
@@ -363,7 +389,7 @@ H200 GPU2 上用时 444.58 s，峰值 allocated memory 为 2.432 GB，并原子�
 
 \begin{table}[H]
 \centering
-\small
+\footnotesize
 \caption{当前神经网络与模块状态}
 \label{tab:network-overview}
 \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash\bfseries}p{2.5cm} >{\raggedright\arraybackslash}p{3.8cm} Y >{\raggedright\arraybackslash}p{2.0cm}}
@@ -375,6 +401,7 @@ G1D query field & 336 radar tokens、512 working latents、24 个 conditioned bl
 R-A1 RaLD-WCE & 500k Q0 + 200k Cube-guided Q1；condition-exclusive field & 700k frozen candidates，随后 exact-10k capacity export & 已训练并关闭；保留历史诊断与生成机制，不保留原 pool 字节身份 \\
 Q1-R quality head & refined RAE、512-d frozen condition latents、detached occupancy confidence；Fourier embedding + 4-head cross-attention + MLP & 每候选连续 quality correction，只替换排序分数 & 已实现；父证书 no-go，训练未启动 \\
 Q-Local-F0 & normalized RAE、detached parent confidence、冻结全局 latents、局部 64-bin spectrum、能量/熵/梯度；cross-attention + 6-bin risk head & 最近表面距离分布及负期望风险排序；坐标与 exporter 不变 & 已实现；capacity no-go，训练未启动 \\
+Q-Local-F0R exporter & 与 Q-Local-F0 bit-identical 的 700k candidates 与 score；全域稳定排序 + 5 cm greedy selection & exact 10k，不设逐帧 range quota；含 target 区间保留门 & 协议已冻结；实现待干净 H200 回归 \\
 R-B2 voxel-slot & 0.4 m Cartesian voxels、每 voxel 4 slots & whole-voxel fixed-count export & 容量 oracle 通过，激活家族关闭 \\
 Doppler 与 Cycle & final-position Cube spectrum query、64-bin distribution head、differentiable splatting & $q_i(v_r)$、confidence 与 Cube closure & 已实现，未解锁 \\
 Temporal & ego/Doppler warp、token/latent/query fusion、scheduled sampling & 当前 Cube 校正的时序状态与 rollout & 已实现，未解锁 \\
@@ -394,7 +421,8 @@ Q1-R 的预注册候选数据流可写为
 \end{equation}
 若训练获授权，GT 只会在完整 700k candidates 构造后生成 soft quality target；
 推理 API 不接受 GT。当前 replay-parent 证书 no-go，因此该 quality head 没有进入
-梯度更新，公式描述的是实现和冻结协议，不是已有训练结果。
+梯度更新，公式描述的是实现和已关闭的历史协议，不是已有训练结果；公式中的
+$8000/1700/300$ 已由后续严格审计退休。
 
 Q-Local-F0 与旧 Q1-R 的关键差异是：它不再要求 Fresh-WCE-20 与已删除 checkpoint
 端点等价，也不把 geometry target 压缩为单个 soft occupancy correction。它把
@@ -538,13 +566,19 @@ Q-Local-F0 是 Q1-R no-go 之后重新冻结的独立路线。父场统一称为
   \mathcal L_{\mathrm{dist}}^{(r)}
   +0.5\operatorname{mean}_{r}\mathcal L_{\mathrm{list}}^{(r)}.
 \end{equation}
-每次更新确定性采样 16,000 个互异候选，按 $12800/2720/480$ 保持三段距离配额。
+每次更新确定性采样 16,000 个互异候选，按 $12800/2720/480$ 对三个距离段做
+训练 minibatch 平衡；这不是推理输出配额。
 推理 API 不允许 target、future/test record、selection index、随机 sample ID
 或 best-of-$k$ 参数。
 
 \paragraph{冻结 cohort 与反事实。}
-fit 帧为 $(1,232),(9,440),(21,402),(27,403),(29,399),(35,403),(47,514),(58,404)$；
-unseen-train 帧为 $(5,429),(26,403),(42,408),(50,405)$。两组分别按固定环映射
+冻结帧集合为
+\begin{align*}
+  \mathcal F_{\mathrm{fit}}={}&\{(1,232),(9,440),(21,402),(27,403),\\
+  &\phantom{\{}(29,399),(35,403),(47,514),(58,404)\},\\
+  \mathcal F_{\mathrm{unseen}}={}&\{(5,429),(26,403),(42,408),(50,405)\}.
+\end{align*}
+两组分别按固定环映射
 构造 wrong Cube。wrong arm 只重算 $\mathbf z_C$ 与局部 spectrum/energy/gradient；
 Q0/Q1 rows、candidate XYZ、parent confidence、target 和 exporter 均保持 bit-identical。
 因此几何变化不能由换坐标伪装为 condition dependence。
@@ -592,10 +626,83 @@ source \code{bf1a166} 在物理 H200 GPU2 上完成 12 帧重建并原子终止�
 强制 2,000 个点位于 30--120 m。由
 $\lVert\mathbf x-\mathbf y\rVert_2\ge
 |\lVert\mathbf x\rVert_2-\lVert\mathbf y\rVert_2|$，这些点不可能进入 2 m target
-邻域，故至少 20\% outlier 与网络无关。该现象触发独立的 76-frame fixed-quota
-feasibility audit。进一步把三个区间的最小径向 gap 按 quota 加权，并把
-completeness 乐观地置零，仍得到约 $1.3245$ m 的 Chamfer 下界，同样超过
-$0.8$ m 门；在审计完成前，不实现沿用相同配额的后继模型。
+邻域，故至少 20\% outlier 与网络无关。该发现触发并已完成独立的 76-frame
+fixed-quota feasibility audit；下节给出其严格结论。
+
+\subsection{固定逐帧距离配额：模型无关的不可行性证明}
+
+对帧 $f$，记 target 的径向距离集合为 $T_f$，三个输出区间为 $I_k$，固定配额为
+$q=(8000,1700,300)$。定义区间与最近 target range 的最小径向间隙
+\begin{equation}
+  \Delta_{f,k}=\inf_{r\in I_k}\min_{\rho\in T_f}|r-\rho|.
+\end{equation}
+对任何落入 $I_k$ 的预测点 $\mathbf x$ 与任意 target $\mathbf y$，反三角不等式给出
+\begin{equation}
+  \lVert\mathbf x-\mathbf y\rVert_2
+  \ge \bigl|\lVert\mathbf x\rVert_2-\lVert\mathbf y\rVert_2\bigr|
+  \ge \Delta_{f,k}.
+\end{equation}
+因此，即使完全忽略角度误差、候选场限制和 5 cm packing，并把 target-to-prediction
+completeness 乐观地设为零，仍有
+\begin{align}
+  \mathrm{CD}_{\mathrm{LB}}(f)
+  &=\frac{1}{10{,}000}\sum_k q_k\Delta_{f,k},\\
+  \mathrm{Outlier}_{\mathrm{LB}}(f)
+  &=\frac{1}{10{,}000}\sum_k q_k\,\mathbb I[\Delta_{f,k}>2\ \mathrm m].
+\end{align}
+这两个量只依赖 train target 的径向支撑；若下界越门，任何网络、候选表示或
+排序方法都无法使该帧满足原 contract。
+
+source \code{dc63dfc} 在 76/76 个 train 帧上完成审计，未读取 Cube、CFAR、
+候选场、模型预测、validation 或 test。终态为
+\code{fixed\_range\_quota\_contract\_no\_go}，耗时 11.2799 s。严格失败帧为：
+\begin{table}[H]
+\centering
+\small
+\caption{固定 $8000/1700/300$ 距离配额的严格不可行帧}
+\begin{tabular}{lrrrrr}
+\toprule
+帧 & target 近/中/远 & 最大 range (m) & $\mathrm{CD}_{\mathrm{LB}}$ (m) & $\mathrm{Outlier}_{\mathrm{LB}}$ & 违反门 \\
+\midrule
+47:94 & 3286/2/0 & 32.6339 & 0.8210 & 3\% & CD \\
+58:404 & 285/0/0 & 27.8774 & 1.3245 & 20\% & CD + outlier \\
+\bottomrule
+\end{tabular}
+\end{table}
+全部 76 帧中，强制 outlier 下界为 0、3\%、20\% 的帧数分别为 67、8、1。
+由于冻结协议要求逐帧通过而不是只看均值，任一严格反例就足以否决整个硬配额
+contract。该审计不推翻 Q-Local-F0 在原协议下的 terminal，也不证明 Q-Local
+scorer 或 700k candidate field 失败；它只证明任何后继路线不得再继承逐帧硬
+$8000/1700/300$ 配额。
+
+\subsection{Q-Local-F0R：只修订 exporter 的最窄后继}
+
+F0R 的问题是：移除已证明矛盾的 range quota 后，完全不变的 Fresh-WCE-20
+700k candidate field 是否包含一个 exact-10k、真实 5 cm、逐帧过几何门的子集。
+该路线保留 Q0/Q1、refined coordinates、residual、base confidence、Q-Local
+scorer、8 fit + 4 unseen-train cohort 和稳定 candidate ID，只改一项机制：
+\begin{equation}
+  \operatorname{Export}_{\mathrm{F0R}}(s)=
+  \operatorname{GreedyNMS}_{0.05\mathrm m}^{10{,}000}
+  \bigl(\operatorname{sort}(-s,\operatorname{id})\bigr),
+\end{equation}
+即在 $[0,120)$ m 全域按分数降序、candidate ID 升序稳定排序，再执行真实
+Euclidean 5 cm greedy selection，直到恰好 10,000 点。API 不接受 GT、target
+range mass、替代 quota、padding、copy、jitter、best-of-$k$ 或 threshold sweep。
+
+训练前先运行同一 12 帧的不可部署 GT-nearest capacity oracle。每帧仍须同时满足
+$\mathrm{CD}\le0.8$ m、outlier $\le5\%$、exact 10k、unique 与 $d_{\min}\ge0.05$ m。
+为防止取消硬配额后通过放弃真实中远距 target 获胜，对每个含 target 的距离段还要求
+\begin{equation}
+  \mathrm{Completeness}_{\mathrm{global}}
+  \le \mathrm{Completeness}_{\mathrm{fixed}}+10^{-6},\qquad
+  \mathrm{Recall@1m}_{\mathrm{global}}
+  \ge \mathrm{Recall@1m}_{\mathrm{fixed}}-10^{-6}.
+\end{equation}
+当前协议已冻结，预检实现处于待回归状态，H200 科学结果尚未形成。若 12/12 帧
+全部通过，只授权另行
+冻结的 500-update Q-Local 训练；若任一科学门失败，才转向 variable multi-return
+renewal-hazard field。固定 $K=4/6$ measured-peak 与旧硬配额均不得重开。
 
 \subsection{R-B2：Cartesian Voxel-Slot}
 
@@ -898,7 +1005,7 @@ heteroscedastic uncertainty；前提未成立，因此 Q2 同样未启动。即�
 新分支，当前 24 帧已参与 failure diagnosis 和路线选择，只能作为 development
 cohort；最终泛化必须使用另行锁定、此前未触碰的 test cohort。
 
-\subsection{P1（当前）：Q-Local-F0 source-bound tiny gate}
+\subsection{P1（已完成）：Q-Local-F0 source-bound tiny gate}
 
 当前执行遵循“先容量、再梯度、后训练”的事务顺序：
 \begin{enumerate}
@@ -913,17 +1020,22 @@ cohort；最终泛化必须使用另行锁定、此前未触碰的 test cohort�
   family，但 test 在 geometry、Doppler 与 temporal family 全部冻结前保持不可访问。
 \end{enumerate}
 
-source \code{bf1a166} 的静态与 H200 回归通过；真实 12-frame preflight 以
-\code{qlocal\_f0\_capacity\_no\_go} 原子终止。10 帧通过，47:514 和 58:404
+source \code{bf1a166} 的静态与 H200 回归通过。真实 12-frame preflight 的原子
+终态为
+\begin{center}
+  \code{qlocal\_f0\_capacity\_no\_go}。
+\end{center}
+其中 10 帧通过，47:514 和 58:404
 分别以 $1.4250$ m/$7.0\%$ 与 $2.2598$ m/$20.0\%$ 的 CD/outlier 失败。
 scorer 训练、optimizer state 和 learned checkpoint 均未创建，Q-Local 路线关闭。
 
-预注册原决策要求转向 variable multi-return ray-hazard，但 58:404 同时证明旧
-per-frame range quotas 可能使任何表示在 Chamfer/outlier 门下不可行。因此先执行
-独立 76-frame fixed-quota feasibility audit。若审计 no-go，最窄后继是保持
-Fresh-WCE、700k coordinates、Q0/Q1 和 Q-Local scorer 全部不变，只另行冻结无硬
-range quota 的全域 exact-10k exporter capacity oracle；只有该 F0R oracle 仍失败，
-才更换为 variable multi-return ray-hazard。不能删除失败帧或事后放宽 Q-Local 门。
+原预注册决策要求直接转向 variable multi-return ray-hazard，但 58:404 同时证明旧
+per-frame range quotas 可能使任何表示在 Chamfer/outlier 门下不可行。随后完成的
+76-frame fixed-quota feasibility audit 给出两个严格反例，故硬配额已退休。
+最窄后继 Q-Local-F0R 保持 Fresh-WCE、700k coordinates、Q0/Q1 与 Q-Local
+scorer 全部不变，只另行冻结无硬 range quota 的全域 exact-10k exporter capacity
+oracle；只有该 F0R oracle 仍失败，才更换为 variable multi-return ray-hazard。
+任何后继都不能删除失败帧、改成 aggregate-only gate 或事后放宽几何门。
 
 \subsection{已关闭与仍锁定路线}
 
@@ -953,8 +1065,8 @@ P0 & full-24 diagnosis + certificate & 已完成并归档 & 机制诊断通过�
 P0 & Q1-R 干净快照回归 & 已完成，42 项定向、101 项扩大回归 & 测试通过；终审留有 3 P1/3 P2，不可复用授权 \\
 历史 & Q1-R 八帧 tiny / Q2 & 未启动 & 父证书 no-go，非模型训练失败 \\
 P1 & Q-Local-F0 preflight & 已完成，444.58 s，H200 GPU2 & 10/12 capacity pass；终态 no-go，tiny 禁止 \\
-P2 & fixed range-quota audit & 76 train 帧，零训练 & 运行中；检查 $0.8$ m CD/5\% outlier 的严格径向下界 \\
-F0R & global-export candidate oracle & 后备，零训练 & 若 P2 no-go，保持 700k field，只取消逐帧硬配额 \\
+P2 & fixed range-quota audit & 已完成，76/76 train 帧，11.2799 s & 2 帧严格不可行；旧硬配额终止且不得复用 \\
+F0R & global-export candidate oracle & 当前待执行，零训练 & 协议已冻结；保持 700k field，只取消逐帧硬配额 \\
 F1 & variable ray-hazard oracle & 异族后备，零训练 & 仅在 F0R 同场 candidate oracle 失败后启动 \\
 P3 & Doppler + Cube-cycle & 锁定 & 无合格 geometry parent \\
 P4 & RadarMP + DoppDrive 时序 & 锁定 & 无合格单帧 family；G4 CRC 独立运行 \\
@@ -980,10 +1092,11 @@ $\rightarrow$ differentiable Cube closure
 $\rightarrow$ current-observation-corrected temporal state.
 \end{quote}
 R-B2 当前 activation family 已失败，Q1-R 在 replay-parent 授权门停止，Q-Local
-又在训练前的容量门停止。因此目前没有活动的 learned fixed-10k 几何路线；活动项
-是输出契约可行性审计及其后的异族 ray-hazard capacity oracle。当前仍应停止扩展
-完整 downstream 叙事，直到新的 geometry parent 通过；不能用 diffusion 或
-temporal complexity 掩盖上游表示与输出约束的矛盾。
+又在训练前的容量门停止。固定 range quota 审计已经证明旧输出契约不可复用，
+因此目前没有活动的 learned fixed-10k 几何训练；当前活动路线是只改变 exporter
+的 Q-Local-F0R 零训练 capacity oracle，ray-hazard 仍是其失败后的后备。
+当前仍应停止扩展完整 downstream 叙事，直到新的 geometry parent 通过；不能用
+diffusion 或 temporal complexity 掩盖上游表示与输出约束的矛盾。
 
 \subsection{主要审稿风险}
 
@@ -1057,8 +1170,10 @@ same-coordinate wrong-Cube intervention、物理 GPU provenance 和原子事务�
 但不可部署 GT-nearest oracle 只在 10/12 帧通过。两个 fit 帧使容量门失败，故
 380,818 参数 scorer 从未训练。尤其 58:404 的 target 全在 30 m 内，而固定配额
 强制 20\% 输出落在 30--120 m，揭示了输出契约与 outlier 门之间可能存在严格矛盾。
-因此当前最优先工作不再是增加网络深度，而是完成 76-frame train-only quota
-feasibility audit，并据此冻结 adaptive range-mass/variable-return successor。
+76-frame train-only quota feasibility audit 已完成并严格否决旧逐帧硬配额。
+因此当前最优先工作不再是增加网络深度，而是执行已经冻结的 Q-Local-F0R
+global-export capacity oracle；只有同场 700k candidate field 仍失败，才有证据
+支持切换到 variable multi-return renewal-hazard successor。
 
 逐点 Doppler、Cube-point 双向约束和长期时序一致性仍是项目最终创新组合，
 但它们目前是有代码支撑的研究计划，而不是已有实验结论。
@@ -1078,13 +1193,14 @@ scheduled sampling 和多步 rollout；这能避免用后续复杂模块掩盖�
 代码分支 & \code{agent/cube-to-dense-g0} \\
 Q1-R 当前证书实现提交 & \hash{e159a22c5343e81c0cf29351da07290a}{686edba5} \\
 Q-Local preflight 提交 & \hash{bf1a166c48be60f82c5283b5937edf0c}{f6ad64c2} \\
+固定配额审计提交 & \hash{dc63dfc404d647f31409177ccca6de80}{726eb8d7} \\
 H200 环境 & \code{/home/wangning/miniforge3/envs/hym\_radar} \\
 允许 GPU & NVIDIA H200 NVL，物理 GPU 0 或 2 \\
 禁止 GPU & 物理 GPU 1，RTX 5000 \\
 规范 Cube shape & $(D,R,A,E)=(64,256,107,37)$ \\
 开发数据 & 100 帧，45 场景，76 train + 24 validation \\
 时序数据 & 服务器记录 45/45 序列已下载，约 600.8 GiB（约 645.1 GB）；原始 summary 尚待归档，最终 CRC 审计待完成 \\
-历史冻结输出 & exact 10,000 points，逐帧范围配额 $8000/1700/300$；配额契约正在做 train-only 可行性审计 \\
+当前输出契约 & exact 10,000 points + 真实 5 cm；旧逐帧 $8000/1700/300$ 配额已由严格审计退休 \\
 最小点距 & 5 cm \\
 测试访问 & false \\
 Q1-R cache ordered digest &
@@ -1104,6 +1220,10 @@ Q-Local terminal & \code{qlocal\_f0\_capacity\_no\_go}；10/12 oracle 帧通过�
 Q-Local artifact SHA &
 \hash{b1b740dff2515df274dfbf6fdb15ece5}{3c1c3129d7847c6e803abc568c97fef4} \\
 Q-Local GPU & physical 2；UUID \code{GPU-000b6236-3632-a001-9667-1f02cbb61c8b}；PCI \code{00000000:D1:00.0} \\
+固定配额审计 terminal & \code{fixed\_range\_quota\_contract\_no\_go}；76/76 train 帧，validation/test access = false \\
+固定配额报告 SHA &
+\hash{d5d9eeaae99a97bb8d358ce2de7c6c48}{92e221e82b1e64eaf2897aa038cb627c} \\
+Q-Local-F0R 状态 & 零训练协议已冻结；H200 capacity 结果尚未形成 \\
 RaLD 审计 commit &
 \hash{ffec4b41241391734b1e}{da5c093de843c909eb8e} \\
 \bottomrule
@@ -1122,7 +1242,10 @@ RaLD 审计 commit &
   \item \path{artifacts/idea/literature_survey_2026-08-07.md}
   \item \path{docs/qlocal_distributional_risk_tiny_protocol.md}
   \item \path{docs/fixed_range_quota_feasibility_audit.md}
+  \item \path{docs/qlocal_f0r_global_export_capacity_protocol.md}
   \item \path{artifacts/g1/qlocal_f0_preflight_bf1a166/preflight.json}
+  \item \path{artifacts/g1/fixed_range_quota_audit_dc63dfc/feasibility.json}
+  \item \path{artifacts/g1/fixed_range_quota_audit_dc63dfc/decision.md}
   \item \path{artifacts/g1/g1_bounded_recovery_failure_2026-07-19.md}
   \item \path{artifacts/g1/g1d_formal_failure_and_factors_2026-07-29.md}
   \item \path{artifacts/g1/g1g_formal_failure_2026-07-29.md}
@@ -1148,7 +1271,8 @@ RaLD 审计 commit &
   \item 本报告没有把 GT-aided oracle 写成模型结果。
   \item 本报告没有把 Q1-R 的代码实现或 replay 机制诊断写成 quality 模型通过；tiny training 实际未启动。
   \item 本报告没有把 Q-Local 的梯度、wrong-Cube 干预或 10/12 oracle pass 写成模型通过；scorer training 实际未启动。
-  \item 本报告没有把 Q-Local capacity no-go 泛化成所有 continuous quality scorer 失败；当前正在单独审计 fixed range quota。
+  \item 本报告没有把 Q-Local capacity no-go 泛化成所有 continuous quality scorer 失败；严格 fixed-range 审计只否决旧逐帧硬配额。
+  \item 本报告没有把 Q-Local-F0R 的冻结协议或未归档实现写成 H200 科学结果。
   \item 本报告没有把 \code{e159a22} 的回归通过写成完整防篡改保证；终审的 3 P1/3 P2 已显式保留。
   \item 本报告没有把 source-equivalent replay 写成原 checkpoint 的同一复现。
   \item 本报告没有把 R-B2 structural capacity 写成 Cube-only generalization。

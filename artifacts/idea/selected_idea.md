@@ -1,51 +1,58 @@
 # Selected geometry idea
 
-> Frozen on 2026-08-07 before implementation or H200 execution. Test access is
-> false.
+> Successor revised on 2026-08-07 after the Q-Local-F0 capacity no-go and the
+> fixed-range-quota contract no-go. Test access is false.
 
-## Primary route: Q-Local-F0
+## Live primary route: Q-Local-F0R
 
-Use the source-`f2a9489` fresh replay checkpoint as a newly named candidate
-field, not as the deleted R-A1 checkpoint and not as an authorized Q1-R parent.
-Its fixed 700k pool and exact exporter are retained because an independent
-non-deployable score already shows strong geometric support.
+Q-Local-F0 is terminal under its frozen `8000/1700/300` exporter: the
+source-bound GT-nearest oracle passed only 10/12 train frames, so its scorer was
+not trained. A separate 76-frame radial lower-bound audit then proved that the
+hard per-frame quotas are themselves incompatible with the geometry contract
+on frames `47:94` and `58:404`.
 
-Train a small distributional geometric-risk scorer from candidate RAE, detached
-base confidence, global Cube latents, and local 64-bin Doppler evidence. Rank by
-negative expected clipped distance and export with the unchanged exact-10k,
-range-quota, 5 cm capacity-one algorithm.
+Q-Local-F0R is the narrowest valid successor. It keeps the source-`f2a9489`
+Fresh-WCE checkpoint, all 700k candidate coordinates, Q0/Q1, residual, base
+confidence, Q-Local scorer/loss, cohort, exact 10k, and true 5 cm spacing. It
+changes only the exporter: one stable global score order across `[0,120)` m,
+followed by greedy 5 cm selection.
 
-The first run is the train-only Q-Local-F0 gate defined in
-`docs/qlocal_distributional_risk_tiny_protocol.md`. It includes eight fitting
-sequences, four unseen training sequences, same-coordinate wrong-Cube controls,
-immutable 100-update evaluations, and a two-H200-GPU-hour hard stop.
+The first run is the zero-training capacity gate in
+`docs/qlocal_f0r_global_export_capacity_protocol.md`. It uses the same eight fit
+and four unseen-train frames. All 12 frames must pass `CD <=0.8 m`, outlier
+`<=5%`, exact 10k, true 5 cm, and per-target-stratum retention against the
+archived fixed-quota oracle.
 
 ## Why this route is first
 
-1. It tests the unresolved quality hypothesis rather than another support
-   generator.
-2. It adds local Full-Doppler evidence missing from the unexecuted global-only
-   Q1-R head.
-3. It preserves the already validated candidate and exporter boundary, making
-   a two-hour causal result possible.
-4. It produces a reusable geometry parent if successful, while keeping the
-   final circular-Doppler and Cube-cycle claims locked.
+1. It removes one output constraint already proven impossible instead of
+   changing the representation prematurely.
+2. It leaves candidate support and the unresolved local Full-RAED scoring
+   hypothesis bit-identical.
+3. It has a decisive zero-training result before any optimizer or checkpoint is
+   created.
+4. Its target-stratum retention gate prevents winning by discarding real
+   middle/far targets.
 
 ## Outside-family fallback
 
-If Q-Local-F0 fails its frozen gate, run a zero-training representation oracle
-for a variable multi-return ray-hazard field. Fixed per-ray `K=4/6`, larger
-arbitrary-query pools, another binary occupancy model, and fixed-neighborhood
-activation remain closed.
+Only if Q-Local-F0R fails its frozen scientific gate, run a zero-training
+representation oracle for a variable multi-return renewal-hazard field. Fixed
+per-ray `K=4/6`, larger arbitrary-query pools, another binary occupancy model,
+hard per-frame range quotas, and fixed-neighborhood activation remain closed.
 
 Sparse ray-range partial transport is third priority and requires a separate
 hard-rounding oracle before implementation. It is not fused with Q-Local.
 
 ## Decision boundary
 
-- Q-Local-F0 pass: freeze one 76/24 geometry protocol.
-- Capacity oracle failure: close the fresh 700k quality route immediately.
-- Learning or unseen-control failure by update 500/7200 GPU-s: close this scorer
-  architecture without tuning; move to variable ray hazard.
+- F0R 12/12 capacity pass: freeze a separate 500-update Q-Local training run
+  using the same global exporter and recompute every learned baseline with it.
+- F0R scientific failure: close scoring on this fresh 700k field and move to
+  variable multi-return renewal hazard.
+- F0R implementation-invalid: repair and rerun the identical gate; do not route
+  scientifically.
+- Later learning or unseen-control failure by update 500/7200 GPU-s: close this
+  scorer architecture without tuning; move to variable ray hazard.
 - No downstream Doppler, cycle, temporal, or test work starts until a 76/24
   geometry parent passes the complete frozen gate.
