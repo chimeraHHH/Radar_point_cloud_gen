@@ -678,7 +678,13 @@ def test_phase_commands_enforce_serial_cuda_visibility_contract(
             )
         },
     }
-    verification = {"passed": True}
+    verification = {
+        "passed": True,
+        "protocol_sha256": capacity.PROTOCOL_SHA256,
+        "protocol_freeze_commit": capacity.PROTOCOL_FREEZE_COMMIT,
+        "frame": {"frame_key": frame_key},
+        "oracle_status": oracle["status"],
+    }
     metric = {
         "frame_key": frame_key,
         "source_commit": SOURCE_COMMIT,
