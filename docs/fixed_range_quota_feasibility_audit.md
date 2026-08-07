@@ -39,12 +39,18 @@ Euclidean distance obeys `||x-y||_2 >= abs(||x||_2-||y||_2)`. Therefore, if
 outlier, regardless of angle, network, candidate field, score, renderer, or
 ray parameterization.
 
-The per-frame contract lower bound is
+The per-frame outlier and Chamfer lower bounds are
 
 ```text
 forced_outlier_count = sum_k quota_k * 1[g_k > 2 m]
 forced_outlier_fraction = forced_outlier_count / 10000.
+forced_precision_lower_bound = sum_k quota_k * g_k / 10000
+forced_chamfer_lower_bound = forced_precision_lower_bound + 0
 ```
+
+The Chamfer expression sets weighted completeness to its unattainable best
+value of zero, so it is also a strict optimistic lower bound on the repository's
+`precision_mean_distance + completeness_mean_distance` evaluator.
 
 This bound is intentionally conservative. A reachable stratum contributes
 zero to the lower bound even if 5 cm packing, angular support, or the candidate
@@ -53,9 +59,10 @@ field would make some of its quota unusable.
 ## Frozen decision
 
 The current hard-quota contract passes only if every one of the 76 train frames
-has `forced_outlier_fraction <= 5%`.
+has both `forced_outlier_fraction <= 5%` and
+`forced_chamfer_lower_bound <= 0.8 m`.
 
-If any frame exceeds 5%, terminal status is
+If any frame exceeds either gate, terminal status is
 `fixed_range_quota_contract_no_go`. Then:
 
 1. Q-Local-F0 remains a valid capacity no-go under its frozen protocol, and its

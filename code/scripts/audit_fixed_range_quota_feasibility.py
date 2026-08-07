@@ -39,6 +39,7 @@ EXPECTED_SCENE_SPLIT_SHA256 = (
 )
 TRAIN_FRAME_COUNT = 76
 OUTLIER_GATE = 0.05
+CHAMFER_GATE_M = 0.8
 SOURCE_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 
 
@@ -176,11 +177,17 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 "contract_impossible_at_5pct": (
                     feasibility.forced_outlier_fraction > OUTLIER_GATE
                 ),
+                "contract_impossible_at_0p8m_chamfer": (
+                    feasibility.forced_chamfer_lower_bound_m > CHAMFER_GATE_M
+                ),
             }
         )
 
     impossible = [
-        report for report in reports if report["contract_impossible_at_5pct"]
+        report
+        for report in reports
+        if report["contract_impossible_at_5pct"]
+        or report["contract_impossible_at_0p8m_chamfer"]
     ]
     histogram = Counter(
         str(report["forced_outlier_fraction"]) for report in reports
@@ -214,16 +221,28 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "output_count": sum(OUTPUT_QUOTAS),
             "outlier_distance_m": OUTLIER_DISTANCE_M,
             "maximum_outlier_fraction": OUTLIER_GATE,
+            "maximum_chamfer_m": CHAMFER_GATE_M,
+            "completeness_lower_bound_m": 0.0,
             "lower_bound_uses_only_reverse_triangle_inequality": True,
         },
         "summary": {
             "impossible_frame_count": len(impossible),
+            "outlier_impossible_frame_count": sum(
+                report["contract_impossible_at_5pct"] for report in reports
+            ),
+            "chamfer_impossible_frame_count": sum(
+                report["contract_impossible_at_0p8m_chamfer"]
+                for report in reports
+            ),
             "impossible_identities": [
                 [report["sequence"], report["radar_index"]]
                 for report in impossible
             ],
             "maximum_forced_outlier_fraction": max(
                 report["forced_outlier_fraction"] for report in reports
+            ),
+            "maximum_forced_chamfer_lower_bound_m": max(
+                report["forced_chamfer_lower_bound_m"] for report in reports
             ),
             "forced_outlier_fraction_histogram": dict(sorted(histogram.items())),
         },

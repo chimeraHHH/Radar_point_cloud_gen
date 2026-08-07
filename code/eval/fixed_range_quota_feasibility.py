@@ -20,6 +20,8 @@ class FixedQuotaFeasibility:
     target_counts_by_stratum: tuple[int, int, int]
     minimum_radial_gaps_m: tuple[float, float, float]
     radially_unreachable: tuple[bool, bool, bool]
+    forced_precision_lower_bound_m: float
+    forced_chamfer_lower_bound_m: float
     forced_outlier_count: int
     forced_outlier_fraction: float
 
@@ -73,6 +75,9 @@ def fixed_quota_feasibility(
         sum(quota for quota, blocked in zip(quotas, unreachable) if blocked)
     )
     total = int(sum(quotas))
+    precision_lower_bound = float(
+        sum(quota * gap for quota, gap in zip(quotas, gaps)) / total
+    )
     return FixedQuotaFeasibility(
         target_count=int(target.shape[0]),
         target_range_min_m=float(ranges.min()),
@@ -80,6 +85,8 @@ def fixed_quota_feasibility(
         target_counts_by_stratum=counts,
         minimum_radial_gaps_m=gaps,
         radially_unreachable=unreachable,
+        forced_precision_lower_bound_m=precision_lower_bound,
+        forced_chamfer_lower_bound_m=precision_lower_bound,
         forced_outlier_count=forced_count,
         forced_outlier_fraction=float(forced_count / total),
     )

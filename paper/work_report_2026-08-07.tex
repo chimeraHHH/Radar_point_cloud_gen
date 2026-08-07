@@ -89,7 +89,7 @@ Fresh-WCE-20 当作新鲜候选场，保持 700k 坐标与 exact-10k exporter �
 学习由局部 Full-RAED 证据决定的六档几何风险分布。其 source-bound H200
 预检已以 \code{qlocal\_f0\_capacity\_no\_go} 原子终止：10/12 帧的不可部署
 oracle 通过，但两个 fit 帧失败，因此 scorer 训练未启动。失败同时暴露了逐帧
-固定 $8000/1700/300$ 距离配额可能与 5\% outlier 门矛盾；76-frame train-only
+固定 $8000/1700/300$ 距离配额可能与 $0.8$ m Chamfer/5\% outlier 门矛盾；76-frame train-only
 配额可行性审计已冻结。逐点 Doppler、Cube-cycle、时序生成和测试集评估仍未解锁。
 \end{minipage}}
 \end{center}
@@ -196,9 +196,9 @@ oracle 通过，但两个 fit 帧失败，因此 scorer 训练未启动。失败
   \item \textbf{失败进一步指向输出契约，而不只是候选场。}
   $(58,404)$ 的 target 全部位于 30 m 内，而 exporter 强制输出 1,700 个
   30--60 m 点和 300 个 60--120 m 点；其 oracle outlier 恰为 20\%。这提示
-  固定逐帧 range quota 可能给出与 5\% 门无关模型的矛盾下界。当前先对全部
-  76 个 train 帧做 reverse-triangle-inequality 审计；若任一帧的强制 outlier
-  下界超过 5\%，下一 ray-hazard 路线不得继承旧配额。
+  固定逐帧 range quota 可能给出与模型无关的矛盾下界。当前先对全部
+  76 个 train 帧做 reverse-triangle-inequality 审计；若任一帧的乐观 Chamfer
+  下界超过 $0.8$ m 或强制 outlier 超过 5\%，任何后继 exporter 均不得继承旧配额。
 
   \item \textbf{文献重扫后，创新边界进一步收紧。}
   RaUF、SDDiff、RadarMP、Radar-Mamba 与 DoppDrive 已分别覆盖雷达不确定性、
@@ -226,7 +226,7 @@ R-A1 RaLD-WCE & \closed & 学到显著 Cube 条件效应；700k pool 支撑强 &
 R-A2 binary pilot & \closed & 8 帧、500 updates 完成 & memorization 仍未通过，旧 sampler 同时不合格 \\
 Q1-R quality ranking & \closed & replay、full-24 diagnosis 与证书完成；ranking bottleneck 再现 & replay 端点等价门失败，tiny 与 Q2 未启动 \\
 Q-Local-F0 & \closed & 10/12 oracle 帧通过；梯度、同坐标干预、结构与 provenance 通过 & 两个 fit 帧容量失败；训练按协议禁止，不代表 scorer 学习失败 \\
-固定 range quota 审计 & \running & 已冻结严格径向 outlier 下界与 76-frame train-only 协议 & 正在执行；决定 ray-hazard 是否必须采用自适应 range mass \\
+固定 range quota 审计 & \running & 已冻结严格径向 Chamfer/outlier 下界与 76-frame train-only 协议 & 正在执行；决定后继 exporter 是否必须取消硬配额 \\
 R-B2 voxel-slot & \closed & GT-aided 结构容量通过；80k arm 的 recall 在 76/76 帧过门 & 3 帧 coverage 失败，当前 Cube-only activation family 关闭 \\
 G4 时序数据 & \running & 45 序列、2,160 帧、约 600.8 GiB 已下载 & exact-member/size/CRC 审计运行中；不解锁时序训练 \\
 下游物理与时序 & \locked & 代码和旧机制证据存在 & 无通过的 K-Radar 几何父模型，不能形成当前主张 \\
@@ -593,7 +593,9 @@ source \code{bf1a166} 在物理 H200 GPU2 上完成 12 帧重建并原子终止�
 $\lVert\mathbf x-\mathbf y\rVert_2\ge
 |\lVert\mathbf x\rVert_2-\lVert\mathbf y\rVert_2|$，这些点不可能进入 2 m target
 邻域，故至少 20\% outlier 与网络无关。该现象触发独立的 76-frame fixed-quota
-feasibility audit；在其完成前，不实现沿用相同配额的 ray-hazard。
+feasibility audit。进一步把三个区间的最小径向 gap 按 quota 加权，并把
+completeness 乐观地置零，仍得到约 $1.3245$ m 的 Chamfer 下界，同样超过
+$0.8$ m 门；在审计完成前，不实现沿用相同配额的后继模型。
 
 \subsection{R-B2：Cartesian Voxel-Slot}
 
@@ -917,11 +919,11 @@ source \code{bf1a166} 的静态与 H200 回归通过；真实 12-frame preflight
 scorer 训练、optimizer state 和 learned checkpoint 均未创建，Q-Local 路线关闭。
 
 预注册原决策要求转向 variable multi-return ray-hazard，但 58:404 同时证明旧
-per-frame range quotas 可能使任何表示在 5\% outlier 门下不可行。因此先执行
-独立 76-frame fixed-quota feasibility audit。若审计 no-go，ray-hazard 必须采用
-另行冻结的 target-free Cube-predicted adaptive range mass 或 variable cardinality；
-不能简单删除失败帧或事后放宽 Q-Local 门。稀疏 ray-range partial transport 排在
-第三位，仍须先满足 rounding gap、2 s/frame 与 60 GiB 资源门。
+per-frame range quotas 可能使任何表示在 Chamfer/outlier 门下不可行。因此先执行
+独立 76-frame fixed-quota feasibility audit。若审计 no-go，最窄后继是保持
+Fresh-WCE、700k coordinates、Q0/Q1 和 Q-Local scorer 全部不变，只另行冻结无硬
+range quota 的全域 exact-10k exporter capacity oracle；只有该 F0R oracle 仍失败，
+才更换为 variable multi-return ray-hazard。不能删除失败帧或事后放宽 Q-Local 门。
 
 \subsection{已关闭与仍锁定路线}
 
@@ -951,8 +953,9 @@ P0 & full-24 diagnosis + certificate & 已完成并归档 & 机制诊断通过�
 P0 & Q1-R 干净快照回归 & 已完成，42 项定向、101 项扩大回归 & 测试通过；终审留有 3 P1/3 P2，不可复用授权 \\
 历史 & Q1-R 八帧 tiny / Q2 & 未启动 & 父证书 no-go，非模型训练失败 \\
 P1 & Q-Local-F0 preflight & 已完成，444.58 s，H200 GPU2 & 10/12 capacity pass；终态 no-go，tiny 禁止 \\
-P2 & fixed range-quota audit & 76 train 帧，零训练 & 运行中；检查 5\% outlier 的严格径向下界 \\
-F1 & variable ray-hazard oracle & 后备，零训练 & 等待 P2 决定固定配额或自适应 range-mass contract \\
+P2 & fixed range-quota audit & 76 train 帧，零训练 & 运行中；检查 $0.8$ m CD/5\% outlier 的严格径向下界 \\
+F0R & global-export candidate oracle & 后备，零训练 & 若 P2 no-go，保持 700k field，只取消逐帧硬配额 \\
+F1 & variable ray-hazard oracle & 异族后备，零训练 & 仅在 F0R 同场 candidate oracle 失败后启动 \\
 P3 & Doppler + Cube-cycle & 锁定 & 无合格 geometry parent \\
 P4 & RadarMP + DoppDrive 时序 & 锁定 & 无合格单帧 family；G4 CRC 独立运行 \\
 \bottomrule

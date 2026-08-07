@@ -65,7 +65,10 @@ Frame `58:404` has target radial range `3.071--27.877 m` with counts
 `285/0/0` in `[0,30)/[30,60)/[60,120)` m. The fixed exporter nevertheless
 forces `1700+300=2000` predictions above 30 m. By the reverse triangle
 inequality, every such prediction is more than 2 m from every target, so the
-hard-quota contract alone imposes a 20% outlier lower bound on this frame.
+hard-quota contract alone imposes a 20% outlier lower bound on this frame. It
+also imposes an optimistic Chamfer lower bound of about `1.3245 m` before any
+angular error, 5 cm packing cost, or completeness error, already above the
+frozen `0.8 m` gate.
 
 This observation does not retroactively change the Q-Local protocol or result.
 It triggers the separately frozen 76-train-frame audit in
