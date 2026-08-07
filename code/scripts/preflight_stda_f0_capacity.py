@@ -2186,6 +2186,32 @@ def _source_binding(repo: Path) -> dict[str, str]:
     return records
 
 
+def _require_no_runtime_caches(repo: Path, *, label: str) -> dict[str, Any]:
+    forbidden: list[str] = []
+    for root, directories, filenames in os.walk(repo, followlinks=False):
+        directories[:] = [name for name in directories if name != ".git"]
+        for name in tuple(directories):
+            if name in {"__pycache__", ".pytest_cache"}:
+                forbidden.append(str((Path(root) / name).relative_to(repo)))
+                directories.remove(name)
+        forbidden.extend(
+            str((Path(root) / name).relative_to(repo))
+            for name in filenames
+            if name.endswith((".pyc", ".pyo"))
+        )
+    if forbidden:
+        raise StageFailure(
+            "preflight",
+            "runtime_cache_present",
+            f"{label}: {sorted(forbidden)}",
+        )
+    return {
+        "label": label,
+        "forbidden_cache_paths": [],
+        "passed": True,
+    }
+
+
 def _assert_source_lock(
     *,
     repo: Path,
@@ -2323,6 +2349,10 @@ def run_preflight(args: argparse.Namespace) -> dict[str, Any]:
     environment = environment_report(args, gpu)
     shared_mount, local_mount = _ensure_distinct_mounts(args)
     source_hashes = _source_binding(args.repo)
+    runtime_cache_before_tests = _require_no_runtime_caches(
+        args.repo,
+        label="preflight_before_mandatory_tests",
+    )
     source_lock_before_tests = _assert_source_lock(
         repo=args.repo,
         source_commit=args.source_commit,
@@ -2336,6 +2366,10 @@ def run_preflight(args: argparse.Namespace) -> dict[str, Any]:
         gpu_pci=str(gpu["pci_bus_id"]),
         gpu_name=str(gpu["name"]),
         source_hashes=source_hashes,
+    )
+    runtime_cache_after_tests = _require_no_runtime_caches(
+        args.repo,
+        label="preflight_after_mandatory_tests",
     )
     source_lock_after_tests = _assert_source_lock(
         repo=args.repo,
@@ -2354,6 +2388,10 @@ def run_preflight(args: argparse.Namespace) -> dict[str, Any]:
         "source_execution_locks": [
             source_lock_before_tests,
             source_lock_after_tests,
+        ],
+        "runtime_cache_checks": [
+            runtime_cache_before_tests,
+            runtime_cache_after_tests,
         ],
         "input_hashes": input_hashes,
         "cohort": records,

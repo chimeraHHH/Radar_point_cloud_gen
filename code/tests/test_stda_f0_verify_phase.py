@@ -1557,7 +1557,7 @@ def test_formal_script_bootstraps_numpy_and_scipy_under_isolated_no_site() -> No
         }
     )
     completed = subprocess.run(
-        [sys.executable, "-I", "-S", str(script), "--help"],
+        [sys.executable, "-I", "-S", "-B", str(script), "--help"],
         env=environment,
         capture_output=True,
         text=True,
@@ -1600,6 +1600,7 @@ def test_main_publishes_once_and_cannot_overwrite_output(
         sys.executable,
         "-I",
         "-S",
+        "-B",
         str(Path(verify_phase.__file__).resolve(strict=True)),
         *argv,
     ]

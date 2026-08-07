@@ -1360,6 +1360,17 @@ def test_transaction_boundary_stops_monitor_before_clock_and_record_publication(
     assert boundary == 1_000
 
 
+def test_preflight_rejects_unbound_runtime_caches(tmp_path: Path) -> None:
+    cache = tmp_path / "code/eval/__pycache__"
+    cache.mkdir(parents=True)
+    (cache / "stda_f0_verify.cpython-310.pyc").write_bytes(b"unbound")
+
+    with pytest.raises(capacity.StageFailure) as captured:
+        capacity._require_no_runtime_caches(tmp_path, label="hostile-cache")
+    assert captured.value.code == "runtime_cache_present"
+    assert "code/eval/__pycache__" in str(captured.value)
+
+
 def test_isolation_source_and_atomic_publish_contracts_are_structurally_bound() -> None:
     preflight_source = inspect.getsource(capacity.run_preflight)
     environment_source = inspect.getsource(capacity.environment_report)
