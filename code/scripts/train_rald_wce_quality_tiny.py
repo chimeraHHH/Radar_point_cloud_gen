@@ -51,6 +51,9 @@ from models.rald_wce_quality import (  # noqa: E402
     RaLDWCEQualityHead,
     quality_parameter_count,
 )
+from scripts.certify_rald_wce_replay_parent import (  # noqa: E402
+    certify_replay_parent,
+)
 from scripts.diagnose_rald_wce_failure_factors import (  # noqa: E402
     validate_formal_checkpoint,
     validate_formal_metrics,
@@ -75,6 +78,12 @@ FORMAL_R_A1_PROTOCOL = "g1_ra1_rald_wce_stage0_v1"
 FORMAL_PARENT_SOURCE_COMMIT = "f2a9489d40323d1ef45d85de958f4aea8126e1c8"
 ORIGINAL_FORMAL_CHECKPOINT_SHA256 = (
     "5be30e0f1ca23ea3b603abb0f5e330efd3599167362a8e23ab3a5967c411a2a0"
+)
+ARCHIVED_FORMAL_METRICS_RELATIVE = Path(
+    "artifacts/g1/wce_formal_f2a9489/metrics_epoch020.json"
+)
+ARCHIVED_FORMAL_MANIFEST_RELATIVE = Path(
+    "artifacts/g1/wce_formal_f2a9489/run_manifest.json"
 )
 FORMAL_SEED = 20260716
 FROZEN_ORDERED_CACHE_DIGEST_SHA256 = (
@@ -205,6 +214,13 @@ def canonical_digest(document: dict[str, Any]) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def json_artifact_sha256(document: dict[str, Any]) -> str:
+    payload = (
+        json.dumps(document, indent=2, sort_keys=True, allow_nan=False) + "\n"
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
 def atomic_json(path: Path, document: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
@@ -249,10 +265,24 @@ def validate_replay_parent_certificate(
     run_manifest_path: Path,
     *,
     expected_certifier_source_commit: str,
+    repo: Path,
 ) -> dict[str, Any]:
     """Bind Q1-R to an explicitly certified source-equivalent replay parent."""
 
     document = json.loads(certificate_path.read_text(encoding="utf-8"))
+    recomputed = certify_replay_parent(
+        archived_metrics_path=repo / ARCHIVED_FORMAL_METRICS_RELATIVE,
+        archived_manifest_path=repo / ARCHIVED_FORMAL_MANIFEST_RELATIVE,
+        replay_checkpoint_path=checkpoint_path,
+        replay_metrics_path=metrics_path,
+        replay_manifest_path=run_manifest_path,
+        replay_diagnosis_path=diagnosis_path,
+        certifier_source_commit=expected_certifier_source_commit,
+    )
+    if document != recomputed:
+        raise ValueError(
+            "Q1-R replay-parent certificate differs from trainer recomputation"
+        )
     identity = document.get("identity")
     checks = document.get("checks")
     if not isinstance(identity, dict) or not isinstance(checks, dict):
@@ -265,11 +295,15 @@ def validate_replay_parent_certificate(
     }
     required_checks = {
         "source_config_data_seed_epoch_match": True,
+        "formal_metrics_recomputed": True,
         "formal_stage0_decision_preserved": True,
         "validation_frame_contract_preserved": True,
         "candidate_query_contract_preserved": True,
         "replay_diagnosis_bound": True,
+        "diagnosis_aggregate_recomputed": True,
         "validation_gt_ranking_oracle_passed": True,
+        "training_started": False,
+        "checkpoint_modified": False,
         "test_partition_accessed": False,
         "future_cube_accessed": False,
         "cfar_accessed": False,
@@ -304,6 +338,7 @@ def validate_replay_parent_certificate(
         ),
         "claim_boundary": isinstance(document.get("claim_boundary"), str)
         and bool(document["claim_boundary"].strip()),
+        "certificate_recomputed": recomputed.get("q1r_tiny_authorized") is True,
     }
     failed = [name for name, passed in validations.items() if not passed]
     if failed:
@@ -315,6 +350,7 @@ def validate_replay_parent_certificate(
         "checks": checks,
         "validation_checks": validations,
         "claim_boundary": document.get("claim_boundary"),
+        "trainer_recomputed_certificate": True,
     }
 
 
@@ -428,15 +464,19 @@ def source_hashes(repo: Path) -> dict[str, str]:
     }
 
 
-def state_dict_sha256(module: torch.nn.Module) -> str:
+def tensor_mapping_sha256(state: dict[str, torch.Tensor]) -> str:
     digest = hashlib.sha256()
-    for name, value in sorted(module.state_dict().items()):
+    for name, value in sorted(state.items()):
         digest.update(name.encode("utf-8"))
         array = value.detach().to(device="cpu").contiguous().numpy()
         digest.update(str(array.dtype).encode("ascii"))
         digest.update(str(array.shape).encode("ascii"))
         digest.update(array.tobytes())
     return digest.hexdigest()
+
+
+def state_dict_sha256(module: torch.nn.Module) -> str:
+    return tensor_mapping_sha256(module.state_dict())
 
 
 def build_formal_base(
@@ -1149,15 +1189,169 @@ def load_checkpoint(
     return checkpoint["state"]
 
 
+def ensure_evaluation_checkpoint(
+    path: Path,
+    *,
+    resume: bool,
+    quality_head: RaLDWCEQualityHead,
+    optimizer: torch.optim.Optimizer,
+    state: dict[str, Any],
+    contract_sha256: str,
+) -> str:
+    """Create once, or verify and reuse after an interrupted evaluation."""
+
+    if not path.exists():
+        save_checkpoint(
+            path,
+            quality_head=quality_head,
+            optimizer=optimizer,
+            state=state,
+            contract_sha256=contract_sha256,
+        )
+        return sha256_file(path)
+    if not resume:
+        raise FileExistsError(
+            f"Q1-R immutable evaluation checkpoint already exists: {path}"
+        )
+    checkpoint = torch.load(path, map_location="cpu", weights_only=False)
+    checks = {
+        "protocol": checkpoint.get("protocol") == PROTOCOL,
+        "resume_contract": checkpoint.get("resume_contract_sha256")
+        == contract_sha256,
+        "formal_base_absent": checkpoint.get("formal_base_state_stored")
+        is False,
+        "state": checkpoint.get("state") == state,
+        "quality_head": isinstance(checkpoint.get("quality_head"), dict)
+        and tensor_mapping_sha256(checkpoint["quality_head"])
+        == state_dict_sha256(quality_head),
+    }
+    failed = [name for name, passed in checks.items() if not passed]
+    if failed:
+        raise ValueError(
+            f"Q1-R immutable evaluation checkpoint failed reuse: {failed}"
+        )
+    return sha256_file(path)
+
+
+def build_evaluation_document(
+    *,
+    metrics: dict[str, Any],
+    updates: int,
+    source_commit: str,
+    evaluation_checkpoint: Path,
+    evaluation_checkpoint_sha256: str,
+    formal_base_state_sha256: str,
+    prior_consecutive_passes: int,
+) -> dict[str, Any]:
+    values = quality_metric_values(metrics)
+    decision = quality_tiny_gate(values, metrics)
+    consecutive_passes = (
+        prior_consecutive_passes + 1 if decision["passed"] else 0
+    )
+    decision["consecutive_passes"] = consecutive_passes
+    decision["early_stop_passed"] = consecutive_passes >= 2
+    return {
+        "schema_version": 1,
+        "protocol": PROTOCOL,
+        "source_commit": source_commit,
+        "updates_completed": updates,
+        "quality_checkpoint": str(evaluation_checkpoint.resolve()),
+        "quality_checkpoint_sha256": evaluation_checkpoint_sha256,
+        "formal_base_state_sha256": formal_base_state_sha256,
+        "values": values,
+        "metrics": metrics,
+        "decision": decision,
+    }
+
+
+def load_completed_evaluation(
+    path: Path,
+    *,
+    updates: int,
+    source_commit: str,
+    evaluation_checkpoint: Path,
+    evaluation_checkpoint_sha256: str,
+    formal_base_state_sha256: str,
+    prior_consecutive_passes: int,
+) -> dict[str, Any]:
+    document = json.loads(path.read_text(encoding="utf-8"))
+    metrics = document.get("metrics")
+    if not isinstance(metrics, dict):
+        raise ValueError("Q1-R completed evaluation lacks metrics")
+    recomputed = build_evaluation_document(
+        metrics=metrics,
+        updates=updates,
+        source_commit=source_commit,
+        evaluation_checkpoint=evaluation_checkpoint,
+        evaluation_checkpoint_sha256=evaluation_checkpoint_sha256,
+        formal_base_state_sha256=formal_base_state_sha256,
+        prior_consecutive_passes=prior_consecutive_passes,
+    )
+    if document != recomputed:
+        raise ValueError("Q1-R completed evaluation differs from recomputation")
+    return recomputed
+
+
+def bind_candidate_preparation(
+    path: Path,
+    document: dict[str, Any],
+    *,
+    resume: bool,
+) -> str:
+    if resume:
+        if path.is_file():
+            existing = json.loads(path.read_text(encoding="utf-8"))
+            if existing != document:
+                raise ValueError("Q1-R candidate preparation changed on resume")
+        else:
+            atomic_json(path, document)
+    else:
+        atomic_json(path, document)
+    return sha256_file(path)
+
+
+def write_capacity_failure(
+    output_dir: Path,
+    error: ExactExportCapacityError,
+) -> None:
+    path = output_dir / "terminal_capacity_failure.json"
+    document = {
+        "schema_version": 1,
+        "protocol": PROTOCOL,
+        "status": "quality_ranking_no_go_exact_10000_capacity",
+        "message": str(error),
+        "capacity_report": error.report,
+        "scientific_decision_eligible": True,
+        "copy_padding_jitter_duplicate": False,
+    }
+    if path.exists():
+        existing = json.loads(path.read_text(encoding="utf-8"))
+        if existing != document:
+            raise ValueError("Q1-R capacity failure artifact changed")
+        return
+    atomic_json(path, document)
+
+
 def prepare_output(path: Path, *, resume: bool) -> None:
+    """Validate the output target without creating scientific artifacts."""
+
     if resume:
         if not (path / "run_manifest.json").is_file():
             raise FileNotFoundError("Q1 resume requires run_manifest.json")
         if (path / "summary.json").exists():
             raise FileExistsError("Q1 completed run cannot be resumed")
+        if (path / "terminal_capacity_failure.json").exists():
+            raise FileExistsError("Q1 terminal capacity failure cannot be resumed")
         return
     if path.exists():
         raise FileExistsError(f"Q1 output already exists: {path}")
+
+
+def initialize_output(path: Path, *, resume: bool) -> None:
+    if resume:
+        if not path.is_dir():
+            raise FileNotFoundError("Q1 resume output directory disappeared")
+        return
     path.mkdir(parents=True)
 
 
@@ -1224,7 +1418,6 @@ def main() -> None:
     config = frozen_quality_config()
     repo = Path(__file__).resolve().parents[2]
     verify_source_tree(repo, args.source_commit)
-    prepare_output(args.output_dir, resume=args.resume)
     device, device_name = require_h200(args.device)
 
     input_hashes, manifest_counts = validate_frozen_inputs(
@@ -1356,6 +1549,7 @@ def main() -> None:
         args.formal_best_metrics,
         args.formal_run_manifest,
         expected_certifier_source_commit=args.source_commit,
+        repo=repo,
     )
 
     log_center, log_scale = load_normalization(args.normalization)
@@ -1367,8 +1561,51 @@ def main() -> None:
         device=device,
     )
     base_state_digest = state_dict_sha256(base_model)
-    quality_head = build_quality_head(config, device=device)
     inference_config = build_inference_config(config)
+    prepare_output(args.output_dir, resume=args.resume)
+
+    torch.manual_seed(config.seed)
+    torch.cuda.manual_seed_all(config.seed)
+    np.random.seed(config.seed)
+    random.seed(config.seed)
+    quality_head = build_quality_head(config, device=device)
+    base_model.eval()
+    quality_head.eval()
+    training_frames: dict[int, FrozenCandidateTrainingFrame] = {}
+    preparation_reports: list[dict[str, Any]] = []
+    try:
+        for index in train_indices:
+            frame = prepare_training_frame(
+                base_model,
+                quality_head,
+                train_dataset[index],
+                axes,
+                inference_config,
+                config,
+                device,
+            )
+            training_frames[index] = frame
+            preparation_reports.append(frame.report)
+            torch.cuda.empty_cache()
+    except ExactExportCapacityError as error:
+        initialize_output(args.output_dir, resume=args.resume)
+        write_capacity_failure(args.output_dir, error)
+        raise SystemExit(2) from error
+    preparation_document = {
+        "schema_version": 1,
+        "protocol": PROTOCOL,
+        "frame_count": len(preparation_reports),
+        "frames": preparation_reports,
+        "all_initial_ranking_controls_passed": all(
+            report["initial_ranking_control"]["passed"]
+            for report in preparation_reports
+        ),
+        "target_accessed_after_candidate_construction": True,
+        "target_used_for_inference": False,
+    }
+    preparation_sha = json_artifact_sha256(preparation_document)
+    initialize_output(args.output_dir, resume=args.resume)
+
     current_source_hashes = source_hashes(repo)
     contract = {
         "protocol": PROTOCOL,
@@ -1378,6 +1615,7 @@ def main() -> None:
         "source_hashes": current_source_hashes,
         "tiny_frame_ids": _tiny_frame_ids(train_dataset, train_indices),
         "formal_base_state_sha256": base_state_digest,
+        "candidate_preparation_sha256": preparation_sha,
     }
     contract_sha = canonical_digest(contract)
     if args.resume:
@@ -1408,6 +1646,13 @@ def main() -> None:
             "formal_metrics_evidence": formal_metrics_evidence,
             "formal_run_manifest_evidence": formal_manifest_evidence,
             "replay_parent_certificate_evidence": replay_parent_evidence,
+            "candidate_preparation_binding": {
+                "path": str(
+                    (args.output_dir / "candidate_preparation.json").resolve()
+                ),
+                "sha256": preparation_sha,
+                "resume_requires_exact_match": True,
+            },
             "cache_binding": {
                 "ordered_digest_sha256": cache_digest,
                 "expected_ordered_digest_sha256": (
@@ -1441,44 +1686,13 @@ def main() -> None:
             },
         }
         atomic_json(args.output_dir / "run_manifest.json", manifest)
-
-    torch.manual_seed(config.seed)
-    torch.cuda.manual_seed_all(config.seed)
-    np.random.seed(config.seed)
-    random.seed(config.seed)
-    quality_head = build_quality_head(config, device=device)
-    base_model.eval()
-    quality_head.eval()
-    training_frames: dict[int, FrozenCandidateTrainingFrame] = {}
-    preparation_reports: list[dict[str, Any]] = []
-    for index in train_indices:
-        frame = prepare_training_frame(
-            base_model,
-            quality_head,
-            train_dataset[index],
-            axes,
-            inference_config,
-            config,
-            device,
-        )
-        training_frames[index] = frame
-        preparation_reports.append(frame.report)
-        torch.cuda.empty_cache()
-    atomic_json(
+    bound_preparation_sha = bind_candidate_preparation(
         args.output_dir / "candidate_preparation.json",
-        {
-            "schema_version": 1,
-            "protocol": PROTOCOL,
-            "frame_count": len(preparation_reports),
-            "frames": preparation_reports,
-            "all_initial_ranking_controls_passed": all(
-                report["initial_ranking_control"]["passed"]
-                for report in preparation_reports
-            ),
-            "target_accessed_after_candidate_construction": True,
-            "target_used_for_inference": False,
-        },
+        preparation_document,
+        resume=args.resume,
     )
+    if bound_preparation_sha != preparation_sha:
+        raise AssertionError("Q1-R candidate preparation SHA changed on write")
 
     optimizer = torch.optim.AdamW(
         quality_head.parameters(),
@@ -1526,65 +1740,59 @@ def main() -> None:
                 evaluation_checkpoint = (
                     args.output_dir / f"checkpoint_update{updates:04d}.pt"
                 )
-                if evaluation_checkpoint.exists():
-                    raise FileExistsError(
-                        "Q1-R immutable evaluation checkpoint already exists: "
-                        f"{evaluation_checkpoint}"
-                    )
-                save_checkpoint(
+                evaluation_checkpoint_sha = ensure_evaluation_checkpoint(
                     evaluation_checkpoint,
+                    resume=args.resume,
                     quality_head=quality_head,
                     optimizer=optimizer,
                     state=state,
                     contract_sha256=contract_sha,
                 )
-                metrics = evaluate_quality(
-                    base_model,
-                    quality_head,
-                    train_dataset,
-                    train_indices,
-                    wrong_indices,
-                    inference_config,
-                    axes,
-                    device,
-                )
-                values = quality_metric_values(metrics)
-                decision = quality_tiny_gate(values, metrics)
-                state["consecutive_gate_passes"] = (
-                    int(state["consecutive_gate_passes"]) + 1
-                    if decision["passed"]
-                    else 0
-                )
-                decision["consecutive_passes"] = int(
-                    state["consecutive_gate_passes"]
-                )
-                decision["early_stop_passed"] = (
-                    state["consecutive_gate_passes"] >= 2
-                )
-                evaluation = {
-                    "schema_version": 1,
-                    "protocol": PROTOCOL,
-                    "source_commit": args.source_commit,
-                    "updates_completed": updates,
-                    "quality_checkpoint": str(
-                        evaluation_checkpoint.resolve()
-                    ),
-                    "quality_checkpoint_sha256": sha256_file(
-                        evaluation_checkpoint
-                    ),
-                    "formal_base_state_sha256": state_dict_sha256(base_model),
-                    "values": values,
-                    "metrics": metrics,
-                    "decision": decision,
-                }
-                if (
-                    evaluation["formal_base_state_sha256"]
-                    != base_state_digest
-                ):
+                current_base_digest = state_dict_sha256(base_model)
+                if current_base_digest != base_state_digest:
                     raise AssertionError("Q1 modified the formal R-A1 base")
-                atomic_json(
-                    args.output_dir / f"metrics_update{updates:04d}.json",
-                    evaluation,
+                prior_consecutive = int(state["consecutive_gate_passes"])
+                metrics_path = (
+                    args.output_dir / f"metrics_update{updates:04d}.json"
+                )
+                if metrics_path.exists():
+                    if not args.resume:
+                        raise FileExistsError(
+                            f"Q1-R immutable evaluation metrics exist: {metrics_path}"
+                        )
+                    evaluation = load_completed_evaluation(
+                        metrics_path,
+                        updates=updates,
+                        source_commit=args.source_commit,
+                        evaluation_checkpoint=evaluation_checkpoint,
+                        evaluation_checkpoint_sha256=evaluation_checkpoint_sha,
+                        formal_base_state_sha256=current_base_digest,
+                        prior_consecutive_passes=prior_consecutive,
+                    )
+                else:
+                    metrics = evaluate_quality(
+                        base_model,
+                        quality_head,
+                        train_dataset,
+                        train_indices,
+                        wrong_indices,
+                        inference_config,
+                        axes,
+                        device,
+                    )
+                    evaluation = build_evaluation_document(
+                        metrics=metrics,
+                        updates=updates,
+                        source_commit=args.source_commit,
+                        evaluation_checkpoint=evaluation_checkpoint,
+                        evaluation_checkpoint_sha256=evaluation_checkpoint_sha,
+                        formal_base_state_sha256=current_base_digest,
+                        prior_consecutive_passes=prior_consecutive,
+                    )
+                    atomic_json(metrics_path, evaluation)
+                decision = evaluation["decision"]
+                state["consecutive_gate_passes"] = int(
+                    decision["consecutive_passes"]
                 )
                 state["evaluation_updates_completed"].append(updates)
                 if decision["early_stop_passed"]:
@@ -1708,18 +1916,7 @@ def main() -> None:
                 loss,
             )
     except ExactExportCapacityError as error:
-        atomic_json(
-            args.output_dir / "terminal_capacity_failure.json",
-            {
-                "schema_version": 1,
-                "protocol": PROTOCOL,
-                "status": "quality_ranking_no_go_exact_10000_capacity",
-                "message": str(error),
-                "capacity_report": error.report,
-                "scientific_decision_eligible": True,
-                "copy_padding_jitter_duplicate": False,
-            },
-        )
+        write_capacity_failure(args.output_dir, error)
         raise SystemExit(2) from error
 
     state["status"] = stop_reason

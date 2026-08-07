@@ -10,9 +10,19 @@ import math
 from pathlib import Path
 import re
 import subprocess
+import sys
 from typing import Any
 
+import numpy as np
 import torch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from eval.dense_geometry import aggregate_geometry_reports  # noqa: E402
+from eval.rald_wce_failure_factors import (  # noqa: E402
+    aggregate_failure_factor_frames,
+)
+from scripts.train_rald_wce_stage0 import stage0_decision  # noqa: E402
 
 
 PROTOCOL = "g1_q1r_replay_parent_certificate_v1"
@@ -112,6 +122,118 @@ def _json_normalize(value: Any) -> Any:
     return value
 
 
+def _aggregate_scalar_reports(
+    reports: list[dict[str, float]],
+) -> dict[str, dict[str, float | int]]:
+    if not reports:
+        raise ValueError("Q1-R cannot aggregate an empty scalar report list")
+    keys = sorted(reports[0])
+    if any(sorted(report) != keys for report in reports):
+        raise ValueError("Q1-R scalar report keys differ")
+    return {
+        key: {
+            "mean": float(np.mean([report[key] for report in reports])),
+            "median": float(np.median([report[key] for report in reports])),
+            "std": float(np.std([report[key] for report in reports])),
+            "sample_count": len(reports),
+        }
+        for key in keys
+    }
+
+
+def _recompute_formal_metrics(frames: list[dict[str, Any]]) -> dict[str, Any]:
+    if not frames:
+        raise ValueError("Q1-R formal metrics cannot have an empty frame list")
+    minimum_pair_distance = min(
+        float(frame["matched_export"]["observed_minimum_pair_distance_m"])
+        for frame in frames
+    )
+    return {
+        "frame_count": len(frames),
+        "scene_count": len({int(frame["sequence"]) for frame in frames}),
+        "far_target_frame_count": sum(
+            bool(frame["has_far_target"]) for frame in frames
+        ),
+        "frames": frames,
+        "matched": aggregate_geometry_reports(
+            [frame["matched"] for frame in frames]
+        ),
+        "wrong_condition": aggregate_geometry_reports(
+            [frame["wrong_condition"] for frame in frames]
+        ),
+        "condition_intervention": _aggregate_scalar_reports(
+            [frame["condition_intervention"] for frame in frames]
+        ),
+        "exact_export": {
+            "point_count_per_frame": 10_000,
+            "minimum_observed_pair_distance_m": minimum_pair_distance,
+            "all_matched_exports_exact_10000": all(
+                frame["matched_export"]["exact_point_count"] == 10_000
+                for frame in frames
+            ),
+            "all_wrong_exports_exact_10000": all(
+                frame["wrong_export"]["exact_point_count"] == 10_000
+                for frame in frames
+            ),
+            "copy_padding_jitter_duplicate": any(
+                frame[arm]["copy_padding_jitter_duplicate"] is not False
+                for frame in frames
+                for arm in ("matched_export", "wrong_export")
+            ),
+        },
+    }
+
+
+def _recompute_formal_document(
+    document: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any], bool]:
+    stored_metrics = document.get("metrics")
+    stored_decision = document.get("decision")
+    if not isinstance(stored_metrics, dict) or not isinstance(
+        stored_decision, dict
+    ):
+        raise ValueError("Q1-R formal document lacks metrics or decision")
+    frames = stored_metrics.get("frames")
+    if not isinstance(frames, list):
+        raise ValueError("Q1-R formal document lacks frame reports")
+    recomputed_metrics = _recompute_formal_metrics(frames)
+    stored_values = stored_decision.get("values")
+    if not isinstance(stored_values, dict):
+        raise ValueError("Q1-R formal decision lacks values")
+    peak_allocated_gib = float(stored_values["peak_allocated_gib"])
+    peak_reserved_gib = float(stored_values["peak_reserved_gib"])
+    if not math.isfinite(peak_allocated_gib) or not math.isfinite(
+        peak_reserved_gib
+    ):
+        raise FloatingPointError("Q1-R formal memory values are non-finite")
+    recomputed_decision = stage0_decision(
+        recomputed_metrics,
+        peak_allocated_bytes=round(peak_allocated_gib * 2**30),
+        peak_reserved_bytes=round(peak_reserved_gib * 2**30),
+        formal=True,
+    )
+    aggregate_keys = (
+        "frame_count",
+        "scene_count",
+        "far_target_frame_count",
+        "matched",
+        "wrong_condition",
+        "condition_intervention",
+        "exact_export",
+    )
+    metrics_consistent = all(
+        _json_normalize(stored_metrics.get(key))
+        == _json_normalize(recomputed_metrics.get(key))
+        for key in aggregate_keys
+    )
+    decision_consistent = _json_normalize(stored_decision) == _json_normalize(
+        recomputed_decision
+    )
+    return recomputed_metrics, recomputed_decision, (
+        metrics_consistent and decision_consistent
+    )
+
+
 def _query_hash(frame: dict[str, Any], key: str) -> str:
     value = frame.get("inference", {}).get("query_hashes", {}).get(key)
     if not isinstance(value, str) or len(value) != 64:
@@ -160,13 +282,6 @@ def _frame_identity(frame: dict[str, Any]) -> tuple[int, int, int, int]:
     )
 
 
-def _formal_values(document: dict[str, Any]) -> dict[str, float]:
-    values = document.get("decision", {}).get("values")
-    if not isinstance(values, dict):
-        raise ValueError("Q1-R formal metrics lack decision values")
-    return {key: float(values[key]) for key in VALUE_TOLERANCES}
-
-
 def certify_replay_parent(
     *,
     archived_metrics_path: Path,
@@ -211,8 +326,18 @@ def certify_replay_parent(
         for row in source_comparison.values()
     )
 
-    archived_frames = archived_metrics.get("metrics", {}).get("frames", [])
-    replay_frames = replay_metrics.get("metrics", {}).get("frames", [])
+    (
+        archived_recomputed_metrics,
+        archived_recomputed_decision,
+        archived_formal_consistent,
+    ) = _recompute_formal_document(archived_metrics)
+    (
+        replay_recomputed_metrics,
+        replay_recomputed_decision,
+        replay_formal_consistent,
+    ) = _recompute_formal_document(replay_metrics)
+    archived_frames = archived_recomputed_metrics["frames"]
+    replay_frames = replay_recomputed_metrics["frames"]
     if not isinstance(archived_frames, list) or not isinstance(
         replay_frames, list
     ):
@@ -249,8 +374,14 @@ def certify_replay_parent(
         )
     )
 
-    archived_values = _formal_values(archived_metrics)
-    replay_values = _formal_values(replay_metrics)
+    archived_values = {
+        key: float(archived_recomputed_decision["values"][key])
+        for key in VALUE_TOLERANCES
+    }
+    replay_values = {
+        key: float(replay_recomputed_decision["values"][key])
+        for key in VALUE_TOLERANCES
+    }
     if not all(
         math.isfinite(value)
         for value in (*archived_values.values(), *replay_values.values())
@@ -273,8 +404,8 @@ def certify_replay_parent(
         row["passed"] for row in value_comparison.values()
     )
 
-    archived_decision = archived_metrics.get("decision", {})
-    replay_decision = replay_metrics.get("decision", {})
+    archived_decision = archived_recomputed_decision
+    replay_decision = replay_recomputed_decision
     decision_preserved = (
         archived_decision.get("protocol") == FORMAL_PROTOCOL
         and replay_decision.get("protocol") == FORMAL_PROTOCOL
@@ -332,8 +463,15 @@ def certify_replay_parent(
         and frame.get("candidate_pool", {}).get("cfar_accessed") is False
         for frame in diagnosis_frames
     )
-    diagnosis_decision = diagnosis.get("aggregate", {}).get("decision", {})
     diagnosis_aggregate = diagnosis.get("aggregate", {})
+    diagnosis_recomputed_aggregate = aggregate_failure_factor_frames(
+        diagnosis_frames,
+        preflight=False,
+    )
+    diagnosis_aggregate_consistent = _json_normalize(
+        diagnosis_aggregate
+    ) == _json_normalize(diagnosis_recomputed_aggregate)
+    diagnosis_decision = diagnosis_recomputed_aggregate["decision"]
     diagnosis_boundary = diagnosis.get("evidence_boundary", {})
     diagnosis_checkpoint = diagnosis.get("checkpoint", {})
     diagnosis_metrics = diagnosis.get("formal_metrics", {})
@@ -348,6 +486,26 @@ def certify_replay_parent(
         "doppler_locked",
     )
     diagnosis_count_checks = diagnosis_decision.get("count_checks", {})
+    archived_runtime = archived_manifest.get("runtime", {})
+    replay_runtime = replay_manifest.get("runtime", {})
+    diagnosis_runtime = diagnosis.get("runtime", {})
+    runtime_device_names = (
+        archived_runtime.get("device_name"),
+        replay_runtime.get("device_name"),
+        diagnosis_runtime.get("device_name"),
+    )
+    runtime_torch_versions = (
+        archived_runtime.get("torch_version"),
+        replay_runtime.get("torch_version"),
+        diagnosis_runtime.get("torch_version"),
+    )
+    h200_runtime_match = all(
+        isinstance(name, str) and "H200" in name.upper()
+        for name in runtime_device_names
+    ) and (
+        isinstance(runtime_torch_versions[0], str)
+        and len(set(runtime_torch_versions)) == 1
+    )
     diagnosis_replay_binding = (
         diagnosis.get("protocol") == DIAGNOSIS_PROTOCOL
         and diagnosis.get("source_commit") == certifier_source_commit
@@ -359,6 +517,7 @@ def certify_replay_parent(
         and diagnosis_q1_hash_matches == 24
         and diagnosis_control_count == 24
         and diagnosis_candidate_contracts
+        and diagnosis_aggregate_consistent
         and diagnosis_aggregate.get("frame_count") == 24
         and diagnosis_aggregate.get("far_target_frame_count") == 23
         and diagnosis_checkpoint.get("sha256") == checkpoint_sha
@@ -400,15 +559,6 @@ def certify_replay_parent(
         is False
         and diagnosis_decision.get("method_promotion_eligible") is False
     )
-    forbidden_access_locked = (
-        diagnosis_boundary.get("training_started") is False
-        and diagnosis_boundary.get("checkpoint_modified") is False
-        and diagnosis_boundary.get("test_partition_accessed") is False
-        and diagnosis_boundary.get("future_cube_accessed") is False
-        and diagnosis_boundary.get("cfar_accessed") is False
-        and diagnosis_boundary.get("doppler_head_evaluated") is False
-    )
-
     checks = {
         "source_config_data_seed_epoch_match": (
             checkpoint.get("protocol") == FORMAL_PROTOCOL
@@ -437,6 +587,10 @@ def certify_replay_parent(
             and source_hashes_match
             and replay_metrics.get("checkpoint_sha256") == checkpoint_sha
             and replay_metrics.get("epoch") == 20
+            and h200_runtime_match
+        ),
+        "formal_metrics_recomputed": (
+            archived_formal_consistent and replay_formal_consistent
         ),
         "formal_stage0_decision_preserved": (
             decision_preserved and values_within_tolerance
@@ -455,24 +609,40 @@ def certify_replay_parent(
             and q0_hash_matches == 24
         ),
         "replay_diagnosis_bound": diagnosis_replay_binding,
+        "diagnosis_aggregate_recomputed": diagnosis_aggregate_consistent,
         "validation_gt_ranking_oracle_passed": oracle_passed,
-        "test_partition_accessed": False if forbidden_access_locked else True,
-        "future_cube_accessed": False if forbidden_access_locked else True,
-        "cfar_accessed": False if forbidden_access_locked else True,
-        "doppler_head_evaluated": False if forbidden_access_locked else True,
+        "training_started": diagnosis_boundary.get("training_started")
+        is not False,
+        "checkpoint_modified": diagnosis_boundary.get("checkpoint_modified")
+        is not False,
+        "test_partition_accessed": diagnosis_boundary.get(
+            "test_partition_accessed"
+        )
+        is not False,
+        "future_cube_accessed": diagnosis_boundary.get("future_cube_accessed")
+        is not False,
+        "cfar_accessed": diagnosis_boundary.get("cfar_accessed") is not False,
+        "doppler_head_evaluated": diagnosis_boundary.get(
+            "doppler_head_evaluated"
+        )
+        is not False,
     }
     authorized = (
         all(
             checks[key]
             for key in (
                 "source_config_data_seed_epoch_match",
+                "formal_metrics_recomputed",
                 "formal_stage0_decision_preserved",
                 "validation_frame_contract_preserved",
                 "candidate_query_contract_preserved",
                 "replay_diagnosis_bound",
+                "diagnosis_aggregate_recomputed",
                 "validation_gt_ranking_oracle_passed",
             )
         )
+        and checks["training_started"] is False
+        and checks["checkpoint_modified"] is False
         and checks["test_partition_accessed"] is False
         and checks["future_cube_accessed"] is False
         and checks["cfar_accessed"] is False
@@ -524,6 +694,15 @@ def certify_replay_parent(
             "replay_is_original_checkpoint": (
                 checkpoint_sha == ORIGINAL_CHECKPOINT_SHA256
             ),
+            "runtime": {
+                "archived_device_name": runtime_device_names[0],
+                "replay_device_name": runtime_device_names[1],
+                "diagnosis_device_name": runtime_device_names[2],
+                "archived_torch_version": runtime_torch_versions[0],
+                "replay_torch_version": runtime_torch_versions[1],
+                "diagnosis_torch_version": runtime_torch_versions[2],
+                "h200_and_torch_version_match": h200_runtime_match,
+            },
         },
         "inputs": {
             "archived_metrics_sha256": sha256_file(archived_metrics_path),

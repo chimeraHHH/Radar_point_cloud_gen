@@ -287,8 +287,59 @@ def test_quality_gate_requires_numeric_and_both_export_structures() -> None:
     assert failed["numeric_checks"] == passed["numeric_checks"]
 
 
-def test_replay_parent_certificate_binds_every_parent_artifact(
+def _fake_parent_certificate(
+    *,
+    checkpoint: Path,
+    metrics: Path,
+    manifest: Path,
+    diagnosis: Path,
+    certifier_source_commit: str,
+) -> dict:
+    checks = {
+        "source_config_data_seed_epoch_match": True,
+        "formal_metrics_recomputed": True,
+        "formal_stage0_decision_preserved": True,
+        "validation_frame_contract_preserved": True,
+        "candidate_query_contract_preserved": True,
+        "replay_diagnosis_bound": True,
+        "diagnosis_aggregate_recomputed": True,
+        "validation_gt_ranking_oracle_passed": True,
+        "training_started": False,
+        "checkpoint_modified": False,
+        "test_partition_accessed": False,
+        "future_cube_accessed": False,
+        "cfar_accessed": False,
+        "doppler_head_evaluated": False,
+    }
+    checkpoint_sha = train.sha256_file(checkpoint)
+    return {
+        "schema_version": 1,
+        "protocol": train.PARENT_CERTIFICATE_PROTOCOL,
+        "status": "replay_parent_authorized_for_q1r_tiny",
+        "q1r_tiny_authorized": True,
+        "identity": {
+            "original_checkpoint_sha256": (
+                train.ORIGINAL_FORMAL_CHECKPOINT_SHA256
+            ),
+            "replay_checkpoint_sha256": checkpoint_sha,
+            "replay_metrics_sha256": train.sha256_file(metrics),
+            "replay_run_manifest_sha256": train.sha256_file(manifest),
+            "replay_failure_diagnosis_sha256": train.sha256_file(diagnosis),
+            "formal_source_commit": train.FORMAL_PARENT_SOURCE_COMMIT,
+            "formal_epoch": 20,
+            "exact_original_checkpoint": (
+                checkpoint_sha == train.ORIGINAL_FORMAL_CHECKPOINT_SHA256
+            ),
+            "certifier_source_commit": certifier_source_commit,
+        },
+        "checks": checks,
+        "claim_boundary": "source-equivalent replay, not original",
+    }
+
+
+def test_replay_parent_certificate_is_recomputed_and_binds_every_artifact(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     checkpoint = tmp_path / "checkpoint.pt"
     metrics = tmp_path / "metrics.json"
@@ -301,46 +352,27 @@ def test_replay_parent_certificate_binds_every_parent_artifact(
         (diagnosis, b"diagnosis"),
     ):
         path.write_bytes(payload)
-    identity = {
-        "original_checkpoint_sha256": (
-            train.ORIGINAL_FORMAL_CHECKPOINT_SHA256
-        ),
-        "replay_checkpoint_sha256": train.sha256_file(checkpoint),
-        "replay_metrics_sha256": train.sha256_file(metrics),
-        "replay_run_manifest_sha256": train.sha256_file(manifest),
-        "replay_failure_diagnosis_sha256": train.sha256_file(diagnosis),
-        "formal_source_commit": train.FORMAL_PARENT_SOURCE_COMMIT,
-        "formal_epoch": 20,
-        "exact_original_checkpoint": False,
-        "certifier_source_commit": "a" * 40,
-    }
-    checks = {
-        "source_config_data_seed_epoch_match": True,
-        "formal_stage0_decision_preserved": True,
-        "validation_frame_contract_preserved": True,
-        "candidate_query_contract_preserved": True,
-        "replay_diagnosis_bound": True,
-        "validation_gt_ranking_oracle_passed": True,
-        "test_partition_accessed": False,
-        "future_cube_accessed": False,
-        "cfar_accessed": False,
-        "doppler_head_evaluated": False,
-    }
-    certificate = tmp_path / "certificate.json"
-    certificate.write_text(
-        json.dumps(
-            {
-                "schema_version": 1,
-                "protocol": train.PARENT_CERTIFICATE_PROTOCOL,
-                "status": "replay_parent_authorized_for_q1r_tiny",
-                "q1r_tiny_authorized": True,
-                "identity": identity,
-                "checks": checks,
-                "claim_boundary": "source-equivalent replay, not original",
-            }
-        ),
-        encoding="utf-8",
+    source_commit = "a" * 40
+
+    def fake_certifier(**kwargs: object) -> dict:
+        return _fake_parent_certificate(
+            checkpoint=Path(kwargs["replay_checkpoint_path"]),
+            metrics=Path(kwargs["replay_metrics_path"]),
+            manifest=Path(kwargs["replay_manifest_path"]),
+            diagnosis=Path(kwargs["replay_diagnosis_path"]),
+            certifier_source_commit=str(kwargs["certifier_source_commit"]),
+        )
+
+    monkeypatch.setattr(train, "certify_replay_parent", fake_certifier)
+    document = fake_certifier(
+        replay_checkpoint_path=checkpoint,
+        replay_metrics_path=metrics,
+        replay_manifest_path=manifest,
+        replay_diagnosis_path=diagnosis,
+        certifier_source_commit=source_commit,
     )
+    certificate = tmp_path / "certificate.json"
+    certificate.write_text(json.dumps(document), encoding="utf-8")
 
     evidence = train.validate_replay_parent_certificate(
         certificate,
@@ -348,20 +380,221 @@ def test_replay_parent_certificate_binds_every_parent_artifact(
         checkpoint,
         metrics,
         manifest,
-        expected_certifier_source_commit="a" * 40,
+        expected_certifier_source_commit=source_commit,
+        repo=tmp_path,
     )
     assert evidence["validation_checks"]["replay_artifact_hashes"] is True
+    assert evidence["trainer_recomputed_certificate"] is True
 
     diagnosis.write_bytes(b"changed")
-    with pytest.raises(ValueError, match="replay_artifact_hashes"):
+    with pytest.raises(ValueError, match="differs from trainer recomputation"):
         train.validate_replay_parent_certificate(
             certificate,
             diagnosis,
             checkpoint,
             metrics,
             manifest,
-            expected_certifier_source_commit="a" * 40,
+            expected_certifier_source_commit=source_commit,
+            repo=tmp_path,
         )
+
+
+def test_replay_parent_certificate_rejects_forged_all_true_document(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = {}
+    for name in ("checkpoint", "metrics", "manifest", "diagnosis"):
+        path = tmp_path / name
+        path.write_bytes(name.encode("ascii"))
+        paths[name] = path
+    source_commit = "a" * 40
+    recomputed = _fake_parent_certificate(
+        checkpoint=paths["checkpoint"],
+        metrics=paths["metrics"],
+        manifest=paths["manifest"],
+        diagnosis=paths["diagnosis"],
+        certifier_source_commit=source_commit,
+    )
+    monkeypatch.setattr(train, "certify_replay_parent", lambda **_: recomputed)
+    forged = json.loads(json.dumps(recomputed))
+    forged["comparison"] = {"invented": True}
+    certificate = tmp_path / "certificate.json"
+    certificate.write_text(json.dumps(forged), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="differs from trainer recomputation"):
+        train.validate_replay_parent_certificate(
+            certificate,
+            paths["diagnosis"],
+            paths["checkpoint"],
+            paths["metrics"],
+            paths["manifest"],
+            expected_certifier_source_commit=source_commit,
+            repo=tmp_path,
+        )
+
+
+def test_immutable_evaluation_checkpoint_is_reused_exactly(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    head = _quality_head()
+    optimizer = torch.optim.AdamW(head.parameters(), lr=1e-3)
+    state = train.initial_state()
+    path = tmp_path / "checkpoint_update0100.pt"
+
+    def cpu_safe_save(
+        output: Path,
+        *,
+        quality_head: RaLDWCEQualityHead,
+        optimizer: torch.optim.Optimizer,
+        state: dict,
+        contract_sha256: str,
+    ) -> None:
+        torch.save(
+            {
+                "protocol": train.PROTOCOL,
+                "resume_contract_sha256": contract_sha256,
+                "quality_head": quality_head.state_dict(),
+                "optimizer": optimizer.state_dict(),
+                "state": state,
+                "formal_base_state_stored": False,
+            },
+            output,
+        )
+
+    monkeypatch.setattr(train, "save_checkpoint", cpu_safe_save)
+    first_sha = train.ensure_evaluation_checkpoint(
+        path,
+        resume=False,
+        quality_head=head,
+        optimizer=optimizer,
+        state=state,
+        contract_sha256="contract",
+    )
+    second_sha = train.ensure_evaluation_checkpoint(
+        path,
+        resume=True,
+        quality_head=head,
+        optimizer=optimizer,
+        state=state,
+        contract_sha256="contract",
+    )
+    assert first_sha == second_sha
+
+    with torch.no_grad():
+        next(head.parameters()).add_(1.0)
+    with pytest.raises(ValueError, match="quality_head"):
+        train.ensure_evaluation_checkpoint(
+            path,
+            resume=True,
+            quality_head=head,
+            optimizer=optimizer,
+            state=state,
+            contract_sha256="contract",
+        )
+
+
+def _quality_metrics() -> dict:
+    return {
+        "matched": {
+            "chamfer_m": {"mean": 0.8},
+            "outlier_fraction_2m": {"mean": 0.08},
+            "completeness_mean_distance_m": {
+                "mean": 0.7,
+                "median": 0.6,
+            },
+            "range_60_120m_fscore_1m": {"mean": 0.1},
+        },
+        "condition_intervention": {
+            "wrong_minus_matched_chamfer_fraction": {"mean": 0.0},
+            "matched_chamfer_better": {"mean": 0.0},
+        },
+        "exact_export": {
+            "all_matched_exports_exact_10000": True,
+            "all_wrong_exports_exact_10000": True,
+            "all_minimum_distance_5cm": True,
+            "all_wrong_minimum_distance_5cm": True,
+            "copy_padding_jitter_duplicate": False,
+        },
+    }
+
+
+def test_completed_evaluation_is_recomputed_before_resume(tmp_path: Path) -> None:
+    checkpoint = tmp_path / "checkpoint_update0100.pt"
+    checkpoint.write_bytes(b"immutable")
+    path = tmp_path / "metrics_update0100.json"
+    document = train.build_evaluation_document(
+        metrics=_quality_metrics(),
+        updates=100,
+        source_commit="a" * 40,
+        evaluation_checkpoint=checkpoint,
+        evaluation_checkpoint_sha256=train.sha256_file(checkpoint),
+        formal_base_state_sha256="base",
+        prior_consecutive_passes=0,
+    )
+    train.atomic_json(path, document)
+
+    loaded = train.load_completed_evaluation(
+        path,
+        updates=100,
+        source_commit="a" * 40,
+        evaluation_checkpoint=checkpoint,
+        evaluation_checkpoint_sha256=train.sha256_file(checkpoint),
+        formal_base_state_sha256="base",
+        prior_consecutive_passes=0,
+    )
+    assert loaded == document
+
+    document["decision"]["passed"] = False
+    train.atomic_json(path, document)
+    with pytest.raises(ValueError, match="differs from recomputation"):
+        train.load_completed_evaluation(
+            path,
+            updates=100,
+            source_commit="a" * 40,
+            evaluation_checkpoint=checkpoint,
+            evaluation_checkpoint_sha256=train.sha256_file(checkpoint),
+            formal_base_state_sha256="base",
+            prior_consecutive_passes=0,
+        )
+
+
+def test_candidate_preparation_is_immutable_across_resume(tmp_path: Path) -> None:
+    path = tmp_path / "candidate_preparation.json"
+    document = {"protocol": train.PROTOCOL, "frames": [{"id": 1}]}
+    expected_sha = train.json_artifact_sha256(document)
+
+    assert train.bind_candidate_preparation(
+        path,
+        document,
+        resume=False,
+    ) == expected_sha
+    assert train.bind_candidate_preparation(
+        path,
+        document,
+        resume=True,
+    ) == expected_sha
+
+    path.unlink()
+    assert train.bind_candidate_preparation(
+        path,
+        document,
+        resume=True,
+    ) == expected_sha
+    changed = {"protocol": train.PROTOCOL, "frames": [{"id": 2}]}
+    with pytest.raises(ValueError, match="changed on resume"):
+        train.bind_candidate_preparation(path, changed, resume=True)
+
+
+def test_output_validation_has_no_creation_side_effect(tmp_path: Path) -> None:
+    output = tmp_path / "new-run"
+
+    train.prepare_output(output, resume=False)
+
+    assert output.exists() is False
+    train.initialize_output(output, resume=False)
+    assert output.is_dir()
 
 
 def test_cpu_test_does_not_initialize_cuda() -> None:

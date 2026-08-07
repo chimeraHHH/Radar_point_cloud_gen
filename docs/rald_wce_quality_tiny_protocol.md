@@ -12,8 +12,8 @@ eight-frame/500-update memorization control also failed its frozen gate.
 
 Q1-R asks one narrow, falsifiable question:
 
-> Can an independent continuous geometry-quality head learn to rank the
-> a source/config/data-equivalent replay of the formal R-A1 candidates on the
+> Can an independent continuous geometry-quality head learn to rank a
+> source/config/data-equivalent replay of the formal R-A1 candidates on the
 > frozen eight train frames?
 
 This pilot is ranking-only. It does not authorize a new candidate generator,
@@ -27,6 +27,14 @@ epoch-20 replay from source `f2a9489d40323d1ef45d85de958f4aea8126e1c8`, the
 same seed/config/input hashes and H200 class, followed by a source-bound parent
 certificate. The certificate must bind the replay checkpoint, endpoint
 metrics, run manifest, and a replayed full-24 failure-factor diagnosis.
+
+The certifier independently rebuilds formal aggregate metrics and the Stage-0
+decision from the 24 per-frame reports. It also rebuilds the failure-factor
+aggregate and branch from diagnosis frames; stored aggregate or decision fields
+are not trusted. Archived, replay, and diagnosis runtime records must all name
+an H200 and the same Torch version. The training process invokes the certifier
+again and requires byte-for-JSON equality with the supplied certificate, so an
+externally constructed all-true document cannot authorize training.
 
 The certificate may authorize Q1-R only when the formal Stage-0 decision is
 preserved, all 24 validation-frame identities and fixed Q0 query hashes hold,
@@ -156,6 +164,7 @@ also binds:
   certificate hashes;
 - source commit and hashes for the formal parent, quality implementation,
   evaluator, training script, and this protocol.
+- the complete candidate-preparation document and its canonical SHA-256.
 
 `arr_doppler.mat` is bound because it is part of the immutable K-Radar axis
 resource set. Q1-R does not read a Doppler target, predict Doppler, or evaluate a
@@ -187,6 +196,12 @@ The run then stops as `quality_ranking_tiny_passed_early`.
 
 Each evaluation writes an immutable `checkpoint_updateXXXX.pt`; the metrics
 record its SHA-256 and no later resume checkpoint may overwrite it.
+Candidate preparation is written only after the source, data, parent, and
+certificate checks succeed. A resume must reconstruct the same preparation
+document and digest. If evaluation is interrupted after its immutable
+checkpoint or metrics are written, resume verifies the checkpoint state and
+recomputes the metrics decision before advancing the completed-evaluation
+state.
 
 ## Pre-registered failure decisions
 
@@ -201,9 +216,12 @@ record its SHA-256 and no later resume checkpoint may overwrite it.
 - Any formal-base state-dict change or gradient: implementation invalid; do
   not report the run.
 
-Passing this tiny gate authorizes a separately frozen 76/24 Q1-R pilot. It does
-not pass G1, unlock Doppler/cycle/temporal work, or support a validation/test
-claim.
+Passing this tiny gate authorizes a separately frozen 76-train/24-development
+Q1-R generalization pilot. Because the same 24 validation frames informed the
+failure diagnosis and route selection, that cohort is development evidence,
+not untouched independent validation. A final generalization claim requires a
+separately locked, previously untouched test cohort. The tiny result does not
+pass G1, unlock Doppler/cycle/temporal work, or support a validation/test claim.
 
 ## Verification and launch boundary
 
