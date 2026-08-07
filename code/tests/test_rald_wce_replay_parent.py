@@ -28,12 +28,29 @@ def _read_json(path: Path) -> dict:
 
 def test_frozen_archive_hashes_match_repository_evidence() -> None:
     repo = Path(__file__).resolve().parents[2]
-    assert cert.sha256_file(
+    metrics_path = (
         repo / "artifacts/g1/wce_formal_f2a9489/metrics_epoch020.json"
-    ) == cert.ARCHIVED_METRICS_SHA256
+    )
+    assert cert.sha256_file(metrics_path) == cert.ARCHIVED_METRICS_SHA256
     assert cert.sha256_file(
         repo / "artifacts/g1/wce_formal_f2a9489/run_manifest.json"
     ) == cert.ARCHIVED_RUN_MANIFEST_SHA256
+    _, _, consistent = cert._recompute_formal_document(
+        _read_json(metrics_path)
+    )
+    assert consistent is True
+
+
+def test_archived_failure_diagnosis_aggregate_recomputes_exactly() -> None:
+    repo = Path(__file__).resolve().parents[2]
+    diagnosis = _read_json(
+        repo / "artifacts/g1/wce_failure_diag_eb0a5f5/full24.json"
+    )
+    recomputed = cert.aggregate_failure_factor_frames(
+        diagnosis["frames"],
+        preflight=False,
+    )
+    assert recomputed == diagnosis["aggregate"]
 
 
 def _geometry(
@@ -67,6 +84,15 @@ def _formal_frames(
     replay: list[dict] = []
     for index in range(24):
         has_far_target = index < 23
+        matched_chamfer = chamfer
+        wrong_chamfer = chamfer * 1.13
+        matched_hashes = {
+            "xyz_sha256": _digest(f"matched-xyz-{index}"),
+            "confidence_sha256": _digest(f"matched-confidence-{index}"),
+            "selected_candidate_rows_sha256": _digest(
+                f"matched-rows-{index}"
+            ),
+        }
         common = {
             "sequence": index + 1,
             "radar_index": 100 + index,
@@ -75,20 +101,24 @@ def _formal_frames(
             "wrong_condition_radar_index": 500 + index,
             "has_far_target": has_far_target,
             "matched": _geometry(
-                chamfer=chamfer,
+                chamfer=matched_chamfer,
                 completeness=1.5,
                 outlier=0.31,
                 far=11.1 if has_far_target else None,
             ),
             "wrong_condition": _geometry(
-                chamfer=chamfer * 1.13,
+                chamfer=wrong_chamfer,
                 completeness=1.7,
                 outlier=0.35,
                 far=12.0 if has_far_target else None,
             ),
             "condition_intervention": {
-                "wrong_minus_matched_chamfer_fraction": 0.13,
-                "matched_chamfer_better": 1.0 if index < 16 else 0.0,
+                "wrong_minus_matched_chamfer_fraction": (
+                    wrong_chamfer / matched_chamfer - 1.0
+                ),
+                "matched_chamfer_better": float(
+                    matched_chamfer < wrong_chamfer
+                ),
             },
             "matched_export": {
                 "exact_point_count": 10_000,
@@ -100,6 +130,7 @@ def _formal_frames(
                 "observed_minimum_pair_distance_m": 0.06,
                 "copy_padding_jitter_duplicate": False,
             },
+            "matched_hashes": matched_hashes,
             "inference": {
                 "config": {
                     "q0_query_count": 500_000,
@@ -244,6 +275,7 @@ def _write_bundle(
     diagnosis_frames = []
     for index, frame in enumerate(replay_frames):
         replay_query_hashes = frame["inference"]["query_hashes"]
+        replay_export_hashes = frame["matched_hashes"]
         diagnosis_q1_hash = replay_query_hashes[
             "q1_normalized_rae_sha256"
         ]
@@ -270,10 +302,8 @@ def _write_bundle(
                     },
                 },
                 "current_confidence": {
-                    "geometry": _diagnosis_geometry(
-                        rescued=False,
-                        has_far_target=frame["has_far_target"],
-                    ),
+                    "geometry": frame["matched"],
+                    "export_report": frame["matched_export"],
                     "formal_hash_control": {
                         "passed": diagnosis_control_passed,
                         "bit_exact": diagnosis_control_passed,
@@ -292,6 +322,10 @@ def _write_bundle(
                                 diagnosis_control_passed
                             ),
                         },
+                        "actual_export_hashes": replay_export_hashes,
+                        "expected_export_hashes": replay_export_hashes,
+                        "actual_query_hashes": replay_query_hashes,
+                        "expected_query_hashes": replay_query_hashes,
                     },
                 },
                 "validation_gt_nearest_score": {
@@ -302,6 +336,38 @@ def _write_bundle(
                 },
             }
         )
+    repo = Path(cert.__file__).resolve().parents[2]
+    diagnostic_source_hashes = {
+        relative: cert.sha256_file(repo / relative)
+        for relative in cert.DIAGNOSTIC_SOURCE_RELATIVE_PATHS
+    }
+    checkpoint_checks = {
+        "checkpoint_protocol": True,
+        "checkpoint_source_commit_full": True,
+        "formal_not_smoke": True,
+        "formal_seed": True,
+        "formal_epochs": True,
+        "full_training_set": True,
+        "full_validation_set": True,
+        "q0_500k": True,
+        "q1_200k": True,
+        "fixed_export_quotas": True,
+        "minimum_distance_5cm": True,
+        "test_locked": True,
+        "doppler_head_locked": True,
+        "model_state_present": True,
+        "metrics_protocol": True,
+        "metrics_source_matches_checkpoint": True,
+        "metrics_epoch_matches_checkpoint": True,
+        "metrics_checkpoint_hash_matches": True,
+    }
+    source_compatibility = {
+        suffix: {
+            "sha256": source_hashes[f"/formal/source/{suffix}"],
+            "matches_formal_run": True,
+        }
+        for suffix in cert.FORMAL_SOURCE_SUFFIXES
+    }
     diagnosis = {
         "protocol": cert.DIAGNOSIS_PROTOCOL,
         "source_commit": CERTIFIER_SOURCE_COMMIT,
@@ -313,6 +379,7 @@ def _write_bundle(
             "protocol": cert.FORMAL_PROTOCOL,
             "source_commit": cert.FORMAL_SOURCE_COMMIT,
             "epoch": 20,
+            "checks": checkpoint_checks,
         },
         "formal_metrics": {
             "sha256": cert.sha256_file(replay_metrics_path),
@@ -329,10 +396,22 @@ def _write_bundle(
                 "test_locked": True,
                 "doppler_locked": True,
             },
+            "checkpoint_source_compatibility": source_compatibility,
         },
+        "artifact_label": cert.diagnostic_artifact_label(),
+        "frozen_inputs": {
+            "hashes": input_hashes,
+            "test_partition_accessed": False,
+        },
+        "diagnostic_source_hashes": diagnostic_source_hashes,
+        "candidate_contract": replay_frames[0]["inference"]["config"],
         "runtime": {
+            "device_argument": "cuda:0",
             "device_name": "NVIDIA H200 NVL",
             "torch_version": "2.12.1+cu130",
+            "cuda_device_order": "PCI_BUS_ID",
+            "cuda_visible_devices": "2",
+            "visible_cuda_device_count": 1,
         },
         "frames": diagnosis_frames,
         "aggregate": cert.aggregate_failure_factor_frames(
@@ -442,6 +521,50 @@ def test_certifier_rejects_failed_diagnosis_control(tmp_path: Path) -> None:
     assert document["q1r_tiny_authorized"] is False
     assert document["checks"]["replay_diagnosis_bound"] is False
     assert document["checks"]["validation_gt_ranking_oracle_passed"] is False
+
+
+def test_certifier_rejects_forged_true_hash_control(tmp_path: Path) -> None:
+    paths = _write_bundle(tmp_path)
+    diagnosis = _read_json(paths["replay_diagnosis_path"])
+    diagnosis["frames"][0]["current_confidence"]["formal_hash_control"][
+        "actual_export_hashes"
+    ]["xyz_sha256"] = _digest("forged-actual-export")
+    _write_json(paths["replay_diagnosis_path"], diagnosis)
+
+    document = _certify(paths)
+
+    assert document["q1r_tiny_authorized"] is False
+    assert (
+        document["checks"]["diagnosis_hash_geometry_chain_recomputed"]
+        is False
+    )
+
+
+def test_certifier_rejects_diagnostic_source_hash_drift(tmp_path: Path) -> None:
+    paths = _write_bundle(tmp_path)
+    diagnosis = _read_json(paths["replay_diagnosis_path"])
+    first = cert.DIAGNOSTIC_SOURCE_RELATIVE_PATHS[0]
+    diagnosis["diagnostic_source_hashes"][first] = _digest("source-drift")
+    _write_json(paths["replay_diagnosis_path"], diagnosis)
+
+    document = _certify(paths)
+
+    assert document["q1r_tiny_authorized"] is False
+    assert document["checks"]["diagnostic_source_and_input_binding"] is False
+
+
+def test_certifier_rejects_diagnosis_outside_physical_gpu_policy(
+    tmp_path: Path,
+) -> None:
+    paths = _write_bundle(tmp_path)
+    diagnosis = _read_json(paths["replay_diagnosis_path"])
+    diagnosis["runtime"]["cuda_visible_devices"] = "1"
+    _write_json(paths["replay_diagnosis_path"], diagnosis)
+
+    document = _certify(paths)
+
+    assert document["q1r_tiny_authorized"] is False
+    assert document["checks"]["physical_gpu_policy"] is False
 
 
 def test_certifier_rejects_formal_metric_drift(tmp_path: Path) -> None:

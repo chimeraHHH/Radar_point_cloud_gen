@@ -29,12 +29,23 @@ certificate. The certificate must bind the replay checkpoint, endpoint
 metrics, run manifest, and a replayed full-24 failure-factor diagnosis.
 
 The certifier independently rebuilds formal aggregate metrics and the Stage-0
-decision from the 24 per-frame reports. It also rebuilds the failure-factor
-aggregate and branch from diagnosis frames; stored aggregate or decision fields
-are not trusted. Archived, replay, and diagnosis runtime records must all name
-an H200 and the same Torch version. The training process invokes the certifier
-again and requires byte-for-JSON equality with the supplied certificate, so an
-externally constructed all-true document cannot authorize training.
+decision from the 24 per-frame reports, including deriving condition effects
+from matched/wrong Chamfer rather than trusting the stored intervention field.
+It also rebuilds the failure-factor aggregate and branch from diagnosis frames;
+stored aggregate or decision fields are not trusted. Legacy formal artifacts
+did not store independent raw peak-memory bytes, so their finite peak-memory
+values remain explicitly pinned from the source-bound endpoint decision rather
+than being described as independently reconstructed.
+
+Archived, replay, and diagnosis runtime records must use the exact H200 device
+name and the same Torch version. New diagnosis and Q1-R runs additionally
+require `CUDA_DEVICE_ORDER=PCI_BUS_ID`, exactly one visible device, and
+`CUDA_VISIBLE_DEVICES` equal to physical GPU `0` or `2`. The certificate checks
+actual/expected/replay export hashes, query hashes, current geometry, exporter
+reports, diagnostic source hashes, frozen inputs, checkpoint checks, and the
+candidate contract. The training process invokes the certifier again and
+requires byte-for-JSON equality with the supplied certificate, so an externally
+constructed all-true document cannot authorize training.
 
 The certificate may authorize Q1-R only when the formal Stage-0 decision is
 preserved, all 24 validation-frame identities and fixed Q0 query hashes hold,
@@ -200,8 +211,13 @@ Candidate preparation is written only after the source, data, parent, and
 certificate checks succeed. A resume must reconstruct the same preparation
 document and digest. If evaluation is interrupted after its immutable
 checkpoint or metrics are written, resume verifies the checkpoint state and
-recomputes the metrics decision before advancing the completed-evaluation
-state.
+recomputes every gate-bearing aggregate from per-frame reports before deriving
+the decision. New runs initialize manifest, candidate evidence, and `last.pt`
+inside a private same-filesystem staging directory and atomically rename it to
+the final output path only when the initialization transaction is complete.
+Terminal status and runtime are committed in `last.pt` before summary writing;
+a terminal resume validates the final immutable evaluation and may only
+regenerate the missing summary, never continue training.
 
 ## Pre-registered failure decisions
 

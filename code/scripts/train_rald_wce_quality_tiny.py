@@ -8,11 +8,13 @@ from dataclasses import asdict, dataclass
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import random
 import re
 import subprocess
 import sys
+import tempfile
 import time
 from typing import Any
 
@@ -301,6 +303,9 @@ def validate_replay_parent_certificate(
         "candidate_query_contract_preserved": True,
         "replay_diagnosis_bound": True,
         "diagnosis_aggregate_recomputed": True,
+        "diagnosis_hash_geometry_chain_recomputed": True,
+        "diagnostic_source_and_input_binding": True,
+        "physical_gpu_policy": True,
         "validation_gt_ranking_oracle_passed": True,
         "training_started": False,
         "checkpoint_modified": False,
@@ -355,13 +360,22 @@ def validate_replay_parent_certificate(
 
 
 def require_h200(device_name: str) -> tuple[torch.device, str]:
+    if os.environ.get("CUDA_DEVICE_ORDER") != "PCI_BUS_ID":
+        raise RuntimeError("Q1 tiny requires CUDA_DEVICE_ORDER=PCI_BUS_ID")
+    visible = os.environ.get("CUDA_VISIBLE_DEVICES")
+    if visible not in ("0", "2"):
+        raise RuntimeError(
+            "Q1 tiny requires exactly physical H200 GPU 0 or 2 visible"
+        )
     if not torch.cuda.is_available():
         raise RuntimeError("Q1 tiny requires CUDA on an H200")
     device = torch.device(device_name)
-    if device.type != "cuda":
-        raise RuntimeError("Q1 tiny is H200 CUDA-only")
+    if device.type != "cuda" or device.index not in (None, 0):
+        raise RuntimeError("Q1 tiny requires the single visible device cuda:0")
+    if torch.cuda.device_count() != 1:
+        raise RuntimeError("Q1 tiny requires exactly one visible CUDA device")
     resolved = torch.cuda.get_device_name(device)
-    if "H200" not in resolved.upper():
+    if resolved != "NVIDIA H200 NVL":
         raise RuntimeError(f"Q1 tiny requires H200, got {resolved}")
     if not torch.cuda.is_bf16_supported():
         raise RuntimeError("Q1 tiny requires BF16 support")
@@ -1066,6 +1080,85 @@ def evaluate_quality(
     }
 
 
+def recompute_quality_metrics(document: dict[str, Any]) -> dict[str, Any]:
+    """Rebuild every gate-bearing aggregate from immutable frame reports."""
+
+    frames = document.get("frames")
+    if not isinstance(frames, list) or not frames:
+        raise ValueError("Q1-R evaluation lacks frame reports")
+    normalized_frames: list[dict[str, Any]] = []
+    for frame in frames:
+        matched = float(frame["matched"]["chamfer_m"])
+        wrong = float(frame["wrong_condition"]["chamfer_m"])
+        if not math.isfinite(matched) or not math.isfinite(wrong) or matched <= 0:
+            raise ValueError("Q1-R evaluation has invalid frame Chamfer")
+        inference = frame.get("inference", {})
+        if not (
+            frame.get("partition") == "train"
+            and inference.get("ground_truth_accessed") is False
+            and inference.get("test_accessed") is False
+            and inference.get("doppler_head") is False
+            and inference.get("best_of_k") is False
+        ):
+            raise ValueError("Q1-R evaluation frame crossed its evidence boundary")
+        normalized = dict(frame)
+        normalized["condition_intervention"] = {
+            "wrong_minus_matched_chamfer_fraction": wrong / matched - 1.0,
+            "matched_chamfer_better": float(matched < wrong),
+        }
+        normalized_frames.append(normalized)
+    return {
+        "frame_count": len(normalized_frames),
+        "scene_count": len(
+            {int(frame["sequence"]) for frame in normalized_frames}
+        ),
+        "frames": normalized_frames,
+        "matched": aggregate_geometry_reports(
+            [frame["matched"] for frame in normalized_frames]
+        ),
+        "wrong_condition": aggregate_geometry_reports(
+            [frame["wrong_condition"] for frame in normalized_frames]
+        ),
+        "condition_intervention": _aggregate_scalars(
+            [frame["condition_intervention"] for frame in normalized_frames]
+        ),
+        "exact_export": {
+            "point_count_per_frame": EXPORT_COUNT,
+            "all_matched_exports_exact_10000": all(
+                frame["matched_export"]["exact_point_count"] == EXPORT_COUNT
+                for frame in normalized_frames
+            ),
+            "all_wrong_exports_exact_10000": all(
+                frame["wrong_export"]["exact_point_count"] == EXPORT_COUNT
+                for frame in normalized_frames
+            ),
+            "all_minimum_distance_5cm": all(
+                frame["matched_export"]["observed_minimum_pair_distance_m"]
+                >= CAPACITY_DISTANCE_M - 1e-6
+                for frame in normalized_frames
+            ),
+            "all_wrong_minimum_distance_5cm": all(
+                frame["wrong_export"]["observed_minimum_pair_distance_m"]
+                >= CAPACITY_DISTANCE_M - 1e-6
+                for frame in normalized_frames
+            ),
+            "copy_padding_jitter_duplicate": any(
+                frame[arm].get("copy_padding_jitter_duplicate") is not False
+                for frame in normalized_frames
+                for arm in ("matched_export", "wrong_export")
+            ),
+        },
+        "evidence_boundary": {
+            "test_partition_accessed": False,
+            "future_cube_accessed": False,
+            "cache_arrays_read": list(ALLOWED_CACHE_ARRAYS),
+            "ground_truth_accessed_for_inference_or_selection": False,
+            "doppler_head_evaluated": False,
+            "best_of_k": False,
+        },
+    }
+
+
 def quality_metric_values(metrics: dict[str, Any]) -> dict[str, float]:
     values = metric_values(
         {
@@ -1135,6 +1228,7 @@ def initial_state() -> dict[str, Any]:
         "consecutive_gate_passes": 0,
         "loss_history": [],
         "status": "running",
+        "terminal_runtime": None,
     }
 
 
@@ -1243,6 +1337,7 @@ def build_evaluation_document(
     formal_base_state_sha256: str,
     prior_consecutive_passes: int,
 ) -> dict[str, Any]:
+    metrics = recompute_quality_metrics(metrics)
     values = quality_metric_values(metrics)
     decision = quality_tiny_gate(values, metrics)
     consecutive_passes = (
@@ -1290,6 +1385,103 @@ def load_completed_evaluation(
     if document != recomputed:
         raise ValueError("Q1-R completed evaluation differs from recomputation")
     return recomputed
+
+
+def validate_terminal_resume(
+    run_dir: Path,
+    *,
+    state: dict[str, Any],
+    quality_head: RaLDWCEQualityHead,
+    contract_sha256: str,
+    source_commit: str,
+    formal_base_state_sha256: str,
+    maximum_updates: int,
+) -> str:
+    """Validate a terminal checkpoint before regenerating a missing summary."""
+
+    status = state.get("status")
+    allowed = {
+        "quality_ranking_tiny_passed_early",
+        "quality_ranking_no_go_at_500_updates",
+    }
+    if status not in allowed:
+        raise ValueError(f"Q1-R resume has invalid terminal status: {status}")
+    updates = int(state["updates_completed"])
+    completed = state.get("evaluation_updates_completed")
+    if not isinstance(completed, list) or not completed or completed[-1] != updates:
+        raise ValueError("Q1-R terminal state lacks its final evaluation")
+    evaluation_checkpoint = run_dir / f"checkpoint_update{updates:04d}.pt"
+    metrics_path = run_dir / f"metrics_update{updates:04d}.json"
+    if not evaluation_checkpoint.is_file() or not metrics_path.is_file():
+        raise FileNotFoundError("Q1-R terminal evaluation artifacts are incomplete")
+    checkpoint = torch.load(
+        evaluation_checkpoint,
+        map_location="cpu",
+        weights_only=False,
+    )
+    checkpoint_state = checkpoint.get("state")
+    checkpoint_checks = {
+        "protocol": checkpoint.get("protocol") == PROTOCOL,
+        "resume_contract": checkpoint.get("resume_contract_sha256")
+        == contract_sha256,
+        "formal_base_absent": checkpoint.get("formal_base_state_stored")
+        is False,
+        "quality_head": isinstance(checkpoint.get("quality_head"), dict)
+        and tensor_mapping_sha256(checkpoint["quality_head"])
+        == state_dict_sha256(quality_head),
+        "checkpoint_state": isinstance(checkpoint_state, dict),
+    }
+    failed = [name for name, passed in checkpoint_checks.items() if not passed]
+    if failed:
+        raise ValueError(
+            f"Q1-R terminal evaluation checkpoint failed: {failed}"
+        )
+    if not (
+        int(checkpoint_state["updates_completed"]) == updates
+        and checkpoint_state.get("status") == "running"
+        and checkpoint_state.get("evaluation_updates_completed") == completed[:-1]
+    ):
+        raise ValueError("Q1-R terminal pre-evaluation state is inconsistent")
+    evaluation = load_completed_evaluation(
+        metrics_path,
+        updates=updates,
+        source_commit=source_commit,
+        evaluation_checkpoint=evaluation_checkpoint,
+        evaluation_checkpoint_sha256=sha256_file(evaluation_checkpoint),
+        formal_base_state_sha256=formal_base_state_sha256,
+        prior_consecutive_passes=int(
+            checkpoint_state["consecutive_gate_passes"]
+        ),
+    )
+    decision = evaluation["decision"]
+    expected_status = (
+        "quality_ranking_tiny_passed_early"
+        if decision["early_stop_passed"]
+        else "quality_ranking_no_go_at_500_updates"
+    )
+    terminal_runtime = state.get("terminal_runtime")
+    terminal_checks = {
+        "status": status == expected_status,
+        "maximum_update_for_no_go": (
+            status != "quality_ranking_no_go_at_500_updates"
+            or updates == maximum_updates
+        ),
+        "consecutive_passes": int(state["consecutive_gate_passes"])
+        == int(decision["consecutive_passes"]),
+        "terminal_runtime": isinstance(terminal_runtime, dict)
+        and all(
+            key in terminal_runtime
+            for key in (
+                "elapsed_seconds",
+                "peak_allocated_bytes",
+                "peak_reserved_bytes",
+            )
+        ),
+    }
+    failed = [name for name, passed in terminal_checks.items() if not passed]
+    if failed:
+        raise ValueError(f"Q1-R terminal state failed resume: {failed}")
+    return str(status)
 
 
 def bind_candidate_preparation(
@@ -1353,6 +1545,18 @@ def initialize_output(path: Path, *, resume: bool) -> None:
             raise FileNotFoundError("Q1 resume output directory disappeared")
         return
     path.mkdir(parents=True)
+
+
+def create_staging_output(final_path: Path) -> Path:
+    """Create a private same-filesystem directory for atomic initialization."""
+
+    final_path.parent.mkdir(parents=True, exist_ok=True)
+    return Path(
+        tempfile.mkdtemp(
+            prefix=f".{final_path.name}.initializing-",
+            dir=final_path.parent,
+        )
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -1604,7 +1808,6 @@ def main() -> None:
         "target_used_for_inference": False,
     }
     preparation_sha = json_artifact_sha256(preparation_document)
-    initialize_output(args.output_dir, resume=args.resume)
 
     current_source_hashes = source_hashes(repo)
     contract = {
@@ -1639,6 +1842,9 @@ def main() -> None:
                 "device_argument": args.device,
                 "device_name": device_name,
                 "torch_version": torch.__version__,
+                "cuda_device_order": os.environ.get("CUDA_DEVICE_ORDER"),
+                "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
+                "visible_cuda_device_count": torch.cuda.device_count(),
                 "quality_parameter_count": quality_parameter_count(quality_head),
                 "formal_base_trainable_parameter_count": 0,
             },
@@ -1685,22 +1891,21 @@ def main() -> None:
                 "best_of_k": False,
             },
         }
-        atomic_json(args.output_dir / "run_manifest.json", manifest)
-    bound_preparation_sha = bind_candidate_preparation(
-        args.output_dir / "candidate_preparation.json",
-        preparation_document,
-        resume=args.resume,
-    )
-    if bound_preparation_sha != preparation_sha:
-        raise AssertionError("Q1-R candidate preparation SHA changed on write")
-
     optimizer = torch.optim.AdamW(
         quality_head.parameters(),
         lr=config.learning_rate,
         weight_decay=config.weight_decay,
     )
-    checkpoint_path = args.output_dir / "last.pt"
     if args.resume:
+        run_dir = args.output_dir
+        bound_preparation_sha = bind_candidate_preparation(
+            run_dir / "candidate_preparation.json",
+            preparation_document,
+            resume=True,
+        )
+        if bound_preparation_sha != preparation_sha:
+            raise AssertionError("Q1-R candidate preparation SHA changed")
+        checkpoint_path = run_dir / "last.pt"
         state = load_checkpoint(
             checkpoint_path,
             quality_head=quality_head,
@@ -1709,6 +1914,16 @@ def main() -> None:
         )
     else:
         state = initial_state()
+        staging_dir = create_staging_output(args.output_dir)
+        atomic_json(staging_dir / "run_manifest.json", manifest)
+        bound_preparation_sha = bind_candidate_preparation(
+            staging_dir / "candidate_preparation.json",
+            preparation_document,
+            resume=False,
+        )
+        if bound_preparation_sha != preparation_sha:
+            raise AssertionError("Q1-R candidate preparation SHA changed")
+        checkpoint_path = staging_dir / "last.pt"
         save_checkpoint(
             checkpoint_path,
             quality_head=quality_head,
@@ -1716,14 +1931,31 @@ def main() -> None:
             state=state,
             contract_sha256=contract_sha,
         )
-        _write_progress(args.output_dir, state)
+        _write_progress(staging_dir, state)
+        staging_dir.replace(args.output_dir)
+        run_dir = args.output_dir
+        checkpoint_path = run_dir / "last.pt"
 
     started = time.monotonic()
     stop_reason: str | None = None
+    resumed_terminal_recovery = False
     torch.cuda.empty_cache()
     torch.cuda.reset_peak_memory_stats(device)
+    if args.resume and state.get("status") != "running":
+        stop_reason = validate_terminal_resume(
+            run_dir,
+            state=state,
+            quality_head=quality_head,
+            contract_sha256=contract_sha,
+            source_commit=args.source_commit,
+            formal_base_state_sha256=base_state_digest,
+            maximum_updates=config.maximum_updates,
+        )
+        resumed_terminal_recovery = True
     try:
         while True:
+            if stop_reason is not None:
+                break
             updates = int(state["updates_completed"])
             evaluation_due = (
                 updates in config.evaluation_updates
@@ -1738,7 +1970,7 @@ def main() -> None:
                     contract_sha256=contract_sha,
                 )
                 evaluation_checkpoint = (
-                    args.output_dir / f"checkpoint_update{updates:04d}.pt"
+                    run_dir / f"checkpoint_update{updates:04d}.pt"
                 )
                 evaluation_checkpoint_sha = ensure_evaluation_checkpoint(
                     evaluation_checkpoint,
@@ -1753,7 +1985,7 @@ def main() -> None:
                     raise AssertionError("Q1 modified the formal R-A1 base")
                 prior_consecutive = int(state["consecutive_gate_passes"])
                 metrics_path = (
-                    args.output_dir / f"metrics_update{updates:04d}.json"
+                    run_dir / f"metrics_update{updates:04d}.json"
                 )
                 if metrics_path.exists():
                     if not args.resume:
@@ -1799,6 +2031,17 @@ def main() -> None:
                     stop_reason = "quality_ranking_tiny_passed_early"
                 elif updates == config.maximum_updates:
                     stop_reason = "quality_ranking_no_go_at_500_updates"
+                if stop_reason is not None:
+                    state["status"] = stop_reason
+                    state["terminal_runtime"] = {
+                        "elapsed_seconds": time.monotonic() - started,
+                        "peak_allocated_bytes": int(
+                            torch.cuda.max_memory_allocated(device)
+                        ),
+                        "peak_reserved_bytes": int(
+                            torch.cuda.max_memory_reserved(device)
+                        ),
+                    }
                 save_checkpoint(
                     checkpoint_path,
                     quality_head=quality_head,
@@ -1806,11 +2049,21 @@ def main() -> None:
                     state=state,
                     contract_sha256=contract_sha,
                 )
-                _write_progress(args.output_dir, state)
+                _write_progress(run_dir, state)
                 if stop_reason is not None:
                     break
             if updates >= config.maximum_updates:
                 stop_reason = "quality_ranking_no_go_at_500_updates"
+                state["status"] = stop_reason
+                state["terminal_runtime"] = {
+                    "elapsed_seconds": time.monotonic() - started,
+                    "peak_allocated_bytes": int(
+                        torch.cuda.max_memory_allocated(device)
+                    ),
+                    "peak_reserved_bytes": int(
+                        torch.cuda.max_memory_reserved(device)
+                    ),
+                }
                 break
 
             cycle = updates // len(train_indices) + 1
@@ -1895,7 +2148,7 @@ def main() -> None:
                     state=state,
                     contract_sha256=contract_sha,
                 )
-                _write_progress(args.output_dir, state)
+                _write_progress(run_dir, state)
             print(
                 json.dumps(
                     {
@@ -1916,10 +2169,16 @@ def main() -> None:
                 loss,
             )
     except ExactExportCapacityError as error:
-        write_capacity_failure(args.output_dir, error)
+        write_capacity_failure(run_dir, error)
         raise SystemExit(2) from error
 
-    state["status"] = stop_reason
+    if stop_reason is None:
+        raise AssertionError("Q1-R training ended without a terminal decision")
+    if state.get("status") != stop_reason:
+        raise AssertionError("Q1-R terminal status was not committed in-loop")
+    terminal_runtime = state.get("terminal_runtime")
+    if not isinstance(terminal_runtime, dict):
+        raise AssertionError("Q1-R terminal runtime was not committed")
     save_checkpoint(
         checkpoint_path,
         quality_head=quality_head,
@@ -1927,7 +2186,7 @@ def main() -> None:
         state=state,
         contract_sha256=contract_sha,
     )
-    _write_progress(args.output_dir, state)
+    _write_progress(run_dir, state)
     final_base_digest = state_dict_sha256(base_model)
     if final_base_digest != base_state_digest:
         raise AssertionError("Q1 terminal state changed the formal R-A1 base")
@@ -1943,16 +2202,17 @@ def main() -> None:
         "formal_base_unchanged": True,
         "ordered_cache_digest_sha256": cache_digest,
         "ordered_tiny_cube_digest_sha256": cube_digest,
-        "elapsed_seconds": time.monotonic() - started,
-        "peak_allocated_bytes": int(torch.cuda.max_memory_allocated(device)),
-        "peak_reserved_bytes": int(torch.cuda.max_memory_reserved(device)),
+        "elapsed_seconds": float(terminal_runtime["elapsed_seconds"]),
+        "peak_allocated_bytes": int(terminal_runtime["peak_allocated_bytes"]),
+        "peak_reserved_bytes": int(terminal_runtime["peak_reserved_bytes"]),
+        "resumed_terminal_recovery": resumed_terminal_recovery,
         "test_partition_accessed": False,
         "future_cube_accessed": False,
         "target_used_for_inference_or_selection": False,
         "doppler_head_evaluated": False,
         "best_of_k": False,
     }
-    atomic_json(args.output_dir / "summary.json", summary)
+    atomic_json(run_dir / "summary.json", summary)
     print(json.dumps(summary, indent=2), flush=True)
 
 

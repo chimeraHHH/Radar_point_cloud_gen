@@ -303,6 +303,9 @@ def _fake_parent_certificate(
         "candidate_query_contract_preserved": True,
         "replay_diagnosis_bound": True,
         "diagnosis_aggregate_recomputed": True,
+        "diagnosis_hash_geometry_chain_recomputed": True,
+        "diagnostic_source_and_input_binding": True,
+        "physical_gpu_policy": True,
         "validation_gt_ranking_oracle_passed": True,
         "training_started": False,
         "checkpoint_modified": False,
@@ -496,28 +499,53 @@ def test_immutable_evaluation_checkpoint_is_reused_exactly(
 
 
 def _quality_metrics() -> dict:
-    return {
-        "matched": {
-            "chamfer_m": {"mean": 0.8},
-            "outlier_fraction_2m": {"mean": 0.08},
-            "completeness_mean_distance_m": {
-                "mean": 0.7,
-                "median": 0.6,
-            },
-            "range_60_120m_fscore_1m": {"mean": 0.1},
-        },
-        "condition_intervention": {
-            "wrong_minus_matched_chamfer_fraction": {"mean": 0.0},
-            "matched_chamfer_better": {"mean": 0.0},
-        },
-        "exact_export": {
-            "all_matched_exports_exact_10000": True,
-            "all_wrong_exports_exact_10000": True,
-            "all_minimum_distance_5cm": True,
-            "all_wrong_minimum_distance_5cm": True,
+    frames = []
+    for index in range(8):
+        matched = {
+            "chamfer_m": 0.8,
+            "outlier_fraction_2m": 0.08,
+            "completeness_mean_distance_m": 0.7,
+            "range_60_120m_fscore_1m": 0.1,
+            "prediction_count": 10_000,
+            "target_count": 1_000,
+        }
+        wrong = {
+            "chamfer_m": 0.9,
+            "outlier_fraction_2m": 0.09,
+            "completeness_mean_distance_m": 0.75,
+            "range_60_120m_fscore_1m": 0.08,
+            "prediction_count": 10_000,
+            "target_count": 1_000,
+        }
+        export = {
+            "exact_point_count": 10_000,
+            "observed_minimum_pair_distance_m": 0.06,
             "copy_padding_jitter_duplicate": False,
-        },
-    }
+        }
+        frames.append(
+            {
+                "sequence": index + 1,
+                "radar_index": 100 + index,
+                "partition": "train",
+                "wrong_condition_sequence": 20 + index,
+                "wrong_condition_radar_index": 200 + index,
+                "matched": matched,
+                "wrong_condition": wrong,
+                "condition_intervention": {
+                    "wrong_minus_matched_chamfer_fraction": 0.125,
+                    "matched_chamfer_better": 1.0,
+                },
+                "matched_export": export,
+                "wrong_export": export,
+                "inference": {
+                    "ground_truth_accessed": False,
+                    "test_accessed": False,
+                    "doppler_head": False,
+                    "best_of_k": False,
+                },
+            }
+        )
+    return train.recompute_quality_metrics({"frames": frames})
 
 
 def test_completed_evaluation_is_recomputed_before_resume(tmp_path: Path) -> None:
@@ -548,6 +576,42 @@ def test_completed_evaluation_is_recomputed_before_resume(tmp_path: Path) -> Non
 
     document["decision"]["passed"] = False
     train.atomic_json(path, document)
+    with pytest.raises(ValueError, match="differs from recomputation"):
+        train.load_completed_evaluation(
+            path,
+            updates=100,
+            source_commit="a" * 40,
+            evaluation_checkpoint=checkpoint,
+            evaluation_checkpoint_sha256=train.sha256_file(checkpoint),
+            formal_base_state_sha256="base",
+            prior_consecutive_passes=0,
+        )
+
+
+def test_completed_evaluation_rejects_forged_aggregate_and_decision(
+    tmp_path: Path,
+) -> None:
+    checkpoint = tmp_path / "checkpoint_update0100.pt"
+    checkpoint.write_bytes(b"immutable")
+    path = tmp_path / "metrics_update0100.json"
+    document = train.build_evaluation_document(
+        metrics=_quality_metrics(),
+        updates=100,
+        source_commit="a" * 40,
+        evaluation_checkpoint=checkpoint,
+        evaluation_checkpoint_sha256=train.sha256_file(checkpoint),
+        formal_base_state_sha256="base",
+        prior_consecutive_passes=0,
+    )
+    document["metrics"]["matched"]["chamfer_m"]["mean"] = 0.1
+    document["values"] = train.quality_metric_values(document["metrics"])
+    document["decision"] = train.quality_tiny_gate(
+        document["values"], document["metrics"]
+    )
+    document["decision"]["consecutive_passes"] = 1
+    document["decision"]["early_stop_passed"] = False
+    train.atomic_json(path, document)
+
     with pytest.raises(ValueError, match="differs from recomputation"):
         train.load_completed_evaluation(
             path,
@@ -595,6 +659,107 @@ def test_output_validation_has_no_creation_side_effect(tmp_path: Path) -> None:
     assert output.exists() is False
     train.initialize_output(output, resume=False)
     assert output.is_dir()
+
+
+def test_staging_initialization_exposes_only_complete_output(tmp_path: Path) -> None:
+    output = tmp_path / "run"
+    staging = train.create_staging_output(output)
+
+    assert output.exists() is False
+    (staging / "run_manifest.json").write_text("{}", encoding="utf-8")
+    (staging / "candidate_preparation.json").write_text("{}", encoding="utf-8")
+    (staging / "last.pt").write_bytes(b"checkpoint")
+    staging.replace(output)
+
+    assert (output / "run_manifest.json").is_file()
+    assert (output / "candidate_preparation.json").is_file()
+    assert (output / "last.pt").is_file()
+
+
+def test_terminal_resume_validates_last_immutable_evaluation(
+    tmp_path: Path,
+) -> None:
+    head = _quality_head()
+    pre_state = train.initial_state()
+    pre_state["updates_completed"] = 100
+    pre_state["consecutive_gate_passes"] = 1
+    evaluation_checkpoint = tmp_path / "checkpoint_update0100.pt"
+    torch.save(
+        {
+            "protocol": train.PROTOCOL,
+            "resume_contract_sha256": "contract",
+            "quality_head": head.state_dict(),
+            "state": pre_state,
+            "formal_base_state_stored": False,
+        },
+        evaluation_checkpoint,
+    )
+    evaluation = train.build_evaluation_document(
+        metrics=_quality_metrics(),
+        updates=100,
+        source_commit="a" * 40,
+        evaluation_checkpoint=evaluation_checkpoint,
+        evaluation_checkpoint_sha256=train.sha256_file(evaluation_checkpoint),
+        formal_base_state_sha256="base",
+        prior_consecutive_passes=1,
+    )
+    assert evaluation["decision"]["early_stop_passed"] is True
+    train.atomic_json(tmp_path / "metrics_update0100.json", evaluation)
+    terminal = json.loads(json.dumps(pre_state))
+    terminal["evaluation_updates_completed"] = [100]
+    terminal["consecutive_gate_passes"] = 2
+    terminal["status"] = "quality_ranking_tiny_passed_early"
+    terminal["terminal_runtime"] = {
+        "elapsed_seconds": 12.0,
+        "peak_allocated_bytes": 100,
+        "peak_reserved_bytes": 200,
+    }
+
+    status = train.validate_terminal_resume(
+        tmp_path,
+        state=terminal,
+        quality_head=head,
+        contract_sha256="contract",
+        source_commit="a" * 40,
+        formal_base_state_sha256="base",
+        maximum_updates=500,
+    )
+
+    assert status == "quality_ranking_tiny_passed_early"
+    terminal["consecutive_gate_passes"] = 1
+    with pytest.raises(ValueError, match="consecutive_passes"):
+        train.validate_terminal_resume(
+            tmp_path,
+            state=terminal,
+            quality_head=head,
+            contract_sha256="contract",
+            source_commit="a" * 40,
+            formal_base_state_sha256="base",
+            maximum_updates=500,
+        )
+
+
+def test_h200_runtime_requires_frozen_physical_visibility(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CUDA_DEVICE_ORDER", "PCI_BUS_ID")
+    monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "2")
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(torch.cuda, "device_count", lambda: 1)
+    monkeypatch.setattr(
+        torch.cuda,
+        "get_device_name",
+        lambda _: "NVIDIA H200 NVL",
+    )
+    monkeypatch.setattr(torch.cuda, "is_bf16_supported", lambda: True)
+
+    device, name = train.require_h200("cuda:0")
+
+    assert device == torch.device("cuda:0")
+    assert name == "NVIDIA H200 NVL"
+    monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "1")
+    with pytest.raises(RuntimeError, match="physical H200 GPU 0 or 2"):
+        train.require_h200("cuda:0")
 
 
 def test_cpu_test_does_not_initialize_cuda() -> None:

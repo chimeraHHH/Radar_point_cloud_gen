@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 import json
+import os
 from pathlib import Path
 import sys
 from typing import Any
@@ -41,7 +42,7 @@ from scripts.train_rald_wce_stage0 import (  # noqa: E402
     PROTOCOL as WCE_PROTOCOL,
     git_output,
     load_normalization,
-    require_h200,
+    require_h200 as _require_h200_device,
     validate_development_manifest,
     validate_frozen_inputs,
     verify_source_tree,
@@ -57,6 +58,25 @@ CHECKPOINT_SOURCE_FILES = (
     "code/scripts/train_rald_wce_stage0.py",
     "code/cube_dense/dataset.py",
 )
+
+
+def require_h200(device_name: str) -> tuple[torch.device, str]:
+    if os.environ.get("CUDA_DEVICE_ORDER") != "PCI_BUS_ID":
+        raise RuntimeError("WCE diagnosis requires CUDA_DEVICE_ORDER=PCI_BUS_ID")
+    visible = os.environ.get("CUDA_VISIBLE_DEVICES")
+    if visible not in ("0", "2"):
+        raise RuntimeError(
+            "WCE diagnosis requires exactly physical H200 GPU 0 or 2 visible"
+        )
+    if torch.cuda.device_count() != 1:
+        raise RuntimeError("WCE diagnosis requires one visible CUDA device")
+    device = torch.device(device_name)
+    if device.type != "cuda" or device.index not in (None, 0):
+        raise RuntimeError("WCE diagnosis requires the visible device cuda:0")
+    device, resolved = _require_h200_device(device_name)
+    if resolved != "NVIDIA H200 NVL":
+        raise RuntimeError(f"WCE diagnosis requires H200 NVL, got {resolved}")
+    return device, resolved
 
 
 def atomic_json(path: Path, document: dict[str, Any]) -> None:
@@ -579,6 +599,9 @@ def main() -> None:
             "device_argument": args.device,
             "device_name": device_name,
             "torch_version": torch.__version__,
+            "cuda_device_order": os.environ.get("CUDA_DEVICE_ORDER"),
+            "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
+            "visible_cuda_device_count": torch.cuda.device_count(),
             "candidate_chunk_size": args.candidate_chunk_size,
             "target_chunk_size": args.target_chunk_size,
             "peak_allocated_bytes": int(

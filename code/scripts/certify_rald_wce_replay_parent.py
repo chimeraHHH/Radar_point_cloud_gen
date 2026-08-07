@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from eval.dense_geometry import aggregate_geometry_reports  # noqa: E402
 from eval.rald_wce_failure_factors import (  # noqa: E402
     aggregate_failure_factor_frames,
+    diagnostic_artifact_label,
 )
 from scripts.train_rald_wce_stage0 import stage0_decision  # noqa: E402
 
@@ -47,6 +48,16 @@ FORMAL_SOURCE_SUFFIXES = (
     "code/scripts/train_rald_wce_stage0.py",
     "code/cube_dense/dataset.py",
 )
+DIAGNOSTIC_SOURCE_RELATIVE_PATHS = (
+    "code/scripts/diagnose_rald_wce_failure_factors.py",
+    "code/eval/rald_wce_failure_factors.py",
+    "code/eval/rald_wce_stage0.py",
+    "code/eval/dense_geometry.py",
+    "code/eval/g1a_wide_support.py",
+    "code/models/rald_wce_field.py",
+    "code/cube_dense/kradar.py",
+)
+EXPECTED_H200_DEVICE_NAME = "NVIDIA H200 NVL"
 VALUE_TOLERANCES = {
     "chamfer_mean_m": 0.02,
     "completeness_median_m": 0.02,
@@ -141,6 +152,17 @@ def _aggregate_scalar_reports(
     }
 
 
+def _derived_condition_intervention(frame: dict[str, Any]) -> dict[str, float]:
+    matched = float(frame["matched"]["chamfer_m"])
+    wrong = float(frame["wrong_condition"]["chamfer_m"])
+    if not math.isfinite(matched) or not math.isfinite(wrong) or matched <= 0.0:
+        raise ValueError("Q1-R formal frame has invalid Chamfer values")
+    return {
+        "wrong_minus_matched_chamfer_fraction": wrong / matched - 1.0,
+        "matched_chamfer_better": float(matched < wrong),
+    }
+
+
 def _recompute_formal_metrics(frames: list[dict[str, Any]]) -> dict[str, Any]:
     if not frames:
         raise ValueError("Q1-R formal metrics cannot have an empty frame list")
@@ -162,7 +184,7 @@ def _recompute_formal_metrics(frames: list[dict[str, Any]]) -> dict[str, Any]:
             [frame["wrong_condition"] for frame in frames]
         ),
         "condition_intervention": _aggregate_scalar_reports(
-            [frame["condition_intervention"] for frame in frames]
+            [_derived_condition_intervention(frame) for frame in frames]
         ),
         "exact_export": {
             "point_count_per_frame": 10_000,
@@ -197,6 +219,11 @@ def _recompute_formal_document(
     if not isinstance(frames, list):
         raise ValueError("Q1-R formal document lacks frame reports")
     recomputed_metrics = _recompute_formal_metrics(frames)
+    frame_interventions_consistent = all(
+        _json_normalize(frame.get("condition_intervention"))
+        == _json_normalize(_derived_condition_intervention(frame))
+        for frame in frames
+    )
     stored_values = stored_decision.get("values")
     if not isinstance(stored_values, dict):
         raise ValueError("Q1-R formal decision lacks values")
@@ -230,7 +257,9 @@ def _recompute_formal_document(
         recomputed_decision
     )
     return recomputed_metrics, recomputed_decision, (
-        metrics_consistent and decision_consistent
+        metrics_consistent
+        and frame_interventions_consistent
+        and decision_consistent
     )
 
 
@@ -248,28 +277,56 @@ def _diagnosis_query_hash(frame: dict[str, Any], key: str) -> str:
     return value
 
 
-def _diagnosis_control_passed(frame: dict[str, Any]) -> bool:
+def _diagnosis_control_passed(
+    frame: dict[str, Any],
+    replay_frame: dict[str, Any],
+) -> bool:
     control = frame.get("current_confidence", {}).get("formal_hash_control", {})
     export_checks = control.get("export_hash_checks", {})
     query_checks = control.get("query_hash_checks", {})
+    replay_export_hashes = replay_frame.get("matched_hashes")
+    replay_query_hashes = replay_frame.get("inference", {}).get("query_hashes")
+    actual_export_hashes = control.get("actual_export_hashes")
+    expected_export_hashes = control.get("expected_export_hashes")
+    actual_query_hashes = control.get("actual_query_hashes")
+    expected_query_hashes = control.get("expected_query_hashes")
+    export_hashes_match = (
+        isinstance(replay_export_hashes, dict)
+        and actual_export_hashes == replay_export_hashes
+        and expected_export_hashes == replay_export_hashes
+    )
+    query_hashes_match = (
+        isinstance(replay_query_hashes, dict)
+        and actual_query_hashes == replay_query_hashes
+        and expected_query_hashes == replay_query_hashes
+    )
+    expected_export_checks = {
+        key: export_hashes_match
+        for key in (
+            "xyz_sha256",
+            "confidence_sha256",
+            "selected_candidate_rows_sha256",
+        )
+    }
+    expected_query_checks = {
+        key: query_hashes_match
+        for key in (
+            "q0_normalized_rae_sha256",
+            "q1_normalized_rae_sha256",
+        )
+    }
+    current = frame.get("current_confidence", {})
     return (
         control.get("passed") is True
         and control.get("bit_exact") is True
-        and all(
-            export_checks.get(key) is True
-            for key in (
-                "xyz_sha256",
-                "confidence_sha256",
-                "selected_candidate_rows_sha256",
-            )
-        )
-        and all(
-            query_checks.get(key) is True
-            for key in (
-                "q0_normalized_rae_sha256",
-                "q1_normalized_rae_sha256",
-            )
-        )
+        and export_checks == expected_export_checks
+        and query_checks == expected_query_checks
+        and export_hashes_match
+        and query_hashes_match
+        and _json_normalize(current.get("geometry"))
+        == _json_normalize(replay_frame.get("matched"))
+        and _json_normalize(current.get("export_report"))
+        == _json_normalize(replay_frame.get("matched_export"))
     )
 
 
@@ -451,7 +508,12 @@ def certify_replay_parent(
         )
     )
     diagnosis_control_count = sum(
-        _diagnosis_control_passed(frame) for frame in diagnosis_frames
+        _diagnosis_control_passed(diagnosis_frame, replay_frame)
+        for diagnosis_frame, replay_frame in zip(
+            diagnosis_frames,
+            replay_frames,
+            strict=False,
+        )
     )
     diagnosis_candidate_contracts = all(
         frame.get("partition") == "validation"
@@ -486,6 +548,52 @@ def certify_replay_parent(
         "doppler_locked",
     )
     diagnosis_count_checks = diagnosis_decision.get("count_checks", {})
+    diagnosis_checkpoint_checks = diagnosis_checkpoint.get("checks", {})
+    diagnosis_source_hashes = diagnosis.get("diagnostic_source_hashes", {})
+    repo = Path(__file__).resolve().parents[2]
+    expected_diagnosis_source_hashes = {
+        relative: sha256_file(repo / relative)
+        for relative in DIAGNOSTIC_SOURCE_RELATIVE_PATHS
+    }
+    diagnosis_frozen_inputs = diagnosis.get("frozen_inputs", {})
+    diagnosis_candidate_contract = diagnosis.get("candidate_contract")
+    replay_candidate_contracts = [
+        frame.get("inference", {}).get("config") for frame in replay_frames
+    ]
+    source_and_input_binding = (
+        diagnosis_source_hashes == expected_diagnosis_source_hashes
+        and diagnosis_frozen_inputs.get("hashes")
+        == replay_manifest.get("input_hashes")
+        and diagnosis_frozen_inputs.get("test_partition_accessed") is False
+        and diagnosis_candidate_contract is not None
+        and all(
+            contract == diagnosis_candidate_contract
+            for contract in replay_candidate_contracts
+        )
+        and diagnosis.get("artifact_label") == diagnostic_artifact_label()
+    )
+    checkpoint_and_manifest_checks = (
+        isinstance(diagnosis_checkpoint_checks, dict)
+        and bool(diagnosis_checkpoint_checks)
+        and all(value is True for value in diagnosis_checkpoint_checks.values())
+        and isinstance(diagnosis_manifest_checks, dict)
+        and all(
+            diagnosis_manifest_checks.get(key) is True
+            for key in required_manifest_checks
+        )
+        and all(
+            row.get("matches_formal_run") is True
+            and row.get("sha256")
+            == _source_hash_by_suffix(replay_sources, suffix)
+            for suffix, row in diagnosis_manifest.get(
+                "checkpoint_source_compatibility", {}
+            ).items()
+        )
+        and set(
+            diagnosis_manifest.get("checkpoint_source_compatibility", {})
+        )
+        == set(FORMAL_SOURCE_SUFFIXES)
+    )
     archived_runtime = archived_manifest.get("runtime", {})
     replay_runtime = replay_manifest.get("runtime", {})
     diagnosis_runtime = diagnosis.get("runtime", {})
@@ -500,11 +608,16 @@ def certify_replay_parent(
         diagnosis_runtime.get("torch_version"),
     )
     h200_runtime_match = all(
-        isinstance(name, str) and "H200" in name.upper()
-        for name in runtime_device_names
+        name == EXPECTED_H200_DEVICE_NAME for name in runtime_device_names
     ) and (
         isinstance(runtime_torch_versions[0], str)
         and len(set(runtime_torch_versions)) == 1
+    )
+    diagnosis_physical_gpu_policy = (
+        diagnosis_runtime.get("cuda_device_order") == "PCI_BUS_ID"
+        and diagnosis_runtime.get("cuda_visible_devices") in ("0", "2")
+        and diagnosis_runtime.get("visible_cuda_device_count") == 1
+        and diagnosis_runtime.get("device_argument") == "cuda:0"
     )
     diagnosis_replay_binding = (
         diagnosis.get("protocol") == DIAGNOSIS_PROTOCOL
@@ -518,6 +631,9 @@ def certify_replay_parent(
         and diagnosis_control_count == 24
         and diagnosis_candidate_contracts
         and diagnosis_aggregate_consistent
+        and source_and_input_binding
+        and checkpoint_and_manifest_checks
+        and diagnosis_physical_gpu_policy
         and diagnosis_aggregate.get("frame_count") == 24
         and diagnosis_aggregate.get("far_target_frame_count") == 23
         and diagnosis_checkpoint.get("sha256") == checkpoint_sha
@@ -529,11 +645,6 @@ def certify_replay_parent(
         and diagnosis_metrics.get("epoch") == 20
         and diagnosis_manifest.get("sha256")
         == sha256_file(replay_manifest_path)
-        and isinstance(diagnosis_manifest_checks, dict)
-        and all(
-            diagnosis_manifest_checks.get(key) is True
-            for key in required_manifest_checks
-        )
     )
     oracle_passed = (
         diagnosis_replay_binding
@@ -588,6 +699,7 @@ def certify_replay_parent(
             and replay_metrics.get("checkpoint_sha256") == checkpoint_sha
             and replay_metrics.get("epoch") == 20
             and h200_runtime_match
+            and diagnosis_physical_gpu_policy
         ),
         "formal_metrics_recomputed": (
             archived_formal_consistent and replay_formal_consistent
@@ -610,6 +722,11 @@ def certify_replay_parent(
         ),
         "replay_diagnosis_bound": diagnosis_replay_binding,
         "diagnosis_aggregate_recomputed": diagnosis_aggregate_consistent,
+        "diagnosis_hash_geometry_chain_recomputed": (
+            diagnosis_control_count == 24
+        ),
+        "diagnostic_source_and_input_binding": source_and_input_binding,
+        "physical_gpu_policy": diagnosis_physical_gpu_policy,
         "validation_gt_ranking_oracle_passed": oracle_passed,
         "training_started": diagnosis_boundary.get("training_started")
         is not False,
@@ -638,6 +755,9 @@ def certify_replay_parent(
                 "candidate_query_contract_preserved",
                 "replay_diagnosis_bound",
                 "diagnosis_aggregate_recomputed",
+                "diagnosis_hash_geometry_chain_recomputed",
+                "diagnostic_source_and_input_binding",
+                "physical_gpu_policy",
                 "validation_gt_ranking_oracle_passed",
             )
         )
@@ -702,6 +822,15 @@ def certify_replay_parent(
                 "replay_torch_version": runtime_torch_versions[1],
                 "diagnosis_torch_version": runtime_torch_versions[2],
                 "h200_and_torch_version_match": h200_runtime_match,
+                "diagnosis_physical_gpu_policy": (
+                    diagnosis_physical_gpu_policy
+                ),
+            },
+            "diagnostic_source_hashes": {
+                "actual": diagnosis_source_hashes,
+                "expected": expected_diagnosis_source_hashes,
+                "passed": diagnosis_source_hashes
+                == expected_diagnosis_source_hashes,
             },
         },
         "inputs": {
@@ -728,7 +857,9 @@ def certify_replay_parent(
             "match the archive; learned occupancy-dependent Q1 hashes must "
             "instead be reproduced exactly by the replay-bound diagnosis. "
             "The certificate does not unlock validation, test, Doppler, "
-            "cycle, or temporal claims."
+            "cycle, or temporal claims. Legacy formal peak-memory values are "
+            "pinned from the source-bound endpoint decision because the old "
+            "artifact did not store independent raw peak-byte fields."
         ),
     }
 
