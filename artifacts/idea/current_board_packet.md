@@ -1,6 +1,6 @@
 # Cube-to-dense current board packet
 
-> Refreshed 2026-08-07 after source `34579a2` Q-Local-F0R terminal. Test access
+> Refreshed 2026-08-07 after source `380f3ea` VRH-F0 terminal. Test access
 > is false.
 
 ## Incumbent
@@ -33,6 +33,7 @@ mechanism. It does not authorize reuse of the deleted R-A1 identity.
 | Q-Local-F0 | 10/12 fixed-export oracle frames passed; `47:514` and `58:404` failed | Scorer untrained; terminal under the original exporter only |
 | Fixed range quotas | 76-frame audit found strict CD lower-bound failures on `47:94` and `58:404` | Hard `8000/1700/300` per-frame allocation retired from all successors |
 | Q-Local-F0R | CD/outlier/structure passed 12/12 after global export, but target-stratum retention passed only 2/12 | Pointwise global ranking on the frozen 700k field closed; scorer untrained |
+| VRH-F0 | Renewal activity passed, but sequential/flat mean CD was `0.5494/0.1095 m`; strata passed 3/12 vs 4/12 and first/later passed 0/12 in both | Frozen renewal/frontier recipe closed; learned renewal untrained |
 | R-B2 | 80k `max_d` recall passed on 76/76, confidence coverage failed on 3 frames | Current score-plus-fixed-neighborhood activation closed |
 | G1T | Ego/Doppler union changed geometry by less than `0.05%` and remained very poor | Current no-train history proposal route closed |
 
@@ -43,12 +44,16 @@ support can exist. On two independently trained R-A1 pools, an unattainable
 geometric score selects an excellent exact-10k subset, while binary occupancy
 confidence fails badly.
 
-F0R now sharpens the unresolved question. The candidate field can support low
+F0R sharpened the unresolved question. The candidate field can support low
 aggregate error, but an independent per-point utility score followed by one
 global exact-count export spends almost all capacity on dense near surfaces.
 Ten of 12 frames lose target-bearing middle/far strata even under an
-unattainable GT-nearest score. The next question is whether an ordered
-variable-return process can allocate geometry without:
+unattainable GT-nearest score. VRH-F0 then tested an ordered variable-return
+process. It certified active later-return selection but did not improve the
+shared fitted stream: sequential geometry was worse than flat exposure, three
+frames failed exact count, and every frame failed the complete first/later
+gate. The next question is whether sparse set-level transport can allocate
+geometry without:
 
 1. inheriting a deleted checkpoint identity;
 2. reading target geometry at inference;
@@ -69,27 +74,22 @@ variable-return process can allocate geometry without:
 
 ## Selected live mechanism
 
-**Variable multi-return renewal hazard** is now the only authorized geometry
-capacity route. It replaces independent candidate ranking with an ordered
-radial process on each azimuth/elevation ray: a return terminates the current
-survival interval, then renews the process so the same ray can emit a
-data-dependent number of later returns. This is a representation change, not a
-new threshold for the closed R-B1 fixed-`K=4/6` peak extractor.
+**Sparse ray-range partial transport** is now the only eligible geometry
+capacity route, but its protocol is not yet frozen. It must couple point budget
+and range coverage on a sparse ray-range graph without constructing a dense
+`700k x target` matrix. The first gate is a zero-training hard-rounding oracle,
+not a learned transport model.
 
-The first gate remains zero-training and train-only. The sole protocol entry
-`docs/vrh_f0_variable_return_capacity_protocol.md` fixes one
-`512 x 214 x 74` target-independent lattice, a decoder-visible model-mark blob
-separate from the GT audit sidecar, complete per-ray renewal streams, and paired
-sequential-frontier versus flat-exposure exports. Exact-10k/true-5-cm geometry,
-target-stratum retention, and same-ray first/later-return checks apply to both
-arms. Renewal is authorized only if the decision arm passes every gate and the
-flat arm fails at least one corresponding gate. A deployable field may use only
-current Cube evidence; GT is restricted to this non-deployable mark fitter and
-metrics.
+The protocol must freeze source support, sparse edge construction, mass and
+cardinality semantics, true 5 cm hard rounding, per-frame geometry and strata
+gates, a target-free deployment API, and explicit runtime/memory limits before
+implementation. It must compare its rounded result with the same unattainable
+pointwise oracle and cannot use GT-derived range quotas or masks at deployment.
+Only a complete train-only capacity and resource pass may authorize a learned
+Cube-conditioned transport scorer.
 
-Sparse ray-range partial transport remains third priority behind its own
-hard-rounding oracle. Q-Local training, fixed-neighborhood support, fixed
-per-ray `K`, and hard per-frame range quotas are closed.
+Q-Local training, fixed-neighborhood support, fixed per-ray `K`, hard per-frame
+range quotas, pointwise global export, and the frozen VRH-F0 recipe are closed.
 
 ## Stale routes not to reopen
 

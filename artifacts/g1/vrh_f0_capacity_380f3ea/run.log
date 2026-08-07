@@ -1,0 +1,30 @@
+{
+  "status": "vrh_f0_capacity_no_go",
+  "passed": false,
+  "output": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/vrh_f0_capacity_380f3ea/preflight.json",
+  "elapsed_seconds": 325.07313949009404
+}
+Command exited with non-zero status 2
+	Command being timed: "/home/wangning/miniforge3/envs/hym_radar/bin/python -u code/scripts/preflight_vrh_f0_capacity.py --data-root /home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene --cache-root /home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db --manifest artifacts/g0/g0_audit_100_manifest.json --scene-split artifacts/g0/g0_scene_split.json --normalization /home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/formal_0e5fe84_g1_recovery/g1_cube_normalization_train.json --archived-f0r artifacts/g1/qlocal_f0r_global_export_34579a2/preflight.json --output-dir /home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/vrh_f0_capacity_380f3ea --source-commit 380f3eaef336bee5a019eff5121eeacceb6e2066 --device cuda:0"
+	User time (seconds): 211.17
+	System time (seconds): 22.48
+	Percent of CPU this job got: 71%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 5:28.73
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1868544
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 1
+	Minor (reclaiming a frame) page faults: 4698467
+	Voluntary context switches: 60618
+	Involuntary context switches: 855
+	Swaps: 0
+	File system inputs: 1928
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 2

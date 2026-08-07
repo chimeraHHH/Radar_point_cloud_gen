@@ -74,6 +74,8 @@
 
 > **2026-08-07 G4 数据完整性终态：**H200 source label `083f4c4` 的 full-summary CRC 已完成，2,160/2,160 Cube、LiDAR 与 label 帧均存在，6,660 个文件和 45/45 sequence member sets 全部匹配，`invalid_files=[]`、`errors=[]`。证据归档于 `artifacts/g4/g4_temporal_crc_083f4c4/`。该结果只关闭数据下载/完整性门；由于没有通过的单帧 geometry parent，G4 时序训练仍锁定。
 
+> **2026-08-07 VRH-F0 终局：**source `380f3ea` 在物理 H200 GPU0 完成冻结的 12-frame sequential-frontier/flat-exposure paired capacity oracle。实现、资源、同流对照和 renewal activity 均有效，但 renewal utility 失败：sequential/flat mean CD=`0.5494/0.1095 m`，CD 门通过 `9/12` vs `12/12`，target-stratum retention 通过 `3/12` vs `4/12`，exact-count/结构均为 `9/12`，first/later 完整门均为 `0/12`。终态 `vrh_f0_capacity_no_go`，不授权 learned renewal。按预注册边界，下一步只允许先冻结并执行 sparse ray-range partial-transport hard-rounding oracle。
+
 ![4D Radar Cube 到物理一致稠密点云技术路线](assets/cube_to_dense_technical_roadmap.png)
 
 ---
@@ -676,9 +678,10 @@ independently gated geometry parent
 - [x] 完成 76-frame fixed range-quota 严格可行性审计；2 帧给出模型无关 CD 反例，旧逐帧 `8000/1700/300` 配额退休。
 - [x] 完成 Q-Local-F0R 全域 exact-10k/5 cm capacity oracle；12/12 几何/结构通过但仅 2/12 target-stratum retention 通过，科学 no-go，500-update scorer 未启动。
 - [x] 完成 variable multi-return renewal-hazard `VRH-F0` train-only paired capacity 协议终审并冻结；固定 `512 x 214 x 74` lattice、分离的 model-mark/GT-sidecar、canonical renewal streams、sequential-vs-flat utility control 与逐帧 anti-collapse 门。
-- [ ] 实现并完成 `VRH-F0` H200 capacity oracle；若逐帧容量门失败，再路由到单独的 sparse ray-range transport hard-rounding oracle。
+- [x] 实现并完成 `VRH-F0` H200 capacity oracle；实现/资源有效且 renewal activity 通过，但 sequential utility、strata、first/later 与三帧 exact-count 失败，终态科学 no-go。
+- [ ] 冻结并独立终审 sparse ray-range partial-transport hard-rounding oracle；在任何 transport 网络训练前完成 train-only 零训练容量与资源门。
 - [ ] 若新 geometry parent 通过，将 G3L 训练链绑定到该 parent，并实现对应的 G2/G3/G4 后继链。
 - [x] 完成 G4R 45/45 序列下载及 full-summary CRC（2,160 帧、6,660 文件、45/45 member sets、0 invalid/error）；时序训练与 family freeze 继续等待新的合格几何父模型。
 - [ ] 释放 P5 test 并完成 P6 论文证据包。
 
-> 当前已无获授权的 fixed-10k 几何训练分支：Q1-R 因 replay-parent 证书 no-go 在训练前停止，Q-Local-F0/F0R 先后因旧配额容量和无配额 target-stratum collapse 停止。当前唯一 live gate 是协议已通过独立终审并冻结、尚未实现的 `VRH-F0` variable multi-return renewal-hazard 零训练 paired capacity oracle；Q2 和全部下游物理/时序路线保持锁定，test 未触碰。不得把当前 replay 追溯认定为原 R-A1 checkpoint，也不得恢复逐帧 hard range quota、固定 `K=4/6` 或 pointwise global ranking。
+> 当前已无获授权的 fixed-10k 几何训练分支：Q1-R 因 replay-parent 证书 no-go 在训练前停止，Q-Local-F0/F0R 先后因旧配额容量和无配额 target-stratum collapse 停止，VRH-F0 又在有效 H200 paired capacity run 中证明 sequential renewal 活动存在但效用不成立。下一 live gate 是尚待单独冻结的 sparse ray-range partial-transport hard-rounding oracle；Q2 和全部下游物理/时序路线保持锁定，test 未触碰。不得把当前 replay 追溯认定为原 R-A1 checkpoint，也不得恢复逐帧 hard range quota、固定 `K=4/6`、pointwise global ranking 或已关闭的 VRH-F0 配方。

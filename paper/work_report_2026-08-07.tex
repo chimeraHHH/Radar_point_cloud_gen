@@ -95,8 +95,11 @@ oracle 通过，但两个 fit 帧失败，因此 scorer 训练未启动。失败
 后继路线退休；exact 10k 与真实 5 cm 间距保留。随后 source
 \code{34579a2} 在物理 H200 GPU0 完成 Q-Local-F0R：全域导出在 12/12 帧通过
 CD、outlier 与结构门，但只有 2/12 保留全部 target-bearing range strata，终态为
-\code{qlocal\_f0r\_capacity\_no\_go}。Q-Local scorer 仍未训练；VRH-F0
-variable multi-return renewal-hazard paired capacity protocol 已通过独立终审并冻结。
+\code{qlocal\_f0r\_capacity\_no\_go}。随后 source \code{380f3ea} 在同一物理
+H200 GPU0 完成 VRH-F0 12-frame paired capacity oracle：实现、资源与 renewal
+activity 有效，但 sequential-frontier 的 mean CD 为 0.5494 m，差于同流 flat
+control 的 0.1095 m；strata retention 为 3/12 vs 4/12，first/later 完整门均为
+0/12。终态 \code{vrh\_f0\_capacity\_no\_go}，Q-Local 与 learned renewal 均未训练。
 G4 数据 full-summary CRC 已通过，但逐点 Doppler、
 Cube-cycle、时序生成和测试集评估仍未解锁。
 \end{minipage}}
@@ -214,13 +217,21 @@ Cube-cycle、时序生成和测试集评估仍未解锁。
   5 cm greedy selection。不可部署 GT-nearest oracle 在 12/12 帧通过
   $\mathrm{CD}\le0.8$ m、outlier $\le5\%$、exact 10k 与结构门，但只有
   2/12 保留所有含 target 的距离段。10 帧把预算集中到近距，故 500-update
-  scorer 训练继续禁止；VRH-F0 variable multi-return renewal-hazard 配对容量
-  协议已冻结，下一步才允许实现和执行。
+  scorer 训练继续禁止；该结果只授权零训练的 VRH-F0 容量门。
+
+  \item \textbf{VRH-F0 已完成，续接活动成立但续接效用不成立。}
+  source \code{380f3ea} 在 H200 GPU0 完成 12 帧同流 paired oracle；实现与资源
+  均有效，sequential 与 flat 的 selected-cell hash 在 12/12 帧不同，且
+  sequential 接受真实 depth$\ge2$ event。可是 sequential/flat mean CD 为
+  $0.5494/0.1095$ m，CD 门通过 9/12 vs 12/12，target-stratum retention 为
+  3/12 vs 4/12，exact-count/结构均为 9/12，first/later 完整门均为 0/12。
+  因而 learned renewal 不授权；下一容量路线必须另行冻结 sparse ray-range
+  partial-transport hard-rounding oracle。
 
   \item \textbf{文献重扫后，创新边界进一步收紧。}
   RaUF、SDDiff、RadarMP、Radar-Mamba 与 DoppDrive 已分别覆盖雷达不确定性、
   spatial--Doppler 建模、连续 tesseract、历史增强或 Doppler 时序传播。
-  因而不能主张“首次使用 Doppler 墠密”或“首次多帧雷达增强”。最终可防守目标是
+  因而不能主张“首次使用 Doppler 增密”或“首次多帧雷达增强”。最终可防守目标是
   exact-count XYZ、逐点环形 Doppler 分布和 calibrated confidence 的联合状态，
   再同时满足 point-to-RAED closure 与 displacement--Doppler consistency。
 \end{enumerate}
@@ -245,7 +256,8 @@ Q1-R quality ranking & \closed & replay、full-24 diagnosis 与证书完成；ra
 Q-Local-F0 & \closed & 10/12 oracle 帧通过；梯度、同坐标干预、结构与 provenance 通过 & 两个 fit 帧容量失败；训练按协议禁止，不代表 scorer 学习失败 \\
 固定 range quota 审计 & \closed & 76/76 train 帧完成；2 帧的乐观 CD 下界越门，1 帧强制 20\% outlier & 硬 $8000/1700/300$ 配额退休；该 no-go 不否定 scorer 或 700k field \\
 Q-Local-F0R & \closed & H200 GPU0 上 12/12 CD/outlier/结构通过；只有 2/12 target-stratum retention 通过 & pointwise global ranking 近距塌缩；scorer 未训练，终态 no-go \\
-VRH-F0 renewal hazard & \pending & 协议已通过独立终审并冻结：单一 $512\times214\times74$ lattice、model-mark/GT-sidecar 隔离、canonical reset/STOP streams & 只有 sequential arm 全过且同流 flat arm 至少失败一个对应门，才授权 renewal；尚无 H200 结果 \\
+VRH-F0 renewal hazard & \closed & H200 GPU0 12 帧 paired run 完整；实现/资源与 activity 通过 & sequential mean CD $0.5494$ m vs flat $0.1095$ m；strata 3/12 vs 4/12，first/later 均 0/12，不授权训练 \\
+Sparse ray-range transport & \pending & 由 F0R 与 VRH 两个集合分配 no-go 授权进入协议阶段 & hard-rounding、稀疏耦合与资源门尚待独立冻结，不得直接训练 \\
 R-B2 voxel-slot & \closed & GT-aided 结构容量通过；80k arm 的 recall 在 76/76 帧过门 & 3 帧 coverage 失败，当前 Cube-only activation family 关闭 \\
 G4 时序数据 & \done & 45 序列、2,160 帧、6,660 文件、约 600.8 GiB；full-summary CRC 通过 & 只关闭数据完整性门；无合格 geometry parent，时序训练仍锁定 \\
 下游物理与时序 & \locked & 代码和旧机制证据存在 & 无通过的 K-Radar 几何父模型，不能形成当前主张 \\
@@ -414,7 +426,7 @@ R-A1 RaLD-WCE & 500k Q0 + 200k Cube-guided Q1；condition-exclusive field & 700k
 Q1-R quality head & refined RAE、512-d frozen condition latents、detached occupancy confidence；Fourier embedding + 4-head cross-attention + MLP & 每候选连续 quality correction，只替换排序分数 & 已实现；父证书 no-go，训练未启动 \\
 Q-Local-F0 & normalized RAE、detached parent confidence、冻结全局 latents、局部 64-bin spectrum、能量/熵/梯度；cross-attention + 6-bin risk head & 最近表面距离分布及负期望风险排序；坐标与 exporter 不变 & 已实现；capacity no-go，训练未启动 \\
 Q-Local-F0R exporter & 与 Q-Local-F0 bit-identical 的 700k candidates；全域稳定排序 + 5 cm greedy selection & exact 10k，不设逐帧 range quota；含 target 区间保留门 & H200 oracle 完成；2/12 完整通过，路线关闭 \\
-VRH-F0 renewal hazard & $512\times214\times74$ frustum lattice；分离的 model marks/audit sidecar；每次 return 后 reset；显式 STOP & 同一 canonical event stream 的 sequential-frontier 与 flat-exposure 配对导出 & 协议已通过独立终审并冻结；实现与 H200 结果待完成 \\
+VRH-F0 renewal hazard & $512\times214\times74$ frustum lattice；分离的 model marks/audit sidecar；每次 return 后 reset；显式 STOP & 同一 canonical event stream 的 sequential-frontier 与 flat-exposure 配对导出 & 已实现并完成 H200 paired oracle；activity 通过、utility no-go，训练未启动 \\
 R-B2 voxel-slot & 0.4 m Cartesian voxels、每 voxel 4 slots & whole-voxel fixed-count export & 容量 oracle 通过，激活家族关闭 \\
 Doppler 与 Cycle & final-position Cube spectrum query、64-bin distribution head、differentiable splatting & $q_i(v_r)$、confidence 与 Cube closure & 已实现，未解锁 \\
 Temporal & ego/Doppler warp、token/latent/query fusion、scheduled sampling & 当前 Cube 校正的时序状态与 rollout & 已实现，未解锁 \\
@@ -803,6 +815,40 @@ capacity，不能授权 renewal。协议不读取 Cube/CFAR；即便 capacity pa
 另行冻结的 target-free one-frame learnability/condition-use gate，不解锁 Doppler、
 cycle、temporal、validation 或 test。
 
+\paragraph{正式结果。}
+source \code{380f3ea} 在物理 H200 GPU0 完成全部 12 帧、两个 arm 的正式运行。
+support、model marks、audit sidecar、canonical stream、export replay、独立
+KD-tree spacing、API 边界与资源门全部有效；总 wall time 为 325.07 s，峰值 host
+RSS 为 1.78 GiB，峰值 CUDA reserved 为 110 MiB。因此终态是科学 no-go，
+不是实现或资源无效。
+
+\begin{table}[H]
+\centering
+\small
+\caption{VRH-F0 同一 canonical stream 上的 paired capacity 结果}
+\begin{tabular}{lrrrrrr}
+\toprule
+Arm & mean CD & median CD & CD 门 & 结构门 & strata 门 & first/later 门 \\
+\midrule
+Sequential frontier & 0.5494 m & 0.3692 m & 9/12 & 9/12 & 3/12 & 0/12 \\
+Flat exposure & 0.1095 m & 0.1055 m & 12/12 & 9/12 & 4/12 & 0/12 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+两臂的 outlier 门均为 12/12。Sequential 与 flat 的 accepted-cell hash 在
+12/12 帧不同，且 sequential 在全部帧接受 depth$\ge2$ event，故 renewal
+activity 得到认证；但 utility 未认证。Sequential 不仅没有形成任何
+decision-pass/control-fail 对应门，平均 CD 还约为 flat 的 5.02 倍。47:514、
+58:404 和 50:405 在真实 5 cm 检查后分别只能导出 4,359、1,602 和 9,993 点；
+全部 66 个非空 first/later range-class 中，两臂都只有 1 个通过。
+
+正式终态为 \code{vrh\_f0\_capacity\_no\_go}。这关闭冻结的 GT-fitted
+$2R\times2A\times2E$ renewal/frontier 配方，不证明所有 ray-native process
+都不可能；但该结果不能授权 learned renewal。按预注册路由，下一步只允许先冻结
+并审计 sparse ray-range partial-transport hard-rounding oracle，在零训练容量与
+资源门通过前不得实现 transport 网络。
+
 \subsection{R-B2：Cartesian Voxel-Slot}
 
 R-B2 不再从 700k points 中直接做全局 hard top-$k$，而是把输出写成
@@ -939,6 +985,17 @@ scheduled sampling 提升了长期物理新鲜度，但生成桥仍存在几何�
 这些结果支持“warp 管运动骨架、当前观测负责刷新”的设计原则，
 却不能证明 K-Radar Cube-to-dense 的长期效果。当前项目在几何门通过前
 不会用旧时序结果掩盖单帧失败。
+
+进一步代码与日志审计表明，exposure bias 不是唯一病因：桥式生成在第一个
+generated step 已显著损伤几何，说明 full-set refiner 正在重写本来较强的
+\code{copy\_dopp} scaffold；scheduled sampling 只能改善后段稳定，不能消除
+该一步税。旧 evaluator 还在各 arm 间使用不同随机初始/GT 子采样，因此小幅差异
+必须先做 paired replay 才能进入论文。若单帧 geometry parent 将来通过，时序实验
+顺序固定为：修复 paired evaluator；bitwise 保留 XYZ 的 copy-anchored Doppler
+refresh；零门控、有界残差和 no-harm hinge 的 trust-region RaLD refiner；
+dynamic/confidence selective renewal；最后才考虑 free-running distillation、
+scene-flow/occupancy state 和 latent recurrence。不能再次把 scheduled sampling
+当作一步几何退化的替代解释。
 
 \section{文献与开源代码对照}
 
@@ -1150,8 +1207,10 @@ per-frame range quotas 可能使任何表示在 Chamfer/outlier 门下不可行�
 F0R 已在 source \code{34579a2} 上正式完成：全部 12 帧的 CD/outlier/structure
 通过，但 target-stratum retention 只有 2/12。该结果是有效科学 no-go，故
 Q-Local scorer 仍未训练，并按协议切换到 variable multi-return renewal-hazard
-容量路线。任何后继都不能删除失败帧、改成 aggregate-only gate、事后放宽几何门，
-或恢复固定 $K$ 与硬 range quota。
+容量路线。VRH-F0 随后也完成有效 H200 paired run：renewal activity 通过，但
+sequential utility、strata、first/later 与三帧 exact-count 未形成完整通过，故
+learned renewal 同样未启动。任何后继都不能删除失败帧、改成 aggregate-only
+gate、事后放宽几何门，或恢复固定 $K$、硬 range quota 与当前 VRH 配方。
 
 \subsection{G4 时序数据 full-summary CRC}
 
@@ -1202,7 +1261,8 @@ P0 & Q1-R 干净快照回归 & 已完成，42 项定向、101 项扩大回归 & 
 P1 & Q-Local-F0 preflight & 已完成，444.58 s，H200 GPU2 & 10/12 capacity pass；终态 no-go，tiny 禁止 \\
 P2 & fixed range-quota audit & 已完成，76/76 train 帧，11.2799 s & 2 帧严格不可行；旧硬配额终止且不得复用 \\
 F0R & global-export candidate oracle & 已完成，456.34 s，H200 GPU0 & 12/12 几何/结构通过，2/12 strata retention；科学 no-go \\
-F1 & VRH-F0 renewal-hazard oracle & 当前 live gate，零训练 & paired protocol 已通过独立终审并冻结；下一步实现并在同一 12-frame train-only cohort 正式运行 \\
+F1 & VRH-F0 renewal-hazard oracle & 已完成，325.07 s，H200 GPU0 & activity 通过；sequential utility no-go，不授权 learned renewal \\
+F2 & sparse ray-range partial transport & 待冻结，零训练优先 & 先做 hard-rounding/资源 oracle；未过门前不得实现或训练网络 \\
 P3 & Doppler + Cube-cycle & 锁定 & 无合格 geometry parent \\
 P4 & RadarMP + DoppDrive 时序 & 锁定 & G4 full-summary CRC 已通过；仍无合格单帧 family \\
 \bottomrule
@@ -1229,8 +1289,10 @@ $\rightarrow$ current-observation-corrected temporal state.
 R-B2 当前 activation family 已失败，Q1-R 在 replay-parent 授权门停止，Q-Local
 又在训练前的两级容量门停止。固定 range quota 审计已经证明旧输出契约不可复用，
 F0R 又证明无配额 pointwise global ranking 会丢失中远距 strata。因此目前没有
-活动的 learned fixed-10k 几何训练；当前活动路线是协议已通过独立终审并冻结、尚未实现的
-VRH-F0 variable multi-return renewal-hazard 零训练 paired capacity oracle。
+活动的 learned fixed-10k 几何训练。VRH-F0 已进一步证明：在同一 fitted mark
+stream 上，sequential renewal 虽真实改变选择并接受后续回波，却没有带来几何、
+strata 或 first/later 效用，因而该 learned route 也未获授权。当前只剩尚待独立
+冻结的 sparse ray-range partial-transport hard-rounding 零训练容量门。
 当前仍应停止扩展完整 downstream 叙事，直到新的 geometry parent 通过；不能用
 diffusion 或 temporal complexity 掩盖上游表示与输出约束的矛盾。
 
@@ -1310,10 +1372,12 @@ same-coordinate wrong-Cube intervention、物理 GPU provenance 和原子事务�
 随后完成的 F0R 又提供更细的终止证据：同场 700k field 在无配额 GT-nearest
 global export 下 12/12 通过 CD、outlier、count 与 spacing，但只有 2/12 保留
 全部 target-bearing strata。取消配额解决了旧失败帧，却不能解决近距预算塌缩。
-因此当前最优先工作不再是增加网络深度或训练 Q-Local，而是完成 VRH-F0 paired
-protocol 终审，随后实现并执行 variable multi-return renewal-hazard capacity oracle，
-用同一 canonical stream 的 sequential-vs-flat 对照直接检验 renewal 是否真正改善
-集合级多距离分配能力。
+VRH-F0 现已完成这一直接检验：sequential renewal activity 确实存在，但
+mean CD 从 flat 的 $0.1095$ m 恶化到 $0.5494$ m，strata retention 只有 3/12，
+first/later 完整门为 0/12，且三帧无法在真实 5 cm 下达到 exact 10k。
+因此当前最优先工作不再是增加网络深度、训练 Q-Local 或训练 renewal，而是先冻结
+并执行 sparse ray-range partial-transport hard-rounding oracle，检验集合级耦合
+能否在不恢复硬配额的前提下接近 pointwise oracle。
 
 逐点 Doppler、Cube-point 双向约束和长期时序一致性仍是项目最终创新组合，
 但它们目前是有代码支撑的研究计划，而不是已有实验结论。
@@ -1373,7 +1437,13 @@ Q-Local-F0R 状态 & \code{qlocal\_f0r\_capacity\_no\_go}；12/12 CD/outlier/结
 Q-Local-F0R 报告 SHA &
 \hash{505644667ba3f73b58ee138608307e826}{32fe92bc3336f538c74767ab9c148ae} \\
 Q-Local-F0R GPU & physical 0；UUID \code{GPU-74b9b73f-c405-55bc-bf76-f8aa85d1e7fe}；PCI \code{00000000:01:00.0} \\
-VRH-F0 协议状态 & independent audit = FREEZE；model-mark/GT-sidecar 隔离，sequential-vs-flat utility gate；H200 结果尚不存在 \\
+VRH-F0 执行提交 & \hash{380f3eaef336bee5a019eff5121eeacceb6e2066}{} \\
+VRH-F0 终态 & \code{vrh\_f0\_capacity\_no\_go}；activity pass，utility fail；sequential/flat mean CD $0.5494/0.1095$ m \\
+VRH-F0 full report SHA &
+\hash{5393576d905bc8344384fcf4c9e19433}{4c26ee1b3ed58e3e61460142181c5054} \\
+VRH-F0 compact report SHA &
+\hash{944b3e338823498ae61c545b067bf92db}{d0d3600f1aef6aa099eb7dc498c1eed} \\
+VRH-F0 GPU & physical 0；UUID \code{GPU-74b9b73f-c405-55bc-bf76-f8aa85d1e7fe}；PCI \code{00000000:01:00.0} \\
 G4 CRC terminal & \code{g4\_temporal\_crc\_passed}；2,160 帧、6,660 文件、45/45 member sets、0 invalid/error \\
 G4 verification SHA &
 \hash{0ed646c841ccfd88863cae6333c7b065}{016425c96d96eb97c53b941f01470fda} \\
@@ -1414,6 +1484,10 @@ RaLD 审计 commit &
   \item \path{docs/qlocal_f0r_global_export_capacity_protocol.md}
   \item \path{docs/vrh_f0_variable_return_capacity_protocol.md}
   \item \path{artifacts/g1/qlocal_f0r_global_export_34579a2/decision.md}
+  \item \path{artifacts/g1/vrh_f0_capacity_380f3ea/decision.md}
+  \item \path{artifacts/g1/vrh_f0_capacity_380f3ea/preflight_compact.json}
+  \item \path{artifacts/scout/2026-08-07_rald_temporal_literature.md}
+  \item \path{artifacts/idea/long_horizon_candidate_frontier.md}
   \item \path{artifacts/g4/g4_temporal_crc_083f4c4/verification.json}
   \item \path{artifacts/g4/g4_temporal_crc_083f4c4/decision.md}
   \item \path{artifacts/g1/dmhw_birth_rmoment_label_audit_no_go_2026-07-29.md}
@@ -1430,7 +1504,8 @@ RaLD 审计 commit &
   \item 本报告没有把 Q-Local capacity no-go 泛化成所有 continuous quality scorer 失败；scorer 从未训练。
   \item 本报告把 F0R 写成 H200 capacity no-go，而不是 learned result；12/12 aggregate geometry 通过与 2/12 strata retention 通过同时保留。
   \item 本报告没有把 F0R 的 pointwise global-ranking no-go 泛化成所有 set allocation 或 ray-native representation 失败。
-  \item 本报告没有把 VRH-F0 的候选协议、文献动机或 8,108,032-cell support 写成 H200 capacity 结果。
+  \item 本报告把 VRH-F0 写成有效 H200 capacity no-go，而不是 learned result；activity pass 与 utility fail 同时保留。
+  \item 本报告没有把冻结的 VRH-F0 配方失败泛化成所有 renewal、ray-native process 或 partial transport 失败。
   \item 本报告没有把 G4 CRC 通过写成时序模型通过；它只验证数据文件与 manifest 完整性。
   \item 本报告没有把 \code{e159a22} 的回归通过写成完整防篡改保证；终审的 3 P1/3 P2 已显式保留。
   \item 本报告没有把 source-equivalent replay 写成原 checkpoint 的同一复现。

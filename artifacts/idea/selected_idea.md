@@ -1,78 +1,71 @@
 # Selected geometry idea
 
-> Successor revised on 2026-08-07 after the source-`34579a2` Q-Local-F0R
+> Successor revised on 2026-08-07 after the source-`380f3ea` VRH-F0
 > scientific no-go. Test access is false.
 
-## Closed predecessor: Q-Local-F0R
+## Closed predecessors
 
-F0R removed only the mathematically contradictory per-frame range quotas from
-the unchanged Fresh-WCE 700k field. Its formal H200 GPU0 GT-nearest oracle
-passed exact 10k, true 5 cm, `CD <=0.8 m`, and outlier `<=5%` on all 12
-train-only frames. It nevertheless retained every target-bearing range stratum
-on only 2/12 frames. Ten frames spent almost the entire budget on dense near
-returns and lost middle/far coverage.
+Q-Local-F0R removed the contradictory per-frame range quotas from the unchanged
+Fresh-WCE 700k field. Its formal H200 oracle passed exact 10k, true 5 cm,
+Chamfer, and outlier gates on all 12 train-only frames, but retained every
+target-bearing range stratum on only 2/12. This closed pointwise global ranking
+on that field before scorer training.
 
-Terminal status is `qlocal_f0r_capacity_no_go`; the Q-Local scorer was never
-trained. This rejects independent pointwise quality followed by one global
-capacity export on this frozen field. It does not reject the untrained scorer
-in general or the existence of strong aggregate candidate support.
+VRH-F0 then replaced pointwise exposure with a variable-return radial renewal
+process on one frozen `512 x 214 x 74` lattice. Its complete H200 paired run was
+implementation- and resource-valid. Renewal activity was real: both arms shared
+the canonical stream, selected-cell hashes differed, and sequential exposure
+accepted depth-at-least-two events. Renewal utility nevertheless failed:
 
-## Live primary route: variable multi-return renewal hazard
+- sequential/flat mean CD: `0.5494/0.1095 m`;
+- CD gate: `9/12` versus `12/12`;
+- exact-count and structural gate: `9/12` in both arms;
+- all target-bearing strata retained: `3/12` versus `4/12`;
+- complete first/later gate: `0/12` in both arms.
 
-The successor represents each azimuth/elevation ray as an ordered radial
-survival process. A predicted return ends the current survival interval; a
-renewal/reset state then permits another return later on the same ray. The
-number of returns is data-dependent rather than a fixed `K`, and return
-allocation is coupled within a ray rather than decided independently for every
-Cartesian candidate.
+Terminal status is `vrh_f0_capacity_no_go`. This closes the frozen fitted-mark
+renewal/frontier recipe and does not authorize learned renewal.
 
-The first experiment is the frozen, independently audited, zero-training,
-train-only paired capacity oracle in
-`docs/vrh_f0_variable_return_capacity_protocol.md`. It uses one
-target-independent `2R x 2A x 2E` lattice (`512 x 214 x 74`, 8,108,032
-ray-range cells), a decoder-visible model-mark field separated from the GT audit
-sidecar, bounded continuous event offsets, explicit renewal/STOP decoding, and
-sequential-frontier versus flat exposure of one shared canonical stream. It must
-establish that the representation can simultaneously support:
+## Live route: sparse ray-range partial transport
 
-- exactly 10,000 unique points with true minimum spacing at least 5 cm;
-- per-frame Chamfer `<=0.8 m` and 2 m outlier fraction `<=5%` on the frozen
-  capacity cohort;
-- explicit completeness and recall retention in every target-bearing range
-  stratum;
-- a target-free decoder/exporter contract, with GT identities and fitted
-  distances restricted to the non-deployable audit sidecar;
-- a variable number of ordered returns, with no fixed `K=4/6`, hard
-  `8000/1700/300` quotas, copy, padding, jitter, or best-of-k repair;
-- a renewal utility win: the decision arm passes all gates while flat exposure
-  of the same decoded stream fails at least one corresponding gate.
+The remaining geometry problem is set allocation: choose an exact-count,
+well-spaced subset that preserves target-bearing radial structure instead of
+optimizing every candidate independently. Sparse ray-range partial transport
+is the next eligible mechanism because it couples candidate mass and range
+coverage directly.
 
-## Why this route is first
+No transport network is authorized yet. The next artifact must first freeze a
+zero-training hard-rounding oracle with:
 
-1. F0R localizes the remaining failure to set-level range allocation rather
-   than aggregate Chamfer or candidate count.
-2. Renewal is the smallest representation change that can preserve multiple
-   ordered surfaces along one radar ray after an earlier return.
-3. It is outside the closed binary occupancy, arbitrary-query,
-   fixed-neighborhood, and pointwise global-ranking families.
-4. A capacity oracle can reject it before any network, optimizer, or checkpoint
-   is created.
+- a target-independent candidate or ray-range support commitment;
+- a sparse edge graph, never a dense `700k x target` matrix;
+- explicit source/sink mass, exact-count, and unmatched-mass semantics;
+- deterministic hard rounding with true minimum spacing at least 5 cm;
+- per-frame Chamfer, outlier, target-stratum, and structural gates;
+- comparison against the same unattainable pointwise oracle;
+- target-free decoder/exporter APIs and physical GT-sidecar separation;
+- a wall-time limit of 2 s/frame and a memory ceiling of 60 GiB for the final
+  sparse implementation, unless the frozen protocol records a stricter bound.
 
-## Deferred fallback
-
-Sparse ray-range partial transport is third priority. It requires a separately
-frozen hard-rounding oracle and is not fused with renewal hazard before either
-mechanism has independent evidence.
+The candidate hard-rounding result must remain within `0.15 m` Chamfer and
+`2 percentage points` outlier of the pointwise oracle while restoring the
+required strata and exact-count contracts. These thresholds are provisional
+until the protocol receives an independent pre-implementation audit.
 
 ## Decision boundary
 
-- capacity and renewal-utility pass on every frozen frame: freeze a bounded
-  one-frame renewal-hazard memorization/scorer gate with a target-free Cube
-  interface;
-- both arms pass: record lattice-only capacity and do not authorize renewal;
-- scientific capacity failure: close only the frozen recipe and route to the
-  separately frozen sparse ray-range transport oracle;
-- implementation- or resource-invalid: repair and rerun the identical capacity
-  gate; do not route scientifically;
-- no downstream Doppler, cycle, temporal, or test work starts until a 76/24
-  geometry parent passes the complete frozen gate.
+- hard-rounding capacity/resource pass on every frozen train-only frame:
+  authorize a separately frozen Cube-conditioned sparse transport learnability
+  gate;
+- scientific capacity failure: close only the frozen sparse graph/rounding
+  recipe and return to the representation board;
+- implementation- or resource-invalid: repair and rerun the identical gate;
+- no Doppler, cycle, temporal, validation, or test work starts until a learned
+  76/24 geometry parent passes the complete frozen gate.
+
+## Closed mechanisms not to fuse
+
+The new route cannot recover fixed `8000/1700/300` quotas, fixed per-ray
+`K=4/6`, Q-Local pointwise global export, VRH-F0 sequential frontier, or a dense
+candidate-by-target matrix. No fusion is considered before sparse transport
+has independent capacity evidence.

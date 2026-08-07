@@ -1,19 +1,20 @@
 # Cube-to-dense candidate frontier
 
-> 2026-08-07 successor addendum: source `34579a2` completed Q-Local-F0R on
-> H200 GPU0. All 12 train-only frames passed exact-10k/5 cm, Chamfer, outlier,
-> and structural gates, but only 2/12 retained every target-bearing range
-> stratum. Terminal status is `qlocal_f0r_capacity_no_go`; the scorer was not
-> trained. The live route is now the independently audited variable multi-return
-> renewal-hazard capacity oracle. Sparse ray-range transport remains third
-> priority. Validation and test remain untouched by these capacity decisions.
+> 2026-08-07 successor addendum: after Q-Local-F0R closed pointwise global
+> export, source `380f3ea` completed the independently audited VRH-F0 H200
+> paired capacity oracle. Renewal activity passed, but sequential/flat mean CD
+> was `0.5494/0.1095 m`, strata retention was `3/12` vs `4/12`, and both arms
+> failed every frame-level first/later gate. Terminal status is
+> `vrh_f0_capacity_no_go`; no learned renewal model was trained. The only
+> eligible successor is now a separately frozen sparse ray-range partial-
+> transport hard-rounding oracle. Validation and test remain untouched.
 
 ## Current successor frontier
 
 | Priority | Mechanism | First gate | Anti-relabel boundary |
 |---|---|---|---|
-| 1 | Variable multi-return renewal hazard | Frozen `docs/vrh_f0_variable_return_capacity_protocol.md`: one `512 x 214 x 74` train-only zero-training paired oracle with shared canonical event streams; exact 10k/5 cm, per-frame geometry, strata retention, first/later-return gates, and sequential-vs-flat utility control | Decoder/exporter cannot read GT sidecars or preselected masks; renewal must make the decision arm pass a gate failed by flat exposure; fixed `K=4/6`, pointwise global ranking, and hard range quotas are prohibited |
-| 2 | Sparse ray-range partial transport | Separately frozen hard-rounding oracle within runtime/memory limits | Must couple set allocation without a dense `700k x target` matrix or GT at deployment |
+| Closed | Variable multi-return renewal hazard | Complete H200 paired oracle executed | Activity passed but utility failed; the frozen lattice/frontier recipe cannot be trained or fused into the successor |
+| 1 | Sparse ray-range partial transport | Separately frozen zero-training hard-rounding oracle within runtime/memory limits | Must couple set allocation without a dense `700k x target` matrix, GT-derived deployment quotas, or GT at deployment |
 
 No learned successor starts before its own capacity gate passes.
 
