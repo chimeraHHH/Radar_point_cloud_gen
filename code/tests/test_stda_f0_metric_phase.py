@@ -7,6 +7,8 @@ import inspect
 import json
 import os
 from pathlib import Path
+import subprocess
+import sys
 
 import numpy as np
 import pytest
@@ -22,6 +24,21 @@ EXPECTED_FREEZE_COMMIT = "eb839e1e806c44dd1668051085a307faf4fe83a0"
 EXPECTED_DENSE_GEOMETRY_SHA256 = (
     "e1f970c1e827c7801c7c9018378603b89a7709b0b4bf261e740eab1575631e68"
 )
+
+
+def test_metric_entrypoint_imports_under_isolated_no_site_interpreter() -> None:
+    script = Path(metric_phase.__file__).resolve()
+    completed = subprocess.run(
+        (sys.executable, "-I", "-S", str(script), "--help"),
+        check=False,
+        env={**os.environ, "CUDA_VISIBLE_DEVICES": "", "PYTHONNOUSERSITE": "1"},
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        timeout=30.0,
+    )
+    assert completed.returncode == 0, completed.stdout
+    assert "--expected-gpu-uuid" in completed.stdout
 
 
 def _namespace(**overrides: object) -> argparse.Namespace:

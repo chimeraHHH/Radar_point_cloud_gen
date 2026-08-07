@@ -20,6 +20,29 @@ import time
 from types import ModuleType
 from typing import Any, Mapping
 
+
+def _bootstrap_isolated_site_packages() -> str | None:
+    """Expose the pinned environment packages without importing ``site``."""
+
+    if not sys.flags.no_site:
+        return None
+    site_packages = (
+        Path(sys.prefix)
+        / "lib"
+        / f"python{sys.version_info.major}.{sys.version_info.minor}"
+        / "site-packages"
+    )
+    if not site_packages.is_dir():
+        raise RuntimeError(f"isolated site-packages path is absent: {site_packages}")
+    resolved = str(site_packages.resolve())
+    if resolved not in sys.path:
+        sys.path.append(resolved)
+    return resolved
+
+
+ISOLATED_SITE_PACKAGES = _bootstrap_isolated_site_packages()
+
+
 import numpy as np
 import torch
 
@@ -843,6 +866,11 @@ def run(arguments: argparse.Namespace) -> tuple[dict[str, object], str, int]:
             "arm_metric_ns": arm_metric_ns,
             "cuda_peak_allocated_bytes": peak_allocated,
             "cuda_peak_reserved_bytes": peak_reserved,
+            "interpreter": {
+                "isolated": bool(sys.flags.isolated),
+                "no_site": bool(sys.flags.no_site),
+                "site_packages_bootstrap": ISOLATED_SITE_PACKAGES,
+            },
             "metric_ns": metric_ns,
             "numpy_version": np.__version__,
             "torch_cuda_version": torch.version.cuda,
