@@ -53,6 +53,7 @@ from models.rald_wce_quality import (  # noqa: E402
 )
 from scripts.diagnose_rald_wce_failure_factors import (  # noqa: E402
     validate_formal_checkpoint,
+    validate_formal_metrics,
     validate_run_manifest as validate_formal_run_manifest,
 )
 from scripts.train_rald_wce_pilot import (  # noqa: E402
@@ -68,11 +69,37 @@ from scripts.train_rald_wce_pilot import (  # noqa: E402
 )
 
 
-PROTOCOL = "g1_q1_rald_wce_quality_tiny_v1"
+PROTOCOL = "g1_q1r_rald_wce_quality_tiny_v1"
+PARENT_CERTIFICATE_PROTOCOL = "g1_q1r_replay_parent_certificate_v1"
 FORMAL_R_A1_PROTOCOL = "g1_ra1_rald_wce_stage0_v1"
+FORMAL_PARENT_SOURCE_COMMIT = "f2a9489d40323d1ef45d85de958f4aea8126e1c8"
+ORIGINAL_FORMAL_CHECKPOINT_SHA256 = (
+    "5be30e0f1ca23ea3b603abb0f5e330efd3599167362a8e23ab3a5967c411a2a0"
+)
 FORMAL_SEED = 20260716
 FROZEN_ORDERED_CACHE_DIGEST_SHA256 = (
     "dd9d296cc10933fce12f4e050b4aa065f82752ab123171ec1a75e8cabbc06e4f"
+)
+FROZEN_ORDERED_TINY_CUBE_DIGEST_SHA256 = (
+    "0bfbdb5eac17f9823033942e41abdb6d3b7303f7b55cb06807d8a0933f8a4b7c"
+)
+FROZEN_RESOURCE_SHA256 = {
+    "info_arr.mat": (
+        "53f72b22544aa11bc0057f9b8c2177a7a844fddd0e8ce3f753a989d07159767a"
+    ),
+    "arr_doppler.mat": (
+        "f81e56889c2cedc98eb3eb8a4828e382845e3d4758a36f3b8fc0fce4839e0493"
+    ),
+}
+FROZEN_TINY_FRAME_IDENTITIES = (
+    (58, 205),
+    (58, 404),
+    (57, 404),
+    (53, 402),
+    (53, 204),
+    (50, 405),
+    (1, 232),
+    (1, 430),
 )
 FORMAL_CANDIDATE_COUNT = 700_000
 TINY_FRAME_COUNT = 8
@@ -214,6 +241,83 @@ def verify_source_tree(repo: Path, source_commit: str) -> None:
         raise ValueError(f"Q1 tracked source worktree is dirty: {dirty}")
 
 
+def validate_replay_parent_certificate(
+    certificate_path: Path,
+    diagnosis_path: Path,
+    checkpoint_path: Path,
+    metrics_path: Path,
+    run_manifest_path: Path,
+    *,
+    expected_certifier_source_commit: str,
+) -> dict[str, Any]:
+    """Bind Q1-R to an explicitly certified source-equivalent replay parent."""
+
+    document = json.loads(certificate_path.read_text(encoding="utf-8"))
+    identity = document.get("identity")
+    checks = document.get("checks")
+    if not isinstance(identity, dict) or not isinstance(checks, dict):
+        raise ValueError("Q1-R replay-parent certificate is incomplete")
+    actual = {
+        "replay_checkpoint_sha256": sha256_file(checkpoint_path),
+        "replay_metrics_sha256": sha256_file(metrics_path),
+        "replay_run_manifest_sha256": sha256_file(run_manifest_path),
+        "replay_failure_diagnosis_sha256": sha256_file(diagnosis_path),
+    }
+    required_checks = {
+        "source_config_data_seed_epoch_match": True,
+        "formal_stage0_decision_preserved": True,
+        "validation_frame_contract_preserved": True,
+        "candidate_query_contract_preserved": True,
+        "replay_diagnosis_bound": True,
+        "validation_gt_ranking_oracle_passed": True,
+        "test_partition_accessed": False,
+        "future_cube_accessed": False,
+        "cfar_accessed": False,
+        "doppler_head_evaluated": False,
+    }
+    validations = {
+        "schema_version": document.get("schema_version") == 1,
+        "protocol": document.get("protocol") == PARENT_CERTIFICATE_PROTOCOL,
+        "authorized_status": document.get("status")
+        == "replay_parent_authorized_for_q1r_tiny",
+        "q1r_tiny_authorized": document.get("q1r_tiny_authorized") is True,
+        "original_parent_bound": identity.get(
+            "original_checkpoint_sha256"
+        )
+        == ORIGINAL_FORMAL_CHECKPOINT_SHA256,
+        "formal_source_bound": identity.get("formal_source_commit")
+        == FORMAL_PARENT_SOURCE_COMMIT,
+        "certifier_source_bound": identity.get("certifier_source_commit")
+        == expected_certifier_source_commit,
+        "formal_epoch_20": int(identity.get("formal_epoch", -1)) == 20,
+        "replay_artifact_hashes": all(
+            identity.get(key) == value for key, value in actual.items()
+        ),
+        "exact_parent_flag_honest": identity.get("exact_original_checkpoint")
+        == (
+            actual["replay_checkpoint_sha256"]
+            == ORIGINAL_FORMAL_CHECKPOINT_SHA256
+        ),
+        "required_scientific_checks": all(
+            checks.get(key) == expected
+            for key, expected in required_checks.items()
+        ),
+        "claim_boundary": isinstance(document.get("claim_boundary"), str)
+        and bool(document["claim_boundary"].strip()),
+    }
+    failed = [name for name, passed in validations.items() if not passed]
+    if failed:
+        raise ValueError(f"Q1-R replay-parent certificate failed: {failed}")
+    return {
+        "path": str(certificate_path.resolve()),
+        "sha256": sha256_file(certificate_path),
+        "identity": identity,
+        "checks": checks,
+        "validation_checks": validations,
+        "claim_boundary": document.get("claim_boundary"),
+    }
+
+
 def require_h200(device_name: str) -> tuple[torch.device, str]:
     if not torch.cuda.is_available():
         raise RuntimeError("Q1 tiny requires CUDA on an H200")
@@ -314,6 +418,7 @@ def source_hashes(repo: Path) -> dict[str, str]:
         "code/eval/dense_geometry.py",
         "code/scripts/train_rald_wce_stage0.py",
         "code/scripts/train_rald_wce_pilot.py",
+        "code/scripts/certify_rald_wce_replay_parent.py",
         "code/scripts/train_rald_wce_quality_tiny.py",
         "docs/rald_wce_quality_tiny_protocol.md",
     )
@@ -661,15 +766,11 @@ def sample_quality_candidate_rows(
         high_rows = high_pool[
             torch.randperm(high_pool.numel(), generator=generator)[:high_count]
         ]
-        available = torch.ones(eligible.numel(), dtype=torch.bool)
-        high_positions = torch.searchsorted(
-            eligible,
-            torch.sort(high_rows).values,
-        )
-        if not torch.equal(eligible[high_positions], torch.sort(high_rows).values):
-            raise AssertionError("Q1 high-quality rows escaped eligible range")
-        available[high_positions] = False
-        uniform_pool = eligible[available]
+        uniform_pool = eligible[order[pool_count:]]
+        if uniform_pool.numel() < uniform_count:
+            raise ValueError(
+                f"Q1 range {code} has too few rows outside its high-quality pool"
+            )
         uniform_rows = uniform_pool[
             torch.randperm(uniform_pool.numel(), generator=generator)[
                 :uniform_count
@@ -907,6 +1008,11 @@ def evaluate_quality(
                 >= CAPACITY_DISTANCE_M - 1e-6
                 for frame in frames
             ),
+            "all_wrong_minimum_distance_5cm": all(
+                frame["wrong_export"]["observed_minimum_pair_distance_m"]
+                >= CAPACITY_DISTANCE_M - 1e-6
+                for frame in frames
+            ),
             "copy_padding_jitter_duplicate": False,
         },
         "evidence_boundary": {
@@ -937,8 +1043,11 @@ def quality_metric_values(metrics: dict[str, Any]) -> dict[str, float]:
     }
 
 
-def quality_tiny_gate(values: dict[str, float]) -> dict[str, Any]:
-    return tiny_memorization_gate(
+def quality_tiny_gate(
+    values: dict[str, float],
+    metrics: dict[str, Any],
+) -> dict[str, Any]:
+    numeric = tiny_memorization_gate(
         {
             **values,
             "far_fscore_1m_mean": 0.0,
@@ -947,6 +1056,36 @@ def quality_tiny_gate(values: dict[str, float]) -> dict[str, Any]:
             "matched_condition_win_fraction": 0.0,
         }
     )
+    exact = metrics["exact_export"]
+    structural_checks = {
+        "all_matched_exports_exact_10000": exact[
+            "all_matched_exports_exact_10000"
+        ]
+        is True,
+        "all_wrong_exports_exact_10000": exact[
+            "all_wrong_exports_exact_10000"
+        ]
+        is True,
+        "all_matched_minimum_distance_5cm": exact[
+            "all_minimum_distance_5cm"
+        ]
+        is True,
+        "all_wrong_minimum_distance_5cm": exact[
+            "all_wrong_minimum_distance_5cm"
+        ]
+        is True,
+        "no_copy_padding_jitter_duplicate": exact[
+            "copy_padding_jitter_duplicate"
+        ]
+        is False,
+    }
+    checks = {**numeric["checks"], **structural_checks}
+    return {
+        "numeric_checks": numeric["checks"],
+        "structural_checks": structural_checks,
+        "checks": checks,
+        "passed": all(checks.values()),
+    }
 
 
 def initial_state() -> dict[str, Any]:
@@ -1032,6 +1171,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--formal-best-checkpoint", type=Path, required=True)
     parser.add_argument("--formal-best-metrics", type=Path, required=True)
     parser.add_argument("--formal-run-manifest", type=Path, required=True)
+    parser.add_argument("--formal-parent-diagnosis", type=Path, required=True)
+    parser.add_argument("--formal-parent-certificate", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--device", default="cuda:0")
@@ -1117,6 +1258,17 @@ def main() -> None:
     train_indices = select_tiny_subset(statistics)
     if len(train_indices) != TINY_FRAME_COUNT:
         raise AssertionError("Q1 tiny subset changed frame count")
+    tiny_identities = tuple(
+        (
+            int(train_dataset.records[index]["sequence"]),
+            int(train_dataset.records[index]["radar_index"]),
+        )
+        for index in train_indices
+    )
+    if tiny_identities != FROZEN_TINY_FRAME_IDENTITIES:
+        raise ValueError(
+            f"Q1-R tiny frame identities changed: {tiny_identities}"
+        )
     wrong_indices = cross_scene_wrong_indices(
         train_dataset.records,
         train_indices,
@@ -1126,10 +1278,17 @@ def main() -> None:
         tiny_records,
         args.data_root,
     )
+    if cube_digest != FROZEN_ORDERED_TINY_CUBE_DIGEST_SHA256:
+        raise ValueError(
+            "Q1-R ordered tiny Cube digest differs from the frozen byte set: "
+            f"{cube_digest}"
+        )
     resources = {
         name: sha256_file(args.data_root / "resources" / name)
         for name in ("info_arr.mat", "arr_doppler.mat")
     }
+    if resources != FROZEN_RESOURCE_SHA256:
+        raise ValueError(f"Q1-R frozen resource hashes changed: {resources}")
     all_input_hashes = {
         **input_hashes,
         "ordered_cache_digest_sha256": cache_digest,
@@ -1140,6 +1299,12 @@ def main() -> None:
         ),
         "formal_best_metrics_sha256": sha256_file(args.formal_best_metrics),
         "formal_run_manifest_sha256": sha256_file(args.formal_run_manifest),
+        "formal_parent_diagnosis_sha256": sha256_file(
+            args.formal_parent_diagnosis
+        ),
+        "formal_parent_certificate_sha256": sha256_file(
+            args.formal_parent_certificate
+        ),
     }
 
     formal_checkpoint = torch.load(
@@ -1155,6 +1320,19 @@ def main() -> None:
         checkpoint_path=args.formal_best_checkpoint,
         formal_metrics=formal_metrics,
     )
+    if formal_checkpoint.get("source_commit") != FORMAL_PARENT_SOURCE_COMMIT:
+        raise ValueError("Q1-R input is not from the frozen R-A1 source")
+    if int(formal_checkpoint.get("epoch", -1)) != 20:
+        raise ValueError("Q1-R requires the formal R-A1 epoch-20 endpoint")
+    formal_metric_frames = validate_formal_metrics(formal_metrics)
+    formal_metrics_evidence = {
+        "frame_count": len(formal_metric_frames),
+        "validation_only": all(
+            frame.get("partition") == "validation"
+            for frame in formal_metric_frames
+        ),
+        "formal_contract_validated": True,
+    }
     formal_input_hashes = {
         "manifest": input_hashes["manifest_sha256"],
         "scene_split": input_hashes["scene_split_sha256"],
@@ -1171,6 +1349,14 @@ def main() -> None:
     )
     if formal_checkpoint.get("protocol") != FORMAL_R_A1_PROTOCOL:
         raise ValueError("Q1 input is not a formal R-A1 checkpoint")
+    replay_parent_evidence = validate_replay_parent_certificate(
+        args.formal_parent_certificate,
+        args.formal_parent_diagnosis,
+        args.formal_best_checkpoint,
+        args.formal_best_metrics,
+        args.formal_run_manifest,
+        expected_certifier_source_commit=args.source_commit,
+    )
 
     log_center, log_scale = load_normalization(args.normalization)
     axes = load_axes(args.data_root / "resources")
@@ -1219,7 +1405,9 @@ def main() -> None:
                 "formal_base_trainable_parameter_count": 0,
             },
             "formal_checkpoint_evidence": formal_checkpoint_evidence,
+            "formal_metrics_evidence": formal_metrics_evidence,
             "formal_run_manifest_evidence": formal_manifest_evidence,
+            "replay_parent_certificate_evidence": replay_parent_evidence,
             "cache_binding": {
                 "ordered_digest_sha256": cache_digest,
                 "expected_ordered_digest_sha256": (
@@ -1230,8 +1418,15 @@ def main() -> None:
             },
             "cube_binding": {
                 "ordered_tiny_cube_digest_sha256": cube_digest,
+                "expected_ordered_tiny_cube_digest_sha256": (
+                    FROZEN_ORDERED_TINY_CUBE_DIGEST_SHA256
+                ),
                 "frame_count": len(cube_rows),
                 "frames": cube_rows,
+            },
+            "resource_binding": {
+                "actual_sha256": resources,
+                "expected_sha256": FROZEN_RESOURCE_SHA256,
             },
             "data_access_contract": {
                 "training_partition": "train",
@@ -1328,6 +1523,21 @@ def main() -> None:
                     state=state,
                     contract_sha256=contract_sha,
                 )
+                evaluation_checkpoint = (
+                    args.output_dir / f"checkpoint_update{updates:04d}.pt"
+                )
+                if evaluation_checkpoint.exists():
+                    raise FileExistsError(
+                        "Q1-R immutable evaluation checkpoint already exists: "
+                        f"{evaluation_checkpoint}"
+                    )
+                save_checkpoint(
+                    evaluation_checkpoint,
+                    quality_head=quality_head,
+                    optimizer=optimizer,
+                    state=state,
+                    contract_sha256=contract_sha,
+                )
                 metrics = evaluate_quality(
                     base_model,
                     quality_head,
@@ -1339,7 +1549,7 @@ def main() -> None:
                     device,
                 )
                 values = quality_metric_values(metrics)
-                decision = quality_tiny_gate(values)
+                decision = quality_tiny_gate(values, metrics)
                 state["consecutive_gate_passes"] = (
                     int(state["consecutive_gate_passes"]) + 1
                     if decision["passed"]
@@ -1356,7 +1566,12 @@ def main() -> None:
                     "protocol": PROTOCOL,
                     "source_commit": args.source_commit,
                     "updates_completed": updates,
-                    "quality_checkpoint_sha256": sha256_file(checkpoint_path),
+                    "quality_checkpoint": str(
+                        evaluation_checkpoint.resolve()
+                    ),
+                    "quality_checkpoint_sha256": sha256_file(
+                        evaluation_checkpoint
+                    ),
                     "formal_base_state_sha256": state_dict_sha256(base_model),
                     "values": values,
                     "metrics": metrics,

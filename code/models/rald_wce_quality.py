@@ -97,7 +97,7 @@ class RaLDWCEQualityHead(nn.Module):
         """Return the machine-checkable Q1 model boundary."""
 
         return {
-            "protocol": "g1_q1_rald_wce_quality_tiny_v1",
+            "protocol": "g1_q1r_rald_wce_quality_tiny_v1",
             "model_family": "RaLD-WCE frozen field plus independent quality head",
             "condition_dim": self.condition_dim,
             "model_dim": self.model_dim,

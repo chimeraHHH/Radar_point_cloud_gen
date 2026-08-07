@@ -1,4 +1,6 @@
 import inspect
+import json
+import math
 from pathlib import Path
 
 import pytest
@@ -174,6 +176,16 @@ def test_quality_sampler_is_unique_deterministic_and_range_frozen() -> None:
         10,
         4,
     )
+    for code, quota in enumerate(kwargs["range_quotas"]):
+        eligible = torch.nonzero(codes == code, as_tuple=False).flatten()
+        order = torch.argsort(quality[eligible], descending=True, stable=True)
+        pool_count = max(
+            quota // 2,
+            int(math.ceil(eligible.numel() * 0.2)),
+        )
+        high_pool = eligible[order[:pool_count]]
+        selected = first[codes[first] == code]
+        assert torch.isin(selected, high_pool).sum().item() == quota // 2
 
 
 def test_ordered_cache_digest_binds_identity_order_and_bytes(
@@ -230,6 +242,7 @@ def test_initial_ranking_control_preserves_exact_export_rows() -> None:
 
 def test_frozen_config_and_inference_signature_lock_tiny_protocol() -> None:
     config = train.frozen_quality_config()
+    assert config.protocol == "g1_q1r_rald_wce_quality_tiny_v1"
     assert config.maximum_updates == 500
     assert config.evaluation_updates == (100, 200, 300, 400, 500)
     assert config.quality_sample_count == 16_000
@@ -238,9 +251,117 @@ def test_frozen_config_and_inference_signature_lock_tiny_protocol() -> None:
     assert config.test_accessed is False
     assert config.doppler_head is False
     assert config.best_of_k is False
+    assert train.FROZEN_ORDERED_TINY_CUBE_DIGEST_SHA256 == (
+        "0bfbdb5eac17f9823033942e41abdb6d3b7303f7b55cb06807d8a0933f8a4b7c"
+    )
+    assert len(train.FROZEN_TINY_FRAME_IDENTITIES) == 8
     signature = inspect.signature(train.infer_exact_quality)
     assert "target_xyz_confidence" not in signature.parameters
     assert "target" not in signature.parameters
+
+
+def test_quality_gate_requires_numeric_and_both_export_structures() -> None:
+    values = {
+        "chamfer_mean_m": 0.8,
+        "outlier_fraction_mean": 0.08,
+        "completeness_median_m": 0.6,
+        "completeness_mean_m": 0.7,
+    }
+    exact = {
+        "all_matched_exports_exact_10000": True,
+        "all_wrong_exports_exact_10000": True,
+        "all_minimum_distance_5cm": True,
+        "all_wrong_minimum_distance_5cm": True,
+        "copy_padding_jitter_duplicate": False,
+    }
+    passed = train.quality_tiny_gate(values, {"exact_export": exact})
+    assert passed["passed"] is True
+
+    wrong_failed = dict(exact)
+    wrong_failed["all_wrong_minimum_distance_5cm"] = False
+    failed = train.quality_tiny_gate(
+        values,
+        {"exact_export": wrong_failed},
+    )
+    assert failed["passed"] is False
+    assert failed["numeric_checks"] == passed["numeric_checks"]
+
+
+def test_replay_parent_certificate_binds_every_parent_artifact(
+    tmp_path: Path,
+) -> None:
+    checkpoint = tmp_path / "checkpoint.pt"
+    metrics = tmp_path / "metrics.json"
+    manifest = tmp_path / "manifest.json"
+    diagnosis = tmp_path / "diagnosis.json"
+    for path, payload in (
+        (checkpoint, b"checkpoint"),
+        (metrics, b"metrics"),
+        (manifest, b"manifest"),
+        (diagnosis, b"diagnosis"),
+    ):
+        path.write_bytes(payload)
+    identity = {
+        "original_checkpoint_sha256": (
+            train.ORIGINAL_FORMAL_CHECKPOINT_SHA256
+        ),
+        "replay_checkpoint_sha256": train.sha256_file(checkpoint),
+        "replay_metrics_sha256": train.sha256_file(metrics),
+        "replay_run_manifest_sha256": train.sha256_file(manifest),
+        "replay_failure_diagnosis_sha256": train.sha256_file(diagnosis),
+        "formal_source_commit": train.FORMAL_PARENT_SOURCE_COMMIT,
+        "formal_epoch": 20,
+        "exact_original_checkpoint": False,
+        "certifier_source_commit": "a" * 40,
+    }
+    checks = {
+        "source_config_data_seed_epoch_match": True,
+        "formal_stage0_decision_preserved": True,
+        "validation_frame_contract_preserved": True,
+        "candidate_query_contract_preserved": True,
+        "replay_diagnosis_bound": True,
+        "validation_gt_ranking_oracle_passed": True,
+        "test_partition_accessed": False,
+        "future_cube_accessed": False,
+        "cfar_accessed": False,
+        "doppler_head_evaluated": False,
+    }
+    certificate = tmp_path / "certificate.json"
+    certificate.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "protocol": train.PARENT_CERTIFICATE_PROTOCOL,
+                "status": "replay_parent_authorized_for_q1r_tiny",
+                "q1r_tiny_authorized": True,
+                "identity": identity,
+                "checks": checks,
+                "claim_boundary": "source-equivalent replay, not original",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    evidence = train.validate_replay_parent_certificate(
+        certificate,
+        diagnosis,
+        checkpoint,
+        metrics,
+        manifest,
+        expected_certifier_source_commit="a" * 40,
+    )
+    assert evidence["validation_checks"]["replay_artifact_hashes"] is True
+
+    diagnosis.write_bytes(b"changed")
+    with pytest.raises(ValueError, match="replay_artifact_hashes"):
+        train.validate_replay_parent_certificate(
+            certificate,
+            diagnosis,
+            checkpoint,
+            metrics,
+            manifest,
+            expected_certifier_source_commit="a" * 40,
+        )
 
 
 def test_cpu_test_does_not_initialize_cuda() -> None:
