@@ -121,10 +121,12 @@ The following do not authorize promotion:
 
 The completed idea pass compared direct radar generation, RaLD, fixed-count set
 prediction, ray/range allocation, and quality/ranking mechanisms. Q-Local-F0R
-is terminal after its scientific no-go. The live falsification is now a
-variable multi-return renewal-hazard field that couples ordered returns within
-each azimuth/elevation ray. Sparse ray-range transport remains third priority
-and is not run in parallel.
+is terminal after its scientific no-go. The live falsification is now the
+source-bound `VRH-F0` paired capacity protocol: one target-independent
+`2R x 2A x 2E` frustum lattice, structurally separated model marks and GT audit
+sidecar, renewal/STOP decoding, and sequential-frontier versus flat-exposure
+utility control.
+Sparse ray-range transport remains third priority and is not run in parallel.
 
 Before a training route is authorized, it needs a source-bound falsification
 that completes in at most two H200 GPU-hours and states:

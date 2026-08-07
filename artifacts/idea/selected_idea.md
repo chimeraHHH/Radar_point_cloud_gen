@@ -26,18 +26,26 @@ number of returns is data-dependent rather than a fixed `K`, and return
 allocation is coupled within a ray rather than decided independently for every
 Cartesian candidate.
 
-The first experiment is a separately frozen, zero-training, train-only capacity
-oracle. It must establish that the representation can simultaneously support:
+The first experiment is the frozen, independently audited, zero-training,
+train-only paired capacity oracle in
+`docs/vrh_f0_variable_return_capacity_protocol.md`. It uses one
+target-independent `2R x 2A x 2E` lattice (`512 x 214 x 74`, 8,108,032
+ray-range cells), a decoder-visible model-mark field separated from the GT audit
+sidecar, bounded continuous event offsets, explicit renewal/STOP decoding, and
+sequential-frontier versus flat exposure of one shared canonical stream. It must
+establish that the representation can simultaneously support:
 
 - exactly 10,000 unique points with true minimum spacing at least 5 cm;
 - per-frame Chamfer `<=0.8 m` and 2 m outlier fraction `<=5%` on the frozen
   capacity cohort;
 - explicit completeness and recall retention in every target-bearing range
   stratum;
-- a target-free deployable exporter contract, with GT restricted to the
-  non-deployable capacity construction and metrics;
+- a target-free decoder/exporter contract, with GT identities and fitted
+  distances restricted to the non-deployable audit sidecar;
 - a variable number of ordered returns, with no fixed `K=4/6`, hard
-  `8000/1700/300` quotas, copy, padding, jitter, or best-of-k repair.
+  `8000/1700/300` quotas, copy, padding, jitter, or best-of-k repair;
+- a renewal utility win: the decision arm passes all gates while flat exposure
+  of the same decoded stream fails at least one corresponding gate.
 
 ## Why this route is first
 
@@ -58,11 +66,13 @@ mechanism has independent evidence.
 
 ## Decision boundary
 
-- capacity pass on every frozen frame: freeze a bounded one-frame
-  renewal-hazard memorization/scorer gate with a target-free Cube interface;
-- scientific capacity failure: close this representation and route to the
+- capacity and renewal-utility pass on every frozen frame: freeze a bounded
+  one-frame renewal-hazard memorization/scorer gate with a target-free Cube
+  interface;
+- both arms pass: record lattice-only capacity and do not authorize renewal;
+- scientific capacity failure: close only the frozen recipe and route to the
   separately frozen sparse ray-range transport oracle;
-- implementation-invalid: repair and rerun the identical capacity gate; do not
-  route scientifically;
+- implementation- or resource-invalid: repair and rerun the identical capacity
+  gate; do not route scientifically;
 - no downstream Doppler, cycle, temporal, or test work starts until a 76/24
   geometry parent passes the complete frozen gate.

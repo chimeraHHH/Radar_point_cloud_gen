@@ -76,11 +76,15 @@ survival interval, then renews the process so the same ray can emit a
 data-dependent number of later returns. This is a representation change, not a
 new threshold for the closed R-B1 fixed-`K=4/6` peak extractor.
 
-The first gate remains zero-training and train-only. Before implementation, a
-separate protocol must freeze the ray lattice, legal target-aided capacity
-construction, global exact-10k/true-5-cm export, per-frame geometry gates, and
-target-stratum anti-collapse checks. A deployable field may use only current
-Cube evidence; GT is restricted to the non-deployable capacity oracle and
+The first gate remains zero-training and train-only. The sole protocol entry
+`docs/vrh_f0_variable_return_capacity_protocol.md` fixes one
+`512 x 214 x 74` target-independent lattice, a decoder-visible model-mark blob
+separate from the GT audit sidecar, complete per-ray renewal streams, and paired
+sequential-frontier versus flat-exposure exports. Exact-10k/true-5-cm geometry,
+target-stratum retention, and same-ray first/later-return checks apply to both
+arms. Renewal is authorized only if the decision arm passes every gate and the
+flat arm fails at least one corresponding gate. A deployable field may use only
+current Cube evidence; GT is restricted to this non-deployable mark fitter and
 metrics.
 
 Sparse ray-range partial transport remains third priority behind its own
@@ -104,6 +108,8 @@ per-ray `K`, and hard per-frame range quotas are closed.
 
 ## Independent infrastructure progress
 
-The 45-sequence, 2,160-frame G4 download is complete. A fresh exact-member,
-size, and CRC audit is running from clean H200 source `083f4c4`; temporal
-training remains locked regardless of the data-audit outcome.
+The 45-sequence, 2,160-frame G4 download and full-summary CRC audit are complete.
+Source label `083f4c4` verified all 6,660 files and 45/45 member sets with no
+missing, unexpected, duplicate, invalid, pending, or failed entries. Evidence is
+archived under `artifacts/g4/g4_temporal_crc_083f4c4/`. Temporal training remains
+locked because no single-frame geometry parent has passed.

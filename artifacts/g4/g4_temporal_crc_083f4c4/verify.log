@@ -1,0 +1,589 @@
+{
+  "passed": true,
+  "expected_frame_count": 2160,
+  "cube_count": 2160,
+  "lidar_count": 2160,
+  "label_count": 2160,
+  "expected_sequences": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    11,
+    12,
+    14,
+    18,
+    21,
+    22,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    38,
+    39,
+    40,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    49,
+    50,
+    51,
+    52,
+    53,
+    55,
+    56,
+    57,
+    58
+  ],
+  "summary_valid": true,
+  "summary_required": true,
+  "summary": {
+    "requested_sequences": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      11,
+      12,
+      14,
+      18,
+      21,
+      22,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      38,
+      39,
+      40,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      49,
+      50,
+      51,
+      52,
+      53,
+      55,
+      56,
+      57,
+      58
+    ],
+    "completed_sequences": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      11,
+      12,
+      14,
+      18,
+      21,
+      22,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      38,
+      39,
+      40,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      49,
+      50,
+      51,
+      52,
+      53,
+      55,
+      56,
+      57,
+      58
+    ],
+    "failures": [],
+    "pending_sequences": [],
+    "active_sequences": [],
+    "retry_round": 2
+  },
+  "verified_file_count": 6660,
+  "invalid_files": [],
+  "sequence_reports": [
+    {
+      "sequence": 1,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 2,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 3,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 4,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 5,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 6,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 7,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 8,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 9,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 11,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 12,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 14,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 18,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 21,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 22,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 24,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 25,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 26,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 27,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 28,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 29,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 30,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 31,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 32,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 33,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 34,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 35,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 38,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 39,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 40,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 42,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 43,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 44,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 45,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 46,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 47,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 49,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 50,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 51,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 52,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 53,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 55,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 56,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 57,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    },
+    {
+      "sequence": 58,
+      "expected_members": 148,
+      "manifest_members": 148,
+      "member_set_matches": true,
+      "missing": [],
+      "unexpected": [],
+      "duplicate_count": 0
+    }
+  ],
+  "errors": []
+}
+	Command being timed: "/home/wangning/miniforge3/envs/hym_radar/bin/python -u code/scripts/verify_kradar_g0_download.py --audit-manifest artifacts/g4/g4_temporal_manifest_a7d06db1.json --data-root /home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_temporal_w48 --download-manifest-dir /home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/g4_temporal_download_w48/manifests --output /home/wangning/Shared/l40s_wangning_radar/cube_dense_runs/g4_temporal_crc_083f4c4/verification.json --workers 8 --require-full-summary"
+	User time (seconds): 497.77
+	System time (seconds): 330.73
+	Percent of CPU this job got: 11%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:56:21
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 159940
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 193853
+	Voluntary context switches: 6124010
+	Involuntary context switches: 9815
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

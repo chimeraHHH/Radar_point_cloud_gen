@@ -25,7 +25,7 @@ diffusion route.
 
 | Work | Relevant mechanism | Boundary in this repository |
 |---|---|---|
-| [DenserRadar](https://arxiv.org/abs/2405.05131) and its [official repository](https://github.com/hanzy21/DenserRadar) | Single Full-Doppler tensor, dense spatial occupancy supervision | Closest to the already closed early Full-RAED occupancy family; no generated pointwise Doppler distribution or temporal state |
+| [DenserRadar](https://arxiv.org/abs/2405.05131) | Full-Doppler input and one fixed `2R x 2A x 2E` frustum occupancy grid | VRH reuses the preregistered resolution only; DenserRadar remains single-frame thresholded occupancy with no ordered return process or generated Doppler mark |
 | [RaLD](https://arxiv.org/abs/2511.07067) and [official source](https://github.com/MetaIoT-WHU/RaLD/tree/ffec4b41241391734b1eda5c093de843c909eb8e) | Mixed set latents, coordinate-only implicit queries, radar-conditioned latent diffusion, wide inference queries | Its central mechanisms were separately tested by G1C/G1D/G1E/R-A1. More RaLD depth or queries is not a new route; coordinate-to-global-condition attention remains a useful control |
 | [SDDiff](https://www.ijcai.org/proceedings/2025/979) and [official repository](https://github.com/StellarEsti/SDDiff) | Directional spatial-Doppler refinement | Strong novelty collision for broad spatial-Doppler claims; released code is not yet an implementation to import |
 | [RaUF](https://openaccess.thecvf.com/content/CVPR2026/papers/Wang_RaUF_Learning_the_Spatial_Uncertainty_Field_of_Radar_CVPR_2026_paper.pdf) and [project repository](https://github.com/MetaIoT-WHU/RaUF) | Polar anisotropic uncertainty, spatial-Doppler interaction, likelihood-based dense reconstruction | Strongest direct collision with generic uncertainty/confidence novelty. Q-Local is a bounded geometry-parent experiment, not the paper's final novelty claim |
@@ -47,7 +47,10 @@ diffusion route.
 | Distributional localization | [D-FINE](https://proceedings.iclr.cc/paper_files/paper/2025/hash/6cf58a87e3097e7d1f9be3e8693a93de-Abstract-Conference.html), [official source](https://github.com/Peterande/D-FINE) | Predict an ordered distance distribution and rank by expected risk | The transfer is the output parameterization, not the detector architecture |
 | Differentiable top-k | [SOFT top-k](https://arxiv.org/abs/2002.06504) | Entropic-OT relaxation of cardinality selection | Cannot repair an incorrect score, range quota, or 5 cm conflict by itself |
 | Sparse/partial transport | [OT-M](https://openaccess.thecvf.com/content/CVPR2023/papers/Lin_Optimal_Transport_Minimization_Crowd_Localization_on_Density_Maps_for_Semi-Supervised_CVPR_2023_paper.pdf), [official source](https://github.com/Elin24/OT-M) | Couple density mass and point allocation rather than score points independently | A dense `700k x target` transport matrix is prohibited; this is a fallback only |
-| Ray-native generation | [Neural LiDAR Fields](https://arxiv.org/abs/2305.01643), [RangeLDM](https://arxiv.org/abs/2403.10094) | Ordered returns, ray drop, and range-native generation | A fixed `K=4/6` measured-peak construction already failed R-B1; any fallback must predict variable returns rather than reuse that rule |
+| Ray reset | [Neural LiDAR Fields](https://openaccess.thecvf.com/content/ICCV2023/papers/Huang_Neural_LiDAR_Fields_for_Novel_View_Synthesis_ICCV_2023_paper.pdf) | Reset transmittance after a first return before estimating a later return | NFL is LiDAR scene optimization with at most two returns; VRH generalizes only the reset principle |
+| Ray probability | [PLiNK](https://arxiv.org/abs/2411.01725) and [official source](https://github.com/mcdermatt/PLINK) | Range-wise probability/CDF with multiple peaks and first/nth/strongest sampling | One multi-peak CDF is not a variable-length emitted event sequence without explicit renewal and STOP |
+| Event process | [Neural Hawkes](https://papers.neurips.cc/paper_files/paper/2017/hash/6463c88460bd63bbe256e495c63aa40b-Abstract.html) and [official source](https://github.com/hongyuanmei/neurawkes) | Next-event intensity conditioned on ordered event history | VRH transfers history-conditioned next-event semantics to bounded range; it does not assume radar self-excitation |
+| Range-native generation | [RangeLDM](https://arxiv.org/abs/2403.10094) | Compact sensor-aligned range generation | A fixed `K=4/6` measured-peak construction already failed R-B1; VRH uses variable returns on a fixed target-independent lattice |
 
 ## Mechanism decision
 
@@ -85,6 +88,15 @@ renew/reset the radial process so later surfaces on the same ray remain
 representable. A zero-training capacity oracle must pass before any model is
 implemented. Fixed measured-peak `K=4/6`, pointwise global WCE ranking, larger
 WCE pools, and another Cartesian neighborhood sweep remain closed.
+
+The VRH-F0 protocol uses one target-independent DenserRadar-motivated
+`2R x 2A x 2E` lattice (`512 x 214 x 74`, 8,108,032 cells), RaLD-style
+continuous frustum event parameters, NFL-style reset, PLiNK-style range hazard,
+and an explicit STOP/history state. It separates decoder-visible model marks
+from the GT audit sidecar, decodes one canonical variable-return stream, and
+compares sequential frontier exposure against flat exposure of that same stream.
+Only a decision-pass/control-fail result can support renewal utility. The exact contract is in
+`docs/vrh_f0_variable_return_capacity_protocol.md`.
 
 ### Deferred fallback: sparse ray-range transport
 

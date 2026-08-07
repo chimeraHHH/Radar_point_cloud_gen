@@ -95,8 +95,9 @@ oracle 通过，但两个 fit 帧失败，因此 scorer 训练未启动。失败
 后继路线退休；exact 10k 与真实 5 cm 间距保留。随后 source
 \code{34579a2} 在物理 H200 GPU0 完成 Q-Local-F0R：全域导出在 12/12 帧通过
 CD、outlier 与结构门，但只有 2/12 保留全部 target-bearing range strata，终态为
-\code{qlocal\_f0r\_capacity\_no\_go}。Q-Local scorer 仍未训练；当前转入另行
-冻结的 variable multi-return renewal-hazard capacity oracle。逐点 Doppler、
+\code{qlocal\_f0r\_capacity\_no\_go}。Q-Local scorer 仍未训练；VRH-F0
+variable multi-return renewal-hazard paired capacity protocol 已通过独立终审并冻结。
+G4 数据 full-summary CRC 已通过，但逐点 Doppler、
 Cube-cycle、时序生成和测试集评估仍未解锁。
 \end{minipage}}
 \end{center}
@@ -213,7 +214,8 @@ Cube-cycle、时序生成和测试集评估仍未解锁。
   5 cm greedy selection。不可部署 GT-nearest oracle 在 12/12 帧通过
   $\mathrm{CD}\le0.8$ m、outlier $\le5\%$、exact 10k 与结构门，但只有
   2/12 保留所有含 target 的距离段。10 帧把预算集中到近距，故 500-update
-  scorer 训练继续禁止，下一步转入 variable multi-return renewal-hazard 表示。
+  scorer 训练继续禁止；VRH-F0 variable multi-return renewal-hazard 配对容量
+  协议已冻结，下一步才允许实现和执行。
 
   \item \textbf{文献重扫后，创新边界进一步收紧。}
   RaUF、SDDiff、RadarMP、Radar-Mamba 与 DoppDrive 已分别覆盖雷达不确定性、
@@ -243,9 +245,9 @@ Q1-R quality ranking & \closed & replay、full-24 diagnosis 与证书完成；ra
 Q-Local-F0 & \closed & 10/12 oracle 帧通过；梯度、同坐标干预、结构与 provenance 通过 & 两个 fit 帧容量失败；训练按协议禁止，不代表 scorer 学习失败 \\
 固定 range quota 审计 & \closed & 76/76 train 帧完成；2 帧的乐观 CD 下界越门，1 帧强制 20\% outlier & 硬 $8000/1700/300$ 配额退休；该 no-go 不否定 scorer 或 700k field \\
 Q-Local-F0R & \closed & H200 GPU0 上 12/12 CD/outlier/结构通过；只有 2/12 target-stratum retention 通过 & pointwise global ranking 近距塌缩；scorer 未训练，终态 no-go \\
-Variable renewal hazard & \pending & F0R 科学 no-go 已授权零训练表示容量测试 & 协议须在实现前冻结；固定 $K=4/6$、硬 range quota 与 pointwise global ranking 禁止复用 \\
+VRH-F0 renewal hazard & \pending & 协议已通过独立终审并冻结：单一 $512\times214\times74$ lattice、model-mark/GT-sidecar 隔离、canonical reset/STOP streams & 只有 sequential arm 全过且同流 flat arm 至少失败一个对应门，才授权 renewal；尚无 H200 结果 \\
 R-B2 voxel-slot & \closed & GT-aided 结构容量通过；80k arm 的 recall 在 76/76 帧过门 & 3 帧 coverage 失败，当前 Cube-only activation family 关闭 \\
-G4 时序数据 & \running & 45 序列、2,160 帧、约 600.8 GiB 已下载 & exact-member/size/CRC 审计运行中；不解锁时序训练 \\
+G4 时序数据 & \done & 45 序列、2,160 帧、6,660 文件、约 600.8 GiB；full-summary CRC 通过 & 只关闭数据完整性门；无合格 geometry parent，时序训练仍锁定 \\
 下游物理与时序 & \locked & 代码和旧机制证据存在 & 无通过的 K-Radar 几何父模型，不能形成当前主张 \\
 \bottomrule
 \end{tabularx}
@@ -399,6 +401,7 @@ test、future access 和 model training 均为 false。报告 SHA-256 为
 \begin{table}[htbp]
 \centering
 \footnotesize
+\renewcommand{\arraystretch}{0.96}
 \caption{当前神经网络与模块状态}
 \label{tab:network-overview}
 \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash\bfseries}p{2.5cm} >{\raggedright\arraybackslash}p{3.8cm} Y >{\raggedright\arraybackslash}p{2.0cm}}
@@ -411,7 +414,7 @@ R-A1 RaLD-WCE & 500k Q0 + 200k Cube-guided Q1；condition-exclusive field & 700k
 Q1-R quality head & refined RAE、512-d frozen condition latents、detached occupancy confidence；Fourier embedding + 4-head cross-attention + MLP & 每候选连续 quality correction，只替换排序分数 & 已实现；父证书 no-go，训练未启动 \\
 Q-Local-F0 & normalized RAE、detached parent confidence、冻结全局 latents、局部 64-bin spectrum、能量/熵/梯度；cross-attention + 6-bin risk head & 最近表面距离分布及负期望风险排序；坐标与 exporter 不变 & 已实现；capacity no-go，训练未启动 \\
 Q-Local-F0R exporter & 与 Q-Local-F0 bit-identical 的 700k candidates；全域稳定排序 + 5 cm greedy selection & exact 10k，不设逐帧 range quota；含 target 区间保留门 & H200 oracle 完成；2/12 完整通过，路线关闭 \\
-Variable renewal hazard & azimuth/elevation ray 上的 survival hazard；每次 return 后 renewal/reset；返回数可变 & ordered multi-return field，后接 exact-10k/5 cm 全局导出 & 当前 live capacity hypothesis；协议待冻结，无模型结果 \\
+VRH-F0 renewal hazard & $512\times214\times74$ frustum lattice；分离的 model marks/audit sidecar；每次 return 后 reset；显式 STOP & 同一 canonical event stream 的 sequential-frontier 与 flat-exposure 配对导出 & 协议已通过独立终审并冻结；实现与 H200 结果待完成 \\
 R-B2 voxel-slot & 0.4 m Cartesian voxels、每 voxel 4 slots & whole-voxel fixed-count export & 容量 oracle 通过，激活家族关闭 \\
 Doppler 与 Cycle & final-position Cube spectrum query、64-bin distribution head、differentiable splatting & $q_i(v_r)$、confidence 与 Cube closure & 已实现，未解锁 \\
 Temporal & ego/Doppler warp、token/latent/query fusion、scheduled sampling & 当前 Cube 校正的时序状态与 rollout & 已实现，未解锁 \\
@@ -753,6 +756,53 @@ support 不足。
 variable multi-return renewal-hazard capacity route。固定 $K=4/6$ measured-peak、
 旧硬配额与 pointwise global ranking 均不得重开。
 
+\subsection{VRH-F0：可变多回波续接 hazard 配对容量协议}
+
+VRH-F0 候选协议在任何实现前固定唯一分辨率：把原生
+$(R,A,E)=(256,107,37)$ 的每个自然 Voronoi cell 二等分，形成
+\begin{equation}
+  (R_2,A_2,E_2)=(512,214,74),\qquad
+  A_2E_2=15{,}836\ \text{subrays},
+\end{equation}
+共 8,108,032 个 target-independent ray--range cells。range 上界保持原生末端
+半步的 $118.2685546875$ m，不人为扩展到 120 m。每个 cell 最多携带一个
+bounded $(\Delta r,\Delta a,\Delta e)$ event；cell ID、axes、bounds 与完整 support
+在 target loader 之前构造和哈希。
+
+GT 只能进入非部署函数 \code{fit\_gt\_oracle\_marks}。它产生两个物理隔离的
+artifact：decoder 可见的 \code{ModelMarks} 仅含 finite hazard、bounded offsets、
+opaque integer priority 与 confidence；\code{FitSidecar} 才保存 nearest-target ID、
+真实 fitted distance 与 exact-coordinate coincidence。decoder/exporter 的签名、
+配置、import 与 opened files 均不得包含 target rows、target IDs、sidecar 或
+预选 mask。
+
+对第 $q$ 条 subray，第 $m$ 次续接从 cursor $c_m$ 开始，下一 event 的语义为
+\begin{equation}
+ p(B_m=b\mid H_m)=h_{q,b}(H_m)
+ \prod_{j=c_m}^{b-1}\bigl(1-h_{q,j}(H_m)\bigr),
+ \qquad
+ p(\mathrm{STOP}\mid H_m)=
+ \prod_{j=c_m}^{R_2-1}\bigl(1-h_{q,j}(H_m)\bigr).
+\end{equation}
+命中后 cursor 前移、survival interval 重置，并施加固定 5 cm refractory rule；
+返回数只受 512 个 range cells 的有限 support 约束，不存在固定 $K$ 或 range quota。
+两种 exporter 运行前，decoder 先把每条 ray 一次性展开到 STOP，并冻结唯一
+canonical event-stream hash。
+
+决策臂每条 ray 只暴露当前 next event；被消费后才暴露下一 event。control 臂则把
+完全相同的 canonical stream 一次性平铺到同一 heap。两臂共享 marks、events、
+scores 与 5 cm greedy check，只改变 frontier exposure。12 帧均逐帧评估 CD
+$\le0.8$ m、outlier $\le5\%$、exact 10k、真 5 cm、F0R range-stratum retention，
+并用同 ray、range-monotone、event 不可复用的匹配检查 first/later groups：
+completeness $\le1.0$ m、recall@1m $\ge0.80$。
+
+只有 sequential 决策臂在 12/12 帧通过全部门、flat control 至少失败一个对应门，
+且两臂 selected IDs 确有差异并接受真实 depth$\ge2$ event，才能得到
+\code{vrh\_f0\_capacity\_passed}。若两臂都通过，只能记录 lattice/mark-field
+capacity，不能授权 renewal。协议不读取 Cube/CFAR；即便 capacity pass，也只授权
+另行冻结的 target-free one-frame learnability/condition-use gate，不解锁 Doppler、
+cycle、temporal、validation 或 test。
+
 \subsection{R-B2：Cartesian Voxel-Slot}
 
 R-B2 不再从 700k points 中直接做全局 hard top-$k$，而是把输出写成
@@ -925,15 +975,15 @@ scheduled sampling 提升了长期物理新鲜度，但生成桥仍存在几何�
 方法 & 已有工作 & 可借鉴机制 & 当前处理 \\
 \midrule
 \endhead
-\href{https://arxiv.org/abs/2511.07067}{RaLD} &
+\href{https://ojs.aaai.org/index.php/AAAI/article/view/38946}{RaLD} &
 Radar spectrum 条件的 occupancy field 与 latent generation &
-wide queries、mixed latents、thresholded occupancy &
-作为结构来源；不作为 matched K-Radar fixed-10k baseline \\
+continuous frustum queries、mixed latents、逐层 radar condition &
+作为 VRH 后续 target-free conditioner；不照搬 thresholded intensity-only export \\
 
 \href{https://arxiv.org/abs/2405.05131}{DenserRadar} &
 Full-Doppler 3D U-Net 输出稠密 occupancy &
-spherical multiscale feature 与 deep supervision &
-用于 R-B2 encoder 设计，不照搬 variable threshold output \\
+固定 $2R\times2A\times2E$ frustum resolution 与 deep supervision &
+只冻结 VRH lattice 分辨率；不照搬独立 occupancy threshold \\
 
 \href{https://proceedings.neurips.cc/paper_files/paper/2023/file/34074479ee2186a9f236b8fd03635372-Paper-Conference.pdf}{Rank-DETR} &
 分类分数与 localization quality 对齐 &
@@ -971,11 +1021,25 @@ spatial-Doppler 或 BEV diffusion &
 多模态生成与 consistency distillation &
 代价高，不能优先修复已定位的 ranking 故障 \\
 
-\href{https://arxiv.org/abs/2305.01643}{Neural LiDAR Fields} /
+\href{https://openaccess.thecvf.com/content/ICCV2023/papers/Huang_Neural_LiDAR_Fields_for_Novel_View_Synthesis_ICCV_2023_paper.pdf}{Neural LiDAR Fields} &
+beam divergence、ray drop 与第二回波截断 rendering &
+命中后清空前段 density 并 reset transmittance &
+迁移 reset 原理；不继承固定双回波与逐场景 LiDAR 优化 \\
+
+\href{https://arxiv.org/abs/2411.01725}{PLiNK} &
+沿 ray 的概率积分/CDF，可采样 first、nth、strongest return &
+range hazard 与多峰监督 &
+增加 renewal/STOP 后用于 VRH；单一多峰 CDF 不等于 event sequence \\
+
+\href{https://papers.neurips.cc/paper_files/paper/2017/hash/6463c88460bd63bbe256e495c63aa40b-Abstract.html}{Neural Hawkes} &
+由历史事件状态控制下一事件 intensity &
+ordered event-conditioned state &
+只迁移 next-event 语义；不主张 radar return 服从 Hawkes 自激 \\
+
 \href{https://arxiv.org/abs/2403.10094}{RangeLDM} &
-ray-native ordered returns、ray drop 与 range generation &
-variable multi-return hazard 表示 &
-仅作为 Q-Local 失败后的异族零训练 capacity fallback \\
+range-native compact latent generation &
+sensor-aligned range 表征 &
+相关表示参考，不替代 VRH 的 variable multi-return capacity gate \\
 \bottomrule
 \end{longtable}
 
@@ -1089,6 +1153,25 @@ Q-Local scorer 仍未训练，并按协议切换到 variable multi-return renewa
 容量路线。任何后继都不能删除失败帧、改成 aggregate-only gate、事后放宽几何门，
 或恢复固定 $K$ 与硬 range quota。
 
+\subsection{G4 时序数据 full-summary CRC}
+
+独立数据完整性任务在 H200 host \code{WHUServer-H200}、用户 \code{wangning}
+完成，verifier source label 为 \code{083f4c4}。最终
+\code{verification.json} 给出：2,160/2,160 Cube、LiDAR 与 label 帧齐全，
+6,660 个文件通过校验，45/45 sequence member sets 与 manifest 完全一致，且
+\code{invalid\_files=[]}、\code{errors=[]}、pending/active sequence 均为空。
+输出 SHA-256 为
+\hash{0ed646c841ccfd88863cae6333c7b065}{016425c96d96eb97c53b941f01470fda}，
+完整 time/log SHA-256 为
+\hash{9c6bcd5281a0007b424baf2b9799de8a}{4b308c53febca4661d06df3b810c0df4}。
+
+审计 wall time 为 1:56:21，最大常驻内存 159,940 KiB；manifest 估算 Cube 加
+LiDAR payload 为 600.773 GiB。该任务是 I/O/CPU-bound 数据门，不是 GPU 模型实验。
+它只证明 byte-level manifest agreement、文件计数和完整成员集；不证明 label
+正确性、标定质量或任何时序指标。validation 文件仅做 checksum，没有用于拟合、
+指标选择或路线选择；test 仍未访问。由于尚无合格单帧 geometry parent，G4 训练
+保持锁定。
+
 \subsection{已关闭与仍锁定路线}
 
 R-B2 的 3$\times$3 support sweep 已完成，当前 Cube-only activation family
@@ -1119,9 +1202,9 @@ P0 & Q1-R 干净快照回归 & 已完成，42 项定向、101 项扩大回归 & 
 P1 & Q-Local-F0 preflight & 已完成，444.58 s，H200 GPU2 & 10/12 capacity pass；终态 no-go，tiny 禁止 \\
 P2 & fixed range-quota audit & 已完成，76/76 train 帧，11.2799 s & 2 帧严格不可行；旧硬配额终止且不得复用 \\
 F0R & global-export candidate oracle & 已完成，456.34 s，H200 GPU0 & 12/12 几何/结构通过，2/12 strata retention；科学 no-go \\
-F1 & variable renewal-hazard oracle & 当前 live gate，零训练 & 先冻结 variable-return 表示与 anti-collapse 容量协议，再实现和运行 \\
+F1 & VRH-F0 renewal-hazard oracle & 当前 live gate，零训练 & paired protocol 已通过独立终审并冻结；下一步实现并在同一 12-frame train-only cohort 正式运行 \\
 P3 & Doppler + Cube-cycle & 锁定 & 无合格 geometry parent \\
-P4 & RadarMP + DoppDrive 时序 & 锁定 & 无合格单帧 family；G4 CRC 独立运行 \\
+P4 & RadarMP + DoppDrive 时序 & 锁定 & G4 full-summary CRC 已通过；仍无合格单帧 family \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -1146,8 +1229,8 @@ $\rightarrow$ current-observation-corrected temporal state.
 R-B2 当前 activation family 已失败，Q1-R 在 replay-parent 授权门停止，Q-Local
 又在训练前的两级容量门停止。固定 range quota 审计已经证明旧输出契约不可复用，
 F0R 又证明无配额 pointwise global ranking 会丢失中远距 strata。因此目前没有
-活动的 learned fixed-10k 几何训练；当前活动路线是另行冻结的 variable
-multi-return renewal-hazard 零训练 capacity oracle。
+活动的 learned fixed-10k 几何训练；当前活动路线是协议已通过独立终审并冻结、尚未实现的
+VRH-F0 variable multi-return renewal-hazard 零训练 paired capacity oracle。
 当前仍应停止扩展完整 downstream 叙事，直到新的 geometry parent 通过；不能用
 diffusion 或 temporal complexity 掩盖上游表示与输出约束的矛盾。
 
@@ -1227,8 +1310,9 @@ same-coordinate wrong-Cube intervention、物理 GPU provenance 和原子事务�
 随后完成的 F0R 又提供更细的终止证据：同场 700k field 在无配额 GT-nearest
 global export 下 12/12 通过 CD、outlier、count 与 spacing，但只有 2/12 保留
 全部 target-bearing strata。取消配额解决了旧失败帧，却不能解决近距预算塌缩。
-因此当前最优先工作不再是增加网络深度或训练 Q-Local，而是冻结并执行 variable
-multi-return renewal-hazard capacity oracle，用 ordered return renewal 直接检验
+因此当前最优先工作不再是增加网络深度或训练 Q-Local，而是完成 VRH-F0 paired
+protocol 终审，随后实现并执行 variable multi-return renewal-hazard capacity oracle，
+用同一 canonical stream 的 sequential-vs-flat 对照直接检验 renewal 是否真正改善
 集合级多距离分配能力。
 
 逐点 Doppler、Cube-point 双向约束和长期时序一致性仍是项目最终创新组合，
@@ -1261,7 +1345,7 @@ H200 环境 & \code{/home/wangning/miniforge3/envs/hym\_radar} \\
 禁止 GPU & 物理 GPU 1，RTX 5000 \\
 规范 Cube shape & $(D,R,A,E)=(64,256,107,37)$ \\
 开发数据 & 100 帧，45 场景，76 train + 24 validation \\
-时序数据 & 服务器记录 45/45 序列已下载，约 600.8 GiB（约 645.1 GB）；原始 summary 尚待归档，最终 CRC 审计待完成 \\
+时序数据 & 45/45 序列、2,160 帧、6,660 文件；约 600.8 GiB；full-summary CRC 已通过并归档 \\
 当前输出契约 & exact 10,000 points + 真实 5 cm；旧逐帧 $8000/1700/300$ 配额已由严格审计退休 \\
 最小点距 & 5 cm \\
 测试访问 & false \\
@@ -1289,7 +1373,10 @@ Q-Local-F0R 状态 & \code{qlocal\_f0r\_capacity\_no\_go}；12/12 CD/outlier/结
 Q-Local-F0R 报告 SHA &
 \hash{505644667ba3f73b58ee138608307e826}{32fe92bc3336f538c74767ab9c148ae} \\
 Q-Local-F0R GPU & physical 0；UUID \code{GPU-74b9b73f-c405-55bc-bf76-f8aa85d1e7fe}；PCI \code{00000000:01:00.0} \\
-当前几何容量路线 & variable multi-return renewal hazard；零训练协议待冻结 \\
+VRH-F0 协议状态 & independent audit = FREEZE；model-mark/GT-sidecar 隔离，sequential-vs-flat utility gate；H200 结果尚不存在 \\
+G4 CRC terminal & \code{g4\_temporal\_crc\_passed}；2,160 帧、6,660 文件、45/45 member sets、0 invalid/error \\
+G4 verification SHA &
+\hash{0ed646c841ccfd88863cae6333c7b065}{016425c96d96eb97c53b941f01470fda} \\
 RaLD 审计 commit &
 \hash{ffec4b41241391734b1e}{da5c093de843c909eb8e} \\
 \end{longtable}
@@ -1325,7 +1412,10 @@ RaLD 审计 commit &
   \item \path{artifacts/g1/q1r_replay_parent_e159a22/full24.json}
   \item \path{docs/rald_wce_quality_tiny_protocol.md}
   \item \path{docs/qlocal_f0r_global_export_capacity_protocol.md}
+  \item \path{docs/vrh_f0_variable_return_capacity_protocol.md}
   \item \path{artifacts/g1/qlocal_f0r_global_export_34579a2/decision.md}
+  \item \path{artifacts/g4/g4_temporal_crc_083f4c4/verification.json}
+  \item \path{artifacts/g4/g4_temporal_crc_083f4c4/decision.md}
   \item \path{artifacts/g1/dmhw_birth_rmoment_label_audit_no_go_2026-07-29.md}
 \end{itemize}
 \end{multicols}
@@ -1340,6 +1430,8 @@ RaLD 审计 commit &
   \item 本报告没有把 Q-Local capacity no-go 泛化成所有 continuous quality scorer 失败；scorer 从未训练。
   \item 本报告把 F0R 写成 H200 capacity no-go，而不是 learned result；12/12 aggregate geometry 通过与 2/12 strata retention 通过同时保留。
   \item 本报告没有把 F0R 的 pointwise global-ranking no-go 泛化成所有 set allocation 或 ray-native representation 失败。
+  \item 本报告没有把 VRH-F0 的候选协议、文献动机或 8,108,032-cell support 写成 H200 capacity 结果。
+  \item 本报告没有把 G4 CRC 通过写成时序模型通过；它只验证数据文件与 manifest 完整性。
   \item 本报告没有把 \code{e159a22} 的回归通过写成完整防篡改保证；终审的 3 P1/3 P2 已显式保留。
   \item 本报告没有把 source-equivalent replay 写成原 checkpoint 的同一复现。
   \item 本报告没有把 R-B2 structural capacity 写成 Cube-only generalization。

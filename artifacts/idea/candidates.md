@@ -4,7 +4,7 @@
 > H200 GPU0. All 12 train-only frames passed exact-10k/5 cm, Chamfer, outlier,
 > and structural gates, but only 2/12 retained every target-bearing range
 > stratum. Terminal status is `qlocal_f0r_capacity_no_go`; the scorer was not
-> trained. The live route is now a separately frozen variable multi-return
+> trained. The live route is now the independently audited variable multi-return
 > renewal-hazard capacity oracle. Sparse ray-range transport remains third
 > priority. Validation and test remain untouched by these capacity decisions.
 
@@ -12,7 +12,7 @@
 
 | Priority | Mechanism | First gate | Anti-relabel boundary |
 |---|---|---|---|
-| 1 | Variable multi-return renewal hazard | Train-only zero-training capacity oracle; exact 10k/5 cm, per-frame geometry, and target-stratum retention | Return count must be data-dependent and renewed after a hit; fixed `K=4/6`, pointwise global ranking, and hard range quotas are prohibited |
+| 1 | Variable multi-return renewal hazard | Frozen `docs/vrh_f0_variable_return_capacity_protocol.md`: one `512 x 214 x 74` train-only zero-training paired oracle with shared canonical event streams; exact 10k/5 cm, per-frame geometry, strata retention, first/later-return gates, and sequential-vs-flat utility control | Decoder/exporter cannot read GT sidecars or preselected masks; renewal must make the decision arm pass a gate failed by flat exposure; fixed `K=4/6`, pointwise global ranking, and hard range quotas are prohibited |
 | 2 | Sparse ray-range partial transport | Separately frozen hard-rounding oracle within runtime/memory limits | Must couple set allocation without a dense `700k x target` matrix or GT at deployment |
 
 No learned successor starts before its own capacity gate passes.
