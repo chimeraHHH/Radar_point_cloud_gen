@@ -1,88 +1,93 @@
 # Cube-to-dense current board packet
 
-## Incumbent and contract
+> Refreshed 2026-08-07 at repository commit `083f4c4`. Test access is false.
 
-The current frozen run is G1D v2, source `4c6150cd`: a deterministic
-Full-RAED-conditioned query field with 512 working latents, 24 conditioned
-Transformer blocks, 32k coarse queries, and 10k refined output points. Direct
-local Cube spectrum, standardized energy, and range enter every query-decoder
-call.
+## Incumbent
 
-The authoritative geometry thresholds are recorded in
-`code/scripts/compare_rald_query_field.py`. Test access remains false.
+There is no passing single-frame geometry incumbent. The strongest current
+mechanism evidence is the fresh R-A1 replay candidate pool, not its deployed
+output:
 
-## Durable results
+- current-confidence exact-10k: Chamfer `4.0261 m`, outlier `31.7854%`;
+- validation-GT-nearest exact-10k on identical candidates:
+  Chamfer `0.6375 m`, outlier `2.2771%`, far completeness `0.7046 m`;
+- candidate coordinates, range quotas, exporter, and 5 cm spacing are fixed.
 
-| Route | Strongest result | Decision |
+This isolates geometric-utility prediction and structured selection as an open
+mechanism. It does not authorize reuse of the deleted R-A1 identity.
+
+## Final route decisions
+
+| Route | Decisive result | Boundary |
 |---|---|---|
-| G1 recovery | Full-RAED did not satisfy the frozen original gate | Closed |
-| G1B spectrum | `full_raed_rank2`: Chamfer `2.0251 m`, outlier `28.885%`, far completeness `7.5757 m` | Failed outlier gate; no Stage B |
-| G1C | No scientific training result | Superseded before metrics |
-| G1D invalid runs | Loss, energy scale, label-phase, and shuffle-pair defects | Engineering-only; excluded |
-| G1E-D0 | R1-fidelity `10.9985 -> 10.7680 m`; R1-KRadar `9.9612 -> 11.4948 m` under proposal support | Failed; independent occupancy VAE/EDM closed |
+| RAE-Max | Chamfer `2.9306 m`, outlier `25.697%` | Useful compact baseline; geometry gate failed |
+| Full-RAED early fusion | `+5.86%` Chamfer vs RAE-Max | Early spectrum fusion rejected |
+| G1D direct query field | Endpoint degraded; condition effect weak; duplicates high | Deterministic arbitrary-query family closed |
+| G1G hierarchy | Completeness/far support improved, but outlier `84.685%`, duplicates `70.811%`, shuffle `-0.121%` | Current condition-exclusive patch allocator closed |
+| G1E/RaLD latent occupancy | Source-faithful proposal-support gate failed | Current occupancy VAE/EDM route closed |
+| G1F fixed 32k selector oracle | GT-aided subset still failed Chamfer/completeness/duplicates | Selector-only repair on that pool closed |
+| R-A1/R-A2 | Wide candidates exist, but binary occupancy/confidence does not select them | Binary score recipe closed |
+| Q1-R | Replay failed four original-endpoint equivalence tolerances | Quality hypothesis untested; old-parent route closed |
+| R-B2 | 80k `max_d` recall passed on 76/76, confidence coverage failed on 3 frames | Current score-plus-fixed-neighborhood activation closed |
+| G1T | Ego/Doppler union changed geometry by less than `0.05%` and remained very poor | Current no-train history proposal route closed |
 
-G1E-D0 shows that replacing full-grid top-10k with deterministic radar proposal
-support is not sufficient to rescue the archived RaLD latent-only occupancy
-decoder. This removes query allocation as the sole explanation for the old
-point-VAE failure.
+## Important contradiction
 
-## Active intermediate evidence
+The project has moved past the question of whether a sufficiently wide spatial
+support can exist. On two independently trained R-A1 pools, an unattainable
+geometric score selects an excellent exact-10k subset, while binary occupancy
+confidence fails badly.
 
-G1D v2 is still training and has no scientific result. Through epoch 65:
+The unresolved question is whether radar-only evidence can predict that utility
+without:
 
-- best selection occurred at epoch 15;
-- epoch-15 Chamfer was `4.4823 m`, completeness `3.5811 m`, and outlier
-  `17.90%`;
-- occupied recall increased from `24.1%` at epoch 15 to about `50.4%` at epoch
-  65;
-- epoch-65 Chamfer was `5.2683 m`, completeness `3.5822 m`, outlier about
-  `23.45%`, and duplicate fraction about `29.16%`;
-- cross-scene condition-shuffle Chamfer degradation remained below `0.2%`,
-  versus the frozen `1%` gate.
+1. inheriting a deleted checkpoint identity;
+2. reading target geometry at inference;
+3. collapsing coverage, range quotas, or point diversity;
+4. bypassing the global Cube condition through local energy alone.
 
-This is monitoring evidence only. The run continues unchanged to 150 epochs.
+## Closed assumptions
 
-## Current contradiction
+- early Full-RAED channel fusion is not sufficient;
+- larger deterministic query fields are not sufficient;
+- binary occupancy probability is not geometric quality;
+- reducing the 10k output count is not an allowed or sufficient repair;
+- fixed-neighborhood voxel activation is not robust across all train frames;
+- the current ego/Doppler union proposal does not supply useful geometry;
+- diffusion, Doppler, cycle, or temporal modules cannot compensate for a failed
+  single-frame geometry parent.
 
-Two partially successful behaviors do not combine:
+## Selected live mechanism
 
-1. Compact Full-RAED occupancy models can approach the Chamfer and far-range
-   gates, but retain too many spatial outliers.
-2. The large G1D query field lowers outliers and increases occupied recall, but
-   has poor completeness, excessive duplicates, and almost no measurable
-   dependence on its global radar condition.
+**Q-Local-F0** freezes the fresh replay as `Fresh-WCE-20`, keeps its 700k
+candidate coordinates and exact exporter, and predicts a six-bin geometric-risk
+distribution from global Cube latents plus local 64-bin Doppler evidence. It is
+train-only, uses eight fit sequences plus four unseen training sequences, and
+has a 500-update/7200-GPU-second hard stop.
 
-The likely architectural conflict is that direct local Cube evidence is strong
-enough to dominate query scoring, while the 24-layer global condition path has
-no exclusive information or bottleneck forcing it to matter.
+The same-coordinate wrong-Cube control swaps only global and local Cube
+evidence; candidates, parent confidence, target, and exporter remain fixed.
+This directly tests radar-conditioned scoring instead of another support field.
+
+If Q-Local-F0 fails, the outside-family fallback is a variable multi-return
+ray-hazard representation. Sparse ray-range transport is deferred behind its
+own hard-rounding oracle. Adaptive fixed-neighborhood support is closed with
+R-B2 and is no longer listed as live.
 
 ## Stale routes not to reopen
 
-- original G1 threshold relaxation;
-- G1B variants with only a new spectral rank or scalar summary;
-- G1C deterministic refiner under a new name;
-- another point-VAE run that differs only in positive/negative weights;
-- RaLD full-grid or proposal-support occupancy decoding without new target
-  representation evidence;
-- confidence-based masking that improves outlier by discarding coverage;
-- best-of-k latent diffusion;
-- G2/G4/P5 launched from a failed geometry family.
+- threshold relaxation or cardinality reduction;
+- G1B spectral-rank variants;
+- another G1C/G1D deterministic query refiner;
+- G1G with only a different patch count or radius;
+- R-A2 binary occupancy with a different class sampler;
+- Q1-R under the original-parent claim;
+- R-B2 with only a larger fixed bank or neighborhood;
+- G1T with only a longer history;
+- any downstream Doppler/temporal run before a new parent passes.
 
-## Open candidate families
+## Independent infrastructure progress
 
-The parallel literature and code audit must compare at least:
-
-1. **Measurement/objective:** range- and density-balanced transport or set
-   matching that directly controls coverage, outliers, and duplicates.
-2. **Mechanism:** condition-exclusive global allocation followed by local
-   refinement, with the local Cube bypass removed or gated.
-3. **Representation:** factorized occupancy/ray or range-view generation that
-   better matches long-range radar geometry than full 3D point queries.
-4. **Temporal-first:** ego/Doppler-warped history as a proposal prior, while the
-   current Cube refreshes occupancy and Doppler.
-5. **Conservative baseline:** retain the compact G1B geometry family and attack
-   only its outlier tail with a source-independent, non-collapsing mechanism.
-
-Only candidates with a distinct mechanism, official prior-art support, and a
-one-to-two-hour falsification run may enter the next experiment frontier.
-
+The 45-sequence, 2,160-frame G4 download is complete. A fresh exact-member,
+size, and CRC audit is running from clean H200 source `083f4c4`; temporal
+training remains locked regardless of the data-audit outcome.

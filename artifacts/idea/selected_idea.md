@@ -1,62 +1,51 @@
-# Selected parallel idea program
+# Selected geometry idea
 
-> Frozen on 2026-07-28 before H200 execution.
+> Frozen on 2026-08-07 before implementation or H200 execution. Test access is
+> false.
 
-## Primary question
+## Primary route: Q-Local-F0
 
-The next decision is whether the failure lies in **candidate support** or in
-**learned point-budget allocation**. G1F-F0 is therefore the primary diagnostic:
-it asks whether an explicitly unattainable GT oracle can select a valid
-fixed-count subset from the frozen 32,000-point G1D measurement proposal pool.
+Use the source-`f2a9489` fresh replay checkpoint as a newly named candidate
+field, not as the deleted R-A1 checkpoint and not as an authorized Q1-R parent.
+Its fixed 700k pool and exact exporter are retained because an independent
+non-deployable score already shows strong geometric support.
 
-F0 uses a coverage-oriented, capacity-one assignment. Within each fixed range
-bin, every target votes for its nearest candidate; target confidence mass is
-aggregated per candidate, unique candidates are ranked by covered mass and
-distance, and unused quota is filled by nearest target support. This avoids the
-invalid oracle that would simply cluster many candidates around one target.
+Train a small distributional geometric-risk scorer from candidate RAE, detached
+base confidence, global Cube latents, and local 64-bin Doppler evidence. Rank by
+negative expected clipped distance and export with the unchanged exact-10k,
+range-quota, 5 cm capacity-one algorithm.
 
-If F0 fails the complete geometry gate, no selector trained on the same frozen
-pool can be presented as the next answer. If F0 passes, G1F-F1 balanced
-transport is authorized for one 10-epoch Stage-0 run.
+The first run is the train-only Q-Local-F0 gate defined in
+`docs/qlocal_distributional_risk_tiny_protocol.md`. It includes eight fitting
+sequences, four unseen training sequences, same-coordinate wrong-Cube controls,
+immutable 100-update evaluations, and a two-H200-GPU-hour hard stop.
 
-## Independent mechanism branch
+## Why this route is first
 
-G1G tests the condition-bypass hypothesis. Its global Full-RAED encoder must
-allocate 2,500 patch centers before any local Cube query. Only after allocation
-may local spectra refine four bounded children per center. Cross-scene condition
-shuffle is mandatory in preflight and evaluation.
+1. It tests the unresolved quality hypothesis rather than another support
+   generator.
+2. It adds local Full-Doppler evidence missing from the unexecuted global-only
+   Q1-R head.
+3. It preserves the already validated candidate and exporter boundary, making
+   a two-hour causal result possible.
+4. It produces a reusable geometry parent if successful, while keeping the
+   final circular-Doppler and Cube-cycle claims locked.
 
-G1G is independent from G1F: it changes the representation and information
-path, not only the selector. It can proceed even if G1F-F0 fails.
+## Outside-family fallback
 
-## Independent temporal branch
+If Q-Local-F0 fails its frozen gate, run a zero-training representation oracle
+for a variable multi-return ray-hazard field. Fixed per-ray `K=4/6`, larger
+arbitrary-query pools, another binary occupancy model, and fixed-neighborhood
+activation remain closed.
 
-G1T tests whether recent history adds measurement support that the current Cube
-proposal pool lacks. It compares current-only, ego-warp union, and
-Doppler-warp union under identical four-frame history, current-Cube rescoring,
-fixed duplicate suppression, and exact 10,000-point export.
+Sparse ray-range partial transport is third priority and requires a separate
+hard-rounding oracle before implementation. It is not fused with Q-Local.
 
-G1T is a no-train support diagnostic. Passing it does not establish future
-prediction or generated Doppler; it only authorizes history as a proposal prior.
+## Decision boundary
 
-## Conservative control
-
-G1H retains the frozen G1B `full_raed_rank2` model and replaces an equal number
-of low-support isolated tail points with unused range-stratified Cube peaks. It
-is deferred until the three primary Stage-0 jobs finish. It cannot be promoted
-by masking points or reducing output count.
-
-## No premature fusion
-
-G1F, G1G, and G1T are evaluated independently. Mechanisms are combined only
-after at least one learned geometry family passes its own frozen gate and the
-other component shows an independent positive ablation. G1D v2 continues
-unchanged to epoch 150 as a frozen control.
-
-## First decision
-
-G1F-F0 failed the complete oracle gate on source `ca60d76`: Chamfer `2.8863 m`,
-completeness `1.6513 m`, far completeness `8.6533 m`, and duplicates `14.015%`.
-The selector-only F1 route is closed. G1G remains the primary learned mechanism
-because it changes representation and allocation support; G1T remains an
-independent no-train test of whether history supplies missing support.
+- Q-Local-F0 pass: freeze one 76/24 geometry protocol.
+- Capacity oracle failure: close the fresh 700k quality route immediately.
+- Learning or unseen-control failure by update 500/7200 GPU-s: close this scorer
+  architecture without tuning; move to variable ray hazard.
+- No downstream Doppler, cycle, temporal, or test work starts until a 76/24
+  geometry parent passes the complete frozen gate.

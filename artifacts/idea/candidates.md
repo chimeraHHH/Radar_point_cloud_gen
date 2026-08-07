@@ -1,5 +1,13 @@
 # Cube-to-dense candidate frontier
 
+> 2026-08-07 successor addendum: every route frozen below has reached its
+> recorded terminal decision. The new primary route is Q-Local-F0, a local
+> Full-RAED distributional geometric-risk scorer on the newly named fresh WCE
+> replay field. Its protocol is
+> `docs/qlocal_distributional_risk_tiny_protocol.md`. A variable multi-return
+> ray-hazard field is the only authorized outside-family fallback; sparse
+> ray-range transport is third priority. None has accessed validation or test.
+
 > Frozen on 2026-07-28. Test access is false. The existing G1D v2 run continues
 > unchanged and does not select settings for these candidates.
 
