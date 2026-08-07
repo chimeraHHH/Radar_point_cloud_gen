@@ -1,0 +1,2845 @@
+{
+  "cohort_contract": {
+    "fit_identities": [
+      [
+        1,
+        232
+      ],
+      [
+        9,
+        440
+      ],
+      [
+        21,
+        402
+      ],
+      [
+        27,
+        403
+      ],
+      [
+        29,
+        399
+      ],
+      [
+        35,
+        403
+      ],
+      [
+        47,
+        514
+      ],
+      [
+        58,
+        404
+      ]
+    ],
+    "future_accessed": false,
+    "test_accessed": false,
+    "unseen_train_identities": [
+      [
+        5,
+        429
+      ],
+      [
+        26,
+        403
+      ],
+      [
+        42,
+        408
+      ],
+      [
+        50,
+        405
+      ]
+    ],
+    "validation_accessed": false,
+    "wrong_identity_map": {
+      "1:232": [
+        9,
+        440
+      ],
+      "21:402": [
+        27,
+        403
+      ],
+      "26:403": [
+        42,
+        408
+      ],
+      "27:403": [
+        29,
+        399
+      ],
+      "29:399": [
+        35,
+        403
+      ],
+      "35:403": [
+        47,
+        514
+      ],
+      "42:408": [
+        50,
+        405
+      ],
+      "47:514": [
+        58,
+        404
+      ],
+      "50:405": [
+        5,
+        429
+      ],
+      "58:404": [
+        1,
+        232
+      ],
+      "5:429": [
+        26,
+        403
+      ],
+      "9:440": [
+        21,
+        402
+      ]
+    }
+  },
+  "decision": {
+    "all_12_oracle_frames_passed": false,
+    "capacity_error": null,
+    "fresh_parent_unchanged": true,
+    "gradient_and_intervention_preflight_passed": true,
+    "training_authorized": false
+  },
+  "evidence_boundary": {
+    "best_of_k": false,
+    "doppler_output_evaluated": false,
+    "future_cube_accessed": false,
+    "target_used_for_deployable_inference": false,
+    "target_used_only_for_capacity_oracle_labels_and_metrics": true,
+    "test_accessed": false,
+    "validation_accessed": false
+  },
+  "frames": [
+    {
+      "base_confidence": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 325766,
+            "range_30_60m": 201622,
+            "range_60_120m": 172612
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.05011752416819824,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 460,
+            "range_30_60m": 14,
+            "range_60_120m": 1
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "geometry": {
+          "chamfer_m": 3.883352279663086,
+          "completeness_mean_distance_m": 2.407877206802368,
+          "fscore_0p5m": 0.36499860882759094,
+          "fscore_1p0m": 0.5406923890113831,
+          "fscore_2p0m": 0.7213010787963867,
+          "outlier_fraction_2m": 0.275299996137619,
+          "precision_0p5m": 0.3798999786376953,
+          "precision_1p0m": 0.5453000068664551,
+          "precision_2p0m": 0.7246999740600586,
+          "precision_mean_distance_m": 1.4754750728607178,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 0.7568466663360596,
+          "range_0_30m_fscore_1m": 0.6999554634094238,
+          "range_0_30m_precision_mean_distance_m": 1.0170586109161377,
+          "range_30_60m_completeness_mean_distance_m": 3.1709189414978027,
+          "range_30_60m_fscore_1m": 0.19771166145801544,
+          "range_30_60m_precision_mean_distance_m": 3.141664743423462,
+          "range_60_120m_completeness_mean_distance_m": 9.752872467041016,
+          "range_60_120m_fscore_1m": 0.05378144234418869,
+          "range_60_120m_precision_mean_distance_m": 4.258172988891602,
+          "recall_0p5m": 0.35122206807136536,
+          "recall_1p0m": 0.5361620783805847,
+          "recall_2p0m": 0.7179338932037354,
+          "target_count": 10436,
+          "target_effective_count": 2881.76904296875
+        },
+        "hashes": {
+          "confidence_sha256": "87dd06d149ee6af8b8471273983ba564f6cdf95445958d185d1b381d0d5b2380",
+          "selected_candidate_rows_sha256": "1348d8baf488a24c3bd30f65aff282b8f86108150209756b006d8256d6345e07",
+          "xyz_sha256": "5bf4107b364d81e129caa3fc297106158d03247a9d70683b68d988e26d14d0ee"
+        },
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        }
+      },
+      "candidate_field": {
+        "base_confidence_sha256": "40eb6bcde0333262e0ce40a097b6a9b0dc62c855555bd29fb419b41c37165721",
+        "candidate_coordinates_changed": false,
+        "candidate_count": 700000,
+        "candidate_xyz_sha256": "23a90c3f40892174f8352f5a656a0a2778798ab0f05f68d3231296ad8300b995",
+        "formal_residual_changed": false,
+        "ground_truth_accessed": false,
+        "q0_count": 500000,
+        "q0_sha256": "882ff93491e5b7e173780dba7178956d332221fed0ce96d2974eacdc0de200e2",
+        "q1_count": 200000,
+        "q1_sha256": "18c0b16898381b00c6c6765560bedcdadb71b6e0cced8eb98b35b985f4d295ed"
+      },
+      "cohort_position": 0,
+      "group": "fit",
+      "gt_nearest_capacity_oracle": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 325766,
+            "range_30_60m": 201622,
+            "range_60_120m": 172612
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.05001863073049564,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 775,
+            "range_30_60m": 4,
+            "range_60_120m": 0
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "gate": {
+          "all_structural_checks": true,
+          "chamfer_at_most_0p8m": true,
+          "outlier_at_most_5pct": true
+        },
+        "geometry": {
+          "chamfer_m": 0.4091150164604187,
+          "completeness_mean_distance_m": 0.2595462501049042,
+          "fscore_0p5m": 0.927910566329956,
+          "fscore_1p0m": 0.9879724383354187,
+          "fscore_2p0m": 0.9979737401008606,
+          "outlier_fraction_2m": 0.0,
+          "precision_0p5m": 0.9848999977111816,
+          "precision_1p0m": 1.0,
+          "precision_2p0m": 1.0,
+          "precision_mean_distance_m": 0.14956875145435333,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 0.11419042944908142,
+          "range_0_30m_fscore_1m": 0.9999940991401672,
+          "range_0_30m_precision_mean_distance_m": 0.11226833611726761,
+          "range_30_60m_completeness_mean_distance_m": 0.36196523904800415,
+          "range_30_60m_fscore_1m": 0.9917798638343811,
+          "range_30_60m_precision_mean_distance_m": 0.2656998932361603,
+          "range_60_120m_completeness_mean_distance_m": 0.8062916398048401,
+          "range_60_120m_fscore_1m": 0.9000447988510132,
+          "range_60_120m_precision_mean_distance_m": 0.4861702620983124,
+          "recall_0p5m": 0.8771555423736572,
+          "recall_1p0m": 0.9762307405471802,
+          "recall_2p0m": 0.9959557056427002,
+          "target_count": 10436,
+          "target_effective_count": 2881.76904296875
+        },
+        "hashes": {
+          "confidence_sha256": "919cb892ae16660c65d113cf7429b80cd6689daf65dc533aeb5e1ff1ad4fd800",
+          "selected_candidate_rows_sha256": "f294c055a9579b541aa74358637f95d87a9c73c1cfad3165fd0dd89e99980e23",
+          "xyz_sha256": "f4be0fb1a7d056af4a2af8eb3594422c95f4cfd2937bbddc657ce6508cf61721"
+        },
+        "non_deployable": true,
+        "passed": true,
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        },
+        "target_used_for_selection": true
+      },
+      "nearest_distance_sha256": "ae0fc38d54ffeba4f03755f2527c98a04955259d5301e94972b3fdd4bb4c2da4",
+      "partition": "train",
+      "q1": {
+        "anchor_count": 25000,
+        "anchor_q0_row_sha256": "d677b1238e28216241045182a1f472e7812ca81d9343c80d3b43282852f756bb",
+        "anchor_quotas": {
+          "range_0_30m": 20000,
+          "range_30_60m": 4250,
+          "range_60_120m": 750
+        },
+        "query_count": 200000,
+        "query_sha256": "18c0b16898381b00c6c6765560bedcdadb71b6e0cced8eb98b35b985f4d295ed",
+        "samples_per_anchor": 8,
+        "source": "matched_condition_q0_occupancy_only"
+      },
+      "radar_index": 232,
+      "raw_inputs": {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/1/radar_tesseract/tesseract_00232.mat",
+        "cube_sha256": "b21355705b672ec348f5c802fbed8b288077f58ad31d8a2675874f26cd4e4b2e",
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq01_radar_00232.npz",
+        "target_cache_sha256": "76380164d2460a5de33cb06e2779a98aae0f9260fe6b77ef92b2332f12ba8fae",
+        "target_tensor_sha256": "6e43854074bff1dd503be77e3a5d2323a6db381a4109bc8024e8a17827e6fcc1"
+      },
+      "sequence": 1,
+      "wrong_identity": [
+        9,
+        440
+      ]
+    },
+    {
+      "base_confidence": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 326751,
+            "range_30_60m": 200653,
+            "range_60_120m": 172596
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.05001331050454107,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 565,
+            "range_30_60m": 21,
+            "range_60_120m": 0
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "geometry": {
+          "chamfer_m": 3.3948652744293213,
+          "completeness_mean_distance_m": 0.9936320781707764,
+          "fscore_0p5m": 0.4788062572479248,
+          "fscore_1p0m": 0.6410704255104065,
+          "fscore_2p0m": 0.7594985961914062,
+          "outlier_fraction_2m": 0.34579998254776,
+          "precision_0p5m": 0.3901999890804291,
+          "precision_1p0m": 0.538100004196167,
+          "precision_2p0m": 0.6541999578475952,
+          "precision_mean_distance_m": 2.401233196258545,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 0.42698702216148376,
+          "range_0_30m_fscore_1m": 0.7546917200088501,
+          "range_0_30m_precision_mean_distance_m": 1.156449556350708,
+          "range_30_60m_completeness_mean_distance_m": 4.065026760101318,
+          "range_30_60m_fscore_1m": 0.11185659468173981,
+          "range_30_60m_precision_mean_distance_m": 6.735125541687012,
+          "range_60_120m_completeness_mean_distance_m": 9.449490547180176,
+          "range_60_120m_fscore_1m": 0.010317886248230934,
+          "range_60_120m_precision_mean_distance_m": 11.036742210388184,
+          "recall_0p5m": 0.6194763779640198,
+          "recall_1p0m": 0.7927753925323486,
+          "recall_2p0m": 0.9051971435546875,
+          "target_count": 11116,
+          "target_effective_count": 2020.233642578125
+        },
+        "hashes": {
+          "confidence_sha256": "9bbefc0d4aaef9f48dcb33bc114a60c864b2b3be5c80377af638662c3a45d5fc",
+          "selected_candidate_rows_sha256": "175ea9e81de3d2828f6a93b225b8c8b195f1392d0b32abc82de8eae6c3cad90a",
+          "xyz_sha256": "202edcc7cdec29461203d03bfe98899e4b521000d248c354794ab876b968668f"
+        },
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        }
+      },
+      "candidate_field": {
+        "base_confidence_sha256": "6004d13eb4154557936a17075e61f02e2050dbae8035adac4002bd45c984576b",
+        "candidate_coordinates_changed": false,
+        "candidate_count": 700000,
+        "candidate_xyz_sha256": "c5bfc47032c9559db887cdd731de6cca53d015a8fbf587ef75aee3eebc23ecce",
+        "formal_residual_changed": false,
+        "ground_truth_accessed": false,
+        "q0_count": 500000,
+        "q0_sha256": "882ff93491e5b7e173780dba7178956d332221fed0ce96d2974eacdc0de200e2",
+        "q1_count": 200000,
+        "q1_sha256": "2040f09aff18393081de0c5f50232d1711fd997d709c878310502198d4dbdea9"
+      },
+      "cohort_position": 1,
+      "group": "fit",
+      "gt_nearest_capacity_oracle": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 326751,
+            "range_30_60m": 200653,
+            "range_60_120m": 172596
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.050010402212036606,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 920,
+            "range_30_60m": 7,
+            "range_60_120m": 0
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "gate": {
+          "all_structural_checks": true,
+          "chamfer_at_most_0p8m": true,
+          "outlier_at_most_5pct": true
+        },
+        "geometry": {
+          "chamfer_m": 0.30143606662750244,
+          "completeness_mean_distance_m": 0.1347297877073288,
+          "fscore_0p5m": 0.9647148847579956,
+          "fscore_1p0m": 0.9941803216934204,
+          "fscore_2p0m": 1.0,
+          "outlier_fraction_2m": 0.0,
+          "precision_0p5m": 0.9484999775886536,
+          "precision_1p0m": 0.9884999990463257,
+          "precision_2p0m": 1.0,
+          "precision_mean_distance_m": 0.16670629382133484,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 0.10272052884101868,
+          "range_0_30m_fscore_1m": 0.9999752640724182,
+          "range_0_30m_precision_mean_distance_m": 0.0997685045003891,
+          "range_30_60m_completeness_mean_distance_m": 0.3093714416027069,
+          "range_30_60m_fscore_1m": 0.9999999403953552,
+          "range_30_60m_precision_mean_distance_m": 0.3537386357784271,
+          "range_60_120m_completeness_mean_distance_m": 0.5851945877075195,
+          "range_60_120m_fscore_1m": 0.7613417506217957,
+          "range_60_120m_precision_mean_distance_m": 0.8918641209602356,
+          "recall_0p5m": 0.9814938306808472,
+          "recall_1p0m": 0.9999263882637024,
+          "recall_2p0m": 1.0,
+          "target_count": 11116,
+          "target_effective_count": 2020.233642578125
+        },
+        "hashes": {
+          "confidence_sha256": "b659e16edd26a58bca3f00057d2819ddf4d67a62ff7d17c643486bd1307fc62c",
+          "selected_candidate_rows_sha256": "31b1311a6c70114eb645f1214b09ea17bacb95d6b97f258f9ee256e145622566",
+          "xyz_sha256": "6463a3c4bd5333bed5f282a19cad97b958a001be9d1c952248399ba23870f8c8"
+        },
+        "non_deployable": true,
+        "passed": true,
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        },
+        "target_used_for_selection": true
+      },
+      "nearest_distance_sha256": "c2acf821da1e58f747cd92f33ae43000da284f4d3a4de724ac68bb0e4293dc84",
+      "partition": "train",
+      "q1": {
+        "anchor_count": 25000,
+        "anchor_q0_row_sha256": "9dcb1bdf4fc95986f7a34334484b2f7113dfb0dce592807843b9606114ab4354",
+        "anchor_quotas": {
+          "range_0_30m": 20000,
+          "range_30_60m": 4250,
+          "range_60_120m": 750
+        },
+        "query_count": 200000,
+        "query_sha256": "2040f09aff18393081de0c5f50232d1711fd997d709c878310502198d4dbdea9",
+        "samples_per_anchor": 8,
+        "source": "matched_condition_q0_occupancy_only"
+      },
+      "radar_index": 440,
+      "raw_inputs": {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/9/radar_tesseract/tesseract_00440.mat",
+        "cube_sha256": "162b20cd299f8a72919c00bceb1c50e2e1e572c3ae6a58881d249c487370025b",
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq09_radar_00440.npz",
+        "target_cache_sha256": "1d045ff8f3058719441e9a3b084aa9f49df4d588568ae757f51036b99595227c",
+        "target_tensor_sha256": "cd2db0e87a8be2c3bad5c4dc15097f9c1e86b76617ff05c02bac863d43db9dd1"
+      },
+      "sequence": 9,
+      "wrong_identity": [
+        21,
+        402
+      ]
+    },
+    {
+      "base_confidence": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 327630,
+            "range_30_60m": 199738,
+            "range_60_120m": 172632
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.05002420230697362,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 606,
+            "range_30_60m": 18,
+            "range_60_120m": 4
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "geometry": {
+          "chamfer_m": 3.3136396408081055,
+          "completeness_mean_distance_m": 1.596462607383728,
+          "fscore_0p5m": 0.26896676421165466,
+          "fscore_1p0m": 0.4943263828754425,
+          "fscore_2p0m": 0.7613457441329956,
+          "outlier_fraction_2m": 0.22679999470710754,
+          "precision_0p5m": 0.18529999256134033,
+          "precision_1p0m": 0.40609997510910034,
+          "precision_2p0m": 0.7731999754905701,
+          "precision_mean_distance_m": 1.717176914215088,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 1.31973135471344,
+          "range_0_30m_fscore_1m": 0.5655583143234253,
+          "range_0_30m_precision_mean_distance_m": 1.1639856100082397,
+          "range_30_60m_completeness_mean_distance_m": 3.1798653602600098,
+          "range_30_60m_fscore_1m": 0.14467385411262512,
+          "range_30_60m_precision_mean_distance_m": 3.8164641857147217,
+          "range_60_120m_completeness_mean_distance_m": 5.921332359313965,
+          "range_60_120m_fscore_1m": 0.10682883113622665,
+          "range_60_120m_precision_mean_distance_m": 4.572989463806152,
+          "recall_0p5m": 0.4903862774372101,
+          "recall_1p0m": 0.6315275430679321,
+          "recall_2p0m": 0.7498495578765869,
+          "target_count": 9054,
+          "target_effective_count": 3185.03271484375
+        },
+        "hashes": {
+          "confidence_sha256": "96af40e45881b63f25a5ea26b1e599d2779710002a6a78356c16ab83a15e32de",
+          "selected_candidate_rows_sha256": "9df67f72697c63c0c348644908bfe6c89031b89cda9015de0e7d6ec88f69e4c1",
+          "xyz_sha256": "ee2f93bd8bcd525be89465970046ef551e682b7c3058b895298c554e79e17c78"
+        },
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        }
+      },
+      "candidate_field": {
+        "base_confidence_sha256": "2acdaf514edc6bb49165eb7e5cf9e6bf84d797d97121aa1770f43f8f37fbd78c",
+        "candidate_coordinates_changed": false,
+        "candidate_count": 700000,
+        "candidate_xyz_sha256": "789cdf702633af14c378085eb887945988daeb77ac26d5a0c4621bb614f21fe5",
+        "formal_residual_changed": false,
+        "ground_truth_accessed": false,
+        "q0_count": 500000,
+        "q0_sha256": "882ff93491e5b7e173780dba7178956d332221fed0ce96d2974eacdc0de200e2",
+        "q1_count": 200000,
+        "q1_sha256": "5a0f47236712808ec4ec47e8ed8435dc40975f1ec513b8d0f0fc3d1b041cde84"
+      },
+      "cohort_position": 2,
+      "group": "fit",
+      "gt_nearest_capacity_oracle": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 327630,
+            "range_30_60m": 199738,
+            "range_60_120m": 172632
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.050013227613619204,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 587,
+            "range_30_60m": 9,
+            "range_60_120m": 0
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "gate": {
+          "all_structural_checks": true,
+          "chamfer_at_most_0p8m": true,
+          "outlier_at_most_5pct": true
+        },
+        "geometry": {
+          "chamfer_m": 0.34902194142341614,
+          "completeness_mean_distance_m": 0.1515684276819229,
+          "fscore_0p5m": 0.9645677804946899,
+          "fscore_1p0m": 0.9990115761756897,
+          "fscore_2p0m": 0.9996387362480164,
+          "outlier_fraction_2m": 0.0,
+          "precision_0p5m": 0.9514999985694885,
+          "precision_1p0m": 1.0,
+          "precision_2p0m": 1.0,
+          "precision_mean_distance_m": 0.19745351374149323,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 0.12001320719718933,
+          "range_0_30m_fscore_1m": 0.9999352097511292,
+          "range_0_30m_precision_mean_distance_m": 0.14820554852485657,
+          "range_30_60m_completeness_mean_distance_m": 0.32005101442337036,
+          "range_30_60m_fscore_1m": 0.9962528944015503,
+          "range_30_60m_precision_mean_distance_m": 0.36010438203811646,
+          "range_60_120m_completeness_mean_distance_m": 0.7534151673316956,
+          "range_60_120m_fscore_1m": 0.9602542519569397,
+          "range_60_120m_precision_mean_distance_m": 0.5890448689460754,
+          "recall_0p5m": 0.9779994487762451,
+          "recall_1p0m": 0.9980250000953674,
+          "recall_2p0m": 0.999277651309967,
+          "target_count": 9054,
+          "target_effective_count": 3185.03271484375
+        },
+        "hashes": {
+          "confidence_sha256": "29d1895d847c6b7f0a3d52917d4a54960462ab743c8b89e1c5d76d8bda1d0a66",
+          "selected_candidate_rows_sha256": "65a70418b89b9682ccca590b6b1ae8009cc65da8a22c18a295ec23caa8b2f26b",
+          "xyz_sha256": "0ec1aae2c3377a5e99ffe1c7cc3d419ce12502c86880c2487add7b260b3c9837"
+        },
+        "non_deployable": true,
+        "passed": true,
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        },
+        "target_used_for_selection": true
+      },
+      "nearest_distance_sha256": "fa6d8fa375b86b172b21673378d91bc8fe94828f77308a42a851a915b9316943",
+      "partition": "train",
+      "q1": {
+        "anchor_count": 25000,
+        "anchor_q0_row_sha256": "5c2072cad61d1d1c36d6fbdcb9ddf9406dea801147214530edf140e5f5d541c8",
+        "anchor_quotas": {
+          "range_0_30m": 20000,
+          "range_30_60m": 4250,
+          "range_60_120m": 750
+        },
+        "query_count": 200000,
+        "query_sha256": "5a0f47236712808ec4ec47e8ed8435dc40975f1ec513b8d0f0fc3d1b041cde84",
+        "samples_per_anchor": 8,
+        "source": "matched_condition_q0_occupancy_only"
+      },
+      "radar_index": 402,
+      "raw_inputs": {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/21/radar_tesseract/tesseract_00402.mat",
+        "cube_sha256": "f6e85c2017be7fc544a83844422bd98581031cacadc2beb4d1bb659afa23e52c",
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq21_radar_00402.npz",
+        "target_cache_sha256": "b113efd586d19735ffa8c8246a4510be7ab6a89d11290c8ade3f6497e860adef",
+        "target_tensor_sha256": "8ae3db91451fec57adb8f256b6c3951c7a063111607153797153dc6d3a28de19"
+      },
+      "sequence": 21,
+      "wrong_identity": [
+        27,
+        403
+      ]
+    },
+    {
+      "base_confidence": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 327691,
+            "range_30_60m": 199655,
+            "range_60_120m": 172654
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.05001736910101588,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 576,
+            "range_30_60m": 21,
+            "range_60_120m": 0
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "geometry": {
+          "chamfer_m": 2.6923766136169434,
+          "completeness_mean_distance_m": 0.839278519153595,
+          "fscore_0p5m": 0.42558273673057556,
+          "fscore_1p0m": 0.6401937007904053,
+          "fscore_2p0m": 0.8002901673316956,
+          "outlier_fraction_2m": 0.24149999022483826,
+          "precision_0p5m": 0.29829999804496765,
+          "precision_1p0m": 0.5378999710083008,
+          "precision_2p0m": 0.7584999799728394,
+          "precision_mean_distance_m": 1.8530981540679932,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 0.48769715428352356,
+          "range_0_30m_fscore_1m": 0.7597699165344238,
+          "range_0_30m_precision_mean_distance_m": 0.8595007061958313,
+          "range_30_60m_completeness_mean_distance_m": 3.81005859375,
+          "range_30_60m_fscore_1m": 0.00980284996330738,
+          "range_30_60m_precision_mean_distance_m": 5.043280124664307,
+          "range_60_120m_completeness_mean_distance_m": 3.7105560302734375,
+          "range_60_120m_fscore_1m": 0.0,
+          "range_60_120m_precision_mean_distance_m": 10.271333694458008,
+          "recall_0p5m": 0.7423306703567505,
+          "recall_1p0m": 0.790530800819397,
+          "recall_2p0m": 0.8469539284706116,
+          "target_count": 5265,
+          "target_effective_count": 1401.572021484375
+        },
+        "hashes": {
+          "confidence_sha256": "ca902f42c9f141e29baa8fdb71e2461bf58e183532c5cee2d77ae954407cc463",
+          "selected_candidate_rows_sha256": "0d5a540cb8ff601547d83584555c9907667c76b6a16abc63282933dbd8f119e7",
+          "xyz_sha256": "9ad334e514f390101598bd5f9621c61fe1d457a0db66fbe40feb523054d98e0c"
+        },
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        }
+      },
+      "candidate_field": {
+        "base_confidence_sha256": "286f99e10d04e4127fb58dff1eec5b0db4a1d445e6badbd84d070f31708f5901",
+        "candidate_coordinates_changed": false,
+        "candidate_count": 700000,
+        "candidate_xyz_sha256": "95b10dc8bfa7dd8e5dcbd52c36d8057c617f9d3c42f97e773400b86fe9be3846",
+        "formal_residual_changed": false,
+        "ground_truth_accessed": false,
+        "q0_count": 500000,
+        "q0_sha256": "882ff93491e5b7e173780dba7178956d332221fed0ce96d2974eacdc0de200e2",
+        "q1_count": 200000,
+        "q1_sha256": "a91bf4f8b62327778b3b55e111bb2afd4108bd375bf6f49e7811aa82250fbd54"
+      },
+      "cohort_position": 3,
+      "group": "fit",
+      "gt_nearest_capacity_oracle": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 327691,
+            "range_30_60m": 199655,
+            "range_60_120m": 172654
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.050005787941783536,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 858,
+            "range_30_60m": 10,
+            "range_60_120m": 0
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "gate": {
+          "all_structural_checks": true,
+          "chamfer_at_most_0p8m": true,
+          "outlier_at_most_5pct": true
+        },
+        "geometry": {
+          "chamfer_m": 0.49179136753082275,
+          "completeness_mean_distance_m": 0.1203807145357132,
+          "fscore_0p5m": 0.886505663394928,
+          "fscore_1p0m": 0.9217815399169922,
+          "fscore_2p0m": 0.9880591034889221,
+          "outlier_fraction_2m": 0.023599999025464058,
+          "precision_0p5m": 0.8137999773025513,
+          "precision_1p0m": 0.8553999662399292,
+          "precision_2p0m": 0.9763999581336975,
+          "precision_mean_distance_m": 0.37141063809394836,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 0.08831020444631577,
+          "range_0_30m_fscore_1m": 0.9996563792228699,
+          "range_0_30m_precision_mean_distance_m": 0.1317809820175171,
+          "range_30_60m_completeness_mean_distance_m": 0.3907393515110016,
+          "range_30_60m_fscore_1m": 0.4841729700565338,
+          "range_30_60m_precision_mean_distance_m": 1.1309741735458374,
+          "range_60_120m_completeness_mean_distance_m": 0.6397717595100403,
+          "range_60_120m_fscore_1m": 0.07010029256343842,
+          "range_60_120m_precision_mean_distance_m": 2.4573421478271484,
+          "recall_0p5m": 0.9734770655632019,
+          "recall_1p0m": 0.9993326663970947,
+          "recall_2p0m": 1.0,
+          "target_count": 5265,
+          "target_effective_count": 1401.572021484375
+        },
+        "hashes": {
+          "confidence_sha256": "5b323e2cd6c5ec1561b1f13bf88f82655497eb48f84c365e5a4ceefb2305644b",
+          "selected_candidate_rows_sha256": "c5e0f2b02660785e0c12dcb8f5afb0621c17af56d6bcee4801b0a342ff0cc70c",
+          "xyz_sha256": "d469b0663bd71223d0028771ec769f0842276ba956ce38870b58e26bf4efb8ab"
+        },
+        "non_deployable": true,
+        "passed": true,
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        },
+        "target_used_for_selection": true
+      },
+      "nearest_distance_sha256": "109ce715ecf786556420392b83edf19f43ad79fd016e341400f1938444d6ec0d",
+      "partition": "train",
+      "q1": {
+        "anchor_count": 25000,
+        "anchor_q0_row_sha256": "376831bd127a2afd3b382bb43fa0e6bf0176ba4670685e4f3b21842bf45bb6f9",
+        "anchor_quotas": {
+          "range_0_30m": 20000,
+          "range_30_60m": 4250,
+          "range_60_120m": 750
+        },
+        "query_count": 200000,
+        "query_sha256": "a91bf4f8b62327778b3b55e111bb2afd4108bd375bf6f49e7811aa82250fbd54",
+        "samples_per_anchor": 8,
+        "source": "matched_condition_q0_occupancy_only"
+      },
+      "radar_index": 403,
+      "raw_inputs": {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/27/radar_tesseract/tesseract_00403.mat",
+        "cube_sha256": "87a16e31c8693d0c82ad0f92c5ee0da90ca19d7f2488a34d362d3c16485449c2",
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq27_radar_00403.npz",
+        "target_cache_sha256": "d5f2be39e469b342e538f7a6c8277f446c746db4ede3aa07ca448b7992d5bad5",
+        "target_tensor_sha256": "195560bd2dd79db6b7f29d18980722eb269aadb6cf701b38d11444daaaa00953"
+      },
+      "sequence": 27,
+      "wrong_identity": [
+        29,
+        399
+      ]
+    },
+    {
+      "base_confidence": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 327803,
+            "range_30_60m": 199582,
+            "range_60_120m": 172615
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.050071932526093064,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 621,
+            "range_30_60m": 19,
+            "range_60_120m": 1
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "geometry": {
+          "chamfer_m": 2.998291492462158,
+          "completeness_mean_distance_m": 1.1843292713165283,
+          "fscore_0p5m": 0.416836678981781,
+          "fscore_1p0m": 0.635025680065155,
+          "fscore_2p0m": 0.7934384942054749,
+          "outlier_fraction_2m": 0.23109999299049377,
+          "precision_0p5m": 0.31219998002052307,
+          "precision_1p0m": 0.5428000092506409,
+          "precision_2p0m": 0.7688999772071838,
+          "precision_mean_distance_m": 1.8139621019363403,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 1.173377513885498,
+          "range_0_30m_fscore_1m": 0.7070319056510925,
+          "range_0_30m_precision_mean_distance_m": 0.9250659346580505,
+          "range_30_60m_completeness_mean_distance_m": 1.151649832725525,
+          "range_30_60m_fscore_1m": 0.2427959144115448,
+          "range_30_60m_precision_mean_distance_m": 4.595057964324951,
+          "range_60_120m_completeness_mean_distance_m": 2.1108202934265137,
+          "range_60_120m_fscore_1m": 0.008472925052046776,
+          "range_60_120m_precision_mean_distance_m": 9.758318901062012,
+          "recall_0p5m": 0.6269722580909729,
+          "recall_1p0m": 0.7650057673454285,
+          "recall_2p0m": 0.8195949196815491,
+          "target_count": 8045,
+          "target_effective_count": 2788.780517578125
+        },
+        "hashes": {
+          "confidence_sha256": "482ec7bc67fa7e315026af8b64150babdd9c0a1fec85b9d2b765eecb4e863a67",
+          "selected_candidate_rows_sha256": "f9231685c1f81159ad808d6e3ef2957b3f980a71b5ae69e44988db31546b0ca2",
+          "xyz_sha256": "402cc2c308b5fe7125b493e0247c02d5b25b666b738dfa6cc47605286fad818f"
+        },
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        }
+      },
+      "candidate_field": {
+        "base_confidence_sha256": "e012fc6a6ac1f8ef5afa4b6ea360fab49aee08865778feb51c5ad4ec9c963b3e",
+        "candidate_coordinates_changed": false,
+        "candidate_count": 700000,
+        "candidate_xyz_sha256": "a866efe3fe665704f50d2033982b474e28987d74cec4c9505b98614acf43e55d",
+        "formal_residual_changed": false,
+        "ground_truth_accessed": false,
+        "q0_count": 500000,
+        "q0_sha256": "882ff93491e5b7e173780dba7178956d332221fed0ce96d2974eacdc0de200e2",
+        "q1_count": 200000,
+        "q1_sha256": "f788a0bd5332404403de74db21997c0dce69ee567a04649f4b58dafb55222293"
+      },
+      "cohort_position": 4,
+      "group": "fit",
+      "gt_nearest_capacity_oracle": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 327803,
+            "range_30_60m": 199582,
+            "range_60_120m": 172615
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.05003706675178279,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 839,
+            "range_30_60m": 12,
+            "range_60_120m": 0
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "gate": {
+          "all_structural_checks": true,
+          "chamfer_at_most_0p8m": true,
+          "outlier_at_most_5pct": true
+        },
+        "geometry": {
+          "chamfer_m": 0.32824286818504333,
+          "completeness_mean_distance_m": 0.12263628095388412,
+          "fscore_0p5m": 0.9301711320877075,
+          "fscore_1p0m": 0.9989914894104004,
+          "fscore_2p0m": 1.0,
+          "outlier_fraction_2m": 0.0,
+          "precision_0p5m": 0.876800000667572,
+          "precision_1p0m": 0.9985999464988708,
+          "precision_2p0m": 1.0,
+          "precision_mean_distance_m": 0.2056065797805786,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 0.10520713031291962,
+          "range_0_30m_fscore_1m": 0.9997513890266418,
+          "range_0_30m_precision_mean_distance_m": 0.11421326547861099,
+          "range_30_60m_completeness_mean_distance_m": 0.21358980238437653,
+          "range_30_60m_fscore_1m": 0.9999999403953552,
+          "range_30_60m_precision_mean_distance_m": 0.5638589859008789,
+          "range_60_120m_completeness_mean_distance_m": 0.5008251070976257,
+          "range_60_120m_fscore_1m": 0.9700118899345398,
+          "range_60_120m_precision_mean_distance_m": 0.612665057182312,
+          "recall_0p5m": 0.9904607534408569,
+          "recall_1p0m": 0.9993834495544434,
+          "recall_2p0m": 1.0,
+          "target_count": 8045,
+          "target_effective_count": 2788.780517578125
+        },
+        "hashes": {
+          "confidence_sha256": "498d003aed4758be39ac6e85c9a989ef44362a8904d17d4ebc0f7d123ea77cdb",
+          "selected_candidate_rows_sha256": "a2484a98058fd402ca5b120d186e7d9e9c0a076bda08eb95917fc0ed5790872a",
+          "xyz_sha256": "96e6d3449518d29499650cdb5e4f8127ac7c72b2fdb9a4c7caa6a8fb89a3db43"
+        },
+        "non_deployable": true,
+        "passed": true,
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        },
+        "target_used_for_selection": true
+      },
+      "nearest_distance_sha256": "dc499b50d7a7381e0961a435f1a613af68e892900eb71909e898ce69f4e01160",
+      "partition": "train",
+      "q1": {
+        "anchor_count": 25000,
+        "anchor_q0_row_sha256": "6c4f7223c6b3598d6e085fbf7ce98c272328e03552286628d38be71d4e15a886",
+        "anchor_quotas": {
+          "range_0_30m": 20000,
+          "range_30_60m": 4250,
+          "range_60_120m": 750
+        },
+        "query_count": 200000,
+        "query_sha256": "f788a0bd5332404403de74db21997c0dce69ee567a04649f4b58dafb55222293",
+        "samples_per_anchor": 8,
+        "source": "matched_condition_q0_occupancy_only"
+      },
+      "radar_index": 399,
+      "raw_inputs": {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/29/radar_tesseract/tesseract_00399.mat",
+        "cube_sha256": "6392ccbc6fa0942d99938ca3c40402bd34aa1c40975f5ef1e2a4aeefe6e8516b",
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq29_radar_00399.npz",
+        "target_cache_sha256": "4493b3934a8c34968566e425f47b94985bd68e04a2330e4491671a7ee42e96af",
+        "target_tensor_sha256": "df6aba7ee10dc9775c80e12689bcaab5d5001620f5988405735c2d0313ae85e4"
+      },
+      "sequence": 29,
+      "wrong_identity": [
+        35,
+        403
+      ]
+    },
+    {
+      "base_confidence": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 326767,
+            "range_30_60m": 200625,
+            "range_60_120m": 172608
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.050022719433078976,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 578,
+            "range_30_60m": 17,
+            "range_60_120m": 0
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "geometry": {
+          "chamfer_m": 6.449367523193359,
+          "completeness_mean_distance_m": 1.6377341747283936,
+          "fscore_0p5m": 0.05656546354293823,
+          "fscore_1p0m": 0.11937756091356277,
+          "fscore_2p0m": 0.26923197507858276,
+          "outlier_fraction_2m": 0.8325999975204468,
+          "precision_0p5m": 0.03229999914765358,
+          "precision_1p0m": 0.06870000064373016,
+          "precision_2p0m": 0.16740000247955322,
+          "precision_mean_distance_m": 4.811633586883545,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 1.6411594152450562,
+          "range_0_30m_fscore_1m": 0.09751760959625244,
+          "range_0_30m_precision_mean_distance_m": 4.3966755867004395,
+          "range_30_60m_completeness_mean_distance_m": 1.5907083749771118,
+          "range_30_60m_fscore_1m": 0.21838417649269104,
+          "range_30_60m_precision_mean_distance_m": 3.5210752487182617,
+          "range_60_120m_completeness_mean_distance_m": 20.384592056274414,
+          "range_60_120m_fscore_1m": 0.0,
+          "range_60_120m_precision_mean_distance_m": 23.190349578857422,
+          "recall_0p5m": 0.22740137577056885,
+          "recall_1p0m": 0.4550569951534271,
+          "recall_2p0m": 0.687369167804718,
+          "target_count": 14608,
+          "target_effective_count": 5002.95654296875
+        },
+        "hashes": {
+          "confidence_sha256": "239cad84c27f37f58549af9aa273e8a669bfb9ca5ee6baaabbce9de989baa42b",
+          "selected_candidate_rows_sha256": "85987e9373d4389a36854b4c5aa8170ed0084ab33979d08e1d61203a9f3e8292",
+          "xyz_sha256": "3b8eddb8bfc7ae4315b566be4fd6a465c96c02fe0f4f7d7d22686f715c8ec635"
+        },
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        }
+      },
+      "candidate_field": {
+        "base_confidence_sha256": "59f4581217c088942de058f4288f8643b676ca72e1ccb20975aa9d0435804a2b",
+        "candidate_coordinates_changed": false,
+        "candidate_count": 700000,
+        "candidate_xyz_sha256": "78f49471154e8da08c35b3260b2293b20e613f885e1f90e32f3d4d53c201980b",
+        "formal_residual_changed": false,
+        "ground_truth_accessed": false,
+        "q0_count": 500000,
+        "q0_sha256": "882ff93491e5b7e173780dba7178956d332221fed0ce96d2974eacdc0de200e2",
+        "q1_count": 200000,
+        "q1_sha256": "ccc67546cb35530a99020c0c3361c08ddac9b7fc8ae5a1c0845d4f1f31756da1"
+      },
+      "cohort_position": 5,
+      "group": "fit",
+      "gt_nearest_capacity_oracle": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 326767,
+            "range_30_60m": 200625,
+            "range_60_120m": 172608
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.05000606809649448,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 141,
+            "range_30_60m": 12,
+            "range_60_120m": 0
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "gate": {
+          "all_structural_checks": true,
+          "chamfer_at_most_0p8m": true,
+          "outlier_at_most_5pct": true
+        },
+        "geometry": {
+          "chamfer_m": 0.4133637249469757,
+          "completeness_mean_distance_m": 0.17674222588539124,
+          "fscore_0p5m": 0.9815669059753418,
+          "fscore_1p0m": 0.986240029335022,
+          "fscore_2p0m": 0.9940283894538879,
+          "outlier_fraction_2m": 0.011799999512732029,
+          "precision_0p5m": 0.9702999591827393,
+          "precision_1p0m": 0.973099946975708,
+          "precision_2p0m": 0.9881999492645264,
+          "precision_mean_distance_m": 0.23662149906158447,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 0.15873341262340546,
+          "range_0_30m_fscore_1m": 1.0,
+          "range_0_30m_precision_mean_distance_m": 0.18228751420974731,
+          "range_30_60m_completeness_mean_distance_m": 0.26033198833465576,
+          "range_30_60m_fscore_1m": 0.9993277192115784,
+          "range_30_60m_precision_mean_distance_m": 0.22636687755584717,
+          "range_60_120m_completeness_mean_distance_m": 0.6820809245109558,
+          "range_60_120m_fscore_1m": 0.18574653565883636,
+          "range_60_120m_precision_mean_distance_m": 1.7436379194259644,
+          "recall_0p5m": 0.9930986166000366,
+          "recall_1p0m": 0.9997398853302002,
+          "recall_2p0m": 0.9999260306358337,
+          "target_count": 14608,
+          "target_effective_count": 5002.95654296875
+        },
+        "hashes": {
+          "confidence_sha256": "c8ba8ba210cde20815f998297ad844db2f8223bbe1464d4981c3536b8cc66647",
+          "selected_candidate_rows_sha256": "f7c605628c6d2e3e0abf9c5e0953736428eee34d4e23cb2d2fa7d5124090e34f",
+          "xyz_sha256": "994af354d53414798af3459395a248d24b48286c85d557e887adc28973829220"
+        },
+        "non_deployable": true,
+        "passed": true,
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        },
+        "target_used_for_selection": true
+      },
+      "nearest_distance_sha256": "480b12751a6620876ae07f3281d01b90b9a85f07ed92c4e65f720a19f1435675",
+      "partition": "train",
+      "q1": {
+        "anchor_count": 25000,
+        "anchor_q0_row_sha256": "f2f7955f1a638d81d83237a5a43186f28856ed55983906e99ec01cf52e7400cc",
+        "anchor_quotas": {
+          "range_0_30m": 20000,
+          "range_30_60m": 4250,
+          "range_60_120m": 750
+        },
+        "query_count": 200000,
+        "query_sha256": "ccc67546cb35530a99020c0c3361c08ddac9b7fc8ae5a1c0845d4f1f31756da1",
+        "samples_per_anchor": 8,
+        "source": "matched_condition_q0_occupancy_only"
+      },
+      "radar_index": 403,
+      "raw_inputs": {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/35/radar_tesseract/tesseract_00403.mat",
+        "cube_sha256": "221b6c8cb7ad8cf5cc154e887986a6943ff80ca3521b18fbc5462ce3ac8bf754",
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq35_radar_00403.npz",
+        "target_cache_sha256": "580c1c90a1c0db9222b4e12a584d7a07d59872e2e869b9d46e7e09c5e3dd9e15",
+        "target_tensor_sha256": "dd049a6efe01074e71e00c6610c3f8aa48ac3c205fc2aa9a1429b2c6ab7a4221"
+      },
+      "sequence": 35,
+      "wrong_identity": [
+        47,
+        514
+      ]
+    },
+    {
+      "base_confidence": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 327757,
+            "range_30_60m": 199695,
+            "range_60_120m": 172548
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.050072675551298254,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 1067,
+            "range_30_60m": 18,
+            "range_60_120m": 1
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "geometry": {
+          "chamfer_m": 6.883203983306885,
+          "completeness_mean_distance_m": 0.2585495412349701,
+          "fscore_0p5m": 0.13268768787384033,
+          "fscore_1p0m": 0.25271499156951904,
+          "fscore_2p0m": 0.4918892979621887,
+          "outlier_fraction_2m": 0.673799991607666,
+          "precision_0p5m": 0.07159999758005142,
+          "precision_1p0m": 0.14589999616146088,
+          "precision_2p0m": 0.3261999785900116,
+          "precision_mean_distance_m": 6.624654293060303,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 0.195566788315773,
+          "range_0_30m_fscore_1m": 0.30721887946128845,
+          "range_0_30m_precision_mean_distance_m": 2.488917589187622,
+          "range_30_60m_completeness_mean_distance_m": 1.1732455492019653,
+          "range_30_60m_fscore_1m": 0.007975050248205662,
+          "range_30_60m_precision_mean_distance_m": 18.360963821411133,
+          "recall_0p5m": 0.9037448167800903,
+          "recall_1p0m": 0.943356990814209,
+          "recall_2p0m": 0.9996488094329834,
+          "target_count": 1404,
+          "target_effective_count": 239.8943328857422
+        },
+        "hashes": {
+          "confidence_sha256": "57ead31084a7fe6305bee440cfafa0c1c093fce5a0549cf206b711a91b1b229b",
+          "selected_candidate_rows_sha256": "0023433d988d2a7528a53b5107d55bacc8e237637bc895da9b37e563a3281b21",
+          "xyz_sha256": "59357fceea49ba0898ce3c47631dfdb67843c41cf0e65d24c293a4c401f90da9"
+        },
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        }
+      },
+      "candidate_field": {
+        "base_confidence_sha256": "6361b0634b8a6c5e4497637d3590304f6323b6f86747eef3729bf4db26153efe",
+        "candidate_coordinates_changed": false,
+        "candidate_count": 700000,
+        "candidate_xyz_sha256": "bca711ceb9d978a64c904bec2e1e2322c8aa89c2a783391d47a1c865444a422d",
+        "formal_residual_changed": false,
+        "ground_truth_accessed": false,
+        "q0_count": 500000,
+        "q0_sha256": "882ff93491e5b7e173780dba7178956d332221fed0ce96d2974eacdc0de200e2",
+        "q1_count": 200000,
+        "q1_sha256": "0e2379d32a5bf77706023d3461e57bef0050f9b88776398dc3a42fdeb1546939"
+      },
+      "cohort_position": 6,
+      "group": "fit",
+      "gt_nearest_capacity_oracle": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 327757,
+            "range_30_60m": 199695,
+            "range_60_120m": 172548
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.05000435795733352,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 762,
+            "range_30_60m": 9,
+            "range_60_120m": 0
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "gate": {
+          "all_structural_checks": true,
+          "chamfer_at_most_0p8m": false,
+          "outlier_at_most_5pct": false
+        },
+        "geometry": {
+          "chamfer_m": 1.425007939338684,
+          "completeness_mean_distance_m": 0.0878220796585083,
+          "fscore_0p5m": 0.7708947658538818,
+          "fscore_1p0m": 0.9035087823867798,
+          "fscore_2p0m": 0.96373051404953,
+          "outlier_fraction_2m": 0.07000000029802322,
+          "precision_0p5m": 0.6272000074386597,
+          "precision_1p0m": 0.8240000009536743,
+          "precision_2p0m": 0.9299999475479126,
+          "precision_mean_distance_m": 1.3371858596801758,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 0.08138086646795273,
+          "range_0_30m_fscore_1m": 1.0,
+          "range_0_30m_precision_mean_distance_m": 0.3496173024177551,
+          "range_30_60m_completeness_mean_distance_m": 0.1813676506280899,
+          "range_30_60m_fscore_1m": 0.24742266535758972,
+          "range_30_60m_precision_mean_distance_m": 1.5813148021697998,
+          "recall_0p5m": 1.0,
+          "recall_1p0m": 1.0,
+          "recall_2p0m": 1.0,
+          "target_count": 1404,
+          "target_effective_count": 239.8943328857422
+        },
+        "hashes": {
+          "confidence_sha256": "abd41efc5f6be957a2869da44e2fe1657ac09dd4e46795cbca43a2e6ab63b42b",
+          "selected_candidate_rows_sha256": "027bce397605c515fee79f46b152f7d69952aded95b06f54c9d0ccf273a288b5",
+          "xyz_sha256": "54ccfb4bd06a8c76c3df4ca82773935d6ab970542b5566bc754e04d0081e53a9"
+        },
+        "non_deployable": true,
+        "passed": false,
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        },
+        "target_used_for_selection": true
+      },
+      "nearest_distance_sha256": "6a83e350fc66f7cbf10d355b5c589e3c500f4048a08616b3fd174cbfa6726ea4",
+      "partition": "train",
+      "q1": {
+        "anchor_count": 25000,
+        "anchor_q0_row_sha256": "009dff71954876efaaf40347eac2f88041a3b6c473525ce0d1a7102f6783fc49",
+        "anchor_quotas": {
+          "range_0_30m": 20000,
+          "range_30_60m": 4250,
+          "range_60_120m": 750
+        },
+        "query_count": 200000,
+        "query_sha256": "0e2379d32a5bf77706023d3461e57bef0050f9b88776398dc3a42fdeb1546939",
+        "samples_per_anchor": 8,
+        "source": "matched_condition_q0_occupancy_only"
+      },
+      "radar_index": 514,
+      "raw_inputs": {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/47/radar_tesseract/tesseract_00514.mat",
+        "cube_sha256": "eb2923edb0084e697351f5fbc3445ab4b8752f2bfd9042131ffcbd6b14a28641",
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq47_radar_00514.npz",
+        "target_cache_sha256": "bda9d834ba0d5401d6a752da854ad61391d5c6676337adecdb18e3a7fb983d34",
+        "target_tensor_sha256": "06bb7e9d20dc38a0bc2a78e157230f6802fc1d6c09a882e9865209d88545bf6b"
+      },
+      "sequence": 47,
+      "wrong_identity": [
+        58,
+        404
+      ]
+    },
+    {
+      "base_confidence": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 327900,
+            "range_30_60m": 199503,
+            "range_60_120m": 172597
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.05001098165705503,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 1089,
+            "range_30_60m": 29,
+            "range_60_120m": 1
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "geometry": {
+          "chamfer_m": 7.8169050216674805,
+          "completeness_mean_distance_m": 2.1159887313842773,
+          "fscore_0p5m": 0.055872298777103424,
+          "fscore_1p0m": 0.14328335225582123,
+          "fscore_2p0m": 0.39601653814315796,
+          "outlier_fraction_2m": 0.7242000102996826,
+          "precision_0p5m": 0.030299998819828033,
+          "precision_1p0m": 0.08639999479055405,
+          "precision_2p0m": 0.2757999897003174,
+          "precision_mean_distance_m": 5.700916290283203,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 2.1159887313842773,
+          "range_0_30m_fscore_1m": 0.17176905274391174,
+          "range_0_30m_precision_mean_distance_m": 2.402278423309326,
+          "recall_0p5m": 0.35808777809143066,
+          "recall_1p0m": 0.4194135367870331,
+          "recall_2p0m": 0.7020115256309509,
+          "target_count": 285,
+          "target_effective_count": 46.771690368652344
+        },
+        "hashes": {
+          "confidence_sha256": "9253c48ad262f8ad45dd6f730d9c38f9134c496e31a11c978190ab28d27969d3",
+          "selected_candidate_rows_sha256": "80cbd932374987fdea71596b59b3287f3b78dd2479d639e8ff44db85fd2338f6",
+          "xyz_sha256": "422b990716dd8131f2dd0401ca9ef572f3ddb8e89117bf5471e72be0cf5b2bbf"
+        },
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        }
+      },
+      "candidate_field": {
+        "base_confidence_sha256": "8fd0dff9ae98753af9a4f8df4b586c5fcf9dd0a3705ec26cf30d4a149a8d7af3",
+        "candidate_coordinates_changed": false,
+        "candidate_count": 700000,
+        "candidate_xyz_sha256": "62770810f78b3d27fc7c5afab2bab927e578edd4856172ef84d4976cb3205c49",
+        "formal_residual_changed": false,
+        "ground_truth_accessed": false,
+        "q0_count": 500000,
+        "q0_sha256": "882ff93491e5b7e173780dba7178956d332221fed0ce96d2974eacdc0de200e2",
+        "q1_count": 200000,
+        "q1_sha256": "5b0c961d006f3c47c43cb98a5c87ab4197bcdf66a2ae8bfa83bcebbb5628b222"
+      },
+      "cohort_position": 7,
+      "group": "fit",
+      "gt_nearest_capacity_oracle": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 327900,
+            "range_30_60m": 199503,
+            "range_60_120m": 172597
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.0500080082879182,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 2366,
+            "range_30_60m": 8,
+            "range_60_120m": 0
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "gate": {
+          "all_structural_checks": true,
+          "chamfer_at_most_0p8m": false,
+          "outlier_at_most_5pct": false
+        },
+        "geometry": {
+          "chamfer_m": 2.259796380996704,
+          "completeness_mean_distance_m": 0.10568566620349884,
+          "fscore_0p5m": 0.5585585236549377,
+          "fscore_1p0m": 0.8888888359069824,
+          "fscore_2p0m": 0.8888888359069824,
+          "outlier_fraction_2m": 0.19999998807907104,
+          "precision_0p5m": 0.38749998807907104,
+          "precision_1p0m": 0.7999999523162842,
+          "precision_2p0m": 0.7999999523162842,
+          "precision_mean_distance_m": 2.1541106700897217,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 0.10568566620349884,
+          "range_0_30m_fscore_1m": 1.0,
+          "range_0_30m_precision_mean_distance_m": 0.4851819574832916,
+          "recall_0p5m": 1.0,
+          "recall_1p0m": 1.0,
+          "recall_2p0m": 1.0,
+          "target_count": 285,
+          "target_effective_count": 46.771690368652344
+        },
+        "hashes": {
+          "confidence_sha256": "ab42939044fb509e203df3a19a8a0ad3c21062a607d59730e72f6a8abf5d97d0",
+          "selected_candidate_rows_sha256": "a16b29067b23d945326979e1d6ee1d61811fb4b57b4f37f6606e0194cb68bf7f",
+          "xyz_sha256": "61c4aea246aa11f5955f9a4c47cb0c9cf1eb069b08dbacc020c2ff3c368a06f2"
+        },
+        "non_deployable": true,
+        "passed": false,
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        },
+        "target_used_for_selection": true
+      },
+      "nearest_distance_sha256": "8175ead77037ab55b5066e0f698f986cb8978f6d26a3cf0214ec15969eb77170",
+      "partition": "train",
+      "q1": {
+        "anchor_count": 25000,
+        "anchor_q0_row_sha256": "853872a179461eab6de970fd1fae4027917c122143139cdd16ca63776ba72b7e",
+        "anchor_quotas": {
+          "range_0_30m": 20000,
+          "range_30_60m": 4250,
+          "range_60_120m": 750
+        },
+        "query_count": 200000,
+        "query_sha256": "5b0c961d006f3c47c43cb98a5c87ab4197bcdf66a2ae8bfa83bcebbb5628b222",
+        "samples_per_anchor": 8,
+        "source": "matched_condition_q0_occupancy_only"
+      },
+      "radar_index": 404,
+      "raw_inputs": {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/58/radar_tesseract/tesseract_00404.mat",
+        "cube_sha256": "f75c7d777e27e4e5552de55c0ee89ed04a4213cf827c6439161a828c8c301258",
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq58_radar_00404.npz",
+        "target_cache_sha256": "1a193c3835f08fc9d53a3877af7544f457b4e1021577b39b57bcd8b86c02ace9",
+        "target_tensor_sha256": "bbfd4d9bd47db5b97f4453c2737c650fdb271692bb00ba748b52fbe86e364ee4"
+      },
+      "sequence": 58,
+      "wrong_identity": [
+        1,
+        232
+      ]
+    },
+    {
+      "base_confidence": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 327561,
+            "range_30_60m": 199831,
+            "range_60_120m": 172608
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.05006758818536284,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 642,
+            "range_30_60m": 16,
+            "range_60_120m": 0
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "geometry": {
+          "chamfer_m": 3.5891706943511963,
+          "completeness_mean_distance_m": 2.2074527740478516,
+          "fscore_0p5m": 0.40344780683517456,
+          "fscore_1p0m": 0.5495652556419373,
+          "fscore_2p0m": 0.7045436501502991,
+          "outlier_fraction_2m": 0.14630000293254852,
+          "precision_0p5m": 0.43149998784065247,
+          "precision_1p0m": 0.6541000008583069,
+          "precision_2p0m": 0.8536999821662903,
+          "precision_mean_distance_m": 1.3817179203033447,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 2.1386168003082275,
+          "range_0_30m_fscore_1m": 0.6322351694107056,
+          "range_0_30m_precision_mean_distance_m": 0.6123695969581604,
+          "range_30_60m_completeness_mean_distance_m": 2.2768802642822266,
+          "range_30_60m_fscore_1m": 0.1753813922405243,
+          "range_30_60m_precision_mean_distance_m": 2.9994523525238037,
+          "range_60_120m_completeness_mean_distance_m": 10.319453239440918,
+          "range_60_120m_fscore_1m": 0.0,
+          "range_60_120m_precision_mean_distance_m": 12.73051643371582,
+          "recall_0p5m": 0.37882035970687866,
+          "recall_1p0m": 0.4738388955593109,
+          "recall_2p0m": 0.5997558832168579,
+          "target_count": 11567,
+          "target_effective_count": 3086.92333984375
+        },
+        "hashes": {
+          "confidence_sha256": "8f220d1449c84fca57bd9712baf6aa1aac43e486817308039c1909328670b632",
+          "selected_candidate_rows_sha256": "f61b2d97533ec91b51a0d3c418640cf0ede74b22a91cb150865f0e0cf26aa09a",
+          "xyz_sha256": "3fad7e7b9ced4a2066f3f214074ee8b57f79ee8dbeb872a2a45dd961256a735f"
+        },
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        }
+      },
+      "candidate_field": {
+        "base_confidence_sha256": "466b8baaacaaf3cb00607e6a3a40aa76cd50f054414473466dc719b7068b0ac6",
+        "candidate_coordinates_changed": false,
+        "candidate_count": 700000,
+        "candidate_xyz_sha256": "677a4302e077a22bc1e48ef061b1496e23c4bfcef5913b084eeae8db69107d6c",
+        "formal_residual_changed": false,
+        "ground_truth_accessed": false,
+        "q0_count": 500000,
+        "q0_sha256": "882ff93491e5b7e173780dba7178956d332221fed0ce96d2974eacdc0de200e2",
+        "q1_count": 200000,
+        "q1_sha256": "f5adbb1d0dbfd2af52c5591219ed450d2177dc788779caa18c4a94e82e5d5a36"
+      },
+      "cohort_position": 8,
+      "group": "unseen_train",
+      "gt_nearest_capacity_oracle": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 327561,
+            "range_30_60m": 199831,
+            "range_60_120m": 172608
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.050043296957608924,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 921,
+            "range_30_60m": 11,
+            "range_60_120m": 0
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "gate": {
+          "all_structural_checks": true,
+          "chamfer_at_most_0p8m": true,
+          "outlier_at_most_5pct": true
+        },
+        "geometry": {
+          "chamfer_m": 0.3766463100910187,
+          "completeness_mean_distance_m": 0.205946147441864,
+          "fscore_0p5m": 0.9342241883277893,
+          "fscore_1p0m": 0.9860436320304871,
+          "fscore_2p0m": 0.9984244704246521,
+          "outlier_fraction_2m": 0.0,
+          "precision_0p5m": 0.9328999519348145,
+          "precision_1p0m": 0.9858999848365784,
+          "precision_2p0m": 1.0,
+          "precision_mean_distance_m": 0.17070016264915466,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 0.18448911607265472,
+          "range_0_30m_fscore_1m": 0.9916566610336304,
+          "range_0_30m_precision_mean_distance_m": 0.09672947973012924,
+          "range_30_60m_completeness_mean_distance_m": 0.29547256231307983,
+          "range_30_60m_fscore_1m": 0.9999703168869019,
+          "range_30_60m_precision_mean_distance_m": 0.3861771821975708,
+          "range_60_120m_completeness_mean_distance_m": 0.6373386383056641,
+          "range_60_120m_fscore_1m": 0.685207188129425,
+          "range_60_120m_precision_mean_distance_m": 0.9222158789634705,
+          "recall_0p5m": 0.9355522394180298,
+          "recall_1p0m": 0.986187219619751,
+          "recall_2p0m": 0.9968540072441101,
+          "target_count": 11567,
+          "target_effective_count": 3086.92333984375
+        },
+        "hashes": {
+          "confidence_sha256": "f7d8f44b42367c9428584587ca5d548bf36dc5355818011b53b06de6e788020d",
+          "selected_candidate_rows_sha256": "2e9162acfe51c9ee5ba4256e9479be7b0e07ae77fac8afd1477c919a0902c309",
+          "xyz_sha256": "9a9938fea9ff17b5bd16028220839f8c452e93057bfd9728ad077f1045c75d52"
+        },
+        "non_deployable": true,
+        "passed": true,
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        },
+        "target_used_for_selection": true
+      },
+      "nearest_distance_sha256": "7e5972281c074d4c5136321642683164febba23dc329a3515f6ba499b76c16d8",
+      "partition": "train",
+      "q1": {
+        "anchor_count": 25000,
+        "anchor_q0_row_sha256": "e889dde9efd3f92578e326cab14e8c7a994ccedc5d1e43c67d3e1faa84b60fb3",
+        "anchor_quotas": {
+          "range_0_30m": 20000,
+          "range_30_60m": 4250,
+          "range_60_120m": 750
+        },
+        "query_count": 200000,
+        "query_sha256": "f5adbb1d0dbfd2af52c5591219ed450d2177dc788779caa18c4a94e82e5d5a36",
+        "samples_per_anchor": 8,
+        "source": "matched_condition_q0_occupancy_only"
+      },
+      "radar_index": 429,
+      "raw_inputs": {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/5/radar_tesseract/tesseract_00429.mat",
+        "cube_sha256": "6da2066dae79f7bf8773b856cc2b4d3fd3c373f4292cfa777dde174f392f46d4",
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq05_radar_00429.npz",
+        "target_cache_sha256": "5a187efaac5ef4d7f785f2428fbdc9b4e9160a11ee609b466dc2231d8e5d8587",
+        "target_tensor_sha256": "bc76b802fc980543a1306b86f8820c44a72bdeb7b68f96c56d5392e0dd60f880"
+      },
+      "sequence": 5,
+      "wrong_identity": [
+        26,
+        403
+      ]
+    },
+    {
+      "base_confidence": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 327396,
+            "range_30_60m": 200047,
+            "range_60_120m": 172557
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.050036421146874246,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 677,
+            "range_30_60m": 17,
+            "range_60_120m": 1
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "geometry": {
+          "chamfer_m": 3.8513026237487793,
+          "completeness_mean_distance_m": 2.0523369312286377,
+          "fscore_0p5m": 0.3032527565956116,
+          "fscore_1p0m": 0.504167914390564,
+          "fscore_2p0m": 0.6893150210380554,
+          "outlier_fraction_2m": 0.19789999723434448,
+          "precision_0p5m": 0.3149999976158142,
+          "precision_1p0m": 0.5526999831199646,
+          "precision_2p0m": 0.8021000027656555,
+          "precision_mean_distance_m": 1.798965573310852,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 1.9427595138549805,
+          "range_0_30m_fscore_1m": 0.5636430382728577,
+          "range_0_30m_precision_mean_distance_m": 0.8563164472579956,
+          "range_30_60m_completeness_mean_distance_m": 3.111863374710083,
+          "range_30_60m_fscore_1m": 0.14173226058483124,
+          "range_30_60m_precision_mean_distance_m": 5.062093734741211,
+          "range_60_120m_completeness_mean_distance_m": 4.389771938323975,
+          "range_60_120m_fscore_1m": 0.012888146564364433,
+          "range_60_120m_precision_mean_distance_m": 8.445215225219727,
+          "recall_0p5m": 0.2923502027988434,
+          "recall_1p0m": 0.4634709656238556,
+          "recall_2p0m": 0.6043378114700317,
+          "target_count": 11541,
+          "target_effective_count": 4239.583984375
+        },
+        "hashes": {
+          "confidence_sha256": "c7e699d503d686b20d5460ebb248224daabc30cba1c31639774fd3d2bf3d7a0f",
+          "selected_candidate_rows_sha256": "26b42eedb0e718e2057e373e438a9a8c6e5b58056da486d7cad5727bd9685d5e",
+          "xyz_sha256": "94f284c1a2213a27154cd0e45fdb2ddc97db51b84de18d01786e5671c0cf2644"
+        },
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        }
+      },
+      "candidate_field": {
+        "base_confidence_sha256": "866693e2eb2ac41cf09d5260f6ca460d7fd3cb74539ab205d7ac01d5e448a3b0",
+        "candidate_coordinates_changed": false,
+        "candidate_count": 700000,
+        "candidate_xyz_sha256": "af91c48c0ea6270700bb334ed19107a7f648e06bb3b87f3407ff140879c9ba7d",
+        "formal_residual_changed": false,
+        "ground_truth_accessed": false,
+        "q0_count": 500000,
+        "q0_sha256": "882ff93491e5b7e173780dba7178956d332221fed0ce96d2974eacdc0de200e2",
+        "q1_count": 200000,
+        "q1_sha256": "6d0c11fc762ed71ab3acd641cc6b2816bffb9b2f97a91e10c93cd9de6cab919a"
+      },
+      "cohort_position": 9,
+      "group": "unseen_train",
+      "gt_nearest_capacity_oracle": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 327396,
+            "range_30_60m": 200047,
+            "range_60_120m": 172557
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.05014552359144279,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 661,
+            "range_30_60m": 7,
+            "range_60_120m": 1
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "gate": {
+          "all_structural_checks": true,
+          "chamfer_at_most_0p8m": true,
+          "outlier_at_most_5pct": true
+        },
+        "geometry": {
+          "chamfer_m": 0.3421967029571533,
+          "completeness_mean_distance_m": 0.14414174854755402,
+          "fscore_0p5m": 0.9569817185401917,
+          "fscore_1p0m": 0.9882897138595581,
+          "fscore_2p0m": 1.0,
+          "outlier_fraction_2m": 0.0,
+          "precision_0p5m": 0.9271000027656555,
+          "precision_1p0m": 0.977400004863739,
+          "precision_2p0m": 1.0,
+          "precision_mean_distance_m": 0.1980549544095993,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 0.12957176566123962,
+          "range_0_30m_fscore_1m": 0.9997609257698059,
+          "range_0_30m_precision_mean_distance_m": 0.11710521578788757,
+          "range_30_60m_completeness_mean_distance_m": 0.2711336314678192,
+          "range_30_60m_fscore_1m": 0.9999999403953552,
+          "range_30_60m_precision_mean_distance_m": 0.3893294334411621,
+          "range_60_120m_completeness_mean_distance_m": 0.5578932762145996,
+          "range_60_120m_fscore_1m": 0.3946237564086914,
+          "range_60_120m_precision_mean_distance_m": 1.272826075553894,
+          "recall_0p5m": 0.9888537526130676,
+          "recall_1p0m": 0.999424934387207,
+          "recall_2p0m": 1.0,
+          "target_count": 11541,
+          "target_effective_count": 4239.583984375
+        },
+        "hashes": {
+          "confidence_sha256": "70b60a6c935c4f694fe6da1ba61ad05effe81d25e445379ef5a9b24f9556a9dc",
+          "selected_candidate_rows_sha256": "df9344898cc9271c0c047913fbb7346831406b6dbb1c1fb1248f54f360b41e4e",
+          "xyz_sha256": "76489e3cbdb2d88bc76b5671c479a8f8ffbf15742b30d54ad417b31fe1c9bc17"
+        },
+        "non_deployable": true,
+        "passed": true,
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        },
+        "target_used_for_selection": true
+      },
+      "nearest_distance_sha256": "983b689b751eb39d07a607db6fd3411bc2784366f5045343f331502b8c938904",
+      "partition": "train",
+      "q1": {
+        "anchor_count": 25000,
+        "anchor_q0_row_sha256": "15915e9ff473ede95b642904dea2757dabec2eedce2c4d4ca630bd937a7dfd84",
+        "anchor_quotas": {
+          "range_0_30m": 20000,
+          "range_30_60m": 4250,
+          "range_60_120m": 750
+        },
+        "query_count": 200000,
+        "query_sha256": "6d0c11fc762ed71ab3acd641cc6b2816bffb9b2f97a91e10c93cd9de6cab919a",
+        "samples_per_anchor": 8,
+        "source": "matched_condition_q0_occupancy_only"
+      },
+      "radar_index": 403,
+      "raw_inputs": {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/26/radar_tesseract/tesseract_00403.mat",
+        "cube_sha256": "3614c58e6e8ff3b5f74c3d9edebf3ea8615f71141e238cb0004e5ec724698954",
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq26_radar_00403.npz",
+        "target_cache_sha256": "5f2da6457e503f55de5583f71b8ddfac5e007b35fe65faed768a7249ba0dc8fb",
+        "target_tensor_sha256": "a062467f414ae8c1277c325b4c97220d3ebf5ca760f72b469cffaea065888679"
+      },
+      "sequence": 26,
+      "wrong_identity": [
+        42,
+        408
+      ]
+    },
+    {
+      "base_confidence": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 326703,
+            "range_30_60m": 200697,
+            "range_60_120m": 172600
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.050149838055704596,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 577,
+            "range_30_60m": 21,
+            "range_60_120m": 0
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "geometry": {
+          "chamfer_m": 4.109315872192383,
+          "completeness_mean_distance_m": 1.80377197265625,
+          "fscore_0p5m": 0.2830760180950165,
+          "fscore_1p0m": 0.42640116810798645,
+          "fscore_2p0m": 0.6274412870407104,
+          "outlier_fraction_2m": 0.40059998631477356,
+          "precision_0p5m": 0.24849998950958252,
+          "precision_1p0m": 0.39399999380111694,
+          "precision_2p0m": 0.599399983882904,
+          "precision_mean_distance_m": 2.305543899536133,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 1.9795957803726196,
+          "range_0_30m_fscore_1m": 0.48792657256126404,
+          "range_0_30m_precision_mean_distance_m": 1.403895378112793,
+          "range_30_60m_completeness_mean_distance_m": 1.3041470050811768,
+          "range_30_60m_fscore_1m": 0.044944338500499725,
+          "range_30_60m_precision_mean_distance_m": 5.9483113288879395,
+          "range_60_120m_completeness_mean_distance_m": 1.5132813453674316,
+          "range_60_120m_fscore_1m": 0.14982271194458008,
+          "range_60_120m_precision_mean_distance_m": 5.707159042358398,
+          "recall_0p5m": 0.328828901052475,
+          "recall_1p0m": 0.4646089971065521,
+          "recall_2p0m": 0.6582350730895996,
+          "target_count": 7985,
+          "target_effective_count": 2888.307861328125
+        },
+        "hashes": {
+          "confidence_sha256": "f1a60a8e7dc266ce14918c62a123550e3cbae08135ff56f34e7798d2e5f4d471",
+          "selected_candidate_rows_sha256": "8f1582b1f5e4a673392f1ab252472eb16f76d71af1c548aafabdf5bfffd0c2ee",
+          "xyz_sha256": "b31d024dcb60fab07ec49274e5a24cb2de5fed91c7b98e1dc72d2f14c7db4621"
+        },
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        }
+      },
+      "candidate_field": {
+        "base_confidence_sha256": "3a435938956444be0859637bcdf2a62ee54a73a132c7abb142660a649a8f6129",
+        "candidate_coordinates_changed": false,
+        "candidate_count": 700000,
+        "candidate_xyz_sha256": "5bedf80412a7fc4b0e22aa4ebcd8b15f21028d74b44ce195ddb9a1a0085279fe",
+        "formal_residual_changed": false,
+        "ground_truth_accessed": false,
+        "q0_count": 500000,
+        "q0_sha256": "882ff93491e5b7e173780dba7178956d332221fed0ce96d2974eacdc0de200e2",
+        "q1_count": 200000,
+        "q1_sha256": "93f0867588e20f11e5b1d26868660cdb36678e7b4383c16bdade5bcc2c0f57c5"
+      },
+      "cohort_position": 10,
+      "group": "unseen_train",
+      "gt_nearest_capacity_oracle": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 326703,
+            "range_30_60m": 200697,
+            "range_60_120m": 172600
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.050042497621924316,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 674,
+            "range_30_60m": 13,
+            "range_60_120m": 1
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "gate": {
+          "all_structural_checks": true,
+          "chamfer_at_most_0p8m": true,
+          "outlier_at_most_5pct": true
+        },
+        "geometry": {
+          "chamfer_m": 0.4189956784248352,
+          "completeness_mean_distance_m": 0.1997750699520111,
+          "fscore_0p5m": 0.9115305542945862,
+          "fscore_1p0m": 0.9995055198669434,
+          "fscore_2p0m": 0.9998552799224854,
+          "outlier_fraction_2m": 0.0,
+          "precision_0p5m": 0.8892999887466431,
+          "precision_1p0m": 1.0,
+          "precision_2p0m": 1.0,
+          "precision_mean_distance_m": 0.2192206233739853,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 0.12860433757305145,
+          "range_0_30m_fscore_1m": 1.0,
+          "range_0_30m_precision_mean_distance_m": 0.1455976366996765,
+          "range_30_60m_completeness_mean_distance_m": 0.27847030758857727,
+          "range_30_60m_fscore_1m": 0.9999999403953552,
+          "range_30_60m_precision_mean_distance_m": 0.5203022360801697,
+          "range_60_120m_completeness_mean_distance_m": 0.5146517753601074,
+          "range_60_120m_fscore_1m": 0.9956383109092712,
+          "range_60_120m_precision_mean_distance_m": 0.4763715863227844,
+          "recall_0p5m": 0.9349011182785034,
+          "recall_1p0m": 0.9990115165710449,
+          "recall_2p0m": 0.9997105598449707,
+          "target_count": 7985,
+          "target_effective_count": 2888.307861328125
+        },
+        "hashes": {
+          "confidence_sha256": "45f6efbda7925e5ccef8c0b6c7295b7909966a9a0f5faf286430064f15a7d757",
+          "selected_candidate_rows_sha256": "10fc1c4af3d4a0d37ac50d9b705dc752fe27f1a94f7169eb9b269c3215f1007c",
+          "xyz_sha256": "02a7aa0eae46ef4ba1c50018464211ee29b986361f3142ec289d8408b7247dc6"
+        },
+        "non_deployable": true,
+        "passed": true,
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        },
+        "target_used_for_selection": true
+      },
+      "nearest_distance_sha256": "227ae46d6cdb7db7ed444622cdf369ce8ad76415d2b9a898181306e50c783793",
+      "partition": "train",
+      "q1": {
+        "anchor_count": 25000,
+        "anchor_q0_row_sha256": "eeea400fdf98a91be44da9499f0f91a5033d25a1b4621d7438d381324fa9a722",
+        "anchor_quotas": {
+          "range_0_30m": 20000,
+          "range_30_60m": 4250,
+          "range_60_120m": 750
+        },
+        "query_count": 200000,
+        "query_sha256": "93f0867588e20f11e5b1d26868660cdb36678e7b4383c16bdade5bcc2c0f57c5",
+        "samples_per_anchor": 8,
+        "source": "matched_condition_q0_occupancy_only"
+      },
+      "radar_index": 408,
+      "raw_inputs": {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/42/radar_tesseract/tesseract_00408.mat",
+        "cube_sha256": "8de1a63f66bcaeb2d59a643887ceca1e34bd51e06a66fe81d911b8c85dec531c",
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq42_radar_00408.npz",
+        "target_cache_sha256": "8742844cf243fbef0fd254cb3ae7c8613982714412035d97fd6e95c8ad797d1f",
+        "target_tensor_sha256": "cd70a0b30c35c486592db55a4e6ff9f26bf8b326a28e62beb34b13aa2924451e"
+      },
+      "sequence": 42,
+      "wrong_identity": [
+        50,
+        405
+      ]
+    },
+    {
+      "base_confidence": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 327799,
+            "range_30_60m": 199701,
+            "range_60_120m": 172500
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.05001810390662387,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 702,
+            "range_30_60m": 20,
+            "range_60_120m": 0
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "geometry": {
+          "chamfer_m": 3.6371190547943115,
+          "completeness_mean_distance_m": 0.5140054821968079,
+          "fscore_0p5m": 0.27977168560028076,
+          "fscore_1p0m": 0.4501875638961792,
+          "fscore_2p0m": 0.7223988771438599,
+          "outlier_fraction_2m": 0.4284999966621399,
+          "precision_0p5m": 0.17499999701976776,
+          "precision_1p0m": 0.31540000438690186,
+          "precision_2p0m": 0.5715000033378601,
+          "precision_mean_distance_m": 3.1231136322021484,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 0.4399052858352661,
+          "range_0_30m_fscore_1m": 0.5188997983932495,
+          "range_0_30m_precision_mean_distance_m": 1.596828818321228,
+          "range_30_60m_completeness_mean_distance_m": 2.5828187465667725,
+          "range_30_60m_fscore_1m": 0.01823626086115837,
+          "range_30_60m_precision_mean_distance_m": 9.639223098754883,
+          "range_60_120m_completeness_mean_distance_m": 0.6994032263755798,
+          "range_60_120m_fscore_1m": 0.26730984449386597,
+          "range_60_120m_precision_mean_distance_m": 6.899421691894531,
+          "recall_0p5m": 0.6971553564071655,
+          "recall_1p0m": 0.7861536741256714,
+          "recall_2p0m": 0.9815738201141357,
+          "target_count": 2588,
+          "target_effective_count": 956.67138671875
+        },
+        "hashes": {
+          "confidence_sha256": "602f9b8b43720fb3a173eab185182f7541302b8eec738bf6773a29afd01a6aa7",
+          "selected_candidate_rows_sha256": "8dfbd79d10640cc5a4464193f6f68bc8fc470deb929330ec30da93ba76f9cfd3",
+          "xyz_sha256": "7dad94239e8a99b716f67255b40b0349789eaca4cd489c1456092e7a7c4d7804"
+        },
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        }
+      },
+      "candidate_field": {
+        "base_confidence_sha256": "6e1e25eafa6e8ddfc90ac58baca5bf9ba4a268a5894f6efb803c19913ab0bae2",
+        "candidate_coordinates_changed": false,
+        "candidate_count": 700000,
+        "candidate_xyz_sha256": "a3af3b4833125705efbf20fe1d642f0c643fd43c893979def1470d0b6cfe46b3",
+        "formal_residual_changed": false,
+        "ground_truth_accessed": false,
+        "q0_count": 500000,
+        "q0_sha256": "882ff93491e5b7e173780dba7178956d332221fed0ce96d2974eacdc0de200e2",
+        "q1_count": 200000,
+        "q1_sha256": "af69743c6fe8b98d9008ec850c94fabc3b6d0aecf59120c288d68ffee0e6bb07"
+      },
+      "cohort_position": 11,
+      "group": "unseen_train",
+      "gt_nearest_capacity_oracle": {
+        "export": {
+          "candidate_capacity_by_range": {
+            "range_0_30m": 327799,
+            "range_30_60m": 199701,
+            "range_60_120m": 172500
+          },
+          "candidate_count": 700000,
+          "copy_padding_jitter_duplicate": false,
+          "exact_point_count": 10000,
+          "finite_confidence": true,
+          "finite_xyz": true,
+          "ground_truth_accessed": false,
+          "method": "confidence_stable_true_5cm_capacity_one_range_quota",
+          "minimum_euclidean_distance_m": 0.05,
+          "observed_minimum_pair_distance_m": 0.050054064880003524,
+          "output_quotas": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "rejected_minimum_distance_by_range": {
+            "range_0_30m": 1263,
+            "range_30_60m": 6,
+            "range_60_120m": 0
+          },
+          "selected_by_range": {
+            "range_0_30m": 8000,
+            "range_30_60m": 1700,
+            "range_60_120m": 300
+          },
+          "unique_selected_candidate_count": 10000
+        },
+        "gate": {
+          "all_structural_checks": true,
+          "chamfer_at_most_0p8m": true,
+          "outlier_at_most_5pct": true
+        },
+        "geometry": {
+          "chamfer_m": 0.45526641607284546,
+          "completeness_mean_distance_m": 0.12546740472316742,
+          "fscore_0p5m": 0.9044491648674011,
+          "fscore_1p0m": 0.9778708815574646,
+          "fscore_2p0m": 1.0,
+          "outlier_fraction_2m": 0.0,
+          "precision_0p5m": 0.8430999517440796,
+          "precision_1p0m": 0.9566999673843384,
+          "precision_2p0m": 1.0,
+          "precision_mean_distance_m": 0.32979902625083923,
+          "prediction_count": 10000,
+          "range_0_30m_completeness_mean_distance_m": 0.07643317431211472,
+          "range_0_30m_fscore_1m": 1.0,
+          "range_0_30m_precision_mean_distance_m": 0.22652436792850494,
+          "range_30_60m_completeness_mean_distance_m": 0.28145548701286316,
+          "range_30_60m_fscore_1m": 0.8540613055229187,
+          "range_30_60m_precision_mean_distance_m": 0.769161581993103,
+          "range_60_120m_completeness_mean_distance_m": 0.36375147104263306,
+          "range_60_120m_fscore_1m": 1.0,
+          "range_60_120m_precision_mean_distance_m": 0.5940679907798767,
+          "recall_0p5m": 0.9754274487495422,
+          "recall_1p0m": 1.0,
+          "recall_2p0m": 1.0,
+          "target_count": 2588,
+          "target_effective_count": 956.67138671875
+        },
+        "hashes": {
+          "confidence_sha256": "4b16ba2a363983ae2fdac53df0ba02f036e556e92c28ad728aef35844973df8b",
+          "selected_candidate_rows_sha256": "709e11711f982c607a4db7ef9bb93d12eb0b506fa43176b0b96b6aac34f5fa3a",
+          "xyz_sha256": "0ad08b48c186940910fc48cae2fb3274db3205f4052c9c2b133d0080ef1e2868"
+        },
+        "non_deployable": true,
+        "passed": true,
+        "structural_checks": {
+          "exact_10000": true,
+          "exact_range_quotas": true,
+          "minimum_spacing_5cm": true,
+          "no_copy_padding_jitter_duplicate": true,
+          "unique_rows": true
+        },
+        "target_used_for_selection": true
+      },
+      "nearest_distance_sha256": "f4cbd9460a4612e43e10242e013f451a6a02a419e8f26fb437dea0d2360457db",
+      "partition": "train",
+      "q1": {
+        "anchor_count": 25000,
+        "anchor_q0_row_sha256": "3d705c4faa235a2d505768c8e966ec6f8384e7da928d76cc4bf70e055333cfc8",
+        "anchor_quotas": {
+          "range_0_30m": 20000,
+          "range_30_60m": 4250,
+          "range_60_120m": 750
+        },
+        "query_count": 200000,
+        "query_sha256": "af69743c6fe8b98d9008ec850c94fabc3b6d0aecf59120c288d68ffee0e6bb07",
+        "samples_per_anchor": 8,
+        "source": "matched_condition_q0_occupancy_only"
+      },
+      "radar_index": 405,
+      "raw_inputs": {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/50/radar_tesseract/tesseract_00405.mat",
+        "cube_sha256": "ec6e86dedbc1e0476f1f3d9fe7fa4137156aa98f5975b163571d65034ef6f5ab",
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq50_radar_00405.npz",
+        "target_cache_sha256": "eff9419ad647efaccc6bd9cabe7af1cf214f2d5804773fe737682ee22bb41e4a",
+        "target_tensor_sha256": "83a17c798cb218cd2c882730c1fa252376b5e5ab4284345b7fffeede916dc911"
+      },
+      "sequence": 50,
+      "wrong_identity": [
+        5,
+        429
+      ]
+    }
+  ],
+  "fresh_parent": {
+    "epoch": 20,
+    "name": "Fresh-WCE-20",
+    "not_deleted_original_identity": true,
+    "q1r_certificate_used_as_authorizer": false,
+    "source_commit": "f2a9489d40323d1ef45d85de958f4aea8126e1c8",
+    "state_sha256_after": "aff5402c88e2a6f54ed32d9b715fecc5ead1cb21fb988d4fe5fbfef2b7e9f17a",
+    "state_sha256_before": "aff5402c88e2a6f54ed32d9b715fecc5ead1cb21fb988d4fe5fbfef2b7e9f17a",
+    "unchanged": true
+  },
+  "gradient_preflight": {
+    "all_gradient_groups_finite_nonzero": true,
+    "gradient_groups": {
+      "condition_attention": {
+        "absolute_sum": 0.42468169503990794,
+        "finite": true,
+        "nonzero": true,
+        "tensor_count": 9
+      },
+      "condition_projection": {
+        "absolute_sum": 0.6450031271670014,
+        "finite": true,
+        "nonzero": true,
+        "tensor_count": 4
+      },
+      "coordinate_embedding": {
+        "absolute_sum": 0.16581457061693072,
+        "finite": true,
+        "nonzero": true,
+        "tensor_count": 2
+      },
+      "distance_delta_head": {
+        "absolute_sum": 11.877251943806186,
+        "finite": true,
+        "nonzero": true,
+        "tensor_count": 6
+      },
+      "feed_forward": {
+        "absolute_sum": 0.6544490261585452,
+        "finite": true,
+        "nonzero": true,
+        "tensor_count": 6
+      },
+      "local_projection": {
+        "absolute_sum": 0.1668108377052704,
+        "finite": true,
+        "nonzero": true,
+        "tensor_count": 6
+      }
+    },
+    "model_contract": {
+      "best_of_k": false,
+      "candidate_coordinates_changed": false,
+      "condition_dim": 512,
+      "distance_centers_m": [
+        0.05,
+        0.175,
+        0.375,
+        0.75,
+        1.5,
+        3.0
+      ],
+      "forbidden_inference_inputs": [
+        "target_xyz_confidence",
+        "target_geometry",
+        "future_frame",
+        "test_frame",
+        "selected_candidate_rows",
+        "best_of_k"
+      ],
+      "fresh_parent_changed": false,
+      "future_access": false,
+      "ground_truth_inference": false,
+      "inference_inputs": [
+        "refined_normalized_rae",
+        "detached_fresh_parent_confidence",
+        "detached_global_condition_latents",
+        "local_normalized_64bin_spectrum",
+        "local_standardized_integrated_log_energy",
+        "local_spectrum_entropy",
+        "local_rae_energy_gradients"
+      ],
+      "minimum_distance_changed": false,
+      "model_dim": 128,
+      "model_family": "Fresh-WCE frozen field plus local Full-RAED risk",
+      "protocol": "g1_qlocal_distributional_risk_f0_v1",
+      "range_quotas_changed": false,
+      "selection_score": "negative_expected_distance_m",
+      "test_access": false
+    },
+    "parameter_count": 380818,
+    "same_coordinate_intervention": {
+      "base_confidence_sha256": "17989ade81c8d8e83d6186e4c06e525739dfea7bb946062aefd3639efb6cd885",
+      "coordinates_bit_identical": true,
+      "global_condition_changed": true,
+      "local_spectrum_changed": true,
+      "matched_coordinate_sha256": "761fff8f013319633a8b47bff683437826e13029f56136919a31cf098d4a2bc2",
+      "matched_local_spectrum_sha256": "2e988bd27879dd73b47a3c29342e0fda0341bcc3745a0b6c63bfd97045c306ea",
+      "selection_score_changed": true,
+      "wrong_coordinate_sha256": "761fff8f013319633a8b47bff683437826e13029f56136919a31cf098d4a2bc2",
+      "wrong_local_spectrum_sha256": "06a8bf0bec7792d6e392a10d8698c6993c0a3de7a883f07341e7a93b611ba9c5"
+    },
+    "sample_count": 16000,
+    "sample_range_counts": {
+      "0": 12800,
+      "1": 2720,
+      "2": 480
+    },
+    "two_update_losses": [
+      5.324202060699463,
+      5.321916580200195
+    ]
+  },
+  "input_binding": {
+    "cohort": [
+      {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/1/radar_tesseract/tesseract_00232.mat",
+        "cube_sha256": "b21355705b672ec348f5c802fbed8b288077f58ad31d8a2675874f26cd4e4b2e",
+        "group": "fit",
+        "identity": [
+          1,
+          232
+        ],
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq01_radar_00232.npz",
+        "target_cache_sha256": "76380164d2460a5de33cb06e2779a98aae0f9260fe6b77ef92b2332f12ba8fae",
+        "wrong_identity": [
+          9,
+          440
+        ]
+      },
+      {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/9/radar_tesseract/tesseract_00440.mat",
+        "cube_sha256": "162b20cd299f8a72919c00bceb1c50e2e1e572c3ae6a58881d249c487370025b",
+        "group": "fit",
+        "identity": [
+          9,
+          440
+        ],
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq09_radar_00440.npz",
+        "target_cache_sha256": "1d045ff8f3058719441e9a3b084aa9f49df4d588568ae757f51036b99595227c",
+        "wrong_identity": [
+          21,
+          402
+        ]
+      },
+      {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/21/radar_tesseract/tesseract_00402.mat",
+        "cube_sha256": "f6e85c2017be7fc544a83844422bd98581031cacadc2beb4d1bb659afa23e52c",
+        "group": "fit",
+        "identity": [
+          21,
+          402
+        ],
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq21_radar_00402.npz",
+        "target_cache_sha256": "b113efd586d19735ffa8c8246a4510be7ab6a89d11290c8ade3f6497e860adef",
+        "wrong_identity": [
+          27,
+          403
+        ]
+      },
+      {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/27/radar_tesseract/tesseract_00403.mat",
+        "cube_sha256": "87a16e31c8693d0c82ad0f92c5ee0da90ca19d7f2488a34d362d3c16485449c2",
+        "group": "fit",
+        "identity": [
+          27,
+          403
+        ],
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq27_radar_00403.npz",
+        "target_cache_sha256": "d5f2be39e469b342e538f7a6c8277f446c746db4ede3aa07ca448b7992d5bad5",
+        "wrong_identity": [
+          29,
+          399
+        ]
+      },
+      {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/29/radar_tesseract/tesseract_00399.mat",
+        "cube_sha256": "6392ccbc6fa0942d99938ca3c40402bd34aa1c40975f5ef1e2a4aeefe6e8516b",
+        "group": "fit",
+        "identity": [
+          29,
+          399
+        ],
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq29_radar_00399.npz",
+        "target_cache_sha256": "4493b3934a8c34968566e425f47b94985bd68e04a2330e4491671a7ee42e96af",
+        "wrong_identity": [
+          35,
+          403
+        ]
+      },
+      {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/35/radar_tesseract/tesseract_00403.mat",
+        "cube_sha256": "221b6c8cb7ad8cf5cc154e887986a6943ff80ca3521b18fbc5462ce3ac8bf754",
+        "group": "fit",
+        "identity": [
+          35,
+          403
+        ],
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq35_radar_00403.npz",
+        "target_cache_sha256": "580c1c90a1c0db9222b4e12a584d7a07d59872e2e869b9d46e7e09c5e3dd9e15",
+        "wrong_identity": [
+          47,
+          514
+        ]
+      },
+      {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/47/radar_tesseract/tesseract_00514.mat",
+        "cube_sha256": "eb2923edb0084e697351f5fbc3445ab4b8752f2bfd9042131ffcbd6b14a28641",
+        "group": "fit",
+        "identity": [
+          47,
+          514
+        ],
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq47_radar_00514.npz",
+        "target_cache_sha256": "bda9d834ba0d5401d6a752da854ad61391d5c6676337adecdb18e3a7fb983d34",
+        "wrong_identity": [
+          58,
+          404
+        ]
+      },
+      {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/58/radar_tesseract/tesseract_00404.mat",
+        "cube_sha256": "f75c7d777e27e4e5552de55c0ee89ed04a4213cf827c6439161a828c8c301258",
+        "group": "fit",
+        "identity": [
+          58,
+          404
+        ],
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq58_radar_00404.npz",
+        "target_cache_sha256": "1a193c3835f08fc9d53a3877af7544f457b4e1021577b39b57bcd8b86c02ace9",
+        "wrong_identity": [
+          1,
+          232
+        ]
+      },
+      {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/5/radar_tesseract/tesseract_00429.mat",
+        "cube_sha256": "6da2066dae79f7bf8773b856cc2b4d3fd3c373f4292cfa777dde174f392f46d4",
+        "group": "unseen_train",
+        "identity": [
+          5,
+          429
+        ],
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq05_radar_00429.npz",
+        "target_cache_sha256": "5a187efaac5ef4d7f785f2428fbdc9b4e9160a11ee609b466dc2231d8e5d8587",
+        "wrong_identity": [
+          26,
+          403
+        ]
+      },
+      {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/26/radar_tesseract/tesseract_00403.mat",
+        "cube_sha256": "3614c58e6e8ff3b5f74c3d9edebf3ea8615f71141e238cb0004e5ec724698954",
+        "group": "unseen_train",
+        "identity": [
+          26,
+          403
+        ],
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq26_radar_00403.npz",
+        "target_cache_sha256": "5f2da6457e503f55de5583f71b8ddfac5e007b35fe65faed768a7249ba0dc8fb",
+        "wrong_identity": [
+          42,
+          408
+        ]
+      },
+      {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/42/radar_tesseract/tesseract_00408.mat",
+        "cube_sha256": "8de1a63f66bcaeb2d59a643887ceca1e34bd51e06a66fe81d911b8c85dec531c",
+        "group": "unseen_train",
+        "identity": [
+          42,
+          408
+        ],
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq42_radar_00408.npz",
+        "target_cache_sha256": "8742844cf243fbef0fd254cb3ae7c8613982714412035d97fd6e95c8ad797d1f",
+        "wrong_identity": [
+          50,
+          405
+        ]
+      },
+      {
+        "cube_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene/50/radar_tesseract/tesseract_00405.mat",
+        "cube_sha256": "ec6e86dedbc1e0476f1f3d9fe7fa4137156aa98f5975b163571d65034ef6f5ab",
+        "group": "unseen_train",
+        "identity": [
+          50,
+          405
+        ],
+        "target_cache_path": "/home/wangning/Shared/l40s_wangning_radar/cube_dense_data/kradar_g0_cross_scene_cache_a7d06db/seq50_radar_00405.npz",
+        "target_cache_sha256": "eff9419ad647efaccc6bd9cabe7af1cf214f2d5804773fe737682ee22bb41e4a",
+        "wrong_identity": [
+          5,
+          429
+        ]
+      }
+    ],
+    "cohort_ordered_digest_sha256": "b534cca1a7e96b9cba084cdaecf7dee5576abb3f9d1d1dfd42805157210b231e",
+    "fresh_parent_checkpoint_sha256": "c0ebb4c1509c3d36b6834bd39977cb1cda2fcaff1747eabc97ebb41af0f06ce4",
+    "fresh_parent_metrics_sha256": "d9c0d6c41b74392b123b11e770bc122aba2ec30a835b45c157a21ad96fd14d7a",
+    "fresh_parent_run_manifest_sha256": "26ebab679d112e07c5bb364b8799cffc24b573c4abc6a71623705a4cfe962e9f",
+    "frozen_inputs": {
+      "dense_geometry_evaluator_sha256": "e1f970c1e827c7801c7c9018378603b89a7709b0b4bf261e740eab1575631e68",
+      "exact_wce_evaluator_sha256": "07dc5885d47effc6c0d41b7f2fc8f7f41c59f89a4ab1f2b73b2de44f667b8962",
+      "manifest_sha256": "645307a8bae351db51b55128043dae69bce5b928169d5fa25c1b9c55083de4e4",
+      "normalization_sha256": "4d0bca7d027a1a9f457c526f21a034a406ce4973e2dccee55ddd2d7019b41b77",
+      "scene_split_sha256": "61596bd50ce0bdab633c9ff0ec5ab5148c2c78a10dfc06a71d0d6f0a6c9427cc"
+    },
+    "manifest_counts": {
+      "future_cube_frame_count": 0,
+      "test_frame_count": 0,
+      "train_frame_count": 76,
+      "validation_frame_count": 24
+    }
+  },
+  "oracle_gate": {
+    "exact_output_count": 10000,
+    "minimum_spacing_m": 0.05,
+    "non_deployable": true,
+    "output_range_quotas": [
+      8000,
+      1700,
+      300
+    ],
+    "per_frame_chamfer_m_at_most": 0.8,
+    "per_frame_outlier_fraction_at_most": 0.05
+  },
+  "passed": false,
+  "protocol": "g1_qlocal_distributional_risk_f0_preflight_v1",
+  "runtime": {
+    "device_argument": "cuda:0",
+    "elapsed_seconds": 444.58142805984244,
+    "gpu": {
+      "cuda_device_order": "PCI_BUS_ID",
+      "cuda_visible_devices": "2",
+      "name": "NVIDIA H200 NVL",
+      "pci_bus_id": "00000000:D1:00.0",
+      "physical_index": 2,
+      "torch_visible_name": "NVIDIA H200 NVL",
+      "uuid": "GPU-000b6236-3632-a001-9667-1f02cbb61c8b",
+      "visible_cuda_device_count": 1
+    },
+    "measured_gpu_seconds": 444.58142805984244,
+    "peak_allocated_bytes": 2432197120,
+    "peak_reserved_bytes": 2657091584,
+    "torch_version": "2.12.1+cu130"
+  },
+  "schema_version": 1,
+  "source_commit": "bf1a166c48be60f82c5283b5937edf0cf6ad64c2",
+  "source_hashes": {
+    "code/eval/dense_geometry.py": "e1f970c1e827c7801c7c9018378603b89a7709b0b4bf261e740eab1575631e68",
+    "code/eval/rald_wce_stage0.py": "07dc5885d47effc6c0d41b7f2fc8f7f41c59f89a4ab1f2b73b2de44f667b8962",
+    "code/losses/qlocal_distributional_risk.py": "dfe3e4f703373c146d9acb97b299c8f7307a85b22928b5ca500c0935f7463d1e",
+    "code/models/qlocal_distributional_risk.py": "79705afda2bcb8b32e7961dbb5a69ec9667038ad4e48ed20ddaa126901451eab",
+    "code/models/rald_wce_field.py": "616c1737305803e65fc676d1721d69e7744d92cd20ae098f48b8a21a387134ef",
+    "code/scripts/preflight_qlocal_distributional_risk.py": "1e4cca603d0efffa8b2cf15e6bc664960d8cad33102a55b51bd1112fca4453cd",
+    "code/scripts/train_rald_wce_pilot.py": "caca90e03c8283255b1fa55a30979942cfabf08330cfb5f542696acc98ed68b8",
+    "code/scripts/train_rald_wce_quality_tiny.py": "d884f603938f1fceeff6f29081815b7881fffeb0ac7a8d973a145a2d4ee5e5fc",
+    "docs/qlocal_distributional_risk_tiny_protocol.md": "b0b1b5912ef61c185419c415d793c6fbb8e6c213365379fe3ab76e9ddd21f198"
+  },
+  "status": "qlocal_f0_capacity_no_go"
+}
